@@ -1,111 +1,100 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  /* Brand */
+  --pink:          #E91E6A;
+  --pink-light:    #FF5A9D;
+  --pink-mid:      #B01550;
+  --pink-pale:     #FFF9FB;
+  --pink-tint:     #FFF0F7;
+  --pink-border:   #FFD6E8;
+  --pink-label:    #FF78B0;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+  /* Plum */
+  --plum-dark:     #1A0A12;
+  --plum-mid:      #2C0B1A;
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
+  /* Ink */
+  --ink:           #1A0A12;
+  --ink-mid:       #5A3040;
+  --ink-muted:     #9B5A70;
+
+  /* Status */
+  --green:         #16A34A;
+  --green-light:   #DCFCE7;
+  --green-border:  #86EFAC;
+  --green-text:    #14532D;
+  --amber:         #F59E0B;
+  --amber-light:   #FEF3C7;
+  --amber-text:    #78350F;
+
+  /* Gradients */
+  --grad-pink:   linear-gradient(110deg, #FF4D96 0%, #E91E6A 45%, #B01550 100%);
+  --grad-hero:   linear-gradient(145deg, #0E0520 0%, #1C0830 100%);
+  --grad-action: linear-gradient(135deg, #FF5A9D, #E91E6A);
+
+  /* Radius */
+  --r-card:    16px;
+  --r-input:   12px;
+  --r-badge:   5px;
+  --r-sheet:   24px;
+  --r-pill:    100px;
+
+  /* Typography */
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-ui:      'Inter', system-ui, sans-serif;
+
+  font-family: var(--font-ui);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
 }
 
 body {
-  margin: 0;
+  background: #06020E;
+  color: #FFFFFF;
 }
 
 #root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
   display: flex;
   flex-direction: column;
-  box-sizing: border-box;
+  min-height: 100svh;
+  max-width: 430px;
+  margin: 0 auto;
+  position: relative;
+  overflow-x: hidden;
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
+button {
+  font-family: var(--font-ui);
+  cursor: pointer;
 }
 
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
-p {
-  margin: 0;
+.tabular {
+  font-variant-numeric: tabular-nums;
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+/* Hero fly animation for Cape-Up easter egg */
+@keyframes heroFly {
+  0%   { transform: translate(0,0) rotate(0deg) scale(1); opacity: 1; }
+  25%  { transform: translate(12px,-30px) rotate(-18deg) scale(1.3); opacity: 1; }
+  65%  { transform: translate(80px,-160px) rotate(30deg) scale(0.6); opacity: 0.6; }
+  100% { transform: translate(200px,-340px) rotate(50deg) scale(0.1); opacity: 0; }
 }
+@keyframes smPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.45; transform: scale(0.8); }
+}
+.sm-pulse { animation: smPulse 1.4s ease-in-out infinite; }
+.sm-hero-icon { transition: transform 0.12s ease; }
+.sm-hero-icon.flying { animation: heroFly 0.85s cubic-bezier(0.2,0,0.55,1) forwards; }
 
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
-}
+.sm-scroll::-webkit-scrollbar { width: 0; }
+.sm-scroll { scrollbar-width: none; }

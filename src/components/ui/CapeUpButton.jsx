@@ -1,0 +1,54 @@
+import { useState } from 'react';
+import { useAppTheme } from '../../context/AppThemeContext';
+import { getGoLabel } from '../../lib/goLabel';
+
+export default function CapeUpButton({ job, onGo }) {
+  const { T } = useAppTheme();
+  const [flying, setFlying] = useState(false);
+  const [label] = useState(() => getGoLabel(job.service));
+
+  const tap = () => {
+    if (flying) return;
+    setFlying(true);
+    setTimeout(() => { setFlying(false); onGo?.(); }, 900);
+  };
+
+  return (
+    <button
+      onClick={tap}
+      style={{
+        width: '100%', display: 'flex', alignItems: 'center', gap: 11,
+        background: 'rgba(255,255,255,0.06)', border: '1.5px solid rgba(233,30,106,0.4)',
+        borderRadius: 12, padding: '9px 13px', cursor: 'pointer', overflow: 'visible',
+      }}
+    >
+      <div style={{ position: 'relative', width: 40, height: 36, flexShrink: 0 }}>
+        <img
+          src="/branding/supermom-go.png"
+          alt=""
+          className={`sm-hero-icon${flying ? ' flying' : ''}`}
+          style={{
+            width: 40, height: 36, borderRadius: 9, objectFit: 'cover',
+            position: 'absolute', top: 0, left: 0,
+          }}
+        />
+      </div>
+      <div style={{ flex: 1, textAlign: 'left' }}>
+        <div style={{
+          fontFamily: T.serif, fontSize: 13.5, fontWeight: 500,
+          color: '#FF5A9D', letterSpacing: '-0.2px',
+        }}>
+          {flying ? 'En Route ✓' : label}
+        </div>
+        <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, marginTop: 1 }}>
+          {job.address} · {job.driveTime} · auto-timer on
+        </div>
+      </div>
+      {!flying && (
+        <svg width="7" height="13" viewBox="0 0 7 13" fill="none">
+          <path d="M1 1l5 5.5-5 5.5" stroke="#FF5A9D" strokeWidth="1.8" strokeLinecap="round"/>
+        </svg>
+      )}
+    </button>
+  );
+}

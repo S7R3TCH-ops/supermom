@@ -27,29 +27,22 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 ---
 
-## Repo structure (target)
+## Repo structure (target: supermom-v2)
 
 ```
-supermom-app/
+supermom-v2/
 ├── CLAUDE.md
 ├── DESIGN.md
+├── .env.example               ← Template for secrets
 ├── public/
-│   ├── supermom_logo_wide.png     ← wide horizontal logo for banner
-│   └── supermom_go.png            ← flying hero logo for GO button
-├── src/
-│   ├── components/
-│   │   ├── ui/                    ← design system primitives
-│   │   ├── layout/                ← LogoBanner, BottomNav, FAB
-│   │   └── screens/               ← Home, Calendar, Clients, Finance
-│   ├── hooks/
-│   │   ├── useGeofence.js         ← auto-timer logic
-│   │   └── useMileage.js          ← auto mileage tracking
-│   ├── lib/
-│   │   ├── supabase.js            ← supabase client
-│   │   └── gcal.js                ← google calendar helpers
-│   ├── pages/
-│   └── App.jsx
 ```
+
+---
+
+## Security & Environment
+- **CRITICAL**: Never commit `.env` or the `docs/` folder. They are ignored in `.gitignore`.
+- **API Keys**: Use `VITE_` prefix for all environment variables (e.g., `VITE_SUPABASE_URL`).
+- **Mock Data**: Current version uses mock data for visual prototype; backend integration pending.
 
 ---
 

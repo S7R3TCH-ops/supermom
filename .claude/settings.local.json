@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(npx vite *)",
+      "Bash(mkdir -p /tmp/design)",
+      "Read(//tmp/**)",
+      "Bash(cp \"C:\\\\Users\\\\jlund\\\\.claude\\\\projects\\\\C--Users-jlund-Documents-Projects-supermom-v2-0\\\\63d1395b-17f9-4076-ac68-420a6cb3bb0b\\\\tool-results\\\\webfetch-1776892451219-li6j3o.bin\" design.bin)",
+      "Bash(gunzip -c design.bin)",
+      "Bash(tar -tf design.tar)",
+      "Bash(tar -xf design.tar)",
+      "Bash(rm -f src/components/home/TodayCard.jsx src/components/layout/LogoBanner.jsx src/components/layout/FAB.jsx src/components/ui/AICard.jsx src/components/ui/Card.jsx src/components/ui/Badge.jsx src/components/ui/DarkHeroSection.jsx src/components/ui/SupermomGoButton.jsx src/components/ui/ViewToggle.jsx)",
+      "Bash(rmdir src/components/home)",
+      "Bash(npm run *)"
+    ]
+  }
+}

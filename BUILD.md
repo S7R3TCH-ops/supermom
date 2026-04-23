@@ -57,7 +57,8 @@ When done:
 
 ### 🎯 Phase 1 — Job lifecycle (build next, in this order)
 
-- [ ] **1. New Job bottom sheet** — 3 steps (Who → What/When → Review). Shared `src/data/jobs.js`. Per DESIGN.md §12. Opens from FAB or "Book" buttons.
+- [x] **1. New Job bottom sheet** — 3 steps (Who → What/When → Review). Shared `src/data/jobs.js`. Per DESIGN.md §12. Opens from FAB or "Book" buttons.
+  - Built as `src/components/sheets/NewJobSheet.jsx` + `src/context/NewJobSheet.jsx` + `src/data/jobs.js` + `src/components/ui/FAB.jsx`; global FAB + ClientProfile Book Job wired; conflict detection hits `findConflicts()`.
 - [ ] **2. Job Detail page** — tap any job (Home / Calendar / Profile) → full view. Shows service, time, client, address, notes, photos, voice note, payment status, timer state.
 - [ ] **3. Edit Job** — reuses New Job sheet in edit mode (pass `jobId` prop).
 - [ ] **4. Active Job state** — Home Today card variant when geofence triggers. Big running timer, "Auto-started on arrival" label, Voice note / Photo / Done buttons.

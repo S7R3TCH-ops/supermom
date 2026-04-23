@@ -1,5 +1,6 @@
 import { useNavigate, useParams, Navigate } from 'react-router-dom';
 import { useAppTheme } from '../context/AppThemeContext';
+import { useNewJobSheet } from '../context/NewJobSheetContext';
 import AmtCell from '../components/ui/AmtCell';
 import SectionLabel from '../components/ui/SectionLabel';
 import { getClientById, formatPhone } from '../data/clients';
@@ -8,6 +9,7 @@ export default function ClientProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { T, mode, privacyOn } = useAppTheme();
+  const { openFor } = useNewJobSheet();
   const client = getClientById(id);
 
   if (!client) return <Navigate to="/clients" replace />;
@@ -123,11 +125,13 @@ export default function ClientProfile() {
 
         {/* Action row */}
         <div style={{ display: 'flex', gap: 8, position: 'relative' }}>
-          <button style={{
-            flex: 2, background: '#E91E6A', border: 'none', borderRadius: 12,
-            padding: '11px 0', fontFamily: T.font, fontSize: 13, fontWeight: 700, color: 'white',
-            cursor: 'pointer', letterSpacing: '0.2px',
-          }}>Book Job</button>
+          <button
+            onClick={() => openFor(client.id)}
+            style={{
+              flex: 2, background: '#E91E6A', border: 'none', borderRadius: 12,
+              padding: '11px 0', fontFamily: T.font, fontSize: 13, fontWeight: 700, color: 'white',
+              cursor: 'pointer', letterSpacing: '0.2px',
+            }}>Book Job</button>
           <button style={{
             flex: 1, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)',
             borderRadius: 12, padding: '11px 0',
@@ -215,10 +219,12 @@ export default function ClientProfile() {
               <div style={{ fontFamily: T.font, fontSize: 11.5, color: T.inkMuted, marginBottom: 6 }}>
                 No upcoming jobs booked
               </div>
-              <button style={{
-                background: T.pink, color: 'white', border: 'none', borderRadius: 8,
-                padding: '6px 14px', fontFamily: T.font, fontSize: 11, fontWeight: 700, cursor: 'pointer',
-              }}>Book new job</button>
+              <button
+                onClick={() => openFor(client.id)}
+                style={{
+                  background: T.pink, color: 'white', border: 'none', borderRadius: 8,
+                  padding: '6px 14px', fontFamily: T.font, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                }}>Book new job</button>
             </div>
           ) : (
             client.upcoming.map((j, i) => (

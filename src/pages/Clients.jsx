@@ -1,21 +1,15 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppTheme } from '../context/AppThemeContext';
 import AmtCell from '../components/ui/AmtCell';
-
-const clients = [
-  { init: 'A', color: '#E91E6A', name: 'Anne K.',          vip: true,  service: 'Deep Clean',       last: 'Apr 19', next: 'Apr 22', amt: '$0',   owed: false, tags: ['Weekly'],             note: '🐶 Big dog. Side door. Extra time kitchen.' },
-  { init: 'P', color: '#8B5CF6', name: 'Patel Family',     vip: false, service: 'Organize',         last: 'Apr 15', next: 'Apr 22', amt: '$160', owed: true,  tags: ['Biweekly'],           note: 'Bins needed. 2nd floor office priority.' },
-  { init: 'W', color: '#06B6D4', name: 'Westbrook',        vip: false, service: 'Quick Tidy',       last: 'Apr 8',  next: 'Apr 22', amt: '$0',   owed: false, tags: ['Monthly'],            note: 'Lockbox 4829. Kitchen + bath only.' },
-  { init: 'C', color: '#F59E0B', name: 'Chen Family',      vip: false, service: 'Deep Clean',       last: 'Apr 12', next: 'Apr 29', amt: '$120', owed: true,  tags: ['Biweekly', '⚠ Overdue'], note: '3 days overdue — nudge pending.' },
-  { init: 'M', color: '#22C55E', name: 'Marchetti',        vip: true,  service: 'Declutter + Org.', last: 'Mar 28', next: 'May 3',  amt: '$0',   owed: false, tags: ['Monthly', 'VIP ★'],   note: 'Full basement project. 4hr session.' },
-  { init: 'K', color: '#EC4899', name: 'Kim Watson (lead)', vip: false, service: '—',               last: '—',      next: '—',      amt: '',     owed: false, tags: ['Lead'],               note: 'Follow-up due. Interested in biweekly deep clean.' },
-];
+import { clients } from '../data/clients';
 
 const filters = ['All', 'Owes $', 'VIP', 'Active', 'Leads'];
 
 export default function Clients() {
   const { T, mode, privacyOn } = useAppTheme();
   const [filter, setFilter] = useState('All');
+  const navigate = useNavigate();
 
   const filtered = clients.filter(c => {
     if (filter === 'Owes $') return c.owed;
@@ -72,10 +66,17 @@ export default function Clients() {
       {/* Client list */}
       <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '4px 13px 8px' }}>
         {filtered.map((c, i) => (
-          <div key={i} style={{
-            background: T.card, border: `1.5px solid ${c.owed ? 'rgba(233,30,106,0.35)' : T.cardBorder}`,
-            borderRadius: 13, padding: '10px 12px', marginBottom: 7,
-          }}>
+          <div
+            key={c.id || i}
+            onClick={() => navigate(`/clients/${c.id}`)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigate(`/clients/${c.id}`); }}
+            style={{
+              background: T.card, border: `1.5px solid ${c.owed ? 'rgba(233,30,106,0.35)' : T.cardBorder}`,
+              borderRadius: 13, padding: '10px 12px', marginBottom: 7, cursor: 'pointer',
+            }}
+          >
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: c.note ? 7 : 0 }}>
               <div style={{
                 width: 40, height: 40, borderRadius: 12, flexShrink: 0,
@@ -116,7 +117,10 @@ export default function Clients() {
                   <div style={{ fontFamily: T.font, fontSize: 9, color: T.inkMuted, textAlign: 'right' }}>Next: {c.next}</div>
                 )}
                 {c.tags.includes('Lead') && (
-                  <button style={{ background: T.pink, color: 'white', border: 'none', borderRadius: 6, padding: '4px 8px', fontFamily: T.font, fontSize: 9, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>Book</button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); navigate(`/clients/${c.id}`); }}
+                    style={{ background: T.pink, color: 'white', border: 'none', borderRadius: 6, padding: '4px 8px', fontFamily: T.font, fontSize: 9, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  >Book</button>
                 )}
               </div>
             </div>

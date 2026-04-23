@@ -6,6 +6,7 @@ import BottomNav from './components/layout/BottomNav';
 import Home from './pages/Home';
 import Calendar from './pages/Calendar';
 import Clients from './pages/Clients';
+import ClientProfile from './pages/ClientProfile';
 import Finance from './pages/Finance';
 
 function Shell() {
@@ -22,6 +23,7 @@ function Shell() {
           <Route path="/" element={<Home />} />
           <Route path="/calendar" element={<Calendar />} />
           <Route path="/clients" element={<Clients />} />
+          <Route path="/clients/:id" element={<ClientProfile />} />
           <Route path="/finance" element={<Finance />} />
         </Routes>
       </div>

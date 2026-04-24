@@ -1,7 +1,7 @@
-# Handoff Report — April 24, 2026 (Evening)
+# Handoff Report — April 24, 2026 (Night)
 
 ## Overview
-App is wired to Supabase (`lskzzsjmmtsosfneuovt`). All 5 pages read live data. Vercel env vars added and redeployed. GO button PNG committed to `public/branding/`. Schema source of truth: `supabase_schema.sql`.
+App is fully live. All 5 pages read from Supabase (`lskzzsjmmtsosfneuovt`). Login works. Live site at `supermom-v2.vercel.app` confirmed showing auth + real data. Vercel is now connected to GitHub (`S7R3TCH-ops/supermom-v2`) — every push to `main` auto-deploys to production. Schema source of truth: `supabase_schema.sql`.
 
 ---
 
@@ -21,11 +21,13 @@ App is wired to Supabase (`lskzzsjmmtsosfneuovt`). All 5 pages read live data. V
 
 ---
 
-## Done this session (Evening)
+## Done this session (Evening → Night)
 - **Vercel env vars added**: `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` set in Vercel dashboard → redeployed → live site now Supabase-connected
 - **Supabase redirect URL** added for password reset in prod
 - **GO button PNG** (`public/branding/Supermom_go.png`) committed and pushed
 - **`.gitignore` fixed**: changed `branding/` → `/branding/` so root design assets stay ignored but `public/branding/` is tracked
+- **Live site verified**: login + all pages confirmed working at `supermom-v2.vercel.app`
+- **Vercel ↔ GitHub connected**: `S7R3TCH-ops/supermom-v2` linked to Vercel project — `git push origin main` now auto-deploys to production (no more manual `vercel --prod`)
 
 ---
 
@@ -46,8 +48,8 @@ App is wired to Supabase (`lskzzsjmmtsosfneuovt`). All 5 pages read live data. V
 
 ## Next steps (priority order)
 
-### A. Verify live site
-Visit `https://supermom-v2.vercel.app` — login should work, GO button should show real PNG, all pages should load real data.
+### A. ~~Verify live site~~ ✅ Done
+Login works, GO button shows PNG, all pages load real data.
 
 ### B. `payments` audit row on mark-paid
 Change `markPaid()` in `src/pages/Finance.jsx` to also insert into `payments` (method, amount, paid_at) when invoice flow lands.

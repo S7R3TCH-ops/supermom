@@ -3,15 +3,38 @@ import { useAppTheme } from '../context/AppThemeContext';
 import { useNewJobSheet } from '../context/NewJobSheetContext';
 import AmtCell from '../components/ui/AmtCell';
 import SectionLabel from '../components/ui/SectionLabel';
-import { getClientById, formatPhone } from '../data/clients';
+import { useClient } from '../data/useData';
+
+function formatPhone(p) {
+  if (!p) return '';
+  const digits = p.replace(/\D/g, '');
+  if (digits.length !== 10) return p;
+  return `(${digits.slice(0,3)}) ${digits.slice(3,6)}-${digits.slice(6)}`;
+}
 
 export default function ClientProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { T, mode, privacyOn } = useAppTheme();
+  const { T, privacyOn } = useAppTheme();
   const { openFor } = useNewJobSheet();
-  const client = getClientById(id);
+  const { client, loading, error } = useClient(id);
 
+  if (loading) {
+    return (
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: T.bg, color: T.inkMuted, fontFamily: T.font, fontSize: 13 }}>
+        Loading client…
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div style={{ padding: 18, background: T.bg, color: T.ink }}>
+        <div style={{ background: T.redBg, border: `1px solid ${T.redBorder}`, borderRadius: 10, padding: 12, fontFamily: T.font, fontSize: 13 }}>
+          {error.message}
+        </div>
+      </div>
+    );
+  }
   if (!client) return <Navigate to="/clients" replace />;
 
   const recurrenceLabel = client.recurrence

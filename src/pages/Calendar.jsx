@@ -1,14 +1,89 @@
+import { useMemo, useState } from 'react';
 import { useAppTheme } from '../context/AppThemeContext';
+import { useJobs } from '../data/useData';
+import CapeUpButton from '../components/ui/CapeUpButton';
+
+// Real "now" — was previously a hard-coded prototype anchor.
+const TODAY = new Date();
+
+const VIEWS = ['Day', 'Week', 'Agenda'];
+const DOW = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
+function startOfWeek(d) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  const dow = (x.getDay() + 6) % 7; // Mon=0
+  x.setDate(x.getDate() - dow);
+  return x;
+}
+function sameDay(a, b) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+function addDays(d, n) {
+  const x = new Date(d); x.setDate(x.getDate() + n); return x;
+}
+function fmtTime(d) {
+  const h = d.getHours(), m = d.getMinutes();
+  const hh = ((h + 11) % 12) + 1;
+  const ap = h < 12 ? 'AM' : 'PM';
+  return m === 0 ? `${hh} ${ap}` : `${hh}:${m.toString().padStart(2,'0')} ${ap}`;
+}
+function fmtDateHead(d) {
+  const opts = { weekday: 'long', month: 'short', day: 'numeric' };
+  return d.toLocaleDateString('en-US', opts);
+}
+
+// Adapt display jobs (from useJobs) into the shape the views expect:
+// { ...job, client: { name, init, color, address }, service: { label }, start, end, color, paid }
+function enrichDisplayJobs(displayJobs, clientLookup) {
+  return displayJobs
+    .map(j => {
+      const c = clientLookup[j.client_id];
+      const start = new Date(j.scheduled_at);
+      const end = new Date(start.getTime() + (j.duration_est || 0) * 60000);
+      const paid = j.payment_status === 'Paid';
+      const color = paid ? '#22C55E' : '#E91E6A';
+      return {
+        ...j,
+        client: c ? { name: c.name, init: c.init, color: c.color, address: c.address } : null,
+        service: { label: j.service_name || '—' },
+        start, end, color, paid,
+      };
+    })
+    .filter(j => !Number.isNaN(j.start.getTime()))
+    .sort((a, b) => a.start - b.start);
+}
+
+// Returns [{a, b, minutes}] for consecutive-same-day jobs with <60min gap.
+function findSameDayConflicts(jobsOnDay) {
+  const out = [];
+  for (let i = 0; i < jobsOnDay.length - 1; i++) {
+    const a = jobsOnDay[i], b = jobsOnDay[i + 1];
+    const gapMin = Math.round((b.start - a.end) / 60000);
+    if (gapMin < 60) out.push({ a, b, minutes: gapMin });
+  }
+  return out;
+}
 
 export default function Calendar() {
   const { T, mode, privacyOn } = useAppTheme();
-  const slotH = 50, startH = 8;
+  const [view, setView] = useState('Day');
+  const [weekStart, setWeekStart] = useState(() => startOfWeek(TODAY));
 
-  const jobs = [
-    { start: 9,  end: 11.5, label: 'Deep Clean', client: 'Anne K.',       amt: '$185', addr: '12 Main St',  color: '#E91E6A', bg: mode === 'dark' ? 'rgba(233,30,106,0.12)' : '#FFF0F7', note: 'Key under mat · big dog · extra time kitchen' },
-    { start: 13, end: 15,   label: 'Organize',   client: 'Patel Family',  amt: '$160', addr: '45 Oak Ave',  color: '#F59E0B', bg: mode === 'dark' ? 'rgba(245,158,11,0.12)' : '#FFFBEB', note: 'Bring extra bins · 2nd floor office priority' },
-    { start: 16, end: 17,   label: 'Quick Tidy', client: 'Westbrook',     amt: '$90',  addr: '8 Birch Cres', color: '#22C55E', bg: mode === 'dark' ? 'rgba(34,197,94,0.1)'   : '#F0FFF5', note: 'Lockbox: 4829 · kitchen + bathroom only' },
-  ];
+  const { jobs: displayJobs, clients: clientLookup, loading, error } = useJobs();
+  const allJobs = useMemo(() => enrichDisplayJobs(displayJobs, clientLookup), [displayJobs, clientLookup]);
+  const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
+  const todayJobs = useMemo(
+    () => allJobs.filter(j => sameDay(j.start, TODAY)),
+    [allJobs]
+  );
+  const conflicts = useMemo(() => findSameDayConflicts(todayJobs), [todayJobs]);
+  const nextUpcoming = useMemo(
+    () => allJobs.find(j => j.start >= TODAY && j.status === 'Scheduled'),
+    [allJobs]
+  );
+
+  const monthYear = weekDays[0].toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: T.bg, color: T.ink }}>
@@ -16,24 +91,31 @@ export default function Calendar() {
       <div style={{ background: T.hero, borderBottom: '3px solid #E91E6A', padding: '11px 13px 13px', position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
         <div style={{ position: 'absolute', top: -40, right: -20, width: 120, height: 120, borderRadius: '50%', background: `radial-gradient(circle,${T.pinkGlow} 0%,transparent 70%)`, pointerEvents: 'none' }} />
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-          <div style={{ fontFamily: T.serif, fontSize: 17, fontWeight: 500, letterSpacing: '-0.4px', color: 'white' }}>April 2026</div>
+          <div style={{ fontFamily: T.serif, fontSize: 17, fontWeight: 500, letterSpacing: '-0.4px', color: 'white' }}>{monthYear}</div>
           <div style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.28)', borderRadius: 20, padding: '3px 9px', display: 'flex', alignItems: 'center', gap: 4 }}>
             <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#22C55E' }} />
             <span style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, color: '#4ADE80', letterSpacing: '0.4px' }}>GCAL SYNCED</span>
           </div>
         </div>
 
+        {/* 7-day strip with job dots */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 3, marginBottom: 9 }}>
-          {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => {
-            const on = i === 1;
-            const nums = [20, 21, 22, 23, 24, 25, 26], dots = [0, 3, 1, 2, 0, 0, 0];
+          {weekDays.map((d, i) => {
+            const isToday = sameDay(d, TODAY);
+            const jobsHere = allJobs.filter(j => sameDay(j.start, d));
+            const dots = Math.min(jobsHere.length, 3);
             return (
-              <div key={i} style={{ textAlign: 'center', padding: '4px 2px 5px', borderRadius: 8, background: on ? '#E91E6A' : 'rgba(255,255,255,0.05)', border: on ? 'none' : '1px solid rgba(255,255,255,0.07)' }}>
-                <div style={{ fontFamily: T.font, fontSize: 7.5, fontWeight: 700, letterSpacing: '0.3px', textTransform: 'uppercase', color: on ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.38)' }}>{d}</div>
-                <div style={{ fontFamily: T.serif, fontSize: 13, fontWeight: 500, color: 'white', lineHeight: 1.2, marginTop: 2 }}>{nums[i]}</div>
-                <div style={{ display: 'flex', gap: 2, justifyContent: 'center', marginTop: 2 }}>
-                  {Array.from({ length: dots[i] }).map((_, k) => (
-                    <span key={k} style={{ width: 3, height: 3, borderRadius: '50%', background: on ? 'rgba(255,255,255,0.7)' : '#FF78B0', display: 'block' }} />
+              <div key={i}
+                onClick={() => { setView('Day'); }}
+                style={{ textAlign: 'center', padding: '4px 2px 5px', borderRadius: 8,
+                  background: isToday ? '#E91E6A' : 'rgba(255,255,255,0.05)',
+                  border: isToday ? 'none' : '1px solid rgba(255,255,255,0.07)',
+                  cursor: 'pointer' }}>
+                <div style={{ fontFamily: T.font, fontSize: 7.5, fontWeight: 700, letterSpacing: '0.3px', textTransform: 'uppercase', color: isToday ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.38)' }}>{DOW[i]}</div>
+                <div style={{ fontFamily: T.serif, fontSize: 13, fontWeight: 500, color: 'white', lineHeight: 1.2, marginTop: 2 }}>{d.getDate()}</div>
+                <div style={{ display: 'flex', gap: 2, justifyContent: 'center', marginTop: 2, minHeight: 3 }}>
+                  {Array.from({ length: dots }).map((_, k) => (
+                    <span key={k} style={{ width: 3, height: 3, borderRadius: '50%', background: isToday ? 'rgba(255,255,255,0.7)' : '#FF78B0', display: 'block' }} />
                   ))}
                 </div>
               </div>
@@ -41,76 +123,359 @@ export default function Calendar() {
           })}
         </div>
 
+        {/* View toggle */}
         <div style={{ display: 'flex', background: 'rgba(255,255,255,0.07)', borderRadius: 9, padding: 3 }}>
-          {['Day', 'Week', 'Agenda'].map((v, i) => (
-            <div key={v} style={{ flex: 1, padding: '6px 0', borderRadius: 7, textAlign: 'center', background: i === 0 ? '#E91E6A' : 'transparent', fontFamily: T.font, fontSize: 11, fontWeight: 600, color: i === 0 ? 'white' : 'rgba(255,255,255,0.48)' }}>{v}</div>
+          {VIEWS.map(v => (
+            <div key={v} onClick={() => setView(v)} style={{
+              flex: 1, padding: '6px 0', borderRadius: 7, textAlign: 'center',
+              background: view === v ? '#E91E6A' : 'transparent',
+              fontFamily: T.font, fontSize: 11, fontWeight: 600,
+              color: view === v ? 'white' : 'rgba(255,255,255,0.55)',
+              cursor: 'pointer',
+            }}>{v}</div>
           ))}
         </div>
       </div>
 
-      {/* Conflict banner */}
-      <div style={{ background: mode === 'dark' ? 'rgba(245,158,11,0.09)' : '#FEF3C7', borderBottom: '1px solid rgba(245,158,11,0.18)', padding: '6px 13px', display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0 }}>
-        <span style={{ fontSize: 11 }}>⚠</span>
-        <span style={{ fontFamily: T.font, fontSize: 10.5, fontWeight: 600, color: '#B45309', flex: 1 }}>Anne → Patel gap 28 min · conflict risk</span>
-        <button style={{ background: '#1A0A12', color: 'white', border: 'none', borderRadius: 6, padding: '4px 9px', fontFamily: T.font, fontSize: 9.5, fontWeight: 700, cursor: 'pointer' }}>Fix</button>
-      </div>
+      {/* Conflict banner (Day only, when relevant) */}
+      {view === 'Day' && conflicts.length > 0 && (
+        <div style={{ background: mode === 'dark' ? 'rgba(245,158,11,0.09)' : '#FEF3C7', borderBottom: '1px solid rgba(245,158,11,0.18)', padding: '6px 13px', display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0 }}>
+          <span style={{ fontSize: 11 }}>⚠</span>
+          <span style={{ fontFamily: T.font, fontSize: 10.5, fontWeight: 600, color: '#B45309', flex: 1 }}>
+            {conflicts[0].a.client?.name.split(' ')[0]} → {conflicts[0].b.client?.name.split(' ')[0]} gap {conflicts[0].minutes} min · conflict risk
+          </span>
+          <button style={{ background: '#1A0A12', color: 'white', border: 'none', borderRadius: 6, padding: '4px 9px', fontFamily: T.font, fontSize: 9.5, fontWeight: 700, cursor: 'pointer' }}>Fix</button>
+        </div>
+      )}
 
-      {/* Timeline */}
-      <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '6px 12px', position: 'relative' }}>
-        <div style={{ position: 'relative', minHeight: 11 * slotH }}>
-          {[8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18].map(h => (
-            <div key={h} style={{ display: 'flex', height: slotH, alignItems: 'flex-start', gap: 7 }}>
-              <div style={{ width: 36, fontFamily: T.font, fontSize: 9, fontWeight: 600, color: T.inkMuted, paddingTop: 2, textAlign: 'right', flexShrink: 0 }}>
-                {h === 12 ? '12 PM' : h < 12 ? `${h} AM` : `${h - 12} PM`}
-              </div>
-              <div style={{ flex: 1, borderTop: mode === 'dark' ? '1px solid rgba(255,255,255,0.05)' : '1px solid #FFE8F2' }} />
+      {view === 'Day'    && <DayView    T={T} mode={mode} privacyOn={privacyOn} todayJobs={todayJobs} nextUpcoming={nextUpcoming} />}
+      {view === 'Week'   && <WeekView   T={T} mode={mode} weekDays={weekDays} allJobs={allJobs} onPickDay={() => setView('Day')} />}
+      {view === 'Agenda' && <AgendaView T={T} mode={mode} privacyOn={privacyOn} allJobs={allJobs} nextUpcoming={nextUpcoming} />}
+    </div>
+  );
+}
+
+/* ------------------------------ DAY VIEW ------------------------------ */
+
+function DayView({ T, mode, privacyOn, todayJobs, nextUpcoming }) {
+  const slotH = 50, startH = 8, endH = 18;
+  const hours = Array.from({ length: endH - startH + 1 }, (_, i) => startH + i);
+
+  // Drive gap decorations (between sequential same-day jobs)
+  const gaps = [];
+  for (let i = 0; i < todayJobs.length - 1; i++) {
+    const a = todayJobs[i], b = todayJobs[i + 1];
+    const gapMin = Math.round((b.start - a.end) / 60000);
+    if (gapMin > 0) gaps.push({ from: a.end, to: b.start, minutes: gapMin, conflict: gapMin < 60 });
+  }
+
+  return (
+    <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '6px 12px', position: 'relative' }}>
+      <div style={{ position: 'relative', minHeight: hours.length * slotH }}>
+        {hours.map(h => (
+          <div key={h} style={{ display: 'flex', height: slotH, alignItems: 'flex-start', gap: 7 }}>
+            <div style={{ width: 36, fontFamily: T.font, fontSize: 9, fontWeight: 600, color: T.inkMuted, paddingTop: 2, textAlign: 'right', flexShrink: 0 }}>
+              {h === 12 ? '12 PM' : h < 12 ? `${h} AM` : `${h - 12} PM`}
             </div>
-          ))}
+            <div style={{ flex: 1, borderTop: mode === 'dark' ? '1px solid rgba(255,255,255,0.05)' : '1px solid #FFE8F2' }} />
+          </div>
+        ))}
 
-          {jobs.map((j, i) => {
-            const top = (j.start - startH) * slotH + 2;
-            const h = (j.end - j.start) * slotH - 4;
-            return (
-              <div key={i} style={{ position: 'absolute', top, left: 43, right: 0, height: h, background: j.bg, border: `1.5px solid ${j.color}35`, borderLeft: `3px solid ${j.color}`, borderRadius: 9, padding: '6px 9px', overflow: 'hidden' }}>
-                <div style={{ fontFamily: T.serif, fontSize: 12, fontWeight: 500, color: j.color, letterSpacing: '-0.2px' }}>{j.label}</div>
-                <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkSub, marginTop: 1 }}>{j.client}</div>
-                {h > 55 && (
-                  <div style={{ fontFamily: T.font, fontSize: 9, color: T.inkMuted, marginTop: 2 }}>
-                    {j.start}:00 – {j.end % 1 === 0.5 ? `${Math.floor(j.end)}:30` : `${j.end}:00`}
-                  </div>
-                )}
-                {h > 80 && (
-                  <div style={{ fontFamily: T.font, fontSize: 9, color: T.inkMuted, marginTop: 3, lineHeight: 1.35, fontStyle: 'italic' }}>
-                    {j.note}
-                  </div>
-                )}
-                {h > 50 && (
-                  <div style={{ position: 'absolute', bottom: 5, right: 7, display: 'flex', alignItems: 'center', gap: 3 }}>
-                    {!privacyOn && <span style={{ fontFamily: T.serif, fontSize: 11, fontWeight: 500, color: j.color }}>{j.amt}</span>}
-                    {privacyOn && <span style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, letterSpacing: '2px' }}>•••</span>}
-                    <span style={{ color: T.inkMuted, fontSize: 9 }}>·</span>
-                    <span style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, color: j.color, letterSpacing: '0.3px', cursor: 'pointer' }}>↗ Directions</span>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+        {todayJobs.map(j => {
+          const startDec = j.start.getHours() + j.start.getMinutes() / 60;
+          const endDec   = j.end.getHours()   + j.end.getMinutes() / 60;
+          const top = (startDec - startH) * slotH + 2;
+          const h   = (endDec - startDec) * slotH - 4;
+          const bg = j.paid
+            ? (mode === 'dark' ? 'rgba(34,197,94,0.1)'  : '#F0FFF5')
+            : (mode === 'dark' ? 'rgba(233,30,106,0.12)' : '#FFF0F7');
+          return (
+            <div key={j.id} style={{ position: 'absolute', top, left: 43, right: 0, height: h, background: bg, border: `1.5px solid ${j.color}35`, borderLeft: `3px solid ${j.color}`, borderRadius: 9, padding: '6px 9px', overflow: 'hidden' }}>
+              <div style={{ fontFamily: T.serif, fontSize: 12, fontWeight: 500, color: j.color, letterSpacing: '-0.2px' }}>{j.service?.label}</div>
+              <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkSub, marginTop: 1 }}>{j.client?.name}</div>
+              {h > 55 && (
+                <div style={{ fontFamily: T.font, fontSize: 9, color: T.inkMuted, marginTop: 2 }}>
+                  {fmtTime(j.start)} – {fmtTime(j.end)}
+                </div>
+              )}
+              {h > 80 && j.notes && (
+                <div style={{ fontFamily: T.font, fontSize: 9, color: T.inkMuted, marginTop: 3, lineHeight: 1.35, fontStyle: 'italic' }}>
+                  {j.notes}
+                </div>
+              )}
+              {h > 50 && (
+                <div style={{ position: 'absolute', bottom: 5, right: 7, display: 'flex', alignItems: 'center', gap: 3 }}>
+                  {!privacyOn && <span style={{ fontFamily: T.serif, fontSize: 11, fontWeight: 500, color: j.color }}>${j.total}</span>}
+                  {privacyOn && <span style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, letterSpacing: '2px' }}>•••</span>}
+                  <span style={{ color: T.inkMuted, fontSize: 9 }}>·</span>
+                  <span style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, color: j.color, letterSpacing: '0.3px', cursor: 'pointer' }}>↗ Directions</span>
+                </div>
+              )}
+            </div>
+          );
+        })}
 
-          {[
-            { from: 11.5, to: 13, label: '8 min drive',  conflict: true },
-            { from: 15,   to: 16, label: '12 min drive', conflict: false },
-          ].map((d, i) => {
-            const top = (d.from - startH) * slotH + 4;
-            const h = (d.to - d.from) * slotH - 8;
+        {gaps.map((d, i) => {
+          const fromDec = d.from.getHours() + d.from.getMinutes() / 60;
+          const toDec   = d.to.getHours()   + d.to.getMinutes() / 60;
+          const top = (fromDec - startH) * slotH + 4;
+          const h   = (toDec - fromDec) * slotH - 8;
+          if (h <= 0) return null;
+          return (
+            <div key={i} style={{ position: 'absolute', top, left: 43, right: 0, height: h, borderLeft: `2px dashed ${d.conflict ? '#F59E0B' : 'rgba(255,255,255,0.12)'}`, marginLeft: 4, display: 'flex', alignItems: 'center' }}>
+              <span style={{ marginLeft: 7, fontFamily: T.font, fontSize: 8.5, fontWeight: 600, color: d.conflict ? '#F59E0B' : T.inkMuted }}>
+                {d.minutes} min{d.conflict ? ' ⚠' : ''}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* GO button on next upcoming today */}
+      {nextUpcoming && sameDay(nextUpcoming.start, TODAY) && (
+        <div style={{ marginTop: 10, marginBottom: 4 }}>
+          <CapeUpButton
+            job={{
+              service: nextUpcoming.service?.label,
+              address: nextUpcoming.client?.address ?? '',
+              driveTime: '12 min',
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------ WEEK VIEW ------------------------------ */
+
+function WeekView({ T, mode, weekDays, allJobs, onPickDay }) {
+  const slotH = 46, startH = 8, endH = 18;
+  const hours = Array.from({ length: endH - startH + 1 }, (_, i) => startH + i);
+
+  return (
+    <div className="sm-scroll" style={{ flex: 1, overflow: 'auto', padding: '6px 10px 14px' }}>
+      {/* Day headers */}
+      <div style={{ display: 'grid', gridTemplateColumns: '28px repeat(7,1fr)', gap: 2, marginBottom: 4, position: 'sticky', top: 0, background: T.bg, zIndex: 2, paddingBottom: 3 }}>
+        <div />
+        {weekDays.map((d, i) => {
+          const isToday = sameDay(d, TODAY);
+          const count = allJobs.filter(j => sameDay(j.start, d)).length;
+          return (
+            <div key={i} onClick={onPickDay} style={{ textAlign: 'center', cursor: 'pointer', padding: '3px 0', borderRadius: 6, background: isToday ? 'rgba(233,30,106,0.12)' : 'transparent' }}>
+              <div style={{ fontFamily: T.font, fontSize: 8, fontWeight: 700, color: T.inkMuted, letterSpacing: '0.3px' }}>{DOW[i]}</div>
+              <div style={{ fontFamily: T.serif, fontSize: 12, fontWeight: 500, color: isToday ? '#E91E6A' : T.ink, marginTop: 1 }}>{d.getDate()}</div>
+              {count > 0 && <div style={{ fontFamily: T.font, fontSize: 7.5, fontWeight: 600, color: T.inkMuted, marginTop: 1 }}>{count} job{count > 1 ? 's' : ''}</div>}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Grid */}
+      <div style={{ position: 'relative' }}>
+        {hours.map(h => (
+          <div key={h} style={{ display: 'grid', gridTemplateColumns: '28px repeat(7,1fr)', gap: 2, height: slotH, alignItems: 'stretch' }}>
+            <div style={{ fontFamily: T.font, fontSize: 8, fontWeight: 600, color: T.inkMuted, textAlign: 'right', paddingTop: 1 }}>
+              {h === 12 ? '12P' : h < 12 ? `${h}A` : `${h - 12}P`}
+            </div>
+            {weekDays.map((_, i) => (
+              <div key={i} style={{ borderTop: mode === 'dark' ? '1px solid rgba(255,255,255,0.05)' : '1px solid #FFE8F2', borderLeft: i === 0 ? 'none' : mode === 'dark' ? '1px solid rgba(255,255,255,0.03)' : '1px solid #FFF0F7' }} />
+            ))}
+          </div>
+        ))}
+
+        {/* Job cells overlay */}
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'grid', gridTemplateColumns: '28px repeat(7,1fr)', gap: 2, pointerEvents: 'none' }}>
+          <div />
+          {weekDays.map((d, i) => {
+            const dayJobs = allJobs.filter(j => sameDay(j.start, d));
             return (
-              <div key={i} style={{ position: 'absolute', top, left: 43, right: 0, height: h, borderLeft: `2px dashed ${d.conflict ? '#F59E0B' : 'rgba(255,255,255,0.12)'}`, marginLeft: 4, display: 'flex', alignItems: 'center' }}>
-                <span style={{ marginLeft: 7, fontFamily: T.font, fontSize: 8.5, fontWeight: 600, color: d.conflict ? '#F59E0B' : T.inkMuted }}>
-                  {d.label}{d.conflict && ' ⚠'}
-                </span>
+              <div key={i} style={{ position: 'relative' }}>
+                {dayJobs.map(j => {
+                  const startDec = j.start.getHours() + j.start.getMinutes() / 60;
+                  const endDec   = j.end.getHours()   + j.end.getMinutes() / 60;
+                  const top = (startDec - startH) * slotH + 1;
+                  const h   = Math.max((endDec - startDec) * slotH - 2, 18);
+                  const paid = j.paid;
+                  const bg  = paid ? (mode === 'dark' ? 'rgba(34,197,94,0.18)' : '#DCFCE7')
+                                   : (mode === 'dark' ? 'rgba(233,30,106,0.2)' : '#FFE0EC');
+                  const bd  = paid ? '#22C55E' : '#E91E6A';
+                  return (
+                    <div key={j.id} style={{
+                      position: 'absolute', top, left: 1, right: 1, height: h,
+                      background: bg, borderLeft: `2px solid ${bd}`, borderRadius: 4,
+                      padding: '2px 3px', overflow: 'hidden',
+                      pointerEvents: 'auto', cursor: 'pointer',
+                    }}>
+                      <div style={{ fontFamily: T.font, fontSize: 8, fontWeight: 700, color: bd, lineHeight: 1.1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {j.client?.init}·{j.service?.label.split(' ')[0]}
+                      </div>
+                      {h > 26 && (
+                        <div style={{ fontFamily: T.font, fontSize: 7.5, fontWeight: 500, color: T.inkMuted, marginTop: 1, whiteSpace: 'nowrap' }}>
+                          {fmtTime(j.start)}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             );
           })}
         </div>
+      </div>
+
+      {/* Legend */}
+      <div style={{ display: 'flex', gap: 10, marginTop: 12, padding: '6px 10px', background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 10 }}>
+        <LegendDot T={T} color="#E91E6A" label="Unpaid" />
+        <LegendDot T={T} color="#22C55E" label="Paid" />
+        <LegendDot T={T} color="#F59E0B" label="Conflict" />
+      </div>
+    </div>
+  );
+}
+
+function LegendDot({ T, color, label }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+      <div style={{ width: 8, height: 8, borderRadius: 2, background: color }} />
+      <span style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 600, color: T.inkSub }}>{label}</span>
+    </div>
+  );
+}
+
+/* ------------------------------ AGENDA VIEW ------------------------------ */
+
+function AgendaView({ T, mode, privacyOn, allJobs, nextUpcoming }) {
+  // Group jobs by date; only show upcoming + today.
+  const grouped = useMemo(() => {
+    const map = new Map();
+    for (const j of allJobs) {
+      if (j.end < TODAY) continue;
+      const key = j.start.toISOString().slice(0, 10);
+      if (!map.has(key)) map.set(key, { date: j.start, jobs: [] });
+      map.get(key).jobs.push(j);
+    }
+    return Array.from(map.values()).sort((a, b) => a.date - b.date);
+  }, [allJobs]);
+
+  return (
+    <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '8px 13px 14px' }}>
+      {grouped.length === 0 && (
+        <div style={{ padding: 28, textAlign: 'center', fontFamily: T.font, fontSize: 12, color: T.inkMuted }}>
+          No upcoming jobs.
+        </div>
+      )}
+
+      {grouped.map(group => {
+        const isToday = sameDay(group.date, TODAY);
+        const conflicts = findSameDayConflicts(group.jobs);
+        return (
+          <div key={group.date.toISOString()} style={{ marginBottom: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 6 }}>
+              <div style={{ fontFamily: T.serif, fontSize: 13, fontWeight: 500, letterSpacing: '-0.2px', color: T.ink }}>
+                {isToday ? 'Today · ' : ''}{fmtDateHead(group.date)}
+              </div>
+              <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', color: T.inkMuted }}>
+                {group.jobs.length} job{group.jobs.length > 1 ? 's' : ''}
+              </div>
+            </div>
+
+            {group.jobs.map(j => {
+              const conflict = conflicts.find(c => c.a.id === j.id || c.b.id === j.id);
+              const isNext = nextUpcoming && j.id === nextUpcoming.id;
+              return (
+                <AgendaCard
+                  key={j.id}
+                  T={T} mode={mode} privacyOn={privacyOn}
+                  job={j}
+                  isNext={isNext}
+                  conflict={conflict}
+                />
+              );
+            })}
+
+            {isToday && nextUpcoming && sameDay(nextUpcoming.start, TODAY) && (
+              <div style={{ marginTop: 8 }}>
+                <CapeUpButton
+                  job={{
+                    service: nextUpcoming.service?.label,
+                    address: nextUpcoming.client?.address ?? '',
+                    driveTime: '12 min',
+                  }}
+                />
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function AgendaCard({ T, mode, privacyOn, job, isNext, conflict }) {
+  const paid = job.paid;
+  const border = conflict ? '#F59E0B' : (isNext ? '#E91E6A' : (paid ? '#86EFAC' : T.cardBorder));
+  const bg = paid
+    ? (mode === 'dark' ? 'rgba(34,197,94,0.08)' : '#F0FFF5')
+    : (isNext
+        ? (mode === 'dark' ? 'rgba(233,30,106,0.1)' : '#FFF0F7')
+        : T.card);
+
+  const badges = [];
+  if (isNext) badges.push({ text: 'NEXT UP', bg: '#E91E6A', fg: 'white' });
+  if (paid)   badges.push({ text: 'PAID ✓', bg: '#DCFCE7', fg: '#14532D' });
+  else        badges.push({ text: 'UNPAID', bg: '#FFE0EC', fg: '#9B0D3A' });
+  if (job.recurrence_rule) {
+    const rMap = {
+      weekly:   { text: '↻ WEEKLY',   bg: '#F5F3FF', fg: '#5B21B6' },
+      biweekly: { text: '↻ BIWEEKLY', bg: '#EEF2FF', fg: '#3730A3' },
+      monthly:  { text: '↻ MONTHLY',  bg: '#FEF3C7', fg: '#78350F' },
+    };
+    if (rMap[job.recurrence_rule]) badges.push(rMap[job.recurrence_rule]);
+  }
+  badges.push({ text: '📅 GCAL', bg: '#DCFCE7', fg: '#14532D' });
+  if (conflict) badges.push({ text: '⚠ <1HR GAP', bg: '#FECDD3', fg: '#881337' });
+
+  return (
+    <div style={{
+      background: bg,
+      border: `1.5px solid ${border}`,
+      borderRadius: 14,
+      padding: '10px 12px',
+      marginBottom: 6,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+        <div style={{
+          width: 36, height: 36, borderRadius: 10,
+          background: job.client?.color ?? '#E91E6A',
+          color: 'white',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontFamily: T.serif, fontSize: 15, fontWeight: 500, flexShrink: 0,
+        }}>
+          {job.client?.init ?? '?'}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontFamily: T.serif, fontSize: 14, fontWeight: 500, letterSpacing: '-0.2px', color: T.ink }}>
+            {job.service?.label} · {job.client?.name}
+          </div>
+          <div style={{ fontFamily: T.font, fontSize: 10.5, fontWeight: 500, color: T.inkSub, marginTop: 2 }}>
+            {fmtTime(job.start)} – {fmtTime(job.end)} · {job.client?.address?.split(',')[0]}
+          </div>
+        </div>
+        <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 500, color: T.ink, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+          {privacyOn ? '•••' : `$${job.total}`}
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 8 }}>
+        {badges.map((b, i) => (
+          <span key={i} style={{
+            fontFamily: T.font, fontSize: 9, fontWeight: 700,
+            letterSpacing: '0.4px', textTransform: 'uppercase',
+            padding: '2px 7px', borderRadius: 5,
+            background: b.bg, color: b.fg,
+          }}>{b.text}</span>
+        ))}
       </div>
     </div>
   );

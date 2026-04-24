@@ -1,23 +1,29 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppTheme } from '../context/AppThemeContext';
 import AmtCell from '../components/ui/AmtCell';
-import { clients } from '../data/clients';
+import NewClientSheet from '../components/sheets/NewClientSheet';
+import { useClients } from '../data/useData';
 
 const filters = ['All', 'Owes $', 'VIP', 'Active', 'Leads'];
 
 export default function Clients() {
   const { T, mode, privacyOn } = useAppTheme();
   const [filter, setFilter] = useState('All');
+  const [showNew, setShowNew] = useState(false);
   const navigate = useNavigate();
+  const { clients, loading, error, refresh } = useClients();
 
-  const filtered = clients.filter(c => {
+  const filtered = useMemo(() => clients.filter(c => {
     if (filter === 'Owes $') return c.owed;
     if (filter === 'VIP') return c.vip;
     if (filter === 'Active') return c.last !== '—';
     if (filter === 'Leads') return c.tags.includes('Lead');
     return true;
-  });
+  }), [clients, filter]);
+
+  const totalOwed = clients.reduce((s, c) => s + (c.owed ? Number((c.amt || '$0').replace(/[^0-9.]/g, '')) : 0), 0);
+  const vipCount = clients.filter(c => c.vip).length;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: T.bg, color: T.ink }}>
@@ -25,14 +31,29 @@ export default function Clients() {
       <div style={{ background: T.hero, borderBottom: '3px solid #E91E6A', padding: '12px 14px 14px', position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
         <div style={{ position: 'absolute', top: -40, right: -20, width: 130, height: 130, borderRadius: '50%', background: 'radial-gradient(circle,rgba(233,30,106,0.2) 0%,transparent 70%)', pointerEvents: 'none' }} />
 
-        <div style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '1.1px', textTransform: 'uppercase', color: '#FF78B0', marginBottom: 5 }}>✦ Client Roster</div>
-        <div style={{ fontFamily: T.serif, fontSize: 21, fontWeight: 500, letterSpacing: '-0.4px', color: 'white', marginBottom: 10 }}>Your people.</div>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '1.1px', textTransform: 'uppercase', color: '#FF78B0', marginBottom: 5 }}>✦ Client Roster</div>
+            <div style={{ fontFamily: T.serif, fontSize: 21, fontWeight: 500, letterSpacing: '-0.4px', color: 'white', marginBottom: 10 }}>Your people.</div>
+          </div>
+          <button
+            onClick={() => setShowNew(true)}
+            aria-label="Add client"
+            style={{
+              width: 36, height: 36, borderRadius: 12,
+              background: '#E91E6A', color: 'white', border: 'none',
+              fontFamily: T.font, fontSize: 22, fontWeight: 400, lineHeight: 1,
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 4px 12px rgba(233,30,106,0.35)',
+            }}
+          >+</button>
+        </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: 12 }}>
           {[
-            { n: '6', l: 'Total' },
-            { n: privacyOn ? '•••' : '$280', l: 'Outstanding' },
-            { n: '2', l: 'VIP' },
+            { n: String(clients.length), l: 'Total' },
+            { n: privacyOn ? '•••' : `$${totalOwed.toFixed(0)}`, l: 'Outstanding' },
+            { n: String(vipCount), l: 'VIP' },
           ].map(s => (
             <div key={s.l} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 9, padding: '7px 5px', textAlign: 'center' }}>
               <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 500, color: 'white', letterSpacing: '-0.3px' }}>{s.n}</div>
@@ -63,6 +84,21 @@ export default function Clients() {
         ))}
       </div>
 
+      {/* Status row */}
+      {loading && <div style={{ padding: '12px 16px', color: T.inkMuted, fontFamily: T.font, fontSize: 12 }}>Loading clients…</div>}
+      {error && (
+        <div style={{ margin: '8px 13px', padding: 10, borderRadius: 10, background: T.redBg, border: `1px solid ${T.redBorder}`, fontFamily: T.font, fontSize: 12, color: T.ink }}>
+          {error.message}
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!loading && !error && clients.length === 0 && (
+        <div style={{ padding: '24px 18px', textAlign: 'center', color: T.inkMuted, fontFamily: T.font, fontSize: 13 }}>
+          No clients yet. Tap <strong style={{ color: T.pink }}>+</strong> above to add your first.
+        </div>
+      )}
+
       {/* Client list */}
       <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '4px 13px 8px' }}>
         {filtered.map((c, i) => (
@@ -91,11 +127,11 @@ export default function Clients() {
                   {c.vip && <span style={{ background: '#FCD34D', borderRadius: 4, padding: '1px 5px', fontFamily: T.font, fontSize: 8, fontWeight: 700, color: '#78350F', whiteSpace: 'nowrap' }}>VIP ★</span>}
                 </div>
                 <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, marginBottom: 4 }}>
-                  {c.service !== '—' ? `${c.service} · Last: ${c.last}` : 'Lead · No jobs yet'}
+                  {c.service !== '—' ? `${c.service} · Last: ${c.last}` : 'No jobs yet'}
                 </div>
                 <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                   {c.tags.map(tag => {
-                    const isOverdue = tag.includes('Overdue');
+                    const isOverdue = tag.toLowerCase().includes('overdue');
                     const isLead = tag === 'Lead';
                     return (
                       <span key={tag} style={{
@@ -134,6 +170,13 @@ export default function Clients() {
           </div>
         ))}
       </div>
+
+      {showNew && (
+        <NewClientSheet
+          onClose={() => setShowNew(false)}
+          onCreated={() => refresh()}
+        />
+      )}
     </div>
   );
 }

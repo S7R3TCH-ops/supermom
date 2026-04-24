@@ -66,10 +66,18 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 100svh;
-  max-width: 430px;
+  width: 100%;
+  max-width: 100%;
   margin: 0 auto;
   position: relative;
   overflow-x: hidden;
+}
+
+/* On tablets/desktop: cap at 430px and center like a phone app */
+@media (min-width: 480px) {
+  #root {
+    max-width: 430px;
+  }
 }
 
 button {

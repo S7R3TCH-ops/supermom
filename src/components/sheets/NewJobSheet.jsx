@@ -1,10 +1,23 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAppTheme } from '../../context/AppThemeContext';
 import SectionLabel from '../ui/SectionLabel';
-import { clients, getClientById } from '../../data/clients';
-import {
-  SERVICES, serviceByLabel, addJob, findConflicts, torontoISO,
-} from '../../data/jobs';
+import NewClientSheet from './NewClientSheet';
+import { fetchClients } from '../../data/clientsRepo';
+import { fetchActiveJobs, createJob, findConflicts } from '../../data/jobsRepo';
+import { toDisplayClient } from '../../data/selectors';
+import { notifyDataChanged } from '../../data/useData';
+
+// Service catalog — kept in JS until we have a /services management UI.
+// Maps to the existing `services` table by `name`.
+const SERVICES = [
+  { key: 'deep_clean', label: 'Deep Clean',       rate: 185, defaultDuration: 150, emoji: '🧼' },
+  { key: 'regular',    label: 'Regular',          rate: 120, defaultDuration: 105, emoji: '✨' },
+  { key: 'quick_tidy', label: 'Quick Tidy',       rate: 85,  defaultDuration: 60,  emoji: '🌀' },
+  { key: 'organizing', label: 'Organize',         rate: 160, defaultDuration: 180, emoji: '📦' },
+  { key: 'declutter',  label: 'Declutter + Org.', rate: 240, defaultDuration: 240, emoji: '🗂' },
+  { key: 'move_out',   label: 'Move Out',         rate: 320, defaultDuration: 300, emoji: '📤' },
+  { key: 'custom',     label: 'Custom',           rate: 0,   defaultDuration: 120, emoji: '✎' },
+];
 
 const RECURRENCE = [
   { key: null,        label: 'None' },
@@ -14,8 +27,9 @@ const RECURRENCE = [
 ];
 
 function todayISODate() {
-  // Toronto-ish — April 22 2026 per the app's current mock "today".
-  return '2026-04-22';
+  const d = new Date();
+  // Toronto offset is roughly fine for a date-only stamp.
+  return d.toISOString().slice(0, 10);
 }
 
 function fmtTimeRange(timeStr, durationMin) {
@@ -41,16 +55,47 @@ function fmtDuration(min) {
   return `${h}h ${m}m`;
 }
 
+// April–Oct is DST in ON.
+function torontoISO(dateStr, timeStr) {
+  if (!dateStr || !timeStr) return '';
+  const month = parseInt(dateStr.slice(5, 7), 10);
+  const day = parseInt(dateStr.slice(8, 10), 10);
+  const isDST = (month > 3 && month < 11) ||
+    (month === 3 && day >= 8) ||
+    (month === 11 && day < 1);
+  return `${dateStr}T${timeStr}:00${isDST ? '-04:00' : '-05:00'}`;
+}
+
 export default function NewJobSheet({ prefillClientId, onClose }) {
   const { T, mode, privacyOn } = useAppTheme();
   const [step, setStep] = useState(1);
-  const [clientId, setClientId] = useState(prefillClientId || null);
-  const prefillClient = prefillClientId ? getClientById(prefillClientId) : null;
 
-  // Step 2 state — seed from client history if possible
+  // Fetch clients + jobs on mount (for the picker + conflict detection).
+  const [clientRows, setClientRows] = useState([]);
+  const [jobRows, setJobRows] = useState([]);
+  const [loadErr, setLoadErr] = useState(null);
+  const [showNewClient, setShowNewClient] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    Promise.all([fetchClients(), fetchActiveJobs()])
+      .then(([cs, js]) => { if (alive) { setClientRows(cs); setJobRows(js); } })
+      .catch(e => { if (alive) setLoadErr(e); });
+    return () => { alive = false; };
+  }, []);
+
+  const clientsDisplay = useMemo(
+    () => clientRows.map(r => toDisplayClient(r, [])),
+    [clientRows]
+  );
+  const getDisplayClient = id => clientsDisplay.find(c => c.id === id) || null;
+
+  const [clientId, setClientId] = useState(prefillClientId || null);
+  const prefillClient = prefillClientId ? getDisplayClient(prefillClientId) : null;
+
   const seededService = useMemo(() => {
     if (!prefillClient) return null;
-    const s = serviceByLabel(prefillClient.service);
+    const s = SERVICES.find(x => x.label.toLowerCase() === (prefillClient.service || '').toLowerCase());
     return s ? s.key : null;
   }, [prefillClient]);
 
@@ -61,8 +106,9 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
   const [duration, setDuration] = useState(service?.defaultDuration || 120);
   const [recurrence, setRecurrence] = useState(prefillClient?.recurrence || null);
   const [confirmText, setConfirmText] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [bookErr, setBookErr] = useState('');
 
-  // Keep duration synced when service changes (only if user hasn't nudged it yet)
   const [durationTouched, setDurationTouched] = useState(false);
   const onPickService = key => {
     setServiceKey(key);
@@ -72,73 +118,73 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
     }
   };
 
-  const selectedClient = clientId ? getClientById(clientId) : null;
+  const selectedClient = clientId ? getDisplayClient(clientId) : null;
   const canNext1 = !!clientId;
   const canNext2 = !!serviceKey && !!date && !!time;
 
   const scheduledISO = torontoISO(date, time);
   const conflicts = useMemo(() => {
     if (!scheduledISO) return [];
-    return findConflicts(scheduledISO, duration, 60).filter(j => j.client_id !== clientId);
-  }, [scheduledISO, duration, clientId]);
+    return findConflicts(jobRows, scheduledISO, duration, 60).filter(j => j.client_id !== clientId);
+  }, [scheduledISO, duration, clientId, jobRows]);
 
   const price = service ? service.rate : 0;
   const priceStr = `$${price}`;
 
-  const handleBook = () => {
-    addJob({
-      client_id: clientId,
-      service_type: serviceKey,
-      scheduled_at: scheduledISO,
-      duration_est: duration,
-      rate: price,
-      total: price,
-      recurrence_rule: recurrence,
-      notes: selectedClient?.note || '',
-    });
-    onClose();
-  };
+  async function handleBook() {
+    setBusy(true);
+    setBookErr('');
+    try {
+      const hours = duration / 60;
+      await createJob({
+        client_id: clientId,
+        service_name: service?.label || null,
+        scheduled_date: date,
+        scheduled_time: time,
+        scheduling_type: 'Hard Date',
+        pricing_type: 'Flat',
+        estimated_hours: hours,
+        flat_rate: price,
+        subtotal: price,
+        total_amount: price,
+        job_status: 'Scheduled',
+        payment_status: '',
+        job_notes: selectedClient?.note || '',
+        ai_context: { recurrence_rule: recurrence },
+      });
+      notifyDataChanged();
+      onClose();
+    } catch (e) {
+      setBookErr(e.message || String(e));
+      setBusy(false);
+    }
+  }
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      style={{
-        position: 'fixed', inset: 0, zIndex: 50,
-        display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
-        background: 'rgba(4,1,12,0.62)',
-        animation: 'njFade 180ms ease-out',
-      }}
-    >
+    <div role="dialog" aria-modal="true" style={{
+      position: 'fixed', inset: 0, zIndex: 50,
+      display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+      background: 'rgba(4,1,12,0.62)', animation: 'njFade 180ms ease-out',
+    }}>
       <style>{`
         @keyframes njFade { from { opacity: 0; } to { opacity: 1; } }
         @keyframes njSlide { from { transform: translateY(100%); } to { transform: translateY(0); } }
       `}</style>
 
-      {/* Backdrop tap zone */}
       <div onClick={onClose} style={{ flex: 1, minHeight: 40 }} />
 
-      {/* Sheet */}
-      <div
-        onClick={e => e.stopPropagation()}
-        style={{
-          background: T.bg,
-          color: T.ink,
-          borderRadius: '24px 24px 0 0',
-          boxShadow: '0 -10px 40px rgba(0,0,0,0.38)',
-          maxHeight: '92vh',
-          display: 'flex', flexDirection: 'column',
-          animation: 'njSlide 260ms cubic-bezier(0.2,0.8,0.2,1)',
-          border: `1px solid ${T.cardBorder}`,
-          borderBottom: 'none',
-        }}
-      >
-        {/* Handle */}
+      <div onClick={e => e.stopPropagation()} style={{
+        background: T.bg, color: T.ink,
+        borderRadius: '24px 24px 0 0',
+        boxShadow: '0 -10px 40px rgba(0,0,0,0.38)',
+        maxHeight: '92vh', display: 'flex', flexDirection: 'column',
+        animation: 'njSlide 260ms cubic-bezier(0.2,0.8,0.2,1)',
+        border: `1px solid ${T.cardBorder}`, borderBottom: 'none',
+      }}>
         <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 8 }}>
           <div style={{ width: 40, height: 4, background: '#FFD6E8', borderRadius: 4, opacity: mode === 'dark' ? 0.35 : 1 }} />
         </div>
 
-        {/* Header */}
         <div style={{ padding: '10px 18px 6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <div style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '1.1px', textTransform: 'uppercase', color: '#FF78B0' }}>
@@ -150,24 +196,18 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
               {step === 3 && 'Review & book'}
             </div>
           </div>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            style={{
-              width: 30, height: 30, borderRadius: 9,
-              background: mode === 'dark' ? 'rgba(255,255,255,0.07)' : T.pinkTint,
-              border: `1px solid ${T.cardBorder}`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', padding: 0, color: T.inkSub,
-            }}
-          >
+          <button onClick={onClose} aria-label="Close" style={{
+            width: 30, height: 30, borderRadius: 9,
+            background: mode === 'dark' ? 'rgba(255,255,255,0.07)' : T.pinkTint,
+            border: `1px solid ${T.cardBorder}`, color: T.inkSub, cursor: 'pointer', padding: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
             </svg>
           </button>
         </div>
 
-        {/* Step progress bars */}
         <div style={{ display: 'flex', gap: 6, padding: '4px 18px 10px' }}>
           {[1, 2, 3].map(n => (
             <div key={n} style={{
@@ -177,81 +217,65 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
           ))}
         </div>
 
-        {/* Scrollable body */}
         <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '6px 18px 14px' }}>
+          {loadErr && (
+            <div style={{ padding: 10, borderRadius: 8, background: T.redBg, border: `1px solid ${T.redBorder}`, color: T.ink, font: `12px/1.4 ${T.font}`, marginBottom: 10 }}>
+              Failed to load: {loadErr.message}
+            </div>
+          )}
+
           {step === 1 && (
             <Step1Who
-              T={T}
-              mode={mode}
-              selectedId={clientId}
-              onSelect={setClientId}
+              T={T} mode={mode}
+              clients={clientsDisplay}
+              selectedId={clientId} onSelect={setClientId}
+              onAddNew={() => setShowNewClient(true)}
             />
           )}
           {step === 2 && (
             <Step2What
-              T={T}
-              mode={mode}
-              client={selectedClient}
-              serviceKey={serviceKey}
-              onPickService={onPickService}
-              date={date}
-              setDate={setDate}
-              time={time}
-              setTime={setTime}
-              duration={duration}
-              setDuration={d => { setDurationTouched(true); setDuration(d); }}
-              recurrence={recurrence}
-              setRecurrence={setRecurrence}
+              T={T} mode={mode} client={selectedClient}
+              serviceKey={serviceKey} onPickService={onPickService}
+              date={date} setDate={setDate} time={time} setTime={setTime}
+              duration={duration} setDuration={d => { setDurationTouched(true); setDuration(d); }}
+              recurrence={recurrence} setRecurrence={setRecurrence}
             />
           )}
           {step === 3 && (
             <Step3Review
-              T={T}
-              mode={mode}
-              privacyOn={privacyOn}
-              client={selectedClient}
-              service={service}
-              date={date}
-              time={time}
-              duration={duration}
-              recurrence={recurrence}
-              priceStr={priceStr}
-              conflicts={conflicts}
-              confirmText={confirmText}
-              setConfirmText={setConfirmText}
+              T={T} mode={mode} privacyOn={privacyOn}
+              client={selectedClient} service={service}
+              date={date} time={time} duration={duration} recurrence={recurrence}
+              priceStr={priceStr} conflicts={conflicts}
+              clientLookup={getDisplayClient}
+              confirmText={confirmText} setConfirmText={setConfirmText}
             />
+          )}
+
+          {bookErr && step === 3 && (
+            <div style={{ marginTop: 8, padding: 10, borderRadius: 8, background: T.redBg, border: `1px solid ${T.redBorder}`, color: T.ink, font: `12px/1.4 ${T.font}` }}>{bookErr}</div>
           )}
         </div>
 
-        {/* Footer nav */}
         <div style={{
           padding: '10px 18px 18px',
           borderTop: `1px solid ${T.cardBorder}`,
-          display: 'flex', gap: 10,
-          background: T.bg,
+          display: 'flex', gap: 10, background: T.bg,
         }}>
           {step > 1 ? (
-            <button
-              onClick={() => setStep(s => s - 1)}
-              style={{
-                flex: 1, background: 'transparent',
-                border: `1.5px solid ${T.cardBorder}`,
-                color: T.inkSub,
-                borderRadius: 12, padding: '12px 0',
-                fontFamily: T.font, fontSize: 13, fontWeight: 600, cursor: 'pointer',
-              }}
-            >Back</button>
+            <button onClick={() => setStep(s => s - 1)} style={{
+              flex: 1, background: 'transparent',
+              border: `1.5px solid ${T.cardBorder}`, color: T.inkSub,
+              borderRadius: 12, padding: '12px 0',
+              fontFamily: T.font, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            }}>Back</button>
           ) : (
-            <button
-              onClick={onClose}
-              style={{
-                flex: 1, background: 'transparent',
-                border: `1.5px solid ${T.cardBorder}`,
-                color: T.inkMuted,
-                borderRadius: 12, padding: '12px 0',
-                fontFamily: T.font, fontSize: 13, fontWeight: 600, cursor: 'pointer',
-              }}
-            >Cancel</button>
+            <button onClick={onClose} style={{
+              flex: 1, background: 'transparent',
+              border: `1.5px solid ${T.cardBorder}`, color: T.inkMuted,
+              borderRadius: 12, padding: '12px 0',
+              fontFamily: T.font, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            }}>Cancel</button>
           )}
 
           {step < 3 && (
@@ -261,96 +285,98 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
               style={{
                 flex: 2,
                 background: (step === 1 ? canNext1 : canNext2) ? '#E91E6A' : (mode === 'dark' ? 'rgba(233,30,106,0.28)' : '#F9C5DB'),
-                color: 'white', border: 'none',
-                borderRadius: 12, padding: '12px 0',
+                color: 'white', border: 'none', borderRadius: 12, padding: '12px 0',
                 fontFamily: T.font, fontSize: 13, fontWeight: 700,
                 cursor: (step === 1 ? canNext1 : canNext2) ? 'pointer' : 'not-allowed',
-                letterSpacing: '0.2px',
               }}
             >Next →</button>
           )}
 
           {step === 3 && (
-            <button
-              onClick={handleBook}
-              style={{
-                flex: 2,
-                background: 'linear-gradient(135deg,#1A0A12,#2C0B1A)',
-                border: '1.5px solid #E91E6A',
-                color: 'white',
-                borderRadius: 12, padding: '12px 0',
-                fontFamily: T.serif, fontSize: 15, fontWeight: 500,
-                letterSpacing: '-0.2px',
-                cursor: 'pointer',
-                boxShadow: '0 6px 18px rgba(233,30,106,0.35)',
-              }}
-            >🦸‍♀️ Book it!</button>
+            <button onClick={handleBook} disabled={busy} style={{
+              flex: 2,
+              background: 'linear-gradient(135deg,#1A0A12,#2C0B1A)',
+              border: '1.5px solid #E91E6A', color: 'white',
+              borderRadius: 12, padding: '12px 0',
+              fontFamily: T.serif, fontSize: 15, fontWeight: 500,
+              cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.6 : 1,
+              boxShadow: '0 6px 18px rgba(233,30,106,0.35)',
+            }}>{busy ? 'Booking…' : '🦸‍♀️ Book it!'}</button>
           )}
         </div>
       </div>
+
+      {showNewClient && (
+        <NewClientSheet
+          onClose={() => setShowNewClient(false)}
+          onCreated={(created) => {
+            // Refetch + auto-select the new client
+            fetchClients().then(rows => {
+              setClientRows(rows);
+              setClientId(created.id);
+            });
+          }}
+        />
+      )}
     </div>
   );
 }
 
 /* ============= STEP 1 ============= */
-function Step1Who({ T, mode, selectedId, onSelect }) {
-  const selected = selectedId ? getClientById(selectedId) : null;
+function Step1Who({ T, mode, clients, selectedId, onSelect, onAddNew }) {
+  const selected = selectedId ? clients.find(c => c.id === selectedId) : null;
 
   return (
     <>
       <SectionLabel>Recent clients</SectionLabel>
-      <div
-        className="sm-scroll"
-        style={{
+      {clients.length === 0 ? (
+        <div style={{ padding: '12px 0', color: T.inkMuted, fontFamily: T.font, fontSize: 12 }}>
+          No clients yet. Tap "+ New client" below to add one.
+        </div>
+      ) : (
+        <div className="sm-scroll" style={{
           display: 'flex', gap: 8, overflowX: 'auto',
           paddingBottom: 4, marginBottom: 14, marginLeft: -4, marginRight: -4, paddingLeft: 4, paddingRight: 4,
-        }}
-      >
-        {clients.map(c => {
-          const on = c.id === selectedId;
-          return (
-            <button
-              key={c.id}
-              onClick={() => onSelect(c.id)}
-              style={{
+        }}>
+          {clients.map(c => {
+            const on = c.id === selectedId;
+            return (
+              <button key={c.id} onClick={() => onSelect(c.id)} style={{
                 flexShrink: 0, width: 76, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
                 background: on ? (mode === 'dark' ? 'rgba(233,30,106,0.12)' : '#FFF0F7') : T.card,
                 border: `1.5px solid ${on ? '#E91E6A' : T.cardBorder}`,
                 borderRadius: 14, padding: '10px 6px', cursor: 'pointer',
-              }}
-            >
-              <div style={{
-                width: 40, height: 40, borderRadius: 12,
-                background: c.color,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontFamily: T.serif, fontSize: 18, fontWeight: 500, color: 'white',
-                boxShadow: on ? '0 4px 12px rgba(233,30,106,0.35)' : 'none',
-              }}>{c.init}</div>
-              <div style={{
-                fontFamily: T.font, fontSize: 10, fontWeight: 600, color: T.ink,
-                textAlign: 'center', lineHeight: 1.15, maxWidth: '100%',
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              }}>{c.name.split(' ')[0]}</div>
-              {c.vip && (
-                <span style={{
-                  background: '#FCD34D', borderRadius: 4, padding: '1px 5px',
-                  fontFamily: T.font, fontSize: 7.5, fontWeight: 700, color: '#78350F',
-                  letterSpacing: '0.3px',
-                }}>VIP ★</span>
-              )}
-            </button>
-          );
-        })}
-      </div>
+              }}>
+                <div style={{
+                  width: 40, height: 40, borderRadius: 12,
+                  background: c.color,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontFamily: T.serif, fontSize: 18, fontWeight: 500, color: 'white',
+                  boxShadow: on ? '0 4px 12px rgba(233,30,106,0.35)' : 'none',
+                }}>{c.init}</div>
+                <div style={{
+                  fontFamily: T.font, fontSize: 10, fontWeight: 600, color: T.ink,
+                  textAlign: 'center', lineHeight: 1.15, maxWidth: '100%',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>{c.name.split(' ')[0]}</div>
+                {c.vip && (
+                  <span style={{
+                    background: '#FCD34D', borderRadius: 4, padding: '1px 5px',
+                    fontFamily: T.font, fontSize: 7.5, fontWeight: 700, color: '#78350F', letterSpacing: '0.3px',
+                  }}>VIP ★</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {selected && (
         <div style={{
           background: T.hero,
           border: '1.5px solid rgba(233,30,106,0.32)',
-          borderRadius: 14,
-          padding: '11px 12px',
-          position: 'relative', overflow: 'hidden',
-          marginBottom: 12,
+          borderRadius: 14, padding: '11px 12px',
+          position: 'relative', overflow: 'hidden', marginBottom: 12,
         }}>
           <div style={{ position: 'absolute', top: -25, right: -15, width: 90, height: 90, borderRadius: '50%', background: `radial-gradient(circle,${T.pinkGlow} 0%,transparent 70%)`, pointerEvents: 'none' }} />
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -364,7 +390,7 @@ function Step1Who({ T, mode, selectedId, onSelect }) {
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 500, color: 'white', letterSpacing: '-0.3px' }}>{selected.name}</div>
               <div style={{ fontFamily: T.font, fontSize: 10.5, color: 'rgba(255,255,255,0.55)', marginTop: 1 }}>
-                Usual: {selected.service} · last {selected.last}
+                {selected.service !== '—' ? `Usual: ${selected.service} · last ${selected.last}` : 'No previous jobs'}
               </div>
             </div>
             <span style={{
@@ -376,16 +402,15 @@ function Step1Who({ T, mode, selectedId, onSelect }) {
       )}
 
       <button
-        onClick={() => { /* Phase 2: new client sheet */ }}
+        onClick={onAddNew}
         style={{
-          width: '100%',
-          background: 'transparent',
+          width: '100%', background: 'transparent',
           border: `1.5px dashed ${T.cardBorder}`,
           borderRadius: 12, padding: '11px 0',
-          fontFamily: T.font, fontSize: 11.5, fontWeight: 600, color: T.inkMuted,
+          fontFamily: T.font, fontSize: 11.5, fontWeight: 600, color: T.pink,
           cursor: 'pointer',
         }}
-      >+ New client (coming soon)</button>
+      >+ New client</button>
     </>
   );
 }
@@ -396,30 +421,26 @@ function Step2What({
   date, setDate, time, setTime, duration, setDuration,
   recurrence, setRecurrence,
 }) {
-  const usualKey = client ? (serviceByLabel(client.service)?.key || null) : null;
+  const usualKey = client && client.service ? (
+    SERVICES.find(s => s.label.toLowerCase() === client.service.toLowerCase())?.key
+  ) : null;
   const inputBg = mode === 'dark' ? 'rgba(255,255,255,0.05)' : '#fff';
 
   return (
     <>
       <SectionLabel>Service</SectionLabel>
-      <div style={{
-        display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 7, marginBottom: 14,
-      }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 7, marginBottom: 14 }}>
         {SERVICES.filter(s => s.key !== 'custom').map(s => {
           const on = s.key === serviceKey;
           const usual = s.key === usualKey;
           return (
-            <button
-              key={s.key}
-              onClick={() => onPickService(s.key)}
-              style={{
-                background: on ? (mode === 'dark' ? 'rgba(233,30,106,0.14)' : '#FFF0F7') : T.card,
-                border: `1.5px solid ${on ? '#E91E6A' : T.cardBorder}`,
-                borderRadius: 12, padding: '10px 11px',
-                display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 3,
-                cursor: 'pointer', position: 'relative', minHeight: 64,
-              }}
-            >
+            <button key={s.key} onClick={() => onPickService(s.key)} style={{
+              background: on ? (mode === 'dark' ? 'rgba(233,30,106,0.14)' : '#FFF0F7') : T.card,
+              border: `1.5px solid ${on ? '#E91E6A' : T.cardBorder}`,
+              borderRadius: 12, padding: '10px 11px',
+              display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 3,
+              cursor: 'pointer', position: 'relative', minHeight: 64,
+            }}>
               {usual && (
                 <span style={{
                   position: 'absolute', top: 6, right: 6,
@@ -429,12 +450,8 @@ function Step2What({
                 }}>★ Usual</span>
               )}
               <div style={{ fontSize: 15 }}>{s.emoji}</div>
-              <div style={{ fontFamily: T.serif, fontSize: 13, fontWeight: 500, color: T.ink, letterSpacing: '-0.2px' }}>
-                {s.label}
-              </div>
-              <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, fontVariantNumeric: 'tabular-nums' }}>
-                ${s.rate} · {fmtDuration(s.defaultDuration)}
-              </div>
+              <div style={{ fontFamily: T.serif, fontSize: 13, fontWeight: 500, color: T.ink, letterSpacing: '-0.2px' }}>{s.label}</div>
+              <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, fontVariantNumeric: 'tabular-nums' }}>${s.rate} · {fmtDuration(s.defaultDuration)}</div>
             </button>
           );
         })}
@@ -444,31 +461,21 @@ function Step2What({
       <div style={{ display: 'flex', gap: 7, marginBottom: 14 }}>
         <div style={{ flex: 1 }}>
           <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', color: T.inkMuted, marginBottom: 4 }}>Date</div>
-          <input
-            type="date"
-            value={date}
-            onChange={e => setDate(e.target.value)}
-            style={{
-              width: '100%', background: inputBg, color: T.ink,
-              border: `1.5px solid ${T.cardBorder}`, borderRadius: 12,
-              padding: '10px 11px', fontFamily: T.font, fontSize: 13, fontWeight: 500,
-              outline: 'none', colorScheme: mode === 'dark' ? 'dark' : 'light',
-            }}
-          />
+          <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{
+            width: '100%', background: inputBg, color: T.ink,
+            border: `1.5px solid ${T.cardBorder}`, borderRadius: 12,
+            padding: '10px 11px', fontFamily: T.font, fontSize: 13, fontWeight: 500,
+            outline: 'none', colorScheme: mode === 'dark' ? 'dark' : 'light',
+          }} />
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', color: T.inkMuted, marginBottom: 4 }}>Time</div>
-          <input
-            type="time"
-            value={time}
-            onChange={e => setTime(e.target.value)}
-            style={{
-              width: '100%', background: inputBg, color: T.ink,
-              border: `1.5px solid ${T.cardBorder}`, borderRadius: 12,
-              padding: '10px 11px', fontFamily: T.font, fontSize: 13, fontWeight: 500,
-              outline: 'none', colorScheme: mode === 'dark' ? 'dark' : 'light',
-            }}
-          />
+          <input type="time" value={time} onChange={e => setTime(e.target.value)} style={{
+            width: '100%', background: inputBg, color: T.ink,
+            border: `1.5px solid ${T.cardBorder}`, borderRadius: 12,
+            padding: '10px 11px', fontFamily: T.font, fontSize: 13, fontWeight: 500,
+            outline: 'none', colorScheme: mode === 'dark' ? 'dark' : 'light',
+          }} />
         </div>
       </div>
 
@@ -478,64 +485,37 @@ function Step2What({
         background: T.card, border: `1.5px solid ${T.cardBorder}`,
         borderRadius: 12, padding: '8px 10px', marginBottom: 10,
       }}>
-        <button
-          onClick={() => setDuration(Math.max(30, duration - 30))}
-          style={{
-            width: 34, height: 34, borderRadius: 10,
-            background: mode === 'dark' ? 'rgba(255,255,255,0.05)' : T.pinkTint,
-            border: `1px solid ${T.cardBorder}`, color: T.pink,
-            fontFamily: T.font, fontSize: 18, fontWeight: 500, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}
-        >−</button>
+        <button onClick={() => setDuration(Math.max(30, duration - 30))} style={{
+          width: 34, height: 34, borderRadius: 10,
+          background: mode === 'dark' ? 'rgba(255,255,255,0.05)' : T.pinkTint,
+          border: `1px solid ${T.cardBorder}`, color: T.pink,
+          fontFamily: T.font, fontSize: 18, fontWeight: 500, cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>−</button>
         <div style={{ flex: 1, textAlign: 'center' }}>
-          <div style={{ fontFamily: T.serif, fontSize: 18, fontWeight: 500, color: T.ink, letterSpacing: '-0.3px', fontVariantNumeric: 'tabular-nums' }}>
-            {fmtDuration(duration)}
-          </div>
+          <div style={{ fontFamily: T.serif, fontSize: 18, fontWeight: 500, color: T.ink, letterSpacing: '-0.3px', fontVariantNumeric: 'tabular-nums' }}>{fmtDuration(duration)}</div>
           <div style={{ fontFamily: T.font, fontSize: 9.5, color: T.inkMuted, letterSpacing: '0.3px' }}>estimated</div>
         </div>
-        <button
-          onClick={() => setDuration(Math.min(480, duration + 30))}
-          style={{
-            width: 34, height: 34, borderRadius: 10,
-            background: mode === 'dark' ? 'rgba(255,255,255,0.05)' : T.pinkTint,
-            border: `1px solid ${T.cardBorder}`, color: T.pink,
-            fontFamily: T.font, fontSize: 18, fontWeight: 500, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}
-        >+</button>
+        <button onClick={() => setDuration(Math.min(480, duration + 30))} style={{
+          width: 34, height: 34, borderRadius: 10,
+          background: mode === 'dark' ? 'rgba(255,255,255,0.05)' : T.pinkTint,
+          border: `1px solid ${T.cardBorder}`, color: T.pink,
+          fontFamily: T.font, fontSize: 18, fontWeight: 500, cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>+</button>
       </div>
-
-      {client && (
-        <div style={{
-          background: T.hero, borderRadius: 12, padding: '9px 11px',
-          position: 'relative', overflow: 'hidden', marginBottom: 14,
-        }}>
-          <div style={{ position: 'absolute', top: -15, right: -10, width: 70, height: 70, borderRadius: '50%', background: `radial-gradient(circle,${T.pinkGlow} 0%,transparent 70%)`, pointerEvents: 'none' }} />
-          <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#FF78B0', marginBottom: 3 }}>
-            ✦ AI estimate
-          </div>
-          <div style={{ fontFamily: T.font, fontSize: 11, color: 'rgba(255,255,255,0.7)', lineHeight: 1.45 }}>
-            ~{fmtDuration(duration)} based on {client.name}'s last 3 visits.
-          </div>
-        </div>
-      )}
 
       <SectionLabel>Recurrence</SectionLabel>
       <div style={{ display: 'flex', background: mode === 'dark' ? 'rgba(255,255,255,0.04)' : T.pinkTint, borderRadius: 10, padding: 3 }}>
         {RECURRENCE.map(r => {
           const on = r.key === recurrence;
           return (
-            <button
-              key={r.label}
-              onClick={() => setRecurrence(r.key)}
-              style={{
-                flex: 1, padding: '8px 0', borderRadius: 8, border: 'none',
-                background: on ? '#E91E6A' : 'transparent',
-                fontFamily: T.font, fontSize: 11, fontWeight: 600,
-                color: on ? 'white' : T.inkSub, cursor: 'pointer',
-              }}
-            >{r.label}</button>
+            <button key={r.label} onClick={() => setRecurrence(r.key)} style={{
+              flex: 1, padding: '8px 0', borderRadius: 8, border: 'none',
+              background: on ? '#E91E6A' : 'transparent',
+              fontFamily: T.font, fontSize: 11, fontWeight: 600,
+              color: on ? 'white' : T.inkSub, cursor: 'pointer',
+            }}>{r.label}</button>
           );
         })}
       </div>
@@ -546,7 +526,7 @@ function Step2What({
 /* ============= STEP 3 ============= */
 function Step3Review({
   T, mode, privacyOn, client, service, date, time, duration, recurrence, priceStr,
-  conflicts, confirmText, setConfirmText,
+  conflicts, clientLookup, confirmText, setConfirmText,
 }) {
   const timeRange = fmtTimeRange(time, duration);
   const dateObj = date ? new Date(`${date}T12:00:00`) : null;
@@ -554,26 +534,19 @@ function Step3Review({
 
   return (
     <>
-      {/* Dark hero summary */}
       <div style={{
         background: T.hero,
         border: '1.5px solid rgba(233,30,106,0.35)',
         borderBottom: '3px solid #E91E6A',
-        borderRadius: 16,
-        padding: '13px 14px 14px',
-        position: 'relative', overflow: 'hidden',
-        marginBottom: 12,
+        borderRadius: 16, padding: '13px 14px 14px',
+        position: 'relative', overflow: 'hidden', marginBottom: 12,
       }}>
         <div style={{ position: 'absolute', top: -50, right: -30, width: 150, height: 150, borderRadius: '50%', background: `radial-gradient(circle,${T.pinkGlow} 0%,transparent 70%)`, pointerEvents: 'none' }} />
         <div style={{ position: 'relative' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
             <div>
-              <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#FF78B0', marginBottom: 3 }}>
-                {service?.label || 'Service'}
-              </div>
-              <div style={{ fontFamily: T.serif, fontSize: 20, fontWeight: 500, color: 'white', letterSpacing: '-0.4px' }}>
-                {client?.name || 'New client'}
-              </div>
+              <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#FF78B0', marginBottom: 3 }}>{service?.label || 'Service'}</div>
+              <div style={{ fontFamily: T.serif, fontSize: 20, fontWeight: 500, color: 'white', letterSpacing: '-0.4px' }}>{client?.name || 'New client'}</div>
             </div>
             <div style={{ textAlign: 'right' }}>
               {privacyOn ? (
@@ -585,15 +558,14 @@ function Step3Review({
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-            <InfoTile T={T} label="When"       value={`${dateLabel}`} sub={timeRange} />
-            <InfoTile T={T} label="Duration"   value={fmtDuration(duration)} sub="estimated" />
-            <InfoTile T={T} label="Repeats"    value={recurrence ? (recurrence.charAt(0).toUpperCase() + recurrence.slice(1)) : 'One-time'} sub={recurrence ? '↻ auto-books' : 'single visit'} />
-            <InfoTile T={T} label="Drive"      value="~8 min" sub="12 Main St" />
+            <InfoTile T={T} label="When"     value={dateLabel} sub={timeRange} />
+            <InfoTile T={T} label="Duration" value={fmtDuration(duration)} sub="estimated" />
+            <InfoTile T={T} label="Repeats"  value={recurrence ? (recurrence.charAt(0).toUpperCase() + recurrence.slice(1)) : 'One-time'} sub={recurrence ? '↻ auto-books' : 'single visit'} />
+            <InfoTile T={T} label="Address"  value={client?.address ? client.address.split(',')[0] : '—'} sub={client?.address ? (client.address.split(',')[1] || '').trim() : ''} />
           </div>
         </div>
       </div>
 
-      {/* Conflict warning */}
       {conflicts.length > 0 && (
         <div style={{
           background: mode === 'dark' ? 'rgba(245,158,11,0.11)' : '#FFFBEB',
@@ -608,7 +580,7 @@ function Step3Review({
             </div>
             <div style={{ fontFamily: T.font, fontSize: 10.5, color: T.inkSub, lineHeight: 1.4 }}>
               {conflicts.slice(0, 2).map(c => {
-                const cClient = getClientById(c.client_id);
+                const cClient = clientLookup(c.client_id);
                 const t = new Date(c.scheduled_at);
                 const tLabel = t.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
                 return `${cClient?.name || 'Job'} @ ${tLabel}`;
@@ -639,13 +611,9 @@ function InfoTile({ T, label, value, sub }) {
       background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.09)',
       borderRadius: 10, padding: '7px 9px',
     }}>
-      <div style={{ fontFamily: T.font, fontSize: 8, fontWeight: 700, letterSpacing: '0.6px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.38)', marginBottom: 2 }}>
-        {label}
-      </div>
+      <div style={{ fontFamily: T.font, fontSize: 8, fontWeight: 700, letterSpacing: '0.6px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.38)', marginBottom: 2 }}>{label}</div>
       <div style={{ fontFamily: T.serif, fontSize: 13, fontWeight: 500, color: 'white', letterSpacing: '-0.2px' }}>{value}</div>
-      {sub && (
-        <div style={{ fontFamily: T.font, fontSize: 9.5, color: 'rgba(255,255,255,0.48)', marginTop: 1 }}>{sub}</div>
-      )}
+      {sub && (<div style={{ fontFamily: T.font, fontSize: 9.5, color: 'rgba(255,255,255,0.48)', marginTop: 1 }}>{sub}</div>)}
     </div>
   );
 }
@@ -653,16 +621,12 @@ function InfoTile({ T, label, value, sub }) {
 function ChecklistRow({ T, icon, label, checked, onToggle }) {
   const interactive = !!onToggle;
   return (
-    <button
-      onClick={onToggle}
-      disabled={!interactive}
-      style={{
-        width: '100%', background: 'transparent', border: 'none',
-        padding: '9px 0', display: 'flex', alignItems: 'center', gap: 10,
-        cursor: interactive ? 'pointer' : 'default',
-        borderBottom: `1px solid ${T.cardBorder}`,
-      }}
-    >
+    <button onClick={onToggle} disabled={!interactive} style={{
+      width: '100%', background: 'transparent', border: 'none',
+      padding: '9px 0', display: 'flex', alignItems: 'center', gap: 10,
+      cursor: interactive ? 'pointer' : 'default',
+      borderBottom: `1px solid ${T.cardBorder}`,
+    }}>
       <span style={{ fontSize: 13 }}>{icon}</span>
       <span style={{ flex: 1, textAlign: 'left', fontFamily: T.font, fontSize: 11.5, fontWeight: 500, color: T.ink }}>{label}</span>
       <span style={{
@@ -680,4 +644,3 @@ function ChecklistRow({ T, icon, label, checked, onToggle }) {
     </button>
   );
 }
-

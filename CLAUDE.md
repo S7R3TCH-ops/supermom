@@ -20,7 +20,7 @@ This is a **managed service product** — Sandra is the first user, but the arch
 | Styling | Tailwind CSS + CSS custom properties (see DESIGN.md) |
 | Auth | Supabase Auth (email/password, no social login yet) |
 | Database | Supabase (Postgres) |
-| Hosting | Vercel |
+| Hosting | Vercel ([supermom-v2.vercel.app](https://supermom-v2.vercel.app)) |
 | Calendar | Google Calendar API (OAuth) |
 | Maps/Geo | Google Maps API (routing + geofence) |
 | State | React Context or Zustand (decide before first data fetch) |
@@ -48,77 +48,40 @@ supermom-v2/
 
 ## Supabase Schema
 
-> Derived from Sandra's real business operations — not from legacy architecture.
+> **Source of truth: `supabase_schema.sql` at repo root.** That file is a snapshot of the live Supabase project (`lskzzsjmmtsosfneuovt`) and reflects the actual schema the app queries. Do not invent a parallel/simpler schema — extend the existing one.
 
-### `clients`
-```sql
-id              uuid primary key
-name            text not null
-phone           text                    -- stored as 10-digit, displayed formatted
-email           text
-address         text
-notes           text                    -- general notes
-ai_context      jsonb                   -- { prefs, access, comms, personal_notes }
-recurrence      text                    -- 'weekly' | 'biweekly' | 'monthly' | null
-is_vip          boolean default false
-is_active       boolean default true
-created_at      timestamptz
-```
+The schema is multi-tenant and agentic-AI-ready (richer than this app strictly needs today, designed to support multiple operators and future automation):
 
-### `jobs`
-```sql
-id              uuid primary key
-client_id       uuid references clients(id)
-service_type    text                    -- 'deep_clean' | 'regular' | 'move_out' | 'organizing' | 'custom'
-scheduled_at    timestamptz
-duration_est    integer                 -- minutes, AI-estimated from history
-duration_actual integer                 -- minutes, recorded from geofence timer
-rate            numeric(10,2)           -- snapshot at time of booking
-total           numeric(10,2)
-status          text                    -- 'scheduled' | 'active' | 'completed' | 'cancelled'
-payment_status  text                    -- 'unpaid' | 'partial' | 'paid'
-payment_method  text                    -- 'cash' | 'etransfer'
-notes           text
-voice_note_url  text
-photos          text[]                  -- array of storage URLs
-gcal_event_id   text                    -- google calendar event id for sync
-mileage_km      numeric(6,2)
-recurrence_rule text                    -- 'weekly' | 'biweekly' | 'monthly' | null
-recurrence_parent_id uuid               -- null if root, points to parent if recurring copy
-is_deleted      boolean default false   -- soft delete only
-created_at      timestamptz
-```
+| Table | Purpose |
+|---|---|
+| `businesses` | One row per operator's business (Sandra → "Supermom for Hire") |
+| `users` | Links `auth.users.id` → `business_id`, with role (`owner`/`admin`/`worker`) |
+| `clients` | `first_name`/`last_name` (split), `business_id`-scoped, `ai_context` jsonb, `tags` array, soft-delete via `deleted_at` |
+| `jobs` | `scheduled_date` + `scheduled_time` (separate cols, not a single `scheduled_at`), `pricing_type` (Hourly/Flat), `total_amount`, `job_status`, `payment_status`, `ai_context` jsonb |
+| `services` | Service catalog per business (Deep Clean, Regular, Quick Tidy, Organize, Declutter+Org., Move Out, Custom) |
+| `job_templates` + `template_schedule` | Recurrence engine — a template generates scheduled jobs |
+| `invoices` + `invoice_jobs` + `payments` | Billing |
+| `expense_log` | Mileage / supplies / etc. |
+| `audit_log` / `communication_log` / `notification_log` | Activity history |
+| `config` | Per-business key/value settings |
 
-### `payments`
-```sql
-id              uuid primary key
-job_id          uuid references jobs(id)
-client_id       uuid references clients(id)
-amount          numeric(10,2)
-method          text                    -- 'cash' | 'etransfer'
-paid_at         timestamptz
-notes           text
-created_at      timestamptz
-```
+### Repo / data layer rules
+- All queries go through `src/data/clientsRepo.js` + `src/data/jobsRepo.js` — pages do not call `supabase` directly.
+- Queries are scoped by `business_id` resolved via `src/data/currentBusiness.js` (caches the lookup against `auth.users.id` → `users.business_id`).
+- Display fields the schema doesn't store (initials, color hashes, derived `last`/`next`/`amt`) live in `src/data/selectors.js` (`toDisplayClient`, `toDisplayJob`).
+- The UI's expected `scheduled_at` ISO is composed in `jobsRepo.decorateJob()` from `scheduled_date` + `scheduled_time` (Toronto local).
+- Pages subscribe to `supermom:data-changed` (dispatched by `notifyDataChanged()` after writes) so they auto-refresh.
+- Recurrence is stored in `ai_context.recurrence_rule` on each job today. When we add the templates UI, switch to `job_templates`.
 
-### `expenses`
-```sql
-id              uuid primary key
-description     text
-amount          numeric(10,2)
-category        text                    -- 'gas' | 'supplies' | 'other'
-receipt_url     text
-expense_date    date
-created_at      timestamptz
-```
-
-### `config`
-```sql
-id              uuid primary key
-key             text unique
-value           jsonb
--- Stores: service rates, hourly rate, HST toggle, working hours, etc.
-```
+### Field-name gotchas (real schema vs. naive expectations)
+- `clients.first_name` + `clients.last_name` (not `name`)
+- `jobs.scheduled_date` + `jobs.scheduled_time` (not `scheduled_at`)
+- `jobs.estimated_hours` (decimal hours, not `duration_est` minutes)
+- `jobs.total_amount` / `subtotal` / `flat_rate` (not `total`/`rate`)
+- `jobs.job_status` (`'Scheduled'`/`'Completed'`/`'Cancelled'` — capitalized)
+- `jobs.payment_status` (`''`/`'Partial'`/`'Paid'` — empty string for unpaid, capitalized)
+- `jobs.job_notes` (not `notes`)
+- Soft delete = `deleted_at IS NOT NULL` (not `is_deleted = true`)
 
 ---
 

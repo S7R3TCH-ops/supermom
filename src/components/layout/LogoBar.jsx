@@ -1,7 +1,18 @@
 import { useAppTheme } from '../../context/AppThemeContext';
+import { useAuth } from '../../context/AuthContext';
+import { clearBusinessCache } from '../../data/currentBusiness';
 
 export default function LogoBar() {
   const { mode, toggleMode, privacyOn, togglePrivacy } = useAppTheme();
+  const { user, signOut } = useAuth();
+
+  const onAvatarClick = async () => {
+    if (!user) return;
+    if (!window.confirm(`Sign out ${user.email}?`)) return;
+    clearBusinessCache();
+    await signOut();
+  };
+  const initial = (user?.email || 'S').charAt(0).toUpperCase();
   return (
     <div style={{
       background: 'linear-gradient(110deg,#FF4D96 0%,#E91E6A 45%,#B01550 100%)',
@@ -29,13 +40,17 @@ export default function LogoBar() {
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           cursor: 'pointer', fontSize: 12,
         }}>{mode === 'dark' ? '☀️' : '🌙'}</button>
-        <div style={{
-          width: 28, height: 28, borderRadius: 8,
-          background: 'rgba(255,255,255,0.22)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontFamily: "'Fraunces',Georgia,serif", fontSize: 13, fontWeight: 600, color: 'white',
-          border: '1.5px solid rgba(255,255,255,0.38)',
-        }}>S</div>
+        <button
+          onClick={onAvatarClick}
+          title={user ? `Sign out ${user.email}` : 'Profile'}
+          style={{
+            width: 28, height: 28, borderRadius: 8,
+            background: 'rgba(255,255,255,0.22)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontFamily: "'Fraunces',Georgia,serif", fontSize: 13, fontWeight: 600, color: 'white',
+            border: '1.5px solid rgba(255,255,255,0.38)',
+            cursor: user ? 'pointer' : 'default', padding: 0,
+          }}>{initial}</button>
       </div>
     </div>
   );

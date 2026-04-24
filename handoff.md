@@ -1,61 +1,112 @@
-# Handoff Report — April 16, 2026
+# Handoff Report — April 24, 2026
 
 ## Overview
-Successfully implemented Admin orphan key fixes, exposed hourly rate overrides in job modals, and enhanced the UI urgency for job cards. The application has been bumped to **v4.07 (Frontend)** and **v5.02 (Backend)**.
+Wired the app to the **existing** Supabase project (`lskzzsjmmtsosfneuovt`) and migrated the auth + write/read paths so the user can add real data through the UI. Three pages still read from mock data (Home, ClientProfile, Finance) — they're the next migration chunk.
+
+> Important pivot from previous session: CLAUDE.md previously described a simplified v2 schema. **The real source of truth is `supabase_schema.sql`** (the elaborate multi-tenant schema already deployed). CLAUDE.md was rewritten to point at that file. The half-built `supabase/schema.sql` + `supabase/seed.sql` from yesterday should be ignored / can be deleted.
 
 ---
 
-## 1. Functional Fixes & Features
+## What works end-to-end (Supabase-backed)
 
-### Admin Orphan Key Sync
-- **`saveListItem` (app.js):** Now detects if a service name is being renamed. If so, it updates the corresponding key in `S.biz.service_prices` and calls `saveBizConfig()` to ensure the backend stays in sync.
-- **`delListItem` (app.js):** Now explicitly deletes the associated service price from `S.biz.service_prices` when a service is removed, preventing "ghost" keys in the config.
+**All 5 pages now read from Supabase** — the prototype mock files (`src/data/clients.js`, `src/data/jobs.js`) are no longer imported anywhere except the SERVICES catalog inside `NewJobSheet.jsx`.
 
-### Hourly Rate Overrides
-- **`getJobTotals` (app.js):** Updated to accept a `rate` property in its override object (`ov`). It now checks for this override before falling back to the job's stored rate or the global business rate.
-- **Job Modals:** 
-    - Both `openJobModal` (Scheduled) and `openJobModalEdit` (Completed) now expose an **Hourly Rate ($)** input field (`#je-rate`).
-    - The calculation preview (`#je-calc-preview`) is now permanently un-hidden and provides live updates as the user types in the rate or hours.
-- **`submitJobEdit`:** Now correctly pulls the value from `#je-rate` and saves it to the job object as `Hourly_Rate`.
+| Path | Status |
+|---|---|
+| Login (`/`) | ✅ email/password via `supabase.auth` |
+| Sign out | ✅ click avatar (top-right pink bar) |
+| Home (`/`) | ✅ today's schedule, Opening Act = next upcoming job, tight-gap detection, revenue today, overdue-jobs strip — all from real data |
+| Clients (`/clients`) | ✅ list from Supabase, "+" header button opens NewClientSheet, filters work on display shape |
+| Client Profile (`/clients/:id`) | ✅ uses `useClient(id)`, upcoming/history derived from real jobs |
+| Calendar (`/calendar`) Day/Week/Agenda | ✅ live data, conflict detection, GO button on next today's job |
+| Finance (`/finance`) | ✅ Week/Month/Year/All toggle filters, Collected/Outstanding/Hours computed live, last-7-day bar chart, Recent Activity = real jobs sorted desc |
+| New Job FAB → NewJobSheet | ✅ lists clients from Supabase, inline "+ New client", books to `jobs` table |
 
----
+Auto-refresh: any write dispatches `supermom:data-changed` on `window`; pages using `useClients/useJobs/useClient` subscribe and refetch.
 
-## 2. UI/UX Enhancements (Job Card Urgency)
-
-### Modernized Styles
-- Applied a unified "Soft UI" aesthetic to all job cards (`.jr` class) featuring:
-    - Rounded corners (`var(--r)`).
-    - Transition effects on transform/shadow.
-    - Subtle 135-degree gradients to white.
-
-### "Alert Mode" for Urgent Tasks
-- **Overdue (Orange) & Unpaid (Red)** cards now use "Alert Mode":
-    - **Thick Accents:** 8px left border.
-    - **Full Framing:** 1px solid border all around.
-    - **Vibrant Backgrounds:** Solid tinted backgrounds (not fading to white).
-    - **Glow Effect:** Heavy `box-shadow` (glow) using the respective theme colors at 0.25 opacity.
-    - **Urgent Icons:** Icons changed from `🟠/🔴` to `🚨` for maximum visibility.
-- **Buttons:** Per user request, action buttons on urgent cards remain Blue (`b-bl`) rather than matching the card color.
-
-### Dynamic Hourly Rate Button
-- **`updHourlyBtnText` (app.js):** New helper function that updates the text of the "Hourly" price button (`#pr-h`) to show the specific rate for the selected service (or the global rate if no custom rate exists).
-- **Integration:** Called from `onSvcChange`, `loadBizConfig`, and `resetBookForm` to ensure the UI always reflects the actual rate that will be used for calculation.
+## Known gaps / not yet wired
+- **No "mark paid" affordance** — jobs are created with `payment_status: ''` (unpaid) and there's no UI to change it. Finance's "Collected" stays at $0 until this ships. Should be a tap on the job in Calendar Day or in Recent Activity.
+- **GO button asset** — `/branding/supermom-go.png` is missing from `public/branding/`. Component falls back to an inline pink cape SVG so it still looks intentional. Drop the real PNG at `public/branding/supermom-go.png` to use it.
+- **Drive time / mileage** — hardcoded "—" placeholders. Needs Google Maps integration.
+- **AI cards** (nudges, agent activity) — still static UI, no LLM call yet.
 
 ---
 
-## 3. Deployment & Versions
+## Files added / changed this session
 
-- **`app.js`**: Bumped to **v4.07**.
-- **`index.html`**: Bumped to **v4.07** (synced with app.js).
-- **`code.js`**: Bumped to **v5.02** (version sync with frontend changes).
-- **`CLAUDE.md`**: Updated to reflect current source-of-truth versions.
+### Added
+- `.env` (gitignored) — Vite-prefixed Supabase URL + anon key + service role key
+- `src/lib/supabase.js` — singleton client
+- `src/context/Auth.jsx` + `AuthContext.js` — auth provider, exposes session/user/signIn/signOut
+- `src/pages/Login.jsx` — themed sign-in screen
+- `src/data/currentBusiness.js` — resolves `auth.users.id → users.business_id`, cached
+- `src/data/clientsRepo.js` — `fetchClients`, `fetchClientById`, `createClient`, `updateClient`, `softDeleteClient`
+- `src/data/jobsRepo.js` — `fetchActiveJobs`, `fetchJobsByClientId`, `fetchJobById`, `createJob`, `updateJob`, `softDeleteJob`, `findConflicts`, `decorateJob` (composes `scheduled_at` from date+time)
+- `src/data/selectors.js` — `toDisplayClient` / `toDisplayJob` derive UI fields (init, color, last/next/amt, tags) from raw DB rows
+- `src/data/useData.js` — `useClients` / `useClient` / `useJobs` hooks + `notifyDataChanged()` event helper
+- `src/components/sheets/NewClientSheet.jsx` — bottom-sheet form for creating a client
+- `scripts/inspect.mjs` — read-only DB inspection
+- `scripts/provision.mjs` — minimal one-time setup (admin user + business + users link + services)
+- `scripts/seed.mjs` — full mock-data seed (NOT auto-run — admin already provisioned without it)
+- `supabase/schema.sql`, `supabase/seed.sql` — leftover from the wrong-direction v2 schema attempt; **ignore / delete**
 
-### Git State
-- Changes are committed on the `sandbox` branch.
-- Deployment to GitHub Pages was performed by checking out `index.html`, `app.js`, `code.js`, and `CLAUDE.md` onto the `main` branch and pushing to `origin main`.
+### Changed
+- `src/App.jsx` — wraps in `AuthProvider`, gates routes via `<Gate />`, shows LoginShell when no session
+- `src/components/layout/LogoBar.jsx` — avatar is now a sign-out button (confirms first), shows current user's first initial
+- `src/components/sheets/NewJobSheet.jsx` — fetches clients via repo, persists via `createJob`, opens NewClientSheet from step 1
+- `src/pages/Clients.jsx` — uses `useClients`, "+" button opens NewClientSheet, empty state, loading state, computes Total/Outstanding/VIP from real data
+- `src/pages/Calendar.jsx` — uses `useJobs`, `TODAY` is real `new Date()` (was hardcoded to 2026-04-22)
+- `CLAUDE.md` — rewrote schema section to point at `supabase_schema.sql`, added field-name gotchas, documented data-layer rules
+- `package.json` — added `@supabase/supabase-js`, `dotenv` (devDep)
 
 ---
 
-## Next Steps / Notes
-- The "Alert Mode" is quite high-contrast. If the user finds it too loud, the backgrounds in `index.html` can be shifted back toward gradients.
-- Ensure the `code.js` (v5.02) is actually deployed to the Google Apps Script environment via the GAS editor or `clasp push` if applicable.
+## Provisioning (already done — don't re-run unless DB is wiped)
+
+`node scripts/provision.mjs` created:
+- auth user `jlundie@gmail.com` / `TempPass2026!` (change in Supabase Authentication tab)
+- business: "Supermom for Hire" (Georgetown ON)
+- users link: Joel as owner of that business
+- 7 services (Deep Clean / Regular / Quick Tidy / Organize / Declutter+Org. / Move Out / Custom)
+
+The script is idempotent — safe to re-run.
+
+**Sandra's account is intentionally NOT created yet** (per project preference: don't provision end-users until owner signs off).
+
+---
+
+## Next steps (priority order)
+
+### A. Wire "mark paid" affordance (highest impact)
+Right now jobs are created with `payment_status: ''` (unpaid). Need a UI affordance to mark a job paid (`'Paid'`) — maybe a tap on the job card in Calendar Day view, or a swipe action. Inserts into `payments` table for the audit trail.
+
+### B. Delete the mock data files
+`src/data/clients.js` is no longer imported anywhere. `src/data/jobs.js` only exports the SERVICES catalog used by `NewJobSheet.jsx` — move SERVICES into a small `src/data/serviceCatalog.js` and delete the rest.
+
+### C. Sign-up + password reset
+Login screen only signs in. Add "Forgot password" link using `supabase.auth.resetPasswordForEmail`. Sign-up isn't needed — Joel/Sandra are admin-provisioned.
+
+### D. Vercel env vars
+For prod deploys: add `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` to Vercel project settings. **Do NOT add `SUPABASE_SERVICE_ROLE_KEY`** — that's local-only for the scripts in `scripts/`.
+
+### E. Code-split the bundle
+`@supabase/supabase-js` pushed bundle from 320 → 522 kB. Could lazy-load auth/repos. Not urgent.
+
+---
+
+## Known issues / gotchas
+- **Toronto DST math** is hardcoded month-ranges in `jobsRepo.decorateJob` and `NewJobSheet.torontoISO`. Wrong on the boundary days (2nd Sun March, 1st Sun Nov). Move to `Intl.DateTimeFormat` later.
+- **Conflict detection** runs in JS over already-fetched jobs (not a DB query). Fine at small scale.
+- **Recurrence** is stored in `jobs.ai_context.recurrence_rule` for now. When `job_templates` UI ships, migrate.
+- **No real-time** subscriptions yet. Refresh is event-driven from local writes only — if Sandra opens the app on phone + laptop, they won't sync.
+
+## Verification
+- `npm run build` → green, 522.16 kB raw / 145.18 kB gzipped
+- DB row counts after provision: businesses=1, users=1, services=7, clients=0, jobs=0
+- Dev server starts cleanly on `:5173`
+
+## Key files for next session
+- `src/data/useData.js`, `selectors.js`, `clientsRepo.js`, `jobsRepo.js`, `currentBusiness.js` — the data layer
+- `src/pages/Home.jsx`, `ClientProfile.jsx`, `Finance.jsx` — next to migrate
+- `supabase_schema.sql` — schema source of truth
+- `scripts/provision.mjs`, `scripts/inspect.mjs`, `scripts/seed.mjs` — DB tools

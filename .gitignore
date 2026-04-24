@@ -26,3 +26,5 @@ branding/
 *.njsproj
 *.sln
 *.sw?
+
+.vercel

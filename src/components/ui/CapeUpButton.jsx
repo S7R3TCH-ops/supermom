@@ -27,11 +27,35 @@ export default function CapeUpButton({ job, onGo }) {
           src="/branding/supermom-go.png"
           alt=""
           className={`sm-hero-icon${flying ? ' flying' : ''}`}
+          onError={(e) => {
+            // PNG missing — swap to inline SVG cape icon so button still looks intentional.
+            e.currentTarget.style.display = 'none';
+            const sib = e.currentTarget.nextElementSibling;
+            if (sib) sib.style.display = 'flex';
+          }}
           style={{
             width: 40, height: 36, borderRadius: 9, objectFit: 'cover',
             position: 'absolute', top: 0, left: 0,
           }}
         />
+        <div
+          className={`sm-hero-icon${flying ? ' flying' : ''}`}
+          style={{
+            display: 'none',
+            position: 'absolute', top: 0, left: 0,
+            width: 40, height: 36, borderRadius: 9,
+            background: 'linear-gradient(135deg,#FF5A9D,#E91E6A)',
+            alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 4px 12px rgba(233,30,106,0.4)',
+          }}
+          aria-hidden="true"
+        >
+          {/* Cape silhouette */}
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+            <path d="M11 3l3 3-1.5 5L17 18l-6-2-6 2 4.5-7L8 6l3-3z" fill="white" opacity="0.95"/>
+            <circle cx="11" cy="6.5" r="1.5" fill="#FFD6E8"/>
+          </svg>
+        </div>
       </div>
       <div style={{ flex: 1, textAlign: 'left' }}>
         <div style={{

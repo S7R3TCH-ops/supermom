@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AppThemeProvider } from './context/AppTheme';
 import { useAppTheme } from './context/AppThemeContext';
+import { AuthProvider } from './context/Auth';
+import { useAuth } from './context/AuthContext';
 import { NewJobSheetProvider } from './context/NewJobSheet';
 import LogoBar from './components/layout/LogoBar';
 import BottomNav from './components/layout/BottomNav';
@@ -10,8 +12,9 @@ import Calendar from './pages/Calendar';
 import Clients from './pages/Clients';
 import ClientProfile from './pages/ClientProfile';
 import Finance from './pages/Finance';
+import Login from './pages/Login';
 
-function Shell() {
+function AuthedShell() {
   const { T } = useAppTheme();
   return (
     <div style={{
@@ -35,13 +38,47 @@ function Shell() {
   );
 }
 
+function LoginShell() {
+  const { T } = useAppTheme();
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column',
+      height: '100svh', width: '100%',
+      background: T.bg, color: T.ink, overflow: 'hidden',
+    }}>
+      <LogoBar />
+      <Login />
+    </div>
+  );
+}
+
+function Gate() {
+  const { T } = useAppTheme();
+  const { session, loading, configured } = useAuth();
+
+  if (loading) {
+    return (
+      <div style={{
+        height: '100svh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: T.bg, color: T.inkSub, font: `14px/1 ${T.font}`,
+      }}>Loading…</div>
+    );
+  }
+  if (!session || !configured) return <LoginShell />;
+  return (
+    <NewJobSheetProvider>
+      <AuthedShell />
+    </NewJobSheetProvider>
+  );
+}
+
 export default function App() {
   return (
     <AppThemeProvider>
       <BrowserRouter>
-        <NewJobSheetProvider>
-          <Shell />
-        </NewJobSheetProvider>
+        <AuthProvider>
+          <Gate />
+        </AuthProvider>
       </BrowserRouter>
     </AppThemeProvider>
   );

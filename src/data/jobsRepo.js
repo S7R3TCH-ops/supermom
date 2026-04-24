@@ -79,6 +79,39 @@ export async function softDeleteJob(id) {
   return updateJob(id, { deleted_at: new Date().toISOString() });
 }
 
+export async function recordPayment(jobId, amount, method = 'Cash', notes = null) {
+  const businessId = await getCurrentBusinessId();
+
+  // 1. Get job info (we need client_id)
+  const { data: job, error: getErr } = await supabase
+    .from('jobs')
+    .select('client_id, business_id')
+    .eq('id', jobId)
+    .single();
+  if (getErr) throw getErr;
+
+  // 2. Insert into payments
+  const { error: payErr } = await supabase
+    .from('payments')
+    .insert({
+      business_id: businessId,
+      job_id: jobId,
+      client_id: job.client_id,
+      amount: amount,
+      payment_method: method,
+      payment_date: new Date().toISOString().split('T')[0],
+      notes: notes,
+    });
+  if (payErr) throw payErr;
+
+  // 3. Update job status
+  return updateJob(jobId, {
+    payment_status: 'Paid',
+    job_status: 'Completed',
+    payment_method: method // also update this field on the job table for redundancy/quick lookup
+  });
+}
+
 // ---------- helpers ----------
 
 // Adds a derived `scheduled_at` ISO string in America/Toronto for UI sorting / time math.

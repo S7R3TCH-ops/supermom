@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
 import { useAppTheme } from '../context/AppThemeContext';
 import SectionLabel from '../components/ui/SectionLabel';
-import { useJobs, notifyDataChanged } from '../data/useData';
-import { updateJob } from '../data/jobsRepo';
+import { useJobs, notifyDataChanged, useClients } from '../data/useData';
+import { updateJob, recordPayment } from '../data/jobsRepo';
+import NudgeDraftSheet from '../components/sheets/NudgeDraftSheet';
 
 const periods = ['Week', 'Month', 'Year', 'All'];
 const DOW = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
@@ -29,14 +30,19 @@ export default function Finance() {
   const { T, mode, privacyOn } = useAppTheme();
   const [period, setPeriod] = useState('Week');
   const [busyId, setBusyId] = useState(null);
+  const [showNudges, setShowNudges] = useState(false);
   const { jobs: allJobs, loading } = useJobs();
+  const { clients } = useClients();
 
   async function markPaid(id) {
     if (busyId) return;
-    if (!window.confirm('Mark this job as paid?')) return;
+    const job = allJobs.find(j => j.id === id);
+    if (!job) return;
+
+    if (!window.confirm(`Mark $${Number(job.total || 0).toFixed(0)} for ${job.client_name} as paid?`)) return;
     setBusyId(id);
     try {
-      await updateJob(id, { payment_status: 'Paid', job_status: 'Completed' });
+      await recordPayment(id, Number(job.total || 0));
       notifyDataChanged();
     } catch (e) {
       alert('Could not update payment: ' + (e?.message || e));
@@ -63,6 +69,26 @@ export default function Finance() {
   const periodTotal = filtered
     .filter(j => j.status !== 'Cancelled')
     .reduce((s, j) => s + Number(j.total || 0), 0);
+
+  const clientsWithUnpaid = useMemo(() => {
+    const map = new Map();
+    allJobs
+      .filter(j => j.status === 'Completed' && j.payment_status !== 'Paid' && j.client_id)
+      .forEach(j => {
+        const c = map.get(j.client_id) || { id: j.client_id, unpaidTotal: 0 };
+        c.unpaidTotal += Number(j.total || 0);
+        map.set(j.client_id, c);
+      });
+    
+    return Array.from(map.values()).map(item => {
+      const client = clients.find(c => c.id === item.id);
+      return {
+        ...item,
+        name: client?.name || 'Unknown',
+        phone: client?.phone || '',
+      };
+    }).filter(c => c.unpaidTotal > 0);
+  }, [allJobs, clients]);
 
   // Estimated hours (sum of estimated_hours on completed jobs in period)
   const hoursWorked = filtered
@@ -156,7 +182,7 @@ export default function Finance() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 11 }}>
           {[
             { label: 'Collected',    val: `$${collected.toFixed(0)}`,                     sub: `This ${period.toLowerCase()}`,         color: '#22C55E', bg: mode === 'dark' ? 'rgba(34,197,94,0.1)'   : '#F0FFF5', border: mode === 'dark' ? 'rgba(34,197,94,0.22)'   : '#86EFAC' },
-            { label: 'Outstanding',  val: `$${outstanding.toFixed(0)}`,                   sub: `${outstandingCount} unpaid`,           color: '#E91E6A', bg: mode === 'dark' ? 'rgba(233,30,106,0.1)'  : '#FFF0F7', border: mode === 'dark' ? 'rgba(233,30,106,0.25)'  : '#FFD6E8', action: outstandingCount > 0 ? 'Nudge all' : null },
+            { label: 'Outstanding',  val: `$${outstanding.toFixed(0)}`,                   sub: `${outstandingCount} unpaid`,           color: '#E91E6A', bg: mode === 'dark' ? 'rgba(233,30,106,0.1)'  : '#FFF0F7', border: mode === 'dark' ? 'rgba(233,30,106,0.25)'  : '#FFD6E8', action: outstandingCount > 0 ? 'Nudge all' : null, onAction: () => setShowNudges(true) },
             { label: 'Hours est.',   val: `${hoursWorked.toFixed(1)}h`,                   sub: hourlyAvg > 0 ? `$${hourlyAvg.toFixed(0)} / hr avg` : 'no completed jobs', color: mode === 'dark' ? 'rgba(255,255,255,0.7)' : '#5A3040', bg: T.card, border: T.cardBorder },
             { label: 'Mileage',      val: '— km',                                         sub: 'Auto-tracking pending',                color: mode === 'dark' ? 'rgba(255,255,255,0.7)' : '#5A3040', bg: T.card, border: T.cardBorder },
           ].map((s, i) => (
@@ -167,7 +193,12 @@ export default function Finance() {
               </div>
               <div style={{ fontFamily: T.font, fontSize: 9.5, color: T.inkMuted }}>{s.sub}</div>
               {s.action && (
-                <button style={{ marginTop: 6, background: '#E91E6A', color: 'white', border: 'none', borderRadius: 6, padding: '4px 9px', fontFamily: T.font, fontSize: 9.5, fontWeight: 700, cursor: 'pointer' }}>{s.action}</button>
+                <button 
+                  onClick={s.onAction}
+                  style={{ marginTop: 6, background: '#E91E6A', color: 'white', border: 'none', borderRadius: 6, padding: '4px 9px', fontFamily: T.font, fontSize: 9.5, fontWeight: 700, cursor: 'pointer' }}
+                >
+                  {s.action}
+                </button>
               )}
             </div>
           ))}
@@ -181,7 +212,12 @@ export default function Finance() {
               {outstandingCount} unpaid completed job{outstandingCount === 1 ? '' : 's'} totalling {privacyOn ? '•••' : `$${outstanding.toFixed(0)}`}. Want me to draft nudge texts?
             </div>
             <div style={{ display: 'flex', gap: 7 }}>
-              <button style={{ flex: 1, background: '#E91E6A', color: 'white', border: 'none', borderRadius: 8, padding: '8px 0', fontFamily: T.font, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Draft nudges</button>
+              <button 
+                onClick={() => setShowNudges(true)}
+                style={{ flex: 1, background: '#E91E6A', color: 'white', border: 'none', borderRadius: 8, padding: '8px 0', fontFamily: T.font, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+              >
+                Draft nudges
+              </button>
               <button style={{ flex: 1, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.5)', borderRadius: 8, padding: '8px 0', fontFamily: T.font, fontSize: 11, cursor: 'pointer' }}>Later</button>
             </div>
           </div>
@@ -224,6 +260,12 @@ export default function Finance() {
           );
         })}
       </div>
+
+      <NudgeDraftSheet
+        isOpen={showNudges}
+        onClose={() => setShowNudges(false)}
+        clientsWithUnpaid={clientsWithUnpaid}
+      />
     </div>
   );
 }

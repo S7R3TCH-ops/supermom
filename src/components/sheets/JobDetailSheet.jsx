@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAppTheme } from '../../context/AppThemeContext';
-import { fetchJobById, updateJob, softDeleteJob } from '../../data/jobsRepo';
+import { fetchJobById, updateJob, softDeleteJob, recordPayment } from '../../data/jobsRepo';
 import { notifyDataChanged } from '../../data/useData';
 import { SERVICES, RECURRENCE } from '../../data/services';
 
@@ -77,7 +77,9 @@ export default function JobDetailSheet({ jobId, onClose }) {
   async function markPaid() {
     setBusy(true); setMutErr(null);
     try {
-      await updateJob(job.id, { payment_status: 'Paid', job_status: 'Completed' });
+      const amt = Number(job.total_amount ?? job.flat_rate ?? 0);
+      const method = job.ai_context?.payment_method || 'Cash';
+      await recordPayment(job.id, amt, method);
       showToast('Payment recorded');
     } catch (e) { setMutErr(e.message || String(e)); setBusy(false); }
   }

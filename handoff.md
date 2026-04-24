@@ -1,13 +1,12 @@
 # Handoff Report — April 24, 2026 (Night)
 
-## Session: Fixes for Deletion and Greeting
-- **Fixed Greeting:** The Home page now dynamically greets the user by their `first_name` from the `users` table. `AuthProvider` was updated to fetch the profile from Supabase. Fallback remains "Sandra" if no profile is found.
-- **Fixed Job Removal:** 
-    - Updated `JobDetailSheet.jsx` to change "Cancel Job" to "Delete Job".
-    - Clicking "Delete Job" now calls `softDeleteJob`, which sets `deleted_at` in the database.
-    - Updated `Calendar.jsx` to filter out jobs with `Cancelled` status (matching Home page).
-- **Go Label Update:** `getGoLabel` and `CapeUpButton` now use the dynamic user name in their randomized messages.
-- **Verified Build:** `npx vite build` passed successfully.
+## Session: Feature Expansion and Audit
+- **Client Search:** Wired the search bar on the Clients page. It now performs live filtering of the client roster by name or address.
+- **Payments Audit:** Implemented `recordPayment(jobId, amount, method, notes)` in `jobsRepo.js`. This helper handles the job status update AND inserts an audit row into the `payments` table. Both `Finance.jsx` and `JobDetailSheet.jsx` were updated to use this.
+- **Finance Nudge Buttons:** Created `NudgeDraftSheet.jsx` and wired it to the "Draft nudges" buttons on the Finance page. It generates a SMS draft with the client's name and unpaid balance.
+- **Code-Splitting:** Implemented `React.lazy` and `Suspense` for all top-level pages in `App.jsx`. This reduces the initial bundle size and improves load performance.
+- **Project Tracking:** Updated `BUILD.md` and `GEMINI.md` to reflect the current state and updated next priorities.
+- **Bug Fixes:** (From previous session) Fixed greeting to use profile `first_name`, and fixed Job Detail deletion logic to use `softDeleteJob`.
 
 ---
 

@@ -44,9 +44,10 @@ At the end of every productive session, or upon major milestone completion, Gemi
 | New Job sheet | ✅ Live |
 | **Job Detail sheet** | ✅ **Live** — tap any job card (Home or Calendar) to view/edit/act |
 | Drive time / mileage | ❌ Hardcoded "—" — needs Google Maps |
-| payments table audit row | ❌ mark-paid doesn't insert into `payments` yet |
-| Client search (Clients page) | ❌ Visual placeholder only |
-| Finance nudge buttons | ❌ Buttons exist, no handlers yet |
+| **payments table audit row** | ✅ **Live** — mark-paid inserts into `payments` via `recordPayment()` |
+| **Client search** (Clients page) | ✅ **Live** — live filter by name/address |
+| **Finance nudge buttons** | ✅ **Live** — `NudgeDraftSheet` drafts SMS reminders |
+| **Code-split bundle** | ✅ **Live** — `React.lazy` + `Suspense` on all pages |
 | Google Calendar sync | ❌ Not started |
 | Geofence / auto-timer | ❌ Not started |
 
@@ -60,8 +61,8 @@ At the end of every productive session, or upon major milestone completion, Gemi
 - Mutation errors shown inline; fetch errors replace the sheet body
 
 ## Next priorities
-1. Client search — wire the search bar on Clients page
-2. `payments` audit row on mark-paid (`src/pages/Finance.jsx` + `src/components/sheets/JobDetailSheet.jsx`)
-3. Finance nudge buttons — draft nudge text for unpaid jobs
-4. Google Maps integration (drive time + mileage)
-5. Code-split the bundle (520 kB — lazy-load Supabase client)
+1. Google Maps integration (drive time + mileage)
+2. Real-time subscriptions (refresh on DB changes)
+3. Storage bucket (photos + voice notes)
+4. AI Prep Notes generator
+5. Recurrence series editor (this / future / all)

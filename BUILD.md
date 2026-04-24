@@ -59,7 +59,8 @@ When done:
 
 - [x] **1. New Job bottom sheet** — 3 steps (Who → What/When → Review). Shared `src/data/jobs.js`. Per DESIGN.md §12. Opens from FAB or "Book" buttons.
   - Built as `src/components/sheets/NewJobSheet.jsx` + `src/context/NewJobSheet.jsx` + `src/data/jobs.js` + `src/components/ui/FAB.jsx`; global FAB + ClientProfile Book Job wired; conflict detection hits `findConflicts()`.
-- [ ] **2. Job Detail page** — tap any job (Home / Calendar / Profile) → full view. Shows service, time, client, address, notes, photos, voice note, payment status, timer state.
+- [x] **2. Job Detail page** — tap any job (Home / Calendar / Profile) → full view. Shows service, time, client, address, notes, photos, voice note, payment status, timer state.
+  - Built as `src/components/sheets/JobDetailSheet.jsx` + `src/context/JobDetailSheetContext.js`. Includes Mark Complete/Paid, Delete Job (soft delete), and Edit mode.
 - [ ] **3. Edit Job** — reuses New Job sheet in edit mode (pass `jobId` prop).
 - [ ] **4. Active Job state** — Home Today card variant when geofence triggers. Big running timer, "Auto-started on arrival" label, Voice note / Photo / Done buttons.
 - [ ] **5. Post-job / Payment sheet** — UNPAID badge, Cash / e-Transfer pill toggle, Log Payment button. Opens from Active Job "Done" or Job Detail.
@@ -68,7 +69,10 @@ When done:
 
 ### 🎯 Phase 2 — Clients
 
-- [ ] **8. New Client form** — bottom sheet or page. Name, phone, email, address, recurrence, initial AI context.
+- [x] **8. New Client form** — bottom sheet or page. Name, phone, email, address, recurrence, initial AI context.
+  - Built as `src/components/sheets/NewClientSheet.jsx`, opens from Clients page and Who step of NewJobSheet.
+- [x] **8.1 Client search** — wire the search bar on Clients page.
+  - Implemented as live filtering by name/address in `src/pages/Clients.jsx`.
 - [ ] **9. Edit Client / AI context** — tap "Edit" on Profile AI card → opens this. Separate editor for each context bucket (prefs/access/comms/personal).
 
 ### 🎯 Phase 3 — Calendar expansion
@@ -78,7 +82,8 @@ When done:
 
 ### 🎯 Phase 4 — AI-powered sheets (Claude API)
 
-- [ ] **12. Nudge Draft sheet** — AI-drafted text for overdue client. Opens from Finance Outstanding card or Client Profile. Edit before send.
+- [x] **12. Nudge Draft sheet** — AI-drafted text for overdue client. Opens from Finance Outstanding card or Client Profile. Edit before send.
+  - Built as `src/components/sheets/NudgeDraftSheet.jsx`, wired to Finance page "Draft nudges" buttons.
 - [ ] **13. Thank-you / Receipt draft sheet** — AI-drafted post-job message. Opens from Post-job state.
 - [ ] **14. Prep Notes generator** — AI summarizes client history into prep notes. Opens from Job Detail.
 - [ ] **15. Duration Estimator card** — inline in New Job Step 2. "X hrs based on last N visits."

@@ -10,17 +10,26 @@ const filters = ['All', 'Owes $', 'VIP', 'Active', 'Leads'];
 export default function Clients() {
   const { T, mode, privacyOn } = useAppTheme();
   const [filter, setFilter] = useState('All');
+  const [search, setSearch] = useState('');
   const [showNew, setShowNew] = useState(false);
   const navigate = useNavigate();
   const { clients, loading, error, refresh } = useClients();
 
   const filtered = useMemo(() => clients.filter(c => {
+    // Search filter
+    if (search) {
+      const s = search.toLowerCase();
+      const match = c.name.toLowerCase().includes(s) || c.address.toLowerCase().includes(s);
+      if (!match) return false;
+    }
+
+    // Category filter
     if (filter === 'Owes $') return c.owed;
     if (filter === 'VIP') return c.vip;
     if (filter === 'Active') return c.last !== '—';
     if (filter === 'Leads') return c.tags.includes('Lead');
     return true;
-  }), [clients, filter]);
+  }), [clients, filter, search]);
 
   const totalOwed = clients.reduce((s, c) => s + (c.owed ? Number((c.amt || '$0').replace(/[^0-9.]/g, '')) : 0), 0);
   const vipCount = clients.filter(c => c.vip).length;
@@ -67,7 +76,17 @@ export default function Clients() {
             <circle cx="5.5" cy="5.5" r="4.5" stroke="rgba(255,255,255,0.4)" strokeWidth="1.4" />
             <path d="M9 9l3 3" stroke="rgba(255,255,255,0.4)" strokeWidth="1.4" strokeLinecap="round" />
           </svg>
-          <span style={{ fontFamily: T.font, fontSize: 11.5, color: 'rgba(255,255,255,0.35)' }}>Search clients…</span>
+          <input
+            type="text"
+            placeholder="Search clients…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            style={{
+              flex: 1, background: 'transparent', border: 'none',
+              fontFamily: T.font, fontSize: 11.5, color: 'white',
+              outline: 'none', padding: 0,
+            }}
+          />
         </div>
       </div>
 

@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AppThemeProvider } from './context/AppTheme';
 import { useAppTheme } from './context/AppThemeContext';
@@ -8,12 +9,13 @@ import { JobDetailSheetProvider } from './context/JobDetailSheet';
 import LogoBar from './components/layout/LogoBar';
 import BottomNav from './components/layout/BottomNav';
 import FAB from './components/ui/FAB';
-import Home from './pages/Home';
-import Calendar from './pages/Calendar';
-import Clients from './pages/Clients';
-import ClientProfile from './pages/ClientProfile';
-import Finance from './pages/Finance';
-import Login from './pages/Login';
+
+const Home = lazy(() => import('./pages/Home'));
+const Calendar = lazy(() => import('./pages/Calendar'));
+const Clients = lazy(() => import('./pages/Clients'));
+const ClientProfile = lazy(() => import('./pages/ClientProfile'));
+const Finance = lazy(() => import('./pages/Finance'));
+const Login = lazy(() => import('./pages/Login'));
 
 function AuthedShell() {
   const { T } = useAppTheme();
@@ -25,13 +27,15 @@ function AuthedShell() {
     }}>
       <LogoBar />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/calendar" element={<Calendar />} />
-          <Route path="/clients" element={<Clients />} />
-          <Route path="/clients/:id" element={<ClientProfile />} />
-          <Route path="/finance" element={<Finance />} />
-        </Routes>
+        <Suspense fallback={<div style={{ padding: 20, color: T.inkMuted, fontFamily: T.font, fontSize: 13 }}>Loading...</div>}>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/calendar" element={<Calendar />} />
+            <Route path="/clients" element={<Clients />} />
+            <Route path="/clients/:id" element={<ClientProfile />} />
+            <Route path="/finance" element={<Finance />} />
+          </Routes>
+        </Suspense>
         <FAB />
       </div>
       <BottomNav />
@@ -48,7 +52,9 @@ function LoginShell() {
       background: T.bg, color: T.ink, overflow: 'hidden',
     }}>
       <LogoBar />
-      <Login />
+      <Suspense fallback={<div style={{ padding: 20, color: T.inkMuted, fontFamily: T.font, fontSize: 13 }}>Loading...</div>}>
+        <Login />
+      </Suspense>
     </div>
   );
 }

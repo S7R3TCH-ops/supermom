@@ -39,12 +39,17 @@ export async function fetchJobById(id) {
   const businessId = await getCurrentBusinessId();
   const { data, error } = await supabase
     .from('jobs')
-    .select(SELECT_FULL)
+    .select('*, clients(first_name, last_name)')
     .eq('id', id)
     .eq('business_id', businessId)
     .maybeSingle();
   if (error) throw error;
-  return data ? decorateJob(data) : null;
+  if (!data) return null;
+  const c = data.clients;
+  const clientName = c
+    ? [c.first_name, c.last_name].filter(Boolean).join(' ')
+    : 'Unknown';
+  return { ...decorateJob(data), client_name: clientName };
 }
 
 export async function createJob(payload) {

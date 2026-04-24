@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { getGoLabel } from '../../lib/goLabel';
 
-export default function CapeUpButton({ job, onGo }) {
+export default function CapeUpButton({ job, onGo, name }) {
   const { T } = useAppTheme();
   const [flying, setFlying] = useState(false);
-  const [label] = useState(() => getGoLabel(job.service));
+  const [label] = useState(() => getGoLabel(job.service, name));
 
   const tap = (e) => {
     e.stopPropagation();

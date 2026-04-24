@@ -3,6 +3,7 @@ import { useAppTheme } from '../context/AppThemeContext';
 import { useJobs } from '../data/useData';
 import CapeUpButton from '../components/ui/CapeUpButton';
 import { useJobDetailSheet } from '../context/JobDetailSheetContext';
+import { useAuth } from '../context/AuthContext';
 
 // Real "now" — was previously a hard-coded prototype anchor.
 const TODAY = new Date();
@@ -38,6 +39,7 @@ function fmtDateHead(d) {
 // { ...job, client: { name, init, color, address }, service: { label }, start, end, color, paid }
 function enrichDisplayJobs(displayJobs, clientLookup) {
   return displayJobs
+    .filter(j => j.status !== 'Cancelled')
     .map(j => {
       const c = clientLookup[j.client_id];
       const start = new Date(j.scheduled_at);
@@ -71,6 +73,8 @@ export default function Calendar() {
   const [view, setView] = useState('Day');
   const [weekStart, setWeekStart] = useState(() => startOfWeek(TODAY));
   const { openJob } = useJobDetailSheet();
+  const { profile } = useAuth();
+  const firstName = profile?.first_name || 'Sandra';
 
   const { jobs: displayJobs, clients: clientLookup, loading, error } = useJobs();
   const allJobs = useMemo(() => enrichDisplayJobs(displayJobs, clientLookup), [displayJobs, clientLookup]);
@@ -150,16 +154,16 @@ export default function Calendar() {
         </div>
       )}
 
-      {view === 'Day'    && <DayView    T={T} mode={mode} privacyOn={privacyOn} todayJobs={todayJobs} nextUpcoming={nextUpcoming} onJobPress={openJob} />}
+      {view === 'Day'    && <DayView    T={T} mode={mode} privacyOn={privacyOn} todayJobs={todayJobs} nextUpcoming={nextUpcoming} onJobPress={openJob} firstName={firstName} />}
       {view === 'Week'   && <WeekView   T={T} mode={mode} weekDays={weekDays} allJobs={allJobs} onPickDay={() => setView('Day')} onJobPress={openJob} />}
-      {view === 'Agenda' && <AgendaView T={T} mode={mode} privacyOn={privacyOn} allJobs={allJobs} nextUpcoming={nextUpcoming} onJobPress={openJob} />}
+      {view === 'Agenda' && <AgendaView T={T} mode={mode} privacyOn={privacyOn} allJobs={allJobs} nextUpcoming={nextUpcoming} onJobPress={openJob} firstName={firstName} />}
     </div>
   );
 }
 
 /* ------------------------------ DAY VIEW ------------------------------ */
 
-function DayView({ T, mode, privacyOn, todayJobs, nextUpcoming, onJobPress }) {
+function DayView({ T, mode, privacyOn, todayJobs, nextUpcoming, onJobPress, firstName }) {
   const slotH = 50, startH = 8, endH = 18;
   const hours = Array.from({ length: endH - startH + 1 }, (_, i) => startH + i);
 
@@ -242,6 +246,7 @@ function DayView({ T, mode, privacyOn, todayJobs, nextUpcoming, onJobPress }) {
               address: nextUpcoming.client?.address ?? '',
               driveTime: '12 min',
             }}
+            name={firstName}
           />
         </div>
       )}
@@ -347,7 +352,7 @@ function LegendDot({ T, color, label }) {
 
 /* ------------------------------ AGENDA VIEW ------------------------------ */
 
-function AgendaView({ T, mode, privacyOn, allJobs, nextUpcoming, onJobPress }) {
+function AgendaView({ T, mode, privacyOn, allJobs, nextUpcoming, onJobPress, firstName }) {
   // Group jobs by date; only show upcoming + today.
   const grouped = useMemo(() => {
     const map = new Map();
@@ -405,6 +410,7 @@ function AgendaView({ T, mode, privacyOn, allJobs, nextUpcoming, onJobPress }) {
                     address: nextUpcoming.client?.address ?? '',
                     driveTime: '12 min',
                   }}
+                  name={firstName}
                 />
               </div>
             )}

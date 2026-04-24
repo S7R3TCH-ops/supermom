@@ -11,7 +11,16 @@
       "Bash(tar -xf design.tar)",
       "Bash(rm -f src/components/home/TodayCard.jsx src/components/layout/LogoBanner.jsx src/components/layout/FAB.jsx src/components/ui/AICard.jsx src/components/ui/Card.jsx src/components/ui/Badge.jsx src/components/ui/DarkHeroSection.jsx src/components/ui/SupermomGoButton.jsx src/components/ui/ViewToggle.jsx)",
       "Bash(rmdir src/components/home)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(git reset *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(grep -E \"^\\(\\\\.env$|\\\\.env\\\\.local|\\\\.env\\\\..*\\)\" .gitignore)",
+      "Bash(node scripts/inspect.mjs)",
+      "Bash(node scripts/provision.mjs)",
+      "Bash(git -C \"C:/Users/jlund/Documents/Projects/supermom v2.0\" log --all --diff-filter=D --name-only)",
+      "Bash(git commit *)",
+      "Bash(npx vercel *)"
     ]
   }
 }

@@ -5,6 +5,7 @@ import SectionLabel from '../components/ui/SectionLabel';
 import CapeUpButton from '../components/ui/CapeUpButton';
 import { useJobs } from '../data/useData';
 import { useJobDetailSheet } from '../context/JobDetailSheetContext';
+import { useAuth } from '../context/AuthContext';
 
 const NOW = () => new Date();
 
@@ -29,7 +30,10 @@ export default function Home() {
   const { T, mode, privacyOn } = useAppTheme();
   const { jobs: allJobs, loading } = useJobs();
   const { openJob } = useJobDetailSheet();
+  const { profile } = useAuth();
   const today = NOW();
+
+  const firstName = profile?.first_name || 'Sandra';
 
   const todayJobs = useMemo(() => {
     return allJobs
@@ -75,7 +79,7 @@ export default function Home() {
             ✦ Command Brief · {dateBrief(today)}
           </div>
           <div style={{ fontFamily: T.serif, fontSize: 22, fontWeight: 500, letterSpacing: '-0.5px', color: 'white', lineHeight: 1.15, marginBottom: 4 }}>
-            Good morning,<br />Sandra.
+            Good morning,<br />{firstName}.
           </div>
           <div style={{ fontFamily: T.font, fontSize: 11.5, color: 'rgba(255,255,255,0.6)', lineHeight: 1.5, marginBottom: 12 }}>
             {todayJobs.length === 0
@@ -146,7 +150,7 @@ export default function Home() {
                   </div>
                 )}
 
-                <CapeUpButton job={{ address: '', driveTime: '—', service: next.service_name }} />
+                <CapeUpButton job={{ address: '', driveTime: '—', service: next.service_name }} name={firstName} />
 
                 <div style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 600, color: T.pinkLabel, marginTop: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
                   <span className="sm-pulse" style={{ display: 'inline-block', width: 5, height: 5, borderRadius: '50%', background: T.pinkLabel }} />

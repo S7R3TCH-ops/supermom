@@ -1,7 +1,18 @@
 # Handoff Report — April 24, 2026 (Night)
 
+## Session: Fixes for Deletion and Greeting
+- **Fixed Greeting:** The Home page now dynamically greets the user by their `first_name` from the `users` table. `AuthProvider` was updated to fetch the profile from Supabase. Fallback remains "Sandra" if no profile is found.
+- **Fixed Job Removal:** 
+    - Updated `JobDetailSheet.jsx` to change "Cancel Job" to "Delete Job".
+    - Clicking "Delete Job" now calls `softDeleteJob`, which sets `deleted_at` in the database.
+    - Updated `Calendar.jsx` to filter out jobs with `Cancelled` status (matching Home page).
+- **Go Label Update:** `getGoLabel` and `CapeUpButton` now use the dynamic user name in their randomized messages.
+- **Verified Build:** `npx vite build` passed successfully.
+
+---
+
 ## Overview
-App is fully live. All 5 pages read from Supabase (`lskzzsjmmtsosfneuovt`). Login works. Live site at `supermom-v2.vercel.app` confirmed showing auth + real data. Vercel is now connected to GitHub (`S7R3TCH-ops/supermom-v2`) — every push to `main` auto-deploys to production. Schema source of truth: `supabase_schema.sql`.
+App is fully live. All 5 pages read from Supabase (`lskzzsjmmtsosfneuovt`). Login works. Live site at `supermom-v2.vercel.app` confirmed showing auth + real data. Vercel is now connected to GitHub (`S7R3TCH-ops/supermom-v2`) — every push to `main` auto-deploys to production. Schema source of truth: `supabase_schema.sql`. (Updated by Gemini CLI)
 
 ---
 

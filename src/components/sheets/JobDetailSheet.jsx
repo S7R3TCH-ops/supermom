@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAppTheme } from '../../context/AppThemeContext';
-import { fetchJobById, updateJob } from '../../data/jobsRepo';
+import { fetchJobById, updateJob, softDeleteJob } from '../../data/jobsRepo';
 import { notifyDataChanged } from '../../data/useData';
 import { SERVICES, RECURRENCE } from '../../data/services';
 
@@ -82,12 +82,12 @@ export default function JobDetailSheet({ jobId, onClose }) {
     } catch (e) { setMutErr(e.message || String(e)); setBusy(false); }
   }
 
-  async function cancelJob() {
+  async function deleteJob() {
     setBusy(true); setMutErr(null);
     try {
-      await updateJob(job.id, { job_status: 'Cancelled' });
+      await softDeleteJob(job.id);
       setConfirm(false);
-      showToast('Job cancelled');
+      showToast('Job deleted');
     } catch (e) { setMutErr(e.message || String(e)); setBusy(false); }
   }
 
@@ -198,7 +198,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
             onMarkComplete={markComplete}
             onMarkPaid={markPaid}
             onCancelConfirm={() => setConfirm(true)}
-            onConfirmCancel={cancelJob}
+            onConfirmDelete={deleteJob}
             onDismissConfirm={() => setConfirm(false)}
             onEdit={openEditMode}
           />
@@ -221,7 +221,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
 function ReadMode({
   job, T, mode, isScheduled, isPaid, isCancelled,
   busy, toast, confirm, mutErr,
-  onClose, onMarkComplete, onMarkPaid, onCancelConfirm, onConfirmCancel, onDismissConfirm, onEdit,
+  onClose, onMarkComplete, onMarkPaid, onCancelConfirm, onConfirmDelete, onDismissConfirm, onEdit,
 }) {
   const statusC = STATUS_COLORS[job.job_status] || STATUS_COLORS.Scheduled;
   const payKey  = job.payment_status || '';
@@ -369,7 +369,7 @@ function ReadMode({
               fontFamily: T.font, fontSize: 12.5, fontWeight: 600,
               color: T.ink, marginBottom: 10, lineHeight: 1.4,
             }}>
-              Cancel this job? This cannot be undone.
+              Delete this job? This cannot be undone.
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <Btn
@@ -381,13 +381,13 @@ function ReadMode({
                 Keep it
               </Btn>
               <Btn
-                onClick={onConfirmCancel}
+                onClick={onConfirmDelete}
                 disabled={busy}
                 bg="#E91E6A" border="none" color="white"
                 T={T}
                 style={{ flex: 1 }}
               >
-                {busy ? 'Cancelling…' : 'Yes, cancel'}
+                {busy ? 'Deleting…' : 'Yes, delete'}
               </Btn>
             </div>
           </div>
@@ -438,7 +438,7 @@ function ReadMode({
                 padding: '6px 0', textAlign: 'center',
               }}
             >
-              Cancel Job
+              Delete Job
             </button>
           )}
         </div>

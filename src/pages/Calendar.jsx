@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useAppTheme } from '../context/AppThemeContext';
 import { useJobs } from '../data/useData';
 import CapeUpButton from '../components/ui/CapeUpButton';
+import { useJobDetailSheet } from '../context/JobDetailSheetContext';
 
 // Real "now" — was previously a hard-coded prototype anchor.
 const TODAY = new Date();
@@ -69,6 +70,7 @@ export default function Calendar() {
   const { T, mode, privacyOn } = useAppTheme();
   const [view, setView] = useState('Day');
   const [weekStart, setWeekStart] = useState(() => startOfWeek(TODAY));
+  const { openJob } = useJobDetailSheet();
 
   const { jobs: displayJobs, clients: clientLookup, loading, error } = useJobs();
   const allJobs = useMemo(() => enrichDisplayJobs(displayJobs, clientLookup), [displayJobs, clientLookup]);
@@ -148,16 +150,16 @@ export default function Calendar() {
         </div>
       )}
 
-      {view === 'Day'    && <DayView    T={T} mode={mode} privacyOn={privacyOn} todayJobs={todayJobs} nextUpcoming={nextUpcoming} />}
-      {view === 'Week'   && <WeekView   T={T} mode={mode} weekDays={weekDays} allJobs={allJobs} onPickDay={() => setView('Day')} />}
-      {view === 'Agenda' && <AgendaView T={T} mode={mode} privacyOn={privacyOn} allJobs={allJobs} nextUpcoming={nextUpcoming} />}
+      {view === 'Day'    && <DayView    T={T} mode={mode} privacyOn={privacyOn} todayJobs={todayJobs} nextUpcoming={nextUpcoming} onJobPress={openJob} />}
+      {view === 'Week'   && <WeekView   T={T} mode={mode} weekDays={weekDays} allJobs={allJobs} onPickDay={() => setView('Day')} onJobPress={openJob} />}
+      {view === 'Agenda' && <AgendaView T={T} mode={mode} privacyOn={privacyOn} allJobs={allJobs} nextUpcoming={nextUpcoming} onJobPress={openJob} />}
     </div>
   );
 }
 
 /* ------------------------------ DAY VIEW ------------------------------ */
 
-function DayView({ T, mode, privacyOn, todayJobs, nextUpcoming }) {
+function DayView({ T, mode, privacyOn, todayJobs, nextUpcoming, onJobPress }) {
   const slotH = 50, startH = 8, endH = 18;
   const hours = Array.from({ length: endH - startH + 1 }, (_, i) => startH + i);
 
@@ -190,7 +192,7 @@ function DayView({ T, mode, privacyOn, todayJobs, nextUpcoming }) {
             ? (mode === 'dark' ? 'rgba(34,197,94,0.1)'  : '#F0FFF5')
             : (mode === 'dark' ? 'rgba(233,30,106,0.12)' : '#FFF0F7');
           return (
-            <div key={j.id} style={{ position: 'absolute', top, left: 43, right: 0, height: h, background: bg, border: `1.5px solid ${j.color}35`, borderLeft: `3px solid ${j.color}`, borderRadius: 9, padding: '6px 9px', overflow: 'hidden' }}>
+            <div key={j.id} onClick={() => onJobPress(j.id)} style={{ position: 'absolute', top, left: 43, right: 0, height: h, background: bg, border: `1.5px solid ${j.color}35`, borderLeft: `3px solid ${j.color}`, borderRadius: 9, padding: '6px 9px', overflow: 'hidden', cursor: 'pointer' }}>
               <div style={{ fontFamily: T.serif, fontSize: 12, fontWeight: 500, color: j.color, letterSpacing: '-0.2px' }}>{j.service?.label}</div>
               <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkSub, marginTop: 1 }}>{j.client?.name}</div>
               {h > 55 && (
@@ -249,7 +251,7 @@ function DayView({ T, mode, privacyOn, todayJobs, nextUpcoming }) {
 
 /* ------------------------------ WEEK VIEW ------------------------------ */
 
-function WeekView({ T, mode, weekDays, allJobs, onPickDay }) {
+function WeekView({ T, mode, weekDays, allJobs, onPickDay, onJobPress }) {
   const slotH = 46, startH = 8, endH = 18;
   const hours = Array.from({ length: endH - startH + 1 }, (_, i) => startH + i);
 
@@ -301,7 +303,7 @@ function WeekView({ T, mode, weekDays, allJobs, onPickDay }) {
                                    : (mode === 'dark' ? 'rgba(233,30,106,0.2)' : '#FFE0EC');
                   const bd  = paid ? '#22C55E' : '#E91E6A';
                   return (
-                    <div key={j.id} style={{
+                    <div key={j.id} onClick={() => onJobPress(j.id)} style={{
                       position: 'absolute', top, left: 1, right: 1, height: h,
                       background: bg, borderLeft: `2px solid ${bd}`, borderRadius: 4,
                       padding: '2px 3px', overflow: 'hidden',
@@ -345,7 +347,7 @@ function LegendDot({ T, color, label }) {
 
 /* ------------------------------ AGENDA VIEW ------------------------------ */
 
-function AgendaView({ T, mode, privacyOn, allJobs, nextUpcoming }) {
+function AgendaView({ T, mode, privacyOn, allJobs, nextUpcoming, onJobPress }) {
   // Group jobs by date; only show upcoming + today.
   const grouped = useMemo(() => {
     const map = new Map();
@@ -390,6 +392,7 @@ function AgendaView({ T, mode, privacyOn, allJobs, nextUpcoming }) {
                   job={j}
                   isNext={isNext}
                   conflict={conflict}
+                  onPress={onJobPress}
                 />
               );
             })}
@@ -412,7 +415,7 @@ function AgendaView({ T, mode, privacyOn, allJobs, nextUpcoming }) {
   );
 }
 
-function AgendaCard({ T, mode, privacyOn, job, isNext, conflict }) {
+function AgendaCard({ T, mode, privacyOn, job, isNext, conflict, onPress }) {
   const paid = job.paid;
   const border = conflict ? '#F59E0B' : (isNext ? '#E91E6A' : (paid ? '#86EFAC' : T.cardBorder));
   const bg = paid
@@ -437,12 +440,13 @@ function AgendaCard({ T, mode, privacyOn, job, isNext, conflict }) {
   if (conflict) badges.push({ text: '⚠ <1HR GAP', bg: '#FECDD3', fg: '#881337' });
 
   return (
-    <div style={{
+    <div onClick={() => onPress(job.id)} style={{
       background: bg,
       border: `1.5px solid ${border}`,
       borderRadius: 14,
       padding: '10px 12px',
       marginBottom: 6,
+      cursor: 'pointer',
     }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
         <div style={{

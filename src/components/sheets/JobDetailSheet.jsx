@@ -100,7 +100,11 @@ export default function JobDetailSheet({ jobId, onClose }) {
         service_name:    form.service_name,
         pricing_type:    form.pricing_type,
         total_amount:    form.total_amount === '' ? null : Number(form.total_amount),
-        estimated_hours: form.estimated_hours === '' ? null : Number(form.estimated_hours) || null,
+        // Mirror total_amount into flat_rate/subtotal for Flat jobs to keep pricing columns in sync
+        ...(form.pricing_type === 'Flat'
+          ? { flat_rate: form.total_amount === '' ? null : Number(form.total_amount), subtotal: form.total_amount === '' ? null : Number(form.total_amount) }
+          : { flat_rate: null, subtotal: null }),
+        estimated_hours: form.estimated_hours === '' ? null : Number(form.estimated_hours),
         job_notes:       form.job_notes || null,
         ai_context: {
           ...(job.ai_context || {}),
@@ -390,8 +394,8 @@ function ReadMode({
         )}
       </div>
 
-      {/* Action buttons */}
-      {!confirm && (
+      {/* Action buttons — suppressed entirely for cancelled jobs (no actions available) */}
+      {!confirm && !isCancelled && (
         <div style={{ padding: '10px 14px 28px', borderTop: `1px solid ${T.cardBorder}`, display: 'flex', flexDirection: 'column', gap: 8 }}>
           {isScheduled && (
             <Btn
@@ -451,8 +455,10 @@ function EditMode({ form, setForm, T, busy, mutErr, onSave, onCancelEdit }) {
     const svc = SERVICES.find(s => s.key === e.target.value);
     if (!svc) return;
     set('service_name', svc.label);  // DB stores label, matching NewJobSheet convention
-    if (form.pricing_type === 'Flat') set('total_amount', String(svc.rate));
-    set('estimated_hours', (svc.defaultDuration / 60).toFixed(1));
+    // Don't overwrite amount for Custom (rate=0) or when user has manually set a value
+    if (form.pricing_type === 'Flat' && svc.rate > 0) set('total_amount', String(svc.rate));
+    // Only auto-fill hours if user hasn't touched the field
+    if (!form.hoursTouched) set('estimated_hours', (svc.defaultDuration / 60).toFixed(1));
   }
 
   const currentSvcKey = SERVICES.find(s => s.label === form.service_name)?.key || '';
@@ -548,7 +554,7 @@ function EditMode({ form, setForm, T, busy, mutErr, onSave, onCancelEdit }) {
             min="0.5"
             step="0.5"
             value={form.estimated_hours}
-            onChange={e => set('estimated_hours', e.target.value)}
+            onChange={e => { set('estimated_hours', e.target.value); set('hoursTouched', true); }}
             style={{ ...iStyle(T), fontVariantNumeric: 'tabular-nums', width: '100%' }}
           />
         </Field>

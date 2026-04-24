@@ -42,12 +42,26 @@ At the end of every productive session, or upon major milestone completion, Gemi
 | Clients list + profile | ✅ Live |
 | Finance — mark-paid | ✅ Live |
 | New Job sheet | ✅ Live |
+| **Job Detail sheet** | ✅ **Live** — tap any job card (Home or Calendar) to view/edit/act |
 | Drive time / mileage | ❌ Hardcoded "—" — needs Google Maps |
 | payments table audit row | ❌ mark-paid doesn't insert into `payments` yet |
+| Client search (Clients page) | ❌ Visual placeholder only |
+| Finance nudge buttons | ❌ Buttons exist, no handlers yet |
 | Google Calendar sync | ❌ Not started |
 | Geofence / auto-timer | ❌ Not started |
 
+## Job Detail Sheet — architecture notes
+- Context: `src/context/JobDetailSheetContext.js` → `useJobDetailSheet()` → `{ openJob, closeJob, jobId }`
+- Provider: `src/context/JobDetailSheet.jsx` — wraps AuthedShell in App.jsx
+- UI: `src/components/sheets/JobDetailSheet.jsx` (~760 lines) — read mode + edit mode
+- Shared catalog: `src/data/services.js` — SERVICES and RECURRENCE (used by NewJobSheet, NewClientSheet, JobDetailSheet)
+- Named action handlers: `markComplete`, `markPaid`, `cancelJob`, `saveEdit` — AI voice ready
+- `service_name` stored as label (e.g. "Deep Clean") matching NewJobSheet convention
+- Mutation errors shown inline; fetch errors replace the sheet body
+
 ## Next priorities
-1. `payments` audit row on mark-paid (`src/pages/Finance.jsx`)
-2. Google Maps integration (drive time + mileage)
-3. Code-split the bundle (520 kB — lazy-load Supabase client)
+1. Client search — wire the search bar on Clients page
+2. `payments` audit row on mark-paid (`src/pages/Finance.jsx` + `src/components/sheets/JobDetailSheet.jsx`)
+3. Finance nudge buttons — draft nudge text for unpaid jobs
+4. Google Maps integration (drive time + mileage)
+5. Code-split the bundle (520 kB — lazy-load Supabase client)

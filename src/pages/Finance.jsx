@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useAppTheme } from '../context/AppThemeContext';
 import SectionLabel from '../components/ui/SectionLabel';
-import { useJobs } from '../data/useData';
+import { useJobs, notifyDataChanged } from '../data/useData';
+import { updateJob } from '../data/jobsRepo';
 
 const periods = ['Week', 'Month', 'Year', 'All'];
 const DOW = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
@@ -27,7 +28,22 @@ function fmtShort(d) { return d.toLocaleDateString('en-US', { month: 'short', da
 export default function Finance() {
   const { T, mode, privacyOn } = useAppTheme();
   const [period, setPeriod] = useState('Week');
+  const [busyId, setBusyId] = useState(null);
   const { jobs: allJobs, loading } = useJobs();
+
+  async function markPaid(id) {
+    if (busyId) return;
+    if (!window.confirm('Mark this job as paid?')) return;
+    setBusyId(id);
+    try {
+      await updateJob(id, { payment_status: 'Paid', job_status: 'Completed' });
+      notifyDataChanged();
+    } catch (e) {
+      alert('Could not update payment: ' + (e?.message || e));
+    } finally {
+      setBusyId(null);
+    }
+  }
   const now = new Date();
 
   const filtered = useMemo(() => {
@@ -82,7 +98,8 @@ export default function Finance() {
         const icon = paid ? '💚' : completed ? '🔴' : '🗓';
         return {
           id: j.id,
-          icon, color,
+          icon, color, paid,
+          status: j.status,
           label: `${j.client_name} · ${j.service_name}`,
           date: fmtShort(j._date),
           amt: `+$${Number(j.total || 0).toFixed(0)}`,
@@ -178,20 +195,34 @@ export default function Finance() {
           </div>
         )}
 
-        {transactions.map(tx => (
-          <div key={tx.id} style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 11, padding: '9px 12px', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 9 }}>
-            <div style={{ width: 34, height: 34, borderRadius: 9, background: `${tx.color}18`, border: `1px solid ${tx.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 14 }}>
-              {tx.icon}
+        {transactions.map(tx => {
+          const tappable = !tx.paid && tx.status !== 'Cancelled';
+          return (
+            <div
+              key={tx.id}
+              onClick={tappable ? () => markPaid(tx.id) : undefined}
+              style={{
+                background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 11,
+                padding: '9px 12px', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 9,
+                cursor: tappable ? 'pointer' : 'default',
+                opacity: busyId === tx.id ? 0.55 : 1,
+              }}
+            >
+              <div style={{ width: 34, height: 34, borderRadius: 9, background: `${tx.color}18`, border: `1px solid ${tx.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 14 }}>
+                {tx.icon}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: T.serif, fontSize: 12.5, fontWeight: 500, color: T.ink, letterSpacing: '-0.2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tx.label}</div>
+                <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, marginTop: 1 }}>
+                  {tx.date}{tappable ? ' · tap to mark paid' : ''}
+                </div>
+              </div>
+              <div style={{ fontFamily: T.serif, fontSize: 14, fontWeight: 500, color: tx.color, letterSpacing: '-0.3px', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+                {privacyOn ? '•••' : tx.amt}
+              </div>
             </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontFamily: T.serif, fontSize: 12.5, fontWeight: 500, color: T.ink, letterSpacing: '-0.2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tx.label}</div>
-              <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, marginTop: 1 }}>{tx.date}</div>
-            </div>
-            <div style={{ fontFamily: T.serif, fontSize: 14, fontWeight: 500, color: tx.color, letterSpacing: '-0.3px', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
-              {privacyOn ? '•••' : tx.amt}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

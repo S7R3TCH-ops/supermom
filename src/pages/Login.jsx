@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAppTheme } from '../context/AppThemeContext';
 import { useAuth } from '../context/AuthContext';
+import { supabase } from '../lib/supabase';
 
 export default function Login() {
   const { T } = useAppTheme();
@@ -9,14 +10,28 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const [info, setInfo] = useState('');
 
   async function onSubmit(e) {
     e.preventDefault();
-    setErr('');
+    setErr(''); setInfo('');
     setBusy(true);
     const { error } = await signIn(email.trim(), password);
     setBusy(false);
     if (error) setErr(error.message);
+  }
+
+  async function onForgot() {
+    setErr(''); setInfo('');
+    const addr = email.trim();
+    if (!addr) { setErr('Enter your email above first, then tap Forgot password.'); return; }
+    setBusy(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(addr, {
+      redirectTo: `${window.location.origin}/`,
+    });
+    setBusy(false);
+    if (error) setErr(error.message);
+    else setInfo(`Password reset link sent to ${addr}.`);
   }
 
   const inputStyle = {
@@ -82,6 +97,13 @@ export default function Login() {
               font: `13px/1.3 ${T.font}`, color: T.ink,
             }}>{err}</div>
           )}
+          {info && (
+            <div style={{
+              padding: 10, borderRadius: 8,
+              background: T.card, border: `1px solid ${T.cardBorder}`,
+              font: `13px/1.3 ${T.font}`, color: T.ink,
+            }}>{info}</div>
+          )}
 
           <button
             type="submit" disabled={busy || !configured}
@@ -94,6 +116,19 @@ export default function Login() {
             }}
           >
             {busy ? 'Signing in…' : 'Sign in'}
+          </button>
+
+          <button
+            type="button" onClick={onForgot} disabled={busy || !configured}
+            style={{
+              marginTop: 4, padding: '8px 4px', background: 'transparent',
+              border: 'none', color: T.inkSub,
+              font: `13px/1.2 ${T.font}`,
+              cursor: busy || !configured ? 'not-allowed' : 'pointer',
+              textAlign: 'center',
+            }}
+          >
+            Forgot password?
           </button>
         </form>
       </div>

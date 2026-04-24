@@ -1,112 +1,93 @@
-# Handoff Report — April 24, 2026
+# Handoff Report — April 24, 2026 (PM)
 
 ## Overview
-Wired the app to the **existing** Supabase project (`lskzzsjmmtsosfneuovt`) and migrated the auth + write/read paths so the user can add real data through the UI. Three pages still read from mock data (Home, ClientProfile, Finance) — they're the next migration chunk.
-
-> Important pivot from previous session: CLAUDE.md previously described a simplified v2 schema. **The real source of truth is `supabase_schema.sql`** (the elaborate multi-tenant schema already deployed). CLAUDE.md was rewritten to point at that file. The half-built `supabase/schema.sql` + `supabase/seed.sql` from yesterday should be ignored / can be deleted.
+App is wired to the existing Supabase project (`lskzzsjmmtsosfneuovt`). All 5 pages read live data. Mark-paid affordance and forgot-password flow shipped this pass. Mock data files deleted. Schema source of truth: `supabase_schema.sql`.
 
 ---
 
 ## What works end-to-end (Supabase-backed)
 
-**All 5 pages now read from Supabase** — the prototype mock files (`src/data/clients.js`, `src/data/jobs.js`) are no longer imported anywhere except the SERVICES catalog inside `NewJobSheet.jsx`.
-
 | Path | Status |
 |---|---|
-| Login (`/`) | ✅ email/password via `supabase.auth` |
-| Sign out | ✅ click avatar (top-right pink bar) |
-| Home (`/`) | ✅ today's schedule, Opening Act = next upcoming job, tight-gap detection, revenue today, overdue-jobs strip — all from real data |
-| Clients (`/clients`) | ✅ list from Supabase, "+" header button opens NewClientSheet, filters work on display shape |
-| Client Profile (`/clients/:id`) | ✅ uses `useClient(id)`, upcoming/history derived from real jobs |
-| Calendar (`/calendar`) Day/Week/Agenda | ✅ live data, conflict detection, GO button on next today's job |
-| Finance (`/finance`) | ✅ Week/Month/Year/All toggle filters, Collected/Outstanding/Hours computed live, last-7-day bar chart, Recent Activity = real jobs sorted desc |
-| New Job FAB → NewJobSheet | ✅ lists clients from Supabase, inline "+ New client", books to `jobs` table |
+| Login (`/`) | ✅ email/password + **Forgot password** (sends reset link via Supabase) |
+| Sign out | ✅ tap avatar (top-right pink bar) |
+| Home (`/`) | ✅ today's schedule, Opening Act, conflict detection, revenue today, overdue strip |
+| Clients (`/clients`) | ✅ list + "+" → NewClientSheet |
+| Client Profile (`/clients/:id`) | ✅ upcoming/history derived from real jobs |
+| Calendar (`/calendar`) | ✅ Day/Week/Agenda, conflict detection, GO button |
+| Finance (`/finance`) | ✅ Week/Month/Year/All toggle, Collected/Outstanding/Hours, last-7-day bars, Recent Activity |
+| **Mark paid** | ✅ tap any unpaid row in Finance Recent Activity → confirm → `payment_status='Paid'`, `job_status='Completed'` |
+| New Job FAB → NewJobSheet | ✅ books to `jobs` table |
+| New Client (inline from NewJobSheet) | ✅ |
 
-Auto-refresh: any write dispatches `supermom:data-changed` on `window`; pages using `useClients/useJobs/useClient` subscribe and refetch.
+Auto-refresh: writes dispatch `supermom:data-changed`; pages refetch.
 
 ## Known gaps / not yet wired
-- **No "mark paid" affordance** — jobs are created with `payment_status: ''` (unpaid) and there's no UI to change it. Finance's "Collected" stays at $0 until this ships. Should be a tap on the job in Calendar Day or in Recent Activity.
-- **GO button asset** — `/branding/supermom-go.png` is missing from `public/branding/`. Component falls back to an inline pink cape SVG so it still looks intentional. Drop the real PNG at `public/branding/supermom-go.png` to use it.
+- **GO button PNG** — `/branding/supermom-go.png` still missing. SVG fallback in place. Drop the real PNG at `public/branding/supermom-go.png` to use it.
 - **Drive time / mileage** — hardcoded "—" placeholders. Needs Google Maps integration.
-- **AI cards** (nudges, agent activity) — still static UI, no LLM call yet.
+- **AI cards** (nudges, agent activity) — static UI, no LLM call.
+- **`payments` table audit row** — mark-paid flips `jobs.payment_status` only; doesn't yet insert into `payments`. Add when invoice flow lands.
+- **Real-time subscriptions** — refresh is event-driven from local writes only.
 
 ---
 
-## Files added / changed this session
-
-### Added
-- `.env` (gitignored) — Vite-prefixed Supabase URL + anon key + service role key
-- `src/lib/supabase.js` — singleton client
-- `src/context/Auth.jsx` + `AuthContext.js` — auth provider, exposes session/user/signIn/signOut
-- `src/pages/Login.jsx` — themed sign-in screen
-- `src/data/currentBusiness.js` — resolves `auth.users.id → users.business_id`, cached
-- `src/data/clientsRepo.js` — `fetchClients`, `fetchClientById`, `createClient`, `updateClient`, `softDeleteClient`
-- `src/data/jobsRepo.js` — `fetchActiveJobs`, `fetchJobsByClientId`, `fetchJobById`, `createJob`, `updateJob`, `softDeleteJob`, `findConflicts`, `decorateJob` (composes `scheduled_at` from date+time)
-- `src/data/selectors.js` — `toDisplayClient` / `toDisplayJob` derive UI fields (init, color, last/next/amt, tags) from raw DB rows
-- `src/data/useData.js` — `useClients` / `useClient` / `useJobs` hooks + `notifyDataChanged()` event helper
-- `src/components/sheets/NewClientSheet.jsx` — bottom-sheet form for creating a client
-- `scripts/inspect.mjs` — read-only DB inspection
-- `scripts/provision.mjs` — minimal one-time setup (admin user + business + users link + services)
-- `scripts/seed.mjs` — full mock-data seed (NOT auto-run — admin already provisioned without it)
-- `supabase/schema.sql`, `supabase/seed.sql` — leftover from the wrong-direction v2 schema attempt; **ignore / delete**
-
-### Changed
-- `src/App.jsx` — wraps in `AuthProvider`, gates routes via `<Gate />`, shows LoginShell when no session
-- `src/components/layout/LogoBar.jsx` — avatar is now a sign-out button (confirms first), shows current user's first initial
-- `src/components/sheets/NewJobSheet.jsx` — fetches clients via repo, persists via `createJob`, opens NewClientSheet from step 1
-- `src/pages/Clients.jsx` — uses `useClients`, "+" button opens NewClientSheet, empty state, loading state, computes Total/Outstanding/VIP from real data
-- `src/pages/Calendar.jsx` — uses `useJobs`, `TODAY` is real `new Date()` (was hardcoded to 2026-04-22)
-- `CLAUDE.md` — rewrote schema section to point at `supabase_schema.sql`, added field-name gotchas, documented data-layer rules
-- `package.json` — added `@supabase/supabase-js`, `dotenv` (devDep)
+## Done this session (PM)
+- **Mark-paid affordance** in Finance Recent Activity (`src/pages/Finance.jsx`). Tap unpaid row → confirm → `updateJob(id, { payment_status: 'Paid', job_status: 'Completed' })`.
+- **Forgot password** on Login screen. Uses `supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin })`.
+- **Deleted mock data files** — `src/data/clients.js` and `src/data/jobs.js` are gone. NewJobSheet had its own inline SERVICES const, so nothing broke.
+- **Deleted deprecated** `supabase/schema.sql` + `supabase/seed.sql` (wrong-direction v2 schema attempt).
+- Build still green (520 kB raw / 144 kB gzipped).
 
 ---
 
-## Provisioning (already done — don't re-run unless DB is wiped)
+## Provisioning (already done)
+`node scripts/provision.mjs` already created admin user + business + 7 services. Idempotent — safe to re-run.
 
-`node scripts/provision.mjs` created:
-- auth user `jlundie@gmail.com` / `TempPass2026!` (change in Supabase Authentication tab)
-- business: "Supermom for Hire" (Georgetown ON)
-- users link: Joel as owner of that business
-- 7 services (Deep Clean / Regular / Quick Tidy / Organize / Declutter+Org. / Move Out / Custom)
+- `jlundie@gmail.com` / `TempPass2026!` (change in Supabase Authentication tab)
+- Business: "Supermom for Hire" (Georgetown ON)
+- 7 services seeded
 
-The script is idempotent — safe to re-run.
-
-**Sandra's account is intentionally NOT created yet** (per project preference: don't provision end-users until owner signs off).
+**Sandra's account intentionally NOT created** until Joel signs off.
 
 ---
 
 ## Next steps (priority order)
 
-### A. Wire "mark paid" affordance (highest impact)
-Right now jobs are created with `payment_status: ''` (unpaid). Need a UI affordance to mark a job paid (`'Paid'`) — maybe a tap on the job card in Calendar Day view, or a swipe action. Inserts into `payments` table for the audit trail.
+### A. Vercel env vars (manual — needs your dashboard access)
+Add to Vercel project settings → Environment Variables:
+- `VITE_SUPABASE_URL` = `https://lskzzsjmmtsosfneuovt.supabase.co`
+- `VITE_SUPABASE_ANON_KEY` = `sb_publishable_HIMt19mOuS7eHBeb7WhNkQ_UFhgLh70`
 
-### B. Delete the mock data files
-`src/data/clients.js` is no longer imported anywhere. `src/data/jobs.js` only exports the SERVICES catalog used by `NewJobSheet.jsx` — move SERVICES into a small `src/data/serviceCatalog.js` and delete the rest.
+**Do NOT add `SUPABASE_SERVICE_ROLE_KEY`** — that's local-only for `scripts/`.
 
-### C. Sign-up + password reset
-Login screen only signs in. Add "Forgot password" link using `supabase.auth.resetPasswordForEmail`. Sign-up isn't needed — Joel/Sandra are admin-provisioned.
+Also: in Supabase dashboard → Authentication → URL Configuration, add the Vercel deploy URL as a redirect URL so the password reset link works in prod.
 
-### D. Vercel env vars
-For prod deploys: add `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` to Vercel project settings. **Do NOT add `SUPABASE_SERVICE_ROLE_KEY`** — that's local-only for the scripts in `scripts/`.
+### B. Drop the real GO button PNG
+Save `public/branding/supermom-go.png` (current art). SVG fallback removes itself automatically once the PNG loads.
+
+### C. `payments` audit row on mark-paid
+When the invoice/payments flow lands, change `markPaid()` in Finance.jsx to also insert a row into `payments` (method='Cash'/'e-Transfer', amount, paid_at).
+
+### D. Sign-up
+Not needed — Joel/Sandra are admin-provisioned via `scripts/provision.mjs`. Skip unless we onboard a third operator.
 
 ### E. Code-split the bundle
-`@supabase/supabase-js` pushed bundle from 320 → 522 kB. Could lazy-load auth/repos. Not urgent.
+`@supabase/supabase-js` pushed bundle from 320 → 520 kB. Lazy-load auth/repos. Not urgent.
 
 ---
 
 ## Known issues / gotchas
-- **Toronto DST math** is hardcoded month-ranges in `jobsRepo.decorateJob` and `NewJobSheet.torontoISO`. Wrong on the boundary days (2nd Sun March, 1st Sun Nov). Move to `Intl.DateTimeFormat` later.
-- **Conflict detection** runs in JS over already-fetched jobs (not a DB query). Fine at small scale.
-- **Recurrence** is stored in `jobs.ai_context.recurrence_rule` for now. When `job_templates` UI ships, migrate.
-- **No real-time** subscriptions yet. Refresh is event-driven from local writes only — if Sandra opens the app on phone + laptop, they won't sync.
+- **Toronto DST math** is hardcoded month-ranges in `jobsRepo.decorateJob` and `NewJobSheet.torontoISO`. Wrong on the boundary days (2nd Sun March, 1st Sun Nov).
+- **Conflict detection** runs in JS over already-fetched jobs (not a DB query).
+- **Recurrence** stored in `jobs.ai_context.recurrence_rule`. Migrate to `job_templates` when that UI ships.
 
 ## Verification
-- `npm run build` → green, 522.16 kB raw / 145.18 kB gzipped
-- DB row counts after provision: businesses=1, users=1, services=7, clients=0, jobs=0
-- Dev server starts cleanly on `:5173`
+- `npm run build` → green, 519.96 kB raw / 144.37 kB gzipped
+- DB row counts after provision: businesses=1, users=1, services=7, clients/jobs depend on what you've added through the UI
 
 ## Key files for next session
-- `src/data/useData.js`, `selectors.js`, `clientsRepo.js`, `jobsRepo.js`, `currentBusiness.js` — the data layer
-- `src/pages/Home.jsx`, `ClientProfile.jsx`, `Finance.jsx` — next to migrate
+- `src/data/useData.js`, `selectors.js`, `clientsRepo.js`, `jobsRepo.js`, `currentBusiness.js` — data layer
+- `src/pages/Finance.jsx` — mark-paid handler lives here
+- `src/pages/Login.jsx` — forgot-password handler
 - `supabase_schema.sql` — schema source of truth
 - `scripts/provision.mjs`, `scripts/inspect.mjs`, `scripts/seed.mjs` — DB tools

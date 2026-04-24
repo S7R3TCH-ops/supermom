@@ -39,7 +39,7 @@ export async function fetchJobById(id) {
   const businessId = await getCurrentBusinessId();
   const { data, error } = await supabase
     .from('jobs')
-    .select('*, clients(first_name, last_name)')
+    .select(`${SELECT_FULL}, clients(first_name, last_name)`)
     .eq('id', id)
     .eq('business_id', businessId)
     .maybeSingle();
@@ -49,7 +49,8 @@ export async function fetchJobById(id) {
   const clientName = c
     ? [c.first_name, c.last_name].filter(Boolean).join(' ')
     : 'Unknown';
-  return { ...decorateJob(data), client_name: clientName };
+  const { clients: _dropped, ...jobRow } = data;
+  return { ...decorateJob(jobRow), client_name: clientName };
 }
 
 export async function createJob(payload) {

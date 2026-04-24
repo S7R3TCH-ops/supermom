@@ -7,7 +7,8 @@ export default function CapeUpButton({ job, onGo }) {
   const [flying, setFlying] = useState(false);
   const [label] = useState(() => getGoLabel(job.service));
 
-  const tap = () => {
+  const tap = (e) => {
+    e.stopPropagation();
     if (flying) return;
     setFlying(true);
     setTimeout(() => { setFlying(false); onGo?.(); }, 900);

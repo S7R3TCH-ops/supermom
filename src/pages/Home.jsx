@@ -4,6 +4,7 @@ import AmtCell from '../components/ui/AmtCell';
 import SectionLabel from '../components/ui/SectionLabel';
 import CapeUpButton from '../components/ui/CapeUpButton';
 import { useJobs } from '../data/useData';
+import { useJobDetailSheet } from '../context/JobDetailSheetContext';
 
 const NOW = () => new Date();
 
@@ -27,6 +28,7 @@ function dateBrief(d) {
 export default function Home() {
   const { T, mode, privacyOn } = useAppTheme();
   const { jobs: allJobs, loading } = useJobs();
+  const { openJob } = useJobDetailSheet();
   const today = NOW();
 
   const todayJobs = useMemo(() => {
@@ -124,7 +126,7 @@ export default function Home() {
             <>
               <SectionLabel>Opening Act · {next.client_name}</SectionLabel>
 
-              <div style={{ background: T.hero, border: '1.5px solid rgba(233,30,106,0.32)', borderRadius: 14, padding: '11px 12px 12px', position: 'relative', overflow: 'hidden', marginBottom: 10 }}>
+              <div onClick={() => openJob(next.id)} style={{ background: T.hero, border: '1.5px solid rgba(233,30,106,0.32)', borderRadius: 14, padding: '11px 12px 12px', position: 'relative', overflow: 'hidden', marginBottom: 10, cursor: 'pointer' }}>
                 <div style={{ position: 'absolute', top: -20, right: -15, width: 80, height: 80, borderRadius: '50%', background: `radial-gradient(circle,${T.pinkGlow} 0%,transparent 70%)`, pointerEvents: 'none' }} />
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
                   <div>
@@ -169,7 +171,7 @@ export default function Home() {
                 const amt = `$${Number(j.total || 0).toFixed(0)}`;
 
                 return (
-                  <div key={j.id} style={{ background: bg, border: `1px solid ${border}`, borderRadius: 12, padding: '9px 11px', marginBottom: 7 }}>
+                  <div key={j.id} onClick={() => openJob(j.id)} style={{ background: bg, border: `1px solid ${border}`, borderRadius: 12, padding: '9px 11px', marginBottom: 7, cursor: 'pointer' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: j.notes ? 7 : 0 }}>
                       <div style={{ width: 44, height: 46, borderRadius: 10, flexShrink: 0, background: conflict ? (mode === 'dark' ? 'rgba(245,158,11,0.12)' : '#FEF3C7') : T.pinkTint, border: `1px solid ${conflict ? 'rgba(245,158,11,0.22)' : T.cardBorder}`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                         <div style={{ fontFamily: T.serif, fontSize: 13.5, fontWeight: 500, color: conflict ? '#F59E0B' : T.pink, lineHeight: 1 }}>{t.time}</div>

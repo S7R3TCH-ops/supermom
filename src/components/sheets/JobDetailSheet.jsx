@@ -39,7 +39,8 @@ export default function JobDetailSheet({ jobId, onClose }) {
   const { T, mode } = useAppTheme();
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState(null);       // fetch errors — blocks sheet body
+  const [mutErr, setMutErr] = useState(null);     // mutation errors — shown inline
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState(null);
   const [confirm, setConfirm] = useState(false);
@@ -66,48 +67,40 @@ export default function JobDetailSheet({ jobId, onClose }) {
   }
 
   async function markComplete() {
-    setBusy(true);
+    setBusy(true); setMutErr(null);
     try {
       await updateJob(job.id, { job_status: 'Completed' });
       showToast('Job marked complete');
-    } catch (e) {
-      setError(e.message || String(e));
-      setBusy(false);
-    }
+    } catch (e) { setMutErr(e.message || String(e)); setBusy(false); }
   }
 
   async function markPaid() {
-    setBusy(true);
+    setBusy(true); setMutErr(null);
     try {
       await updateJob(job.id, { payment_status: 'Paid', job_status: 'Completed' });
       showToast('Payment recorded');
-    } catch (e) {
-      setError(e.message || String(e));
-      setBusy(false);
-    }
+    } catch (e) { setMutErr(e.message || String(e)); setBusy(false); }
   }
 
   async function cancelJob() {
-    setBusy(true);
+    setBusy(true); setMutErr(null);
     try {
       await updateJob(job.id, { job_status: 'Cancelled' });
       setConfirm(false);
       showToast('Job cancelled');
-    } catch (e) {
-      setError(e.message || String(e));
-      setBusy(false);
-    }
+    } catch (e) { setMutErr(e.message || String(e)); setBusy(false); }
   }
 
   async function saveEdit() {
-    setBusy(true);
+    setBusy(true); setMutErr(null);
     try {
       await updateJob(job.id, {
         scheduled_date:  form.scheduled_date,
         scheduled_time:  form.scheduled_time,
+        service_name:    form.service_name,
         pricing_type:    form.pricing_type,
-        total_amount:    Number(form.total_amount) || 0,
-        estimated_hours: Number(form.estimated_hours) || null,
+        total_amount:    form.total_amount === '' ? null : Number(form.total_amount),
+        estimated_hours: form.estimated_hours === '' ? null : Number(form.estimated_hours) || null,
         job_notes:       form.job_notes || null,
         ai_context: {
           ...(job.ai_context || {}),
@@ -116,10 +109,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
         },
       });
       showToast('Job updated');
-    } catch (e) {
-      setError(e.message || String(e));
-      setBusy(false);
-    }
+    } catch (e) { setMutErr(e.message || String(e)); setBusy(false); }
   }
 
   function openEditMode() {
@@ -199,7 +189,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
           <ReadMode
             job={job} T={T} mode={mode}
             isScheduled={isScheduled} isPaid={isPaid} isCancelled={isCancelled}
-            busy={busy} toast={toast} confirm={confirm}
+            busy={busy} toast={toast} confirm={confirm} mutErr={mutErr}
             onClose={onClose}
             onMarkComplete={markComplete}
             onMarkPaid={markPaid}
@@ -213,9 +203,9 @@ export default function JobDetailSheet({ jobId, onClose }) {
         {!loading && !error && job && editMode && (
           <EditMode
             form={form} setForm={setForm}
-            T={T} busy={busy} error={error}
+            T={T} busy={busy} mutErr={mutErr}
             onSave={saveEdit}
-            onCancelEdit={() => setEditMode(false)}
+            onCancelEdit={() => { setEditMode(false); setMutErr(null); }}
           />
         )}
       </div>
@@ -226,7 +216,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
 /* ============= READ MODE ============= */
 function ReadMode({
   job, T, mode, isScheduled, isPaid, isCancelled,
-  busy, toast, confirm,
+  busy, toast, confirm, mutErr,
   onClose, onMarkComplete, onMarkPaid, onCancelConfirm, onConfirmCancel, onDismissConfirm, onEdit,
 }) {
   const statusC = STATUS_COLORS[job.job_status] || STATUS_COLORS.Scheduled;
@@ -339,6 +329,17 @@ function ReadMode({
           </InfoCard>
         )}
 
+        {/* Mutation error */}
+        {mutErr && (
+          <div style={{
+            padding: '9px 11px', borderRadius: 8, marginBottom: 10,
+            background: T.redBg, border: `1px solid ${T.redBorder}`,
+            fontFamily: T.font, fontSize: 12, color: T.ink,
+          }}>
+            {mutErr}
+          </div>
+        )}
+
         {/* Toast */}
         {toast && (
           <div style={{
@@ -443,23 +444,18 @@ function ReadMode({
 }
 
 /* ============= EDIT MODE ============= */
-function EditMode({ form, setForm, T, busy, error, onSave, onCancelEdit }) {
+function EditMode({ form, setForm, T, busy, mutErr, onSave, onCancelEdit }) {
   function set(k, v) { setForm(f => ({ ...f, [k]: v })); }
 
   function onPickService(e) {
-    const key = e.target.value;
-    set('service_name', key);
-    const svc = SERVICES.find(s => s.key === key);
-    if (svc) {
-      if (form.pricing_type === 'Flat') {
-        set('total_amount', String(svc.rate));
-      }
-      set('estimated_hours', (svc.defaultDuration / 60).toFixed(1));
-    }
+    const svc = SERVICES.find(s => s.key === e.target.value);
+    if (!svc) return;
+    set('service_name', svc.label);  // DB stores label, matching NewJobSheet convention
+    if (form.pricing_type === 'Flat') set('total_amount', String(svc.rate));
+    set('estimated_hours', (svc.defaultDuration / 60).toFixed(1));
   }
 
-  // Find service key by label (service_name stores label in some jobs) or key
-  const currentSvcKey = SERVICES.find(s => s.key === form.service_name || s.label === form.service_name)?.key || '';
+  const currentSvcKey = SERVICES.find(s => s.label === form.service_name)?.key || '';
 
   return (
     <>
@@ -609,13 +605,13 @@ function EditMode({ form, setForm, T, busy, error, onSave, onCancelEdit }) {
           />
         </Field>
 
-        {error && (
+        {mutErr && (
           <div style={{
             padding: '9px 11px', borderRadius: 8, marginBottom: 10,
             background: T.redBg, border: `1px solid ${T.redBorder}`,
             fontFamily: T.font, fontSize: 12, color: T.ink,
           }}>
-            {error}
+            {mutErr}
           </div>
         )}
       </div>

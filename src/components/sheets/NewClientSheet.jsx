@@ -1,13 +1,7 @@
 import { useState } from 'react';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { createClient } from '../../data/clientsRepo';
-
-const RECURRENCE = [
-  { key: null,       label: 'None' },
-  { key: 'weekly',   label: 'Weekly' },
-  { key: 'biweekly', label: 'Biweekly' },
-  { key: 'monthly',  label: 'Monthly' },
-];
+import { RECURRENCE } from '../../data/services';
 
 export default function NewClientSheet({ onClose, onCreated }) {
   const { T, mode } = useAppTheme();

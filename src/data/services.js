@@ -1,3 +1,6 @@
+// Service catalog — kept in JS until we have a /services management UI.
+// Maps to the existing `services` table by `name`. Rates here may diverge from
+// services.default_price in Supabase if changed in the DB outside this file.
 export const SERVICES = [
   { key: 'deep_clean', label: 'Deep Clean',       rate: 185, defaultDuration: 150, emoji: '🧼' },
   { key: 'regular',    label: 'Regular',          rate: 120, defaultDuration: 105, emoji: '✨' },
@@ -8,6 +11,8 @@ export const SERVICES = [
   { key: 'custom',     label: 'Custom',           rate: 0,   defaultDuration: 120, emoji: '✎' },
 ];
 
+// Recurrence keys map to ai_context.recurrence_rule on jobs.
+// Future: migrate to job_templates table when the recurrence UI is built.
 export const RECURRENCE = [
   { key: null,       label: 'None' },
   { key: 'weekly',   label: 'Weekly' },

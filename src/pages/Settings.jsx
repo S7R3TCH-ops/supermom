@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import LogoBar from '../components/layout/LogoBar';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 
@@ -8,7 +7,6 @@ export default function Settings() {
   const { user, signOut } = useAuth();
   const [searchParams] = useSearchParams();
   const [integration, setIntegration] = useState(null);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function checkIntegration() {
@@ -19,7 +17,6 @@ export default function Settings() {
         .eq('service_name', 'google_calendar')
         .maybeSingle();
       setIntegration(data);
-      setLoading(false);
     }
     checkIntegration();
   }, [user]);
@@ -32,10 +29,12 @@ export default function Settings() {
   const error = searchParams.get('error');
 
   return (
-    <div className="page" style={{ background: 'var(--pink-pale)', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <LogoBar />
-      <div className="content" style={{ padding: '20px 14px', flex: 1 }}>
-        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, marginBottom: 20, color: 'var(--ink)' }}>Settings</h2>
+    <div className="page" style={{ background: 'var(--pink-pale)', flex: 1, display: 'flex', flexDirection: 'column' }}>
+      <div className="hero-section">
+        <div className="hero-label">Preferences</div>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, margin: 0, color: 'white' }}>Settings</h2>
+      </div>
+      <div className="content" style={{ padding: '16px 14px', flex: 1 }}>
         
         <div className="card" style={{ background: 'white', borderRadius: 'var(--r-card)', border: 'var(--border-card)', padding: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>

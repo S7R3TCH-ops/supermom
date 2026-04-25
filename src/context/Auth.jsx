@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase, hasSupabaseConfig } from '../lib/supabase';
 import { AuthContext } from './AuthContext';
+import { clearBusinessCache } from '../data/currentBusiness';
 
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
@@ -42,7 +43,7 @@ export function AuthProvider({ children }) {
     configured: hasSupabaseConfig,
     signIn: (email, password) => supabase.auth.signInWithPassword({ email, password }),
     signUp: (email, password) => supabase.auth.signUp({ email, password }),
-    signOut: () => supabase.auth.signOut(),
+    signOut: async () => { clearBusinessCache(); return supabase.auth.signOut(); },
   }), [session, profile, loading]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

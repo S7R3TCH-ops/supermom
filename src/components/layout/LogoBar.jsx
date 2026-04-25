@@ -1,12 +1,11 @@
 import { useNavigate } from 'react-router-dom';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { useAuth } from '../../context/AuthContext';
-import { clearBusinessCache } from '../../data/currentBusiness';
 
 export default function LogoBar() {
   const navigate = useNavigate();
   const { mode, toggleMode, privacyOn, togglePrivacy } = useAppTheme();
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
 
   const onAvatarClick = () => {
     if (user) navigate('/settings');

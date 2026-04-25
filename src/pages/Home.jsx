@@ -1,4 +1,4 @@
-import { useMemo, useEffect } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { useAppTheme } from '../context/AppThemeContext';
 import AmtCell from '../components/ui/AmtCell';
 import SectionLabel from '../components/ui/SectionLabel';
@@ -7,6 +7,7 @@ import { useJobs } from '../data/useData';
 import { useJobDetailSheet } from '../context/JobDetailSheetContext';
 import { useAuth } from '../context/AuthContext';
 import { updateDailyRoutes } from '../lib/maps';
+import { useGeofence } from '../context/GeofenceContext';
 
 const NOW = () => new Date();
 
@@ -27,11 +28,36 @@ function dateBrief(d) {
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
+function LiveTimer({ startTime, T }) {
+  const [elapsed, setElapsed] = useState('');
+
+  useEffect(() => {
+    const start = new Date(startTime);
+    const update = () => {
+      const diff = new Date() - start;
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setElapsed(`${h > 0 ? h + ':' : ''}${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
+    };
+    update();
+    const inv = setInterval(update, 1000);
+    return () => clearInterval(inv);
+  }, [startTime]);
+
+  return (
+    <div style={{ fontFamily: T.serif, fontSize: 32, fontWeight: 600, color: 'white', letterSpacing: '-0.5px', fontVariantNumeric: 'tabular-nums' }}>
+      {elapsed}
+    </div>
+  );
+}
+
 export default function Home() {
   const { T, mode, privacyOn } = useAppTheme();
   const { jobs: allJobs, loading } = useJobs();
   const { openJob } = useJobDetailSheet();
   const { profile } = useAuth();
+  const { handleClockOut } = useGeofence();
   const today = NOW();
 
   const firstName = profile?.first_name || 'Sandra';
@@ -55,6 +81,7 @@ export default function Home() {
   }, [allJobs, today]);
 
   const next = todayJobs.find(j => j.end >= today) || todayJobs[0];
+  const activeJob = todayJobs.find(j => j.status === 'Scheduled' && j.ai_context?.clock_in_time != null);
   const revenueToday = todayJobs.reduce((s, j) => s + Number(j.total || 0), 0);
 
   // Tight-gap detection: any consecutive pair within < 60min
@@ -137,7 +164,47 @@ export default function Home() {
             </div>
           )}
 
-          {next && (
+          {activeJob && (
+            <>
+              <SectionLabel>Active Job · {activeJob.client_name}</SectionLabel>
+              <div style={{ 
+                background: 'linear-gradient(135deg, #1A0B2E 0%, #0D0517 100%)', 
+                border: '1.5px solid rgba(233,30,106,0.5)', 
+                borderRadius: 14, padding: '16px 18px', position: 'relative', overflow: 'hidden', marginBottom: 12 
+              }}>
+                <div style={{ position: 'absolute', top: -30, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'radial-gradient(circle,rgba(233,30,106,0.15) 0%,transparent 70%)', pointerEvents: 'none' }} />
+                
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                  <div>
+                    <div style={{ fontFamily: T.font, fontSize: 10, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#FF78B0' }}>{activeJob.service_name}</div>
+                    <div style={{ fontFamily: T.serif, fontSize: 20, fontWeight: 500, color: 'white', marginTop: 2 }}>{activeJob.client_name}</div>
+                  </div>
+                  <div style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 6, padding: '3px 8px', color: '#4ADE80', fontFamily: T.font, fontSize: 9, fontWeight: 700 }}>WORKING</div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+                  <LiveTimer startTime={activeJob.ai_context.clock_in_time} T={T} />
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); handleClockOut(activeJob.id); }}
+                    style={{ 
+                      background: '#E91E6A', color: 'white', border: 'none', borderRadius: 10, 
+                      padding: '10px 20px', fontFamily: T.font, fontSize: 13, fontWeight: 700,
+                      boxShadow: '0 4px 12px rgba(233,30,106,0.3)', cursor: 'pointer'
+                    }}
+                  >
+                    Done
+                  </button>
+                </div>
+
+                <div style={{ fontFamily: T.font, fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,0.4)', marginTop: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span className="sm-pulse" style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#4ADE80' }} />
+                  Auto-started on arrival
+                </div>
+              </div>
+            </>
+          )}
+
+          {!activeJob && next && (
             <>
               <SectionLabel>Opening Act · {next.client_name}</SectionLabel>
 

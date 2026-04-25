@@ -102,3 +102,42 @@ export function getNavigationUrl(address) {
   if (!address) return null;
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}&travelmode=driving`;
 }
+
+/**
+ * Converts an address string into lat/lng coordinates.
+ * @param {string} address 
+ * @returns {Promise<{lat: number, lng: number}|null>}
+ */
+export async function geocodeAddress(address) {
+  if (!address) return null;
+  try {
+    const res = await fetch(`/api/geocode?address=${encodeURIComponent(address)}`);
+    const data = await res.json();
+    if (data.status === 'OK' && data.results.length > 0) {
+      return data.results[0].geometry.location; // { lat, lng }
+    }
+  } catch (e) {
+    console.error('[maps] Geocode failed:', e);
+  }
+  return null;
+}
+
+/**
+ * Calculates the Haversine distance between two points in meters.
+ * @param {number} lat1 
+ * @param {number} lon1 
+ * @param {number} lat2 
+ * @param {number} lon2 
+ * @returns {number} Distance in meters
+ */
+export function getDistanceMeters(lat1, lon1, lat2, lon2) {
+  const R = 6371e3; // Earth radius in meters
+  const rad = Math.PI / 180;
+  const dLat = (lat2 - lat1) * rad;
+  const dLon = (lon2 - lon1) * rad;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * rad) * Math.cos(lat2 * rad) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}

@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { getGoLabel } from '../../lib/goLabel';
-import { getNavigationUrl } from '../../lib/maps';
+import { getNavigationUrl, geocodeAddress } from '../../lib/maps';
+import { useGeofence } from '../../context/GeofenceContext';
 
 export default function CapeUpButton({ job, onGo, name }) {
   const { T } = useAppTheme();
+  const { startTracking } = useGeofence();
   const [flying, setFlying] = useState(false);
   const [label] = useState(() => getGoLabel(job.service || job.service_name, name));
 
@@ -16,11 +18,20 @@ export default function CapeUpButton({ job, onGo, name }) {
     e.stopPropagation();
     if (flying) return;
     setFlying(true);
-    setTimeout(() => { 
+
+    // Parallel geocoding
+    const coordsPromise = geocodeAddress(job.address);
+
+    setTimeout(async () => { 
       setFlying(false); 
       onGo?.(); 
       const url = getNavigationUrl(job.address);
       if (url) window.open(url, '_blank');
+
+      const coords = await coordsPromise;
+      if (coords) {
+        startTracking(job.id, coords.lat, coords.lng);
+      }
     }, 900);
   };
 

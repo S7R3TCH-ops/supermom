@@ -6,6 +6,7 @@ import { AuthProvider } from './context/Auth';
 import { useAuth } from './context/AuthContext';
 import { NewJobSheetProvider } from './context/NewJobSheet';
 import { JobDetailSheetProvider } from './context/JobDetailSheet';
+import { GeofenceProvider } from './context/GeofenceContext';
 import LogoBar from './components/layout/LogoBar';
 import BottomNav from './components/layout/BottomNav';
 import FAB from './components/ui/FAB';
@@ -77,7 +78,9 @@ function Gate() {
   return (
     <NewJobSheetProvider>
       <JobDetailSheetProvider>
-        <AuthedShell />
+        <GeofenceProvider>
+          <AuthedShell />
+        </GeofenceProvider>
       </JobDetailSheetProvider>
     </NewJobSheetProvider>
   );

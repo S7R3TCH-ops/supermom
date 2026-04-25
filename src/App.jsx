@@ -9,6 +9,7 @@ import { JobDetailSheetProvider } from './context/JobDetailSheet';
 import LogoBar from './components/layout/LogoBar';
 import BottomNav from './components/layout/BottomNav';
 import FAB from './components/ui/FAB';
+import { useRealtimeSync } from './data/useData';
 
 const Home = lazy(() => import('./pages/Home'));
 const Calendar = lazy(() => import('./pages/Calendar'));
@@ -19,6 +20,7 @@ const Login = lazy(() => import('./pages/Login'));
 
 function AuthedShell() {
   const { T } = useAppTheme();
+  useRealtimeSync();
   return (
     <div style={{
       display: 'flex', flexDirection: 'column',

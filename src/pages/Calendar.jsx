@@ -6,7 +6,7 @@ import { useJobDetailSheet } from '../context/JobDetailSheetContext';
 import { useAuth } from '../context/AuthContext';
 
 // Real "now" — was previously a hard-coded prototype anchor.
-const TODAY = new Date();
+const NOW = () => new Date();
 
 const VIEWS = ['Day', 'Week', 'Agenda'];
 const DOW = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
@@ -71,7 +71,8 @@ function findSameDayConflicts(jobsOnDay) {
 export default function Calendar() {
   const { T, mode, privacyOn } = useAppTheme();
   const [view, setView] = useState('Day');
-  const [weekStart, setWeekStart] = useState(() => startOfWeek(TODAY));
+  const [selectedDay, setSelectedDay] = useState(() => NOW());
+  const [weekStart, setWeekStart] = useState(() => startOfWeek(NOW()));
   const { openJob } = useJobDetailSheet();
   const { profile } = useAuth();
   const firstName = profile?.first_name || 'Sandra';
@@ -79,17 +80,31 @@ export default function Calendar() {
   const { jobs: displayJobs, clients: clientLookup, loading, error } = useJobs();
   const allJobs = useMemo(() => enrichDisplayJobs(displayJobs, clientLookup), [displayJobs, clientLookup]);
   const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
-  const todayJobs = useMemo(
-    () => allJobs.filter(j => sameDay(j.start, TODAY)),
-    [allJobs]
+  
+  const selectedDayJobs = useMemo(
+    () => allJobs.filter(j => sameDay(j.start, selectedDay)),
+    [allJobs, selectedDay]
   );
-  const conflicts = useMemo(() => findSameDayConflicts(todayJobs), [todayJobs]);
+  const conflicts = useMemo(() => findSameDayConflicts(selectedDayJobs), [selectedDayJobs]);
   const nextUpcoming = useMemo(
-    () => allJobs.find(j => j.start >= TODAY && j.status === 'Scheduled'),
+    () => allJobs.find(j => j.start >= NOW() && j.status === 'Scheduled'),
     [allJobs]
   );
 
   const monthYear = weekDays[0].toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  const handlePickDay = (d) => {
+    setSelectedDay(new Date(d));
+    setView('Day');
+  };
+
+  const handlePrevWeek = () => setWeekStart(addDays(weekStart, -7));
+  const handleNextWeek = () => setWeekStart(addDays(weekStart, 7));
+  const handleToday = () => {
+    const today = NOW();
+    setWeekStart(startOfWeek(today));
+    setSelectedDay(today);
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: T.bg, color: T.ink }}>
@@ -97,37 +112,56 @@ export default function Calendar() {
       <div style={{ background: T.hero, borderBottom: '3px solid #E91E6A', padding: '11px 13px 13px', position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
         <div style={{ position: 'absolute', top: -40, right: -20, width: 120, height: 120, borderRadius: '50%', background: `radial-gradient(circle,${T.pinkGlow} 0%,transparent 70%)`, pointerEvents: 'none' }} />
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-          <div style={{ fontFamily: T.serif, fontSize: 17, fontWeight: 500, letterSpacing: '-0.4px', color: 'white' }}>{monthYear}</div>
-          <div style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.28)', borderRadius: 20, padding: '3px 9px', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#22C55E' }} />
-            <span style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, color: '#4ADE80', letterSpacing: '0.4px' }}>GCAL SYNCED</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <button 
+              onClick={handlePrevWeek}
+              style={{ background: 'rgba(255,255,255,0.08)', border: 'none', borderRadius: 4, width: 22, height: 22, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+            >‹</button>
+            <div style={{ fontFamily: T.serif, fontSize: 17, fontWeight: 500, letterSpacing: '-0.4px', color: 'white' }}>{monthYear}</div>
+            <button 
+              onClick={handleNextWeek}
+              style={{ background: 'rgba(255,255,255,0.08)', border: 'none', borderRadius: 4, width: 22, height: 22, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+            >›</button>
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <button 
+              onClick={handleToday}
+              style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6, padding: '3px 7px', color: 'white', fontFamily: T.font, fontSize: 9, fontWeight: 700, cursor: 'pointer' }}
+            >TODAY</button>
+            <div style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.28)', borderRadius: 20, padding: '3px 9px', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#22C55E' }} />
+              <span style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, color: '#4ADE80', letterSpacing: '0.4px' }}>GCAL</span>
+            </div>
           </div>
         </div>
 
-        {/* 7-day strip with job dots */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 3, marginBottom: 9 }}>
-          {weekDays.map((d, i) => {
-            const isToday = sameDay(d, TODAY);
-            const jobsHere = allJobs.filter(j => sameDay(j.start, d));
-            const dots = Math.min(jobsHere.length, 3);
-            return (
-              <div key={i}
-                onClick={() => { setView('Day'); }}
-                style={{ textAlign: 'center', padding: '4px 2px 5px', borderRadius: 8,
-                  background: isToday ? '#E91E6A' : 'rgba(255,255,255,0.05)',
-                  border: isToday ? 'none' : '1px solid rgba(255,255,255,0.07)',
-                  cursor: 'pointer' }}>
-                <div style={{ fontFamily: T.font, fontSize: 7.5, fontWeight: 700, letterSpacing: '0.3px', textTransform: 'uppercase', color: isToday ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.38)' }}>{DOW[i]}</div>
-                <div style={{ fontFamily: T.serif, fontSize: 13, fontWeight: 500, color: 'white', lineHeight: 1.2, marginTop: 2 }}>{d.getDate()}</div>
-                <div style={{ display: 'flex', gap: 2, justifyContent: 'center', marginTop: 2, minHeight: 3 }}>
-                  {Array.from({ length: dots }).map((_, k) => (
-                    <span key={k} style={{ width: 3, height: 3, borderRadius: '50%', background: isToday ? 'rgba(255,255,255,0.7)' : '#FF78B0', display: 'block' }} />
-                  ))}
+        {/* 7-day strip navigation (Hidden in Week view to avoid redundancy) */}
+        {view !== 'Week' && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 3, marginBottom: 9 }}>
+            {weekDays.map((d, i) => {
+              const isToday = sameDay(d, NOW());
+              const isSelected = sameDay(d, selectedDay);
+              const jobsHere = allJobs.filter(j => sameDay(j.start, d));
+              const dots = Math.min(jobsHere.length, 3);
+              return (
+                <div key={i}
+                  onClick={() => handlePickDay(d)}
+                  style={{ textAlign: 'center', padding: '4px 2px 5px', borderRadius: 8,
+                    background: isSelected ? '#E91E6A' : 'rgba(255,255,255,0.05)',
+                    border: isSelected ? 'none' : '1px solid rgba(255,255,255,0.07)',
+                    cursor: 'pointer' }}>
+                  <div style={{ fontFamily: T.font, fontSize: 7.5, fontWeight: 700, letterSpacing: '0.3px', textTransform: 'uppercase', color: isSelected ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.38)' }}>{DOW[i]}</div>
+                  <div style={{ fontFamily: T.serif, fontSize: 13, fontWeight: 500, color: 'white', lineHeight: 1.2, marginTop: 2 }}>{d.getDate()}</div>
+                  <div style={{ display: 'flex', gap: 2, justifyContent: 'center', marginTop: 2, minHeight: 3 }}>
+                    {Array.from({ length: dots }).map((_, k) => (
+                      <span key={k} style={{ width: 3, height: 3, borderRadius: '50%', background: isSelected ? 'rgba(255,255,255,0.7)' : '#FF78B0', display: 'block' }} />
+                    ))}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* View toggle */}
         <div style={{ display: 'flex', background: 'rgba(255,255,255,0.07)', borderRadius: 9, padding: 3 }}>
@@ -148,14 +182,14 @@ export default function Calendar() {
         <div style={{ background: mode === 'dark' ? 'rgba(245,158,11,0.09)' : '#FEF3C7', borderBottom: '1px solid rgba(245,158,11,0.18)', padding: '6px 13px', display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0 }}>
           <span style={{ fontSize: 11 }}>⚠</span>
           <span style={{ fontFamily: T.font, fontSize: 10.5, fontWeight: 600, color: '#B45309', flex: 1 }}>
-            {conflicts[0].a.client?.name.split(' ')[0]} → {conflicts[0].b.client?.name.split(' ')[0]} gap {conflicts[0].minutes} min · conflict risk
+            Schedule conflict on {selectedDay.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
           </span>
           <button style={{ background: '#1A0A12', color: 'white', border: 'none', borderRadius: 6, padding: '4px 9px', fontFamily: T.font, fontSize: 9.5, fontWeight: 700, cursor: 'pointer' }}>Fix</button>
         </div>
       )}
 
-      {view === 'Day'    && <DayView    T={T} mode={mode} privacyOn={privacyOn} todayJobs={todayJobs} nextUpcoming={nextUpcoming} onJobPress={openJob} firstName={firstName} />}
-      {view === 'Week'   && <WeekView   T={T} mode={mode} weekDays={weekDays} allJobs={allJobs} onPickDay={() => setView('Day')} onJobPress={openJob} />}
+      {view === 'Day'    && <DayView    T={T} mode={mode} privacyOn={privacyOn} selectedDay={selectedDay} todayJobs={selectedDayJobs} nextUpcoming={nextUpcoming} onJobPress={openJob} firstName={firstName} />}
+      {view === 'Week'   && <WeekView   T={T} mode={mode} weekDays={weekDays} allJobs={allJobs} onPickDay={handlePickDay} onJobPress={openJob} />}
       {view === 'Agenda' && <AgendaView T={T} mode={mode} privacyOn={privacyOn} allJobs={allJobs} nextUpcoming={nextUpcoming} onJobPress={openJob} firstName={firstName} />}
     </div>
   );
@@ -163,9 +197,11 @@ export default function Calendar() {
 
 /* ------------------------------ DAY VIEW ------------------------------ */
 
-function DayView({ T, mode, privacyOn, todayJobs, nextUpcoming, onJobPress, firstName }) {
+function DayView({ T, mode, privacyOn, selectedDay, todayJobs, nextUpcoming, onJobPress, firstName }) {
   const slotH = 50, startH = 8, endH = 18;
   const hours = Array.from({ length: endH - startH + 1 }, (_, i) => startH + i);
+
+  const isToday = sameDay(selectedDay, NOW());
 
   // Drive gap decorations (between sequential same-day jobs)
   const gaps = [];
@@ -177,6 +213,13 @@ function DayView({ T, mode, privacyOn, todayJobs, nextUpcoming, onJobPress, firs
 
   return (
     <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '6px 12px', position: 'relative' }}>
+      {!isToday && (
+        <div style={{ marginBottom: 12, padding: '4px 0', borderBottom: mode === 'dark' ? '1px solid rgba(255,255,255,0.05)' : '1px solid #FFE8F2' }}>
+          <div style={{ fontFamily: T.font, fontSize: 10, fontWeight: 700, color: T.pink, letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+            {fmtDateHead(selectedDay)}
+          </div>
+        </div>
+      )}
       <div style={{ position: 'relative', minHeight: hours.length * slotH }}>
         {hours.map(h => (
           <div key={h} style={{ display: 'flex', height: slotH, alignItems: 'flex-start', gap: 7 }}>
@@ -238,7 +281,7 @@ function DayView({ T, mode, privacyOn, todayJobs, nextUpcoming, onJobPress, firs
       </div>
 
       {/* GO button on next upcoming today */}
-      {nextUpcoming && sameDay(nextUpcoming.start, TODAY) && (
+      {nextUpcoming && sameDay(nextUpcoming.start, NOW()) && (
         <div style={{ marginTop: 10, marginBottom: 4 }}>
           <CapeUpButton
             job={nextUpcoming}
@@ -262,10 +305,10 @@ function WeekView({ T, mode, weekDays, allJobs, onPickDay, onJobPress }) {
       <div style={{ display: 'grid', gridTemplateColumns: '28px repeat(7,1fr)', gap: 2, marginBottom: 4, position: 'sticky', top: 0, background: T.bg, zIndex: 2, paddingBottom: 3 }}>
         <div />
         {weekDays.map((d, i) => {
-          const isToday = sameDay(d, TODAY);
+          const isToday = sameDay(d, NOW());
           const count = allJobs.filter(j => sameDay(j.start, d)).length;
           return (
-            <div key={i} onClick={onPickDay} style={{ textAlign: 'center', cursor: 'pointer', padding: '3px 0', borderRadius: 6, background: isToday ? 'rgba(233,30,106,0.12)' : 'transparent' }}>
+            <div key={i} onClick={() => onPickDay(d)} style={{ textAlign: 'center', cursor: 'pointer', padding: '3px 0', borderRadius: 6, background: isToday ? 'rgba(233,30,106,0.12)' : 'transparent' }}>
               <div style={{ fontFamily: T.font, fontSize: 8, fontWeight: 700, color: T.inkMuted, letterSpacing: '0.3px' }}>{DOW[i]}</div>
               <div style={{ fontFamily: T.serif, fontSize: 12, fontWeight: 500, color: isToday ? '#E91E6A' : T.ink, marginTop: 1 }}>{d.getDate()}</div>
               {count > 0 && <div style={{ fontFamily: T.font, fontSize: 7.5, fontWeight: 600, color: T.inkMuted, marginTop: 1 }}>{count} job{count > 1 ? 's' : ''}</div>}
@@ -353,7 +396,7 @@ function AgendaView({ T, mode, privacyOn, allJobs, nextUpcoming, onJobPress, fir
   const grouped = useMemo(() => {
     const map = new Map();
     for (const j of allJobs) {
-      if (j.end < TODAY) continue;
+      if (j.end < NOW()) continue;
       const key = j.start.toISOString().slice(0, 10);
       if (!map.has(key)) map.set(key, { date: j.start, jobs: [] });
       map.get(key).jobs.push(j);
@@ -370,7 +413,7 @@ function AgendaView({ T, mode, privacyOn, allJobs, nextUpcoming, onJobPress, fir
       )}
 
       {grouped.map(group => {
-        const isToday = sameDay(group.date, TODAY);
+        const isToday = sameDay(group.date, NOW());
         const conflicts = findSameDayConflicts(group.jobs);
         return (
           <div key={group.date.toISOString()} style={{ marginBottom: 14 }}>
@@ -398,7 +441,7 @@ function AgendaView({ T, mode, privacyOn, allJobs, nextUpcoming, onJobPress, fir
               );
             })}
 
-            {isToday && nextUpcoming && sameDay(nextUpcoming.start, TODAY) && (
+            {isToday && nextUpcoming && sameDay(nextUpcoming.start, NOW()) && (
               <div style={{ marginTop: 8 }}>
                 <CapeUpButton
                   job={nextUpcoming}

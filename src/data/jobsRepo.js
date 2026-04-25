@@ -161,11 +161,16 @@ export async function updateJob(id, patch, seriesAction = 'this') {
   if (fErr) throw fErr;
   if (!job.template_id) return updateJob(id, patch, 'this');
 
+  // Protect series updates from flattening dates
+  const seriesPatch = { ...patch };
+  delete seriesPatch.scheduled_date;
+
   let query = supabase
     .from('jobs')
-    .update(patch)
+    .update(seriesPatch)
     .eq('template_id', job.template_id)
-    .eq('business_id', businessId);
+    .eq('business_id', businessId)
+    .eq('job_status', 'Scheduled'); // Only touch upcoming jobs
 
   if (seriesAction === 'future') {
     query = query.gte('scheduled_date', job.scheduled_date);
@@ -224,7 +229,8 @@ export async function softDeleteJob(id, seriesAction = 'this') {
     .from('jobs')
     .update({ deleted_at: deletedAt })
     .eq('template_id', job.template_id)
-    .eq('business_id', businessId);
+    .eq('business_id', businessId)
+    .eq('job_status', 'Scheduled'); // Protect historical/completed jobs
 
   if (seriesAction === 'future') {
     query = query.gte('scheduled_date', job.scheduled_date);

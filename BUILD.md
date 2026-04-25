@@ -86,7 +86,7 @@ When done:
   - Built as `src/components/sheets/NudgeDraftSheet.jsx`, wired to Finance page "Draft nudges" buttons.
 - [ ] **13. Thank-you / Receipt draft sheet** — AI-drafted post-job message. Opens from Post-job state.
 - [x] **14. Prep Notes generator** — AI summarizes client history (last 5 visits) into prep notes via Claude API. Built as `PrepNoteSheet.jsx` wired to `JobDetailSheet.jsx`.
-- [x] **15. Duration Estimator card** — built in `NewJobSheet.jsx` Step 2 + `calculateEstimatedDuration()` in `ai.js`; shows "Smart Estimate" card with "Use it" button when history differs from default.
+- [x] **15. Duration Estimator card** — AI-powered in `NewJobSheet.jsx` Step 2. Analyzes history/notes via Claude API to predict duration and explain reasoning.
 
 ### 🎯 Phase 5 — Finance
 

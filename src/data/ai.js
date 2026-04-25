@@ -145,6 +145,33 @@ export function generatePrepNote(job) {
 }
 
 /**
+ * Fetches an AI-generated smart duration estimate for a service.
+ */
+export async function fetchSmartDurationEstimate(clientId, serviceName, businessProfile) {
+  if (!clientId || !serviceName) throw new Error('clientId and serviceName are required');
+
+  try {
+    const response = await fetch('/api/ai/estimate-duration', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ clientId, serviceName, businessProfile }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `Failed to fetch AI duration estimate (${response.status})`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('[fetchSmartDurationEstimate]', error);
+    throw error;
+  }
+}
+
+/**
  * Calculates a smart duration estimate for Step 2 of the booking flow.
  * Priority: 
  * 1. Last visit duration for this specific service (client-specific)

@@ -5,9 +5,9 @@ import NewClientSheet from './NewClientSheet';
 import { fetchClients } from '../../data/clientsRepo';
 import { fetchActiveJobs, createJob, findConflicts, fetchJobsByClientId, composeTorontoISO } from '../../data/jobsRepo';
 import { toDisplayClient } from '../../data/selectors';
-import { notifyDataChanged } from '../../data/useData';
+import { notifyDataChanged, useBusiness } from '../../data/useData';
 import { SERVICES, RECURRENCE } from '../../data/services';
-import { calculateEstimatedDuration } from '../../data/ai';
+import { calculateEstimatedDuration, fetchSmartDurationEstimate } from '../../data/ai';
 
 function todayISODate() {
   const d = new Date();
@@ -88,6 +88,7 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
     return s ? s.key : null;
   }, [prefillClient]);
 
+  const { business } = useBusiness();
   const [serviceKey, setServiceKey] = useState(seededService);
   const [date, setDate] = useState(todayISODate());
   const [time, setTime] = useState('10:00');
@@ -100,16 +101,36 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
 
   const [durationTouched, setDurationTouched] = useState(false);
   const [aiDuration, setAiDuration] = useState(null);
+  const [aiEstimateLoading, setAiEstimateLoading] = useState(false);
+  const [aiEstimateReason, setAiEstimateReason] = useState('');
 
-  const onPickService = key => {
+  const onPickService = async (key) => {
     setServiceKey(key);
     const svc = SERVICES.find(s => s.key === key);
-    if (svc) {
-      const estimate = calculateEstimatedDuration(selectedClient, key, SERVICES);
-      setAiDuration(estimate !== svc.defaultDuration ? estimate : null);
-      
-      if (!durationTouched) {
-        setDuration(estimate);
+    if (!svc) return;
+
+    // 1. Local deterministic estimate (fast fallback)
+    const localEstimate = calculateEstimatedDuration(selectedClient, key, SERVICES);
+    setAiDuration(localEstimate !== svc.defaultDuration ? localEstimate : null);
+    if (!durationTouched) setDuration(localEstimate);
+
+    // 2. Fetch AI smart estimate if we have a client selected
+    if (selectedClient?.id) {
+      setAiEstimateLoading(true);
+      setAiEstimateReason('');
+      try {
+        const smart = await fetchSmartDurationEstimate(selectedClient.id, svc.label, business);
+        if (smart && smart.duration_minutes) {
+          setAiDuration(smart.duration_minutes);
+          setAiEstimateReason(smart.reasoning);
+          if (!durationTouched) {
+            setDuration(smart.duration_minutes);
+          }
+        }
+      } catch (err) {
+        console.warn('Smart duration fetch failed:', err);
+      } finally {
+        setAiEstimateLoading(false);
       }
     }
   };
@@ -235,6 +256,8 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
               duration={duration} setDuration={d => { setDurationTouched(true); setDuration(d); }}
               recurrence={recurrence} setRecurrence={setRecurrence}
               aiDuration={aiDuration}
+              aiEstimateLoading={aiEstimateLoading}
+              aiEstimateReason={aiEstimateReason}
             />
           )}
           {step === 3 && (
@@ -416,6 +439,7 @@ function Step2What({
   T, mode, client, serviceKey, onPickService,
   date, setDate, time, setTime, duration, setDuration,
   recurrence, setRecurrence, aiDuration,
+  aiEstimateLoading, aiEstimateReason
 }) {
   const usualKey = client && client.service ? (
     SERVICES.find(s => s.label.toLowerCase() === client.service.toLowerCase())?.key
@@ -501,34 +525,40 @@ function Step2What({
         }}>+</button>
       </div>
 
-      {aiDuration && aiDuration !== duration && (
+      {(aiEstimateLoading || (aiDuration && aiDuration !== duration)) && (
         <div style={{
           background: T.hero, borderRadius: 16, padding: '12px 14px', marginBottom: 14,
-          position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', gap: 12,
+          position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'flex-start', gap: 12,
         }}>
           <div style={{ position: 'absolute', top: -30, right: -20, width: 90, height: 90, borderRadius: '50%', background: `radial-gradient(circle,${T.pinkGlow} 0%,transparent 70%)`, pointerEvents: 'none' }} />
           <div style={{
             width: 28, height: 28, borderRadius: 9, background: 'linear-gradient(135deg,#FF5A9D,#E91E6A)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2
           }}>
-            <span style={{ fontSize: 14, color: 'white' }}>✦</span>
+            <span className={aiEstimateLoading ? 'sm-pulse' : ''} style={{ fontSize: 14, color: 'white' }}>✦</span>
           </div>
           <div style={{ flex: 1 }}>
             <div style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '1.1px', textTransform: 'uppercase', color: '#FF78B0', marginBottom: 2 }}>
-              Smart Estimate
+              {aiEstimateLoading ? 'Calculating Smart Estimate...' : 'Smart Estimate'}
             </div>
-            <div style={{ fontFamily: T.font, fontSize: 11.5, color: 'rgba(255,255,255,0.85)', lineHeight: 1.4 }}>
-              Typically takes <strong>{fmtDuration(aiDuration)}</strong> for this client.
-            </div>
+            {aiEstimateLoading ? (
+              <div className="sm-pulse" style={{ fontFamily: T.font, fontSize: 11.5, color: 'rgba(255,255,255,0.5)', marginTop: 4 }}>Analyzing client history and notes...</div>
+            ) : (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 10 }}>
+                <div style={{ flex: 1, fontFamily: T.font, fontSize: 11.5, color: 'rgba(255,255,255,0.85)', lineHeight: 1.4 }}>
+                  {aiEstimateReason || `Typically takes ${fmtDuration(aiDuration)} for this client.`}
+                </div>
+                <button
+                  onClick={() => setDuration(aiDuration)}
+                  style={{
+                    background: '#E91E6A', color: 'white', border: 'none', borderRadius: 8,
+                    padding: '6px 10px', fontFamily: T.font, fontSize: 10, fontWeight: 700,
+                    cursor: 'pointer', position: 'relative', zIndex: 1, flexShrink: 0
+                  }}
+                >Use it</button>
+              </div>
+            )}
           </div>
-          <button
-            onClick={() => setDuration(aiDuration)}
-            style={{
-              background: '#E91E6A', color: 'white', border: 'none', borderRadius: 8,
-              padding: '6px 10px', fontFamily: T.font, fontSize: 10, fontWeight: 700,
-              cursor: 'pointer', position: 'relative', zIndex: 1,
-            }}
-          >Use it</button>
         </div>
       )}
 

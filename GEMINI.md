@@ -44,6 +44,7 @@ At the end of every productive session, or upon major milestone completion, Gemi
 | New Job sheet | ✅ Live |
 | **Job Detail sheet** | ✅ **Live** — tap any job card (Home or Calendar) to view/edit/act |
 | **AI Prep Notes** | ✅ **Live** — Summarizes last 5 visits via Claude API |
+| **AI Duration Estimator** | ✅ **Live** — Step 2 prediction with Claude reasoning |
 | **Recurrence series editor** | ✅ **Live** — 'this / future / all' safely implemented |
 | **GCal Sync Security** | ✅ **Live** — CSRF nonce + multi-tenant state param |
 | **Drive time / mileage** | ✅ **Live** — Google Maps Distance Matrix API proxy |
@@ -80,6 +81,6 @@ Key stability fixes implemented:
 - Mutation errors shown inline; fetch errors replace the sheet body
 
 ## Next priorities
-1. AI Prep Notes generator (summarize client history)
-2. AI Duration Estimator (Step 2 of New Job)
-3. Expense logging (Finance Phase 5)
+1. Expense logging (Finance Phase 5)
+2. Thank-you / Receipt draft sheet (AI Phase 4)
+3. Edit Client / AI context (AI Phase 3)

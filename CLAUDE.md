@@ -21,6 +21,7 @@ This is a **managed service product** — Sandra is the first user, but the arch
 | Auth | Supabase Auth (email/password, no social login yet) |
 | Database | Supabase (Postgres) |
 | Hosting | Vercel ([supermom-v2.vercel.app](https://supermom-v2.vercel.app)) |
+| Performance | Code-splitting (`React.lazy` + `Suspense`) |
 | Calendar | Google Calendar API (OAuth) |
 | Maps/Geo | Google Maps API (routing + geofence) |
 | State | React Context or Zustand (decide before first data fetch) |
@@ -96,18 +97,20 @@ The schema is multi-tenant and agentic-AI-ready (richer than this app strictly n
 
 ---
 
-## Core features (build order)
+## Core features (build status)
 
-1. Auth (Supabase login)
-2. Home screen — Today Card (3 states)
-3. New Job booking flow (bottom sheet, 3 steps)
-4. Calendar screen (Day view first, then Week + Agenda)
-5. Auto-timer via geofence (on GO! tap)
-6. Auto-mileage tracking
-7. Clients screen (list + profile)
-8. Finance screen
-9. Google Calendar sync
-10. AI context features (duration estimate, nudge drafts, prep notes)
+- [x] Auth (Supabase login)
+- [x] Home screen — Today Card (3 states)
+- [x] New Job booking flow (bottom sheet, 3 steps)
+- [x] Calendar screen (Day view, Week, Agenda)
+- [x] Client Search — live filtering in Clients roster
+- [x] Payments Audit — `recordPayment` logs to `payments` table
+- [x] Nudge Drafts — AI-ready SMS reminders for overdue jobs
+- [ ] Auto-timer via geofence (on GO! tap)
+- [ ] Auto-mileage tracking (Google Maps integration)
+- [ ] Google Calendar sync
+- [ ] AI context features (duration estimate, prep notes)
+- [ ] Storage bucket (photos + voice notes)
 
 ---
 

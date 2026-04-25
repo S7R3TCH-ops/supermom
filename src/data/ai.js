@@ -77,6 +77,35 @@ export function generateCommandBrief(job, businessProfile = null) {
 }
 
 /**
+ * Fetches an AI-generated deep prep note for a client.
+ * Calls the backend API which analyzes recent history and notes.
+ */
+export async function fetchDeepPrepNote(clientId, businessProfile) {
+  if (!clientId) throw new Error('clientId is required for fetchDeepPrepNote');
+
+  try {
+    const response = await fetch('/api/ai/prep-notes', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ clientId, businessProfile }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `Failed to fetch AI prep note (${response.status})`);
+    }
+
+    const data = await response.json();
+    return data.summary;
+  } catch (error) {
+    console.error('[fetchDeepPrepNote]', error);
+    throw error;
+  }
+}
+
+/**
  * Uses Web Speech API to read the briefing aloud.
  */
 let currentUtterance = null;

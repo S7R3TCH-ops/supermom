@@ -99,20 +99,21 @@ When done:
 - [ ] **19. Sandra's Profile** — account info, avatar, signature line.
 - [ ] **20. Onboarding flow** — first-run walkthrough.
 
-### 🎯 Phase 7 — Auth & backend wiring
+### ✅ Phase 7 — Auth & backend wiring (DONE)
 
-- [ ] **21. Supabase client wiring** — env vars, supabase-js client, auth hooks.
-- [ ] **22. Login page** — email/password, Supabase Auth.
-- [ ] **23. Schema migration** — run SQL for all tables from CLAUDE.md.
-- [ ] **24. Replace mock data with live queries** — one table at a time (clients → jobs → payments → expenses → config).
+- [x] **21. Supabase client wiring** — `src/lib/supabase.js`, `src/data/currentBusiness.js`, auth context in `src/context/Auth.jsx`.
+- [x] **22. Login page** — email/password via `src/pages/Login.jsx`, Supabase Auth, session gate in `App.jsx`.
+- [x] **23. Schema migration** — SQL stored in `supabase_schema.sql` at repo root; live on project `lskzzsjmmtsosfneuovt`.
+- [x] **24. Replace mock data with live queries** — all pages (Home, Calendar, Clients, Finance, ClientProfile) query Supabase. Mock data is gone.
 
 ### 🎯 Phase 8 — Real services
 
 - [ ] **25. Google Calendar OAuth + sync service** — create/edit/cancel events on every job mutation.
-- [x] **26. Geofence service** — Auto-start timer on arrival (150m), auto-stop on departure (250m for 3min). Uses `navigator.geolocation.watchPosition` via `GeofenceContext`. Active job UI with live timer implemented on Home dashboard.
-- [x] **27. Mileage tracker** — Google Maps Distance Matrix integration (Home -> Job A -> Job B -> Home) via Vercel API proxy. Estimates stored in `ai_context` for AI voice readiness. GO! buttons deep-link to navigation.
-- [x] **27.1 Real-time Subscriptions** — UI auto-refreshes on database changes (jobs, clients, payments, expenses) using Supabase Realtime, filtered by business_id.
+- [x] **26. Geofence service** — Auto-start timer on arrival (150m), auto-stop on departure (250m for 3min). Uses `navigator.geolocation.watchPosition` via `GeofenceContext`. Active job UI with live timer implemented on Home dashboard. ⚠️ `trackingJobRef` pattern — do not put side effects back inside state updaters (see CLAUDE.md GeofenceContext rules).
+- [x] **27. Mileage tracker** — Google Maps Distance Matrix integration (Home -> Job A -> Job B -> Home) via Vercel API proxy (`api/distance.js`, `api/geocode.js`). Estimates stored in `ai_context` for AI voice readiness. GO! buttons deep-link to navigation.
+- [x] **27.1 Real-time Subscriptions** — UI auto-refreshes on database changes (jobs, clients, payments, expenses) using Supabase Realtime, filtered by `business_id`. Manager in `src/data/realtime.js`.
 - [x] **28. Storage bucket** — Private `job-assets` bucket implemented for photos and voice notes. Secure signed URLs (1hr expiry) generated for viewing/playback. Built-in voice recorder (MediaRecorder API) added to Job Detail sheet.
+- [x] **Phase 8 bug fixes (Claude Code)** — DST calc, geofence state updater, updateJob/Client business_id scoping, signout cache clear. See handoff.md for details.
 
 ### 🎯 Phase 9 — Polish
 

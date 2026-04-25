@@ -32,7 +32,7 @@ At the end of every productive session, or upon major milestone completion, Gemi
 
 ---
 
-## Current State (as of April 24, 2026)
+## Current State (as of April 24, 2026 — updated post Claude Code review)
 
 | Feature | Status |
 |---|---|
@@ -52,6 +52,18 @@ At the end of every productive session, or upon major milestone completion, Gemi
 | **Storage bucket** | ✅ **Live** — Photos + Voice Notes in Job Detail |
 | **Geofence / auto-timer** | ✅ **Live** — Auto-start/stop with Live Timer card |
 | Google Calendar sync | ❌ Not started |
+
+## Phase 8 bug fixes (Claude Code session, April 24, 2026)
+
+Five bugs were found and fixed after Phase 8 landed. Do not regress these:
+
+| # | Bug | Fix | File |
+|---|---|---|---|
+| A | `composeTorontoISO` — `(month === 11 && day < 1)` always false; Nov 1–6 showed 1hr off | Replaced with `nthSunday()` helper computing exact DST boundary per year | `src/data/jobsRepo.js` |
+| B | `GeofenceContext` — `handleClockIn`, `setTimeout`, `clearTimeout` called inside `setTrackingJob()` updater; React 19 can call updaters multiple times → duplicate DB writes | Added `trackingJobRef` + `setTracking()` wrapper; side effects moved outside updater | `src/context/GeofenceContext.jsx` |
+| C | `updateJob` / `updateClient` — no `business_id` scope on UPDATE queries | Added `.eq('business_id', await getCurrentBusinessId())` to both | `src/data/jobsRepo.js`, `src/data/clientsRepo.js` |
+| D | `signOut` — never called `clearBusinessCache()`; stale business_id after logout | Added `clearBusinessCache()` call before `supabase.auth.signOut()` | `src/context/Auth.jsx` |
+| E | Circular dep — `useData.js` ↔ `realtime.js` import each other | Vite handles this via live bindings; deferred until next touch of either file | `src/data/realtime.js` |
 
 ## Job Detail Sheet — architecture notes
 - Context: `src/context/JobDetailSheetContext.js` → `useJobDetailSheet()` → `{ openJob, closeJob, jobId }`

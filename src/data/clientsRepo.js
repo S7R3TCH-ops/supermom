@@ -43,10 +43,12 @@ export async function createClient(payload) {
 }
 
 export async function updateClient(id, patch) {
+  const businessId = await getCurrentBusinessId();
   const { data, error } = await supabase
     .from('clients')
     .update(patch)
     .eq('id', id)
+    .eq('business_id', businessId)
     .select()
     .single();
   if (error) throw error;

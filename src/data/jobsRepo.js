@@ -65,10 +65,12 @@ export async function createJob(payload) {
 }
 
 export async function updateJob(id, patch) {
+  const businessId = await getCurrentBusinessId();
   const { data, error } = await supabase
     .from('jobs')
     .update(patch)
     .eq('id', id)
+    .eq('business_id', businessId)
     .select()
     .single();
   if (error) throw error;
@@ -123,16 +125,23 @@ function decorateJob(j) {
   return { ...j, scheduled_at: iso, duration_est: durationMin };
 }
 
-// April 2026 is DST → -04:00. Nov–Mar would be -05:00.
 function composeTorontoISO(dateStr, timeStr) {
   if (!dateStr) return null;
   const t = (timeStr || '00:00').slice(0, 5);
-  const month = parseInt(dateStr.slice(5, 7), 10);
-  const day = parseInt(dateStr.slice(8, 10), 10);
-  const isDST = (month > 3 && month < 11) ||
-    (month === 3 && day >= 8) ||
-    (month === 11 && day < 1);
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const dstStart = nthSunday(year, 3, 2);  // 2nd Sunday in March
+  const dstEnd   = nthSunday(year, 11, 1); // 1st Sunday in November
+  const date  = new Date(Date.UTC(year, month - 1, day));
+  const start = new Date(Date.UTC(year, 2,  dstStart));
+  const end   = new Date(Date.UTC(year, 10, dstEnd));
+  const isDST = date >= start && date < end;
   return `${dateStr}T${t}:00${isDST ? '-04:00' : '-05:00'}`;
+}
+
+function nthSunday(year, month, n) {
+  const first = new Date(Date.UTC(year, month - 1, 1)).getUTCDay(); // 0=Sun
+  const offset = first === 0 ? 0 : 7 - first;
+  return 1 + offset + (n - 1) * 7;
 }
 
 // Returns jobs within `windowMinutes` of the given scheduled_at ISO string.

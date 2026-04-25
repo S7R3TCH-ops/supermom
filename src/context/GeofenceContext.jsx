@@ -7,8 +7,18 @@ const GeofenceContext = createContext(null);
 
 export function GeofenceProvider({ children }) {
   const [trackingJob, setTrackingJob] = useState(null); // { id, lat, lng, state: 'approaching'|'working' }
+  const trackingJobRef = useRef(null);
   const watchId = useRef(null);
   const departureTimer = useRef(null);
+
+  // Keep ref in sync with state so the watchPosition callback can read
+  // current tracking state without being stale (refs don't go through
+  // React's batching, so side effects can safely read them).
+  const setTracking = (val) => {
+    const next = typeof val === 'function' ? val(trackingJobRef.current) : val;
+    trackingJobRef.current = next;
+    setTrackingJob(next);
+  };
 
   const stopTracking = () => {
     if (watchId.current !== null) {
@@ -19,7 +29,7 @@ export function GeofenceProvider({ children }) {
       clearTimeout(departureTimer.current);
       departureTimer.current = null;
     }
-    setTrackingJob(null);
+    setTracking(null);
   };
 
   const handleClockIn = async (jobId) => {
@@ -71,40 +81,36 @@ export function GeofenceProvider({ children }) {
 
   const startTracking = (jobId, targetLat, targetLng) => {
     stopTracking();
-    setTrackingJob({ id: jobId, lat: targetLat, lng: targetLng, state: 'approaching' });
+    setTracking({ id: jobId, lat: targetLat, lng: targetLng, state: 'approaching' });
 
     watchId.current = navigator.geolocation.watchPosition(
-      async (pos) => {
+      (pos) => {
         const { latitude, longitude } = pos.coords;
         const dist = getDistanceMeters(latitude, longitude, targetLat, targetLng);
+        const cur = trackingJobRef.current;
+        if (!cur || cur.id !== jobId) return;
 
-        setTrackingJob(prev => {
-          if (!prev || prev.id !== jobId) return prev;
+        // Arrival (150m) — update state first, then fire the side effect
+        if (cur.state === 'approaching' && dist <= 150) {
+          setTracking({ ...cur, state: 'working' });
+          handleClockIn(jobId);
+          return;
+        }
 
-          // Arrival check (150m)
-          if (prev.state === 'approaching' && dist <= 150) {
-            handleClockIn(jobId);
-            return { ...prev, state: 'working' };
-          }
-
-          // Departure check (250m)
-          if (prev.state === 'working') {
-            if (dist > 250) {
-              if (!departureTimer.current) {
-                departureTimer.current = setTimeout(() => {
-                  handleClockOut(jobId);
-                  stopTracking();
-                }, 3 * 60 * 1000); // 3 minutes
-              }
-            } else {
-              if (departureTimer.current) {
-                clearTimeout(departureTimer.current);
-                departureTimer.current = null;
-              }
+        // Departure (250m for 3 min) — pure ref/timer manipulation, no state update needed
+        if (cur.state === 'working') {
+          if (dist > 250) {
+            if (!departureTimer.current) {
+              departureTimer.current = setTimeout(() => {
+                handleClockOut(jobId);
+                stopTracking();
+              }, 3 * 60 * 1000);
             }
+          } else if (departureTimer.current) {
+            clearTimeout(departureTimer.current);
+            departureTimer.current = null;
           }
-          return prev;
-        });
+        }
       },
       (err) => console.error('[geofence] Geolocation error:', err),
       { enableHighAccuracy: true, maximumAge: 10000, timeout: 10000 }

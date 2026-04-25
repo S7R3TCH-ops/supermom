@@ -1,3 +1,30 @@
+# Handoff Report — April 24, 2026 (Post-Phase 8 · Claude Code Review)
+
+## Session: Phase 8 Code Review + Bug Fixes
+
+Claude Code performed an expert review of all Phase 8 implementations and found 5 bugs. All were fixed in this session.
+
+### Fixes Applied
+
+**1. DST bug in `composeTorontoISO` (`src/data/jobsRepo.js`)**
+The original condition `(month === 11 && day < 1)` was always false (days are 1–31). This caused jobs on Nov 1–6 to display 1 hour late — those days are still in EDT (-04:00) until the first Sunday of November. Replaced the broken approximation with a proper `nthSunday(year, month, n)` helper that calculates the exact DST boundary for any year.
+
+**2. Side effects inside React state updater (`src/context/GeofenceContext.jsx`)**
+`handleClockIn()`, `setTimeout()`, and `clearTimeout()` were all being called inside a `setTrackingJob(prev => ...)` updater function. React 19 concurrent mode can invoke updaters multiple times, risking duplicate clock-ins. Fixed by introducing a `trackingJobRef` that mirrors state and a `setTracking()` wrapper. The `watchPosition` callback now reads from the ref directly and fires side effects after the state update — nothing async happens inside the updater.
+
+**3. `updateJob`/`updateClient` unscoped by `business_id` (`src/data/jobsRepo.js`, `src/data/clientsRepo.js`)**
+Both update functions only filtered by `id`. Added `.eq('business_id', await getCurrentBusinessId())` for defense-in-depth, consistent with every other repo query. Zero performance cost — `getCurrentBusinessId()` is cached.
+
+**4. `clearBusinessCache()` not called on signout (`src/context/Auth.jsx`)**
+The module-level cache in `currentBusiness.js` was never invalidated on logout. Added `clearBusinessCache()` call before `supabase.auth.signOut()`.
+
+**5. Circular dependency `useData.js` ↔ `realtime.js` (deferred)**
+Both files import from each other (`notifyDataChanged` in `useData.js`, `initRealtime`/`stopRealtime` in `realtime.js`). Vite handles this correctly via live bindings. Deferred to next time either file is touched — fix by extracting `notifyDataChanged` to `src/data/events.js`.
+
+### No Gemini Phase 8 features were changed — only correctness fixes.
+
+---
+
 # Handoff Report — April 24, 2026 (Night #6)
 
 ## Session: Phase 8 Real-World Services (Complete)

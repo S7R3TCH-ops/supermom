@@ -24,7 +24,7 @@ This is a **managed service product** — Sandra is the first user, but the arch
 | Performance | Code-splitting (`React.lazy` + `Suspense`) |
 | Calendar | Google Calendar API (OAuth) |
 | Maps/Geo | Google Maps API (routing + geofence) |
-| State | React Context or Zustand (decide before first data fetch) |
+| State | React Context (chosen — no Zustand) |
 
 ---
 
@@ -42,8 +42,8 @@ supermom-v2/
 
 ## Security & Environment
 - **CRITICAL**: Never commit `.env` or the `docs/` folder. They are ignored in `.gitignore`.
-- **API Keys**: Use `VITE_` prefix for all environment variables (e.g., `VITE_SUPABASE_URL`).
-- **Mock Data**: Current version uses mock data for visual prototype; backend integration pending.
+- **API Keys**: Use `VITE_` prefix for all client-side env vars (e.g., `VITE_SUPABASE_URL`). Server-only keys (e.g. `GOOGLE_MAPS_API_KEY`) live in Vercel env without the `VITE_` prefix and are accessed only in `api/` serverless functions.
+- **Mock Data**: Gone. All pages query live Supabase data. Do not re-introduce mock data.
 
 ---
 
@@ -68,11 +68,16 @@ The schema is multi-tenant and agentic-AI-ready (richer than this app strictly n
 
 ### Repo / data layer rules
 - All queries go through `src/data/clientsRepo.js` + `src/data/jobsRepo.js` — pages do not call `supabase` directly.
-- Queries are scoped by `business_id` resolved via `src/data/currentBusiness.js` (caches the lookup against `auth.users.id` → `users.business_id`).
+- Queries are scoped by `business_id` resolved via `src/data/currentBusiness.js` (caches the lookup against `auth.users.id` → `users.business_id`). **Every** `select`, `insert`, `update`, and `delete` must include `.eq('business_id', businessId)` — including `updateJob` and `updateClient`.
 - Display fields the schema doesn't store (initials, color hashes, derived `last`/`next`/`amt`) live in `src/data/selectors.js` (`toDisplayClient`, `toDisplayJob`).
-- The UI's expected `scheduled_at` ISO is composed in `jobsRepo.decorateJob()` from `scheduled_date` + `scheduled_time` (Toronto local).
-- Pages subscribe to `supermom:data-changed` (dispatched by `notifyDataChanged()` after writes) so they auto-refresh.
+- The UI's expected `scheduled_at` ISO is composed in `jobsRepo.decorateJob()` from `scheduled_date` + `scheduled_time` (Toronto local) via `composeTorontoISO()`. That function uses `nthSunday()` to correctly calculate DST boundaries — do not simplify it back to a month-range approximation.
+- Pages subscribe to `supermom:data-changed` (dispatched by `notifyDataChanged()` after writes) so they auto-refresh. `notifyDataChanged` is defined in `src/data/useData.js` and imported by both `useData.js` hooks and `src/data/realtime.js`.
 - Recurrence is stored in `ai_context.recurrence_rule` on each job today. When we add the templates UI, switch to `job_templates`.
+- `signOut` in `src/context/Auth.jsx` must call `clearBusinessCache()` before `supabase.auth.signOut()` to prevent stale business_id after logout.
+
+### GeofenceContext rules
+- `src/context/GeofenceContext.jsx` uses a `trackingJobRef` ref that mirrors the `trackingJob` state. All state updates go through `setTracking()` (not `setTrackingJob()` directly) to keep the ref in sync.
+- **Never put side effects inside the state updater.** The `watchPosition` callback reads `trackingJobRef.current` synchronously, updates state via `setTracking()`, then fires async side effects (`handleClockIn`, `setTimeout`) outside the updater. React 19 concurrent mode calls updater functions multiple times — side effects inside them cause duplicate DB writes.
 
 ### Field-name gotchas (real schema vs. naive expectations)
 - `clients.first_name` + `clients.last_name` (not `name`)
@@ -90,7 +95,7 @@ The schema is multi-tenant and agentic-AI-ready (richer than this app strictly n
 
 - **Sandra books all jobs herself** — no self-serve client booking yet
 - **Payment is cash or e-Transfer only** — no Stripe, no online processing
-- **Soft deletes only** — never hard delete jobs or clients (`is_deleted = true`)
+- **Soft deletes only** — never hard delete jobs or clients. Set `deleted_at = now()`, never `is_deleted`. Filter with `.is('deleted_at', null)`.
 - **Recurrence**: jobs can repeat weekly/biweekly/monthly. Each occurrence is its own row with a `recurrence_parent_id` pointer
 - **HST is currently OFF** — Sandra is below the threshold. The toggle exists in config for when she crosses it
 - **Timezone is always `America/Toronto`** — never use system timezone

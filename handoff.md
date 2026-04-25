@@ -55,4 +55,23 @@ This session saw a major leap in functionality, transforming the prototype into 
 3. **Recurrence Series Editor:** Add "This / Future / All" logic when editing or cancelling a recurring job series.
 4. **AI Duration Estimator:** Real logic for Step 2 of the booking flow.
 
-*(Updated by Gemini CLI)*
+---
+
+## Session: Google Calendar Sync (Task 1: Database Schema)
+Implemented the database schema for storing OAuth tokens to enable one-way sync from Supermom to Google Calendar.
+
+### 1. Database Schema Update
+- **Integrations Table:** Created `public.integrations` table to store `refresh_token`, `calendar_id`, and `service_name` (e.g., 'google_calendar'), scoped to `business_id`.
+- **Row Level Security:** Implemented RLS policies to ensure users can only see and insert integrations associated with their own business.
+- **SQL Migration:** Added `supabase_schema_update.sql` to the project root for deployment tracking.
+
+---
+
+## Current Build Status (Task 1 Complete)
+
+| Feature | Status | Note |
+|---|---|---|
+| Integrations Table | ✅ Live | `public.integrations` table with RLS |
+
+*(Updated by Gemini CLI) - April 24, 2026*
+*

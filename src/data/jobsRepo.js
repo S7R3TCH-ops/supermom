@@ -61,18 +61,24 @@ export async function createJob(payload) {
     .select()
     .single();
   if (error) throw error;
-  return decorateJob(data);
+  const decorated = decorateJob(data);
+  triggerGCalSync(decorated.id, 'upsert'); // Trigger sync
+  return decorated;
 }
 
 export async function updateJob(id, patch) {
+  const businessId = await getCurrentBusinessId();
   const { data, error } = await supabase
     .from('jobs')
     .update(patch)
     .eq('id', id)
+    .eq('business_id', businessId)
     .select()
     .single();
   if (error) throw error;
-  return decorateJob(data);
+  const decorated = decorateJob(data);
+  triggerGCalSync(id, 'upsert'); // Trigger sync
+  return decorated;
 }
 
 export async function softDeleteJob(id) {
@@ -152,4 +158,19 @@ export function findConflicts(allJobs, scheduledAtISO, durationMin, windowMinute
     const gap = Math.min(Math.abs(jt - endT), Math.abs(t - je));
     return gap < windowMinutes * 60_000;
   });
+}
+
+// ---------- GCal Sync ----------
+
+async function triggerGCalSync(jobId, action = 'upsert') {
+  try {
+    // We fire and forget, but log errors
+    fetch('/api/sync/gcal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jobId, action })
+    }).catch(err => console.error('GCal Sync Trigger Error:', err));
+  } catch (e) {
+    console.error('GCal Sync Trigger Error:', e);
+  }
 }

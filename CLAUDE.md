@@ -144,6 +144,3 @@ The schema is multi-tenant and agentic-AI-ready (richer than this app strictly n
 - [ ] Settings / Profile screen (service rates config etc)
 - [ ] Onboarding flow
 - [ ] Minxy project (same template, different operator — after SMHQ ships)
-ings / Profile screen (service rates config etc)
-- [ ] Onboarding flow
-- [ ] Minxy project (same template, different operator — after SMHQ ships)

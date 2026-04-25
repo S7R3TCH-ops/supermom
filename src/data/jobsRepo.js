@@ -291,7 +291,7 @@ function decorateJob(j) {
   return { ...j, scheduled_at: iso, duration_est: durationMin };
 }
 
-function composeTorontoISO(dateStr, timeStr) {
+export function composeTorontoISO(dateStr, timeStr) {
   if (!dateStr) return null;
   const t = (timeStr || '00:00').slice(0, 5);
   const [year, month, day] = dateStr.split('-').map(Number);

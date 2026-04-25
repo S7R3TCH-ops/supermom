@@ -3,7 +3,7 @@ import { useAppTheme } from '../../context/AppThemeContext';
 import SectionLabel from '../ui/SectionLabel';
 import NewClientSheet from './NewClientSheet';
 import { fetchClients } from '../../data/clientsRepo';
-import { fetchActiveJobs, createJob, findConflicts, fetchJobsByClientId } from '../../data/jobsRepo';
+import { fetchActiveJobs, createJob, findConflicts, fetchJobsByClientId, composeTorontoISO } from '../../data/jobsRepo';
 import { toDisplayClient } from '../../data/selectors';
 import { notifyDataChanged } from '../../data/useData';
 import { SERVICES, RECURRENCE } from '../../data/services';
@@ -36,17 +36,6 @@ function fmtDuration(min) {
   if (h === 0) return `${m}m`;
   if (m === 0) return `${h}h`;
   return `${h}h ${m}m`;
-}
-
-// April–Oct is DST in ON.
-function torontoISO(dateStr, timeStr) {
-  if (!dateStr || !timeStr) return '';
-  const month = parseInt(dateStr.slice(5, 7), 10);
-  const day = parseInt(dateStr.slice(8, 10), 10);
-  const isDST = (month > 3 && month < 11) ||
-    (month === 3 && day >= 8) ||
-    (month === 11 && day < 1);
-  return `${dateStr}T${timeStr}:00${isDST ? '-04:00' : '-05:00'}`;
 }
 
 export default function NewJobSheet({ prefillClientId, onClose }) {
@@ -128,7 +117,7 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
   const canNext1 = !!clientId;
   const canNext2 = !!serviceKey && !!date && !!time;
 
-  const scheduledISO = torontoISO(date, time);
+  const scheduledISO = composeTorontoISO(date, time);
   const conflicts = useMemo(() => {
     if (!scheduledISO) return [];
     return findConflicts(jobRows, scheduledISO, duration, 60).filter(j => j.client_id !== clientId);

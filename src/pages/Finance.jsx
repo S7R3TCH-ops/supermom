@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
 import { useAppTheme } from '../context/AppThemeContext';
 import SectionLabel from '../components/ui/SectionLabel';
-import { useJobs, notifyDataChanged, useClients } from '../data/useData';
+import { useJobs, useExpenses, notifyDataChanged, useClients } from '../data/useData';
 import { updateJob, recordPayment } from '../data/jobsRepo';
 import NudgeDraftSheet from '../components/sheets/NudgeDraftSheet';
+import NewExpenseSheet from '../components/sheets/NewExpenseSheet';
 
 const periods = ['Week', 'Month', 'Year', 'All'];
 const DOW = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
@@ -31,7 +32,9 @@ export default function Finance() {
   const [period, setPeriod] = useState('Week');
   const [busyId, setBusyId] = useState(null);
   const [showNudges, setShowNudges] = useState(false);
+  const [showNewExpense, setShowNewExpense] = useState(false);
   const { jobs: allJobs, loading, error } = useJobs();
+  const { expenses: allExpenses } = useExpenses();
   const { clients } = useClients();
 
   async function markPaid(id) {
@@ -96,6 +99,11 @@ export default function Finance() {
     .reduce((s, j) => s + Number(j.raw.estimated_hours), 0);
   const hourlyAvg = hoursWorked > 0 ? collected / hoursWorked : 0;
 
+  const expPeriodStart = periodStart(period, now);
+  const periodExpenses = allExpenses
+    .filter(e => !e.deleted_at && new Date(e.expense_date) >= expPeriodStart)
+    .reduce((s, e) => s + Number(e.amount || 0), 0);
+
   // Last 7 days bars
   const todayStart = new Date(now); todayStart.setHours(0,0,0,0);
   const last7 = Array.from({ length: 7 }, (_, i) => {
@@ -110,28 +118,43 @@ export default function Finance() {
   });
   const maxBar = Math.max(1, ...last7.map(b => b.total));
 
-  // Recent activity
+  // Recent activity — jobs + expenses merged by date
   const transactions = useMemo(() => {
-    return [...allJobs]
+    const jobTx = allJobs
       .map(j => ({ ...j, _date: new Date(j.scheduled_at) }))
       .filter(j => !Number.isNaN(j._date.getTime()))
-      .sort((a, b) => b._date - a._date)
-      .slice(0, 8)
       .map(j => {
         const paid = j.payment_status === 'Paid';
         const completed = j.status === 'Completed';
-        const color = paid ? '#22C55E' : completed ? '#E91E6A' : 'rgba(255,255,255,0.4)';
-        const icon = paid ? '💚' : completed ? '🔴' : '🗓';
         return {
-          id: j.id,
-          icon, color, paid,
-          status: j.status,
+          id: `job-${j.id}`,
+          icon: paid ? '💚' : completed ? '🔴' : '🗓',
+          color: paid ? '#22C55E' : completed ? '#E91E6A' : T.inkMuted,
           label: `${j.client_name} · ${j.service_name}`,
           date: fmtShort(j._date),
           amt: `+$${Number(j.total || 0).toFixed(0)}`,
+          _date: j._date,
+          type: 'job',
         };
       });
-  }, [allJobs]);
+
+    const expTx = allExpenses
+      .filter(e => !e.deleted_at)
+      .map(e => ({
+        id: `exp-${e.id}`,
+        icon: '🧾',
+        color: '#F59E0B',
+        label: `${e.category} expense${e.notes ? ` · ${e.notes}` : ''}`,
+        date: e.expense_date ? new Date(e.expense_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Toronto' }) : '—',
+        amt: `-$${Number(e.amount || 0).toFixed(0)}`,
+        _date: new Date(e.expense_date),
+        type: 'expense',
+      }));
+
+    return [...jobTx, ...expTx]
+      .sort((a, b) => b._date - a._date)
+      .slice(0, 10);
+  }, [allJobs, allExpenses, T.inkMuted]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: T.bg, color: T.ink }}>
@@ -187,10 +210,10 @@ export default function Finance() {
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 11 }}>
           {[
-            { label: 'Collected',    val: `$${collected.toFixed(0)}`,                     sub: `This ${period.toLowerCase()}`,         color: '#22C55E', bg: mode === 'dark' ? 'rgba(34,197,94,0.1)'   : '#F0FFF5', border: mode === 'dark' ? 'rgba(34,197,94,0.22)'   : '#86EFAC' },
-            { label: 'Outstanding',  val: `$${outstanding.toFixed(0)}`,                   sub: `${outstandingCount} unpaid`,           color: '#E91E6A', bg: mode === 'dark' ? 'rgba(233,30,106,0.1)'  : '#FFF0F7', border: mode === 'dark' ? 'rgba(233,30,106,0.25)'  : '#FFD6E8', action: outstandingCount > 0 ? 'Nudge all' : null, onAction: () => setShowNudges(true) },
-            { label: 'Hours est.',   val: `${hoursWorked.toFixed(1)}h`,                   sub: hourlyAvg > 0 ? `$${hourlyAvg.toFixed(0)} / hr avg` : 'no completed jobs', color: mode === 'dark' ? 'rgba(255,255,255,0.7)' : '#5A3040', bg: T.card, border: T.cardBorder },
-            { label: 'Mileage',      val: '— km',                                         sub: 'Auto-tracking pending',                color: mode === 'dark' ? 'rgba(255,255,255,0.7)' : '#5A3040', bg: T.card, border: T.cardBorder },
+            { label: 'Collected',    val: `$${collected.toFixed(0)}`,       sub: `This ${period.toLowerCase()}`,         color: '#22C55E', bg: mode === 'dark' ? 'rgba(34,197,94,0.1)'  : '#F0FFF5', border: mode === 'dark' ? 'rgba(34,197,94,0.22)'  : '#86EFAC' },
+            { label: 'Outstanding',  val: `$${outstanding.toFixed(0)}`,     sub: `${outstandingCount} unpaid`,           color: '#E91E6A', bg: mode === 'dark' ? 'rgba(233,30,106,0.1)' : '#FFF0F7', border: mode === 'dark' ? 'rgba(233,30,106,0.25)' : '#FFD6E8', action: outstandingCount > 0 ? 'Nudge all' : null, onAction: () => setShowNudges(true) },
+            { label: 'Expenses',     val: `$${periodExpenses.toFixed(0)}`,  sub: `This ${period.toLowerCase()}`,         color: '#F59E0B', bg: mode === 'dark' ? 'rgba(245,158,11,0.1)' : '#FFFBEB', border: mode === 'dark' ? 'rgba(245,158,11,0.25)' : '#FCD34D', action: '+ Add', onAction: () => setShowNewExpense(true) },
+            { label: 'Hours / rate', val: `${hoursWorked.toFixed(1)}h`,     sub: hourlyAvg > 0 ? `$${hourlyAvg.toFixed(0)} / hr avg` : 'no completed jobs', color: mode === 'dark' ? 'rgba(255,255,255,0.7)' : '#5A3040', bg: T.card, border: T.cardBorder },
           ].map((s, i) => (
             <div key={i} style={{ background: s.bg, border: `1.5px solid ${s.border}`, borderRadius: 12, padding: '10px 11px' }}>
               <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', color: T.inkMuted, marginBottom: 4 }}>{s.label}</div>
@@ -238,16 +261,17 @@ export default function Finance() {
         )}
 
         {transactions.map(tx => {
-          const tappable = !tx.paid && tx.status !== 'Cancelled';
+          const tappable = tx.type === 'job' && !tx.paid && tx.status !== 'Cancelled';
+          const rawJobId = tx.type === 'job' ? tx.id.replace('job-', '') : null;
           return (
             <div
               key={tx.id}
-              onClick={tappable ? () => markPaid(tx.id) : undefined}
+              onClick={tappable ? () => markPaid(rawJobId) : undefined}
               style={{
                 background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 11,
                 padding: '9px 12px', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 9,
                 cursor: tappable ? 'pointer' : 'default',
-                opacity: busyId === tx.id ? 0.55 : 1,
+                opacity: busyId === rawJobId ? 0.55 : 1,
               }}
             >
               <div style={{ width: 34, height: 34, borderRadius: 9, background: `${tx.color}18`, border: `1px solid ${tx.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 14 }}>
@@ -271,6 +295,11 @@ export default function Finance() {
         isOpen={showNudges}
         onClose={() => setShowNudges(false)}
         clientsWithUnpaid={clientsWithUnpaid}
+      />
+
+      <NewExpenseSheet
+        isOpen={showNewExpense}
+        onClose={() => setShowNewExpense(false)}
       />
     </div>
   );

@@ -106,11 +106,11 @@ The schema is multi-tenant and agentic-AI-ready (richer than this app strictly n
 - [x] Client Search — live filtering in Clients roster
 - [x] Payments Audit — `recordPayment` logs to `payments` table
 - [x] Nudge Drafts — AI-ready SMS reminders for overdue jobs
-- [ ] Auto-timer via geofence (on GO! tap)
-- [ ] Auto-mileage tracking (Google Maps integration)
+- [x] Auto-timer via geofence (on GO! tap)
+- [x] Auto-mileage tracking (Google Maps integration)
+- [x] Storage bucket (photos + voice notes)
 - [ ] Google Calendar sync
 - [ ] AI context features (duration estimate, prep notes)
-- [ ] Storage bucket (photos + voice notes)
 
 ---
 

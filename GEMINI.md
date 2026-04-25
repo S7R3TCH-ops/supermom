@@ -43,26 +43,27 @@ At the end of every productive session, or upon major milestone completion, Gemi
 | Finance — mark-paid | ✅ Live |
 | New Job sheet | ✅ Live |
 | **Job Detail sheet** | ✅ **Live** — tap any job card (Home or Calendar) to view/edit/act |
-| Drive time / mileage | ❌ Hardcoded "—" — needs Google Maps |
+| **Drive time / mileage** | ✅ **Live** — Google Maps Distance Matrix API proxy |
 | **payments table audit row** | ✅ **Live** — mark-paid inserts into `payments` via `recordPayment()` |
 | **Client search** (Clients page) | ✅ **Live** — live filter by name/address |
 | **Finance nudge buttons** | ✅ **Live** — `NudgeDraftSheet` drafts SMS reminders |
 | **Code-split bundle** | ✅ **Live** — `React.lazy` + `Suspense` on all pages |
+| **Real-time subscriptions** | ✅ **Live** — Supabase Realtime auto-refresh |
+| **Storage bucket** | ✅ **Live** — Photos + Voice Notes in Job Detail |
+| **Geofence / auto-timer** | ✅ **Live** — Auto-start/stop with Live Timer card |
 | Google Calendar sync | ❌ Not started |
-| Geofence / auto-timer | ❌ Not started |
 
 ## Job Detail Sheet — architecture notes
 - Context: `src/context/JobDetailSheetContext.js` → `useJobDetailSheet()` → `{ openJob, closeJob, jobId }`
 - Provider: `src/context/JobDetailSheet.jsx` — wraps AuthedShell in App.jsx
-- UI: `src/components/sheets/JobDetailSheet.jsx` (~760 lines) — read mode + edit mode
+- UI: `src/components/sheets/JobDetailSheet.jsx` (~899 lines) — read mode + edit mode + MediaCard
 - Shared catalog: `src/data/services.js` — SERVICES and RECURRENCE (used by NewJobSheet, NewClientSheet, JobDetailSheet)
 - Named action handlers: `markComplete`, `markPaid`, `cancelJob`, `saveEdit` — AI voice ready
 - `service_name` stored as label (e.g. "Deep Clean") matching NewJobSheet convention
 - Mutation errors shown inline; fetch errors replace the sheet body
 
 ## Next priorities
-1. Google Maps integration (drive time + mileage)
-2. Real-time subscriptions (refresh on DB changes)
-3. Storage bucket (photos + voice notes)
-4. AI Prep Notes generator
-5. Recurrence series editor (this / future / all)
+1. Google Calendar sync (create/edit/cancel events)
+2. AI Prep Notes generator (summarize history)
+3. Recurrence series editor (this / future / all)
+4. AI Duration Estimator (Step 2 of New Job)

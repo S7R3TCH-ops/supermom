@@ -1,59 +1,58 @@
-# Handoff Report — April 24, 2026 (Night #5)
+# Handoff Report — April 24, 2026 (Night #6)
 
-## Session: Geofence Service (Phase 8)
-- **Geocoding API Proxy:** Created `api/geocode.js` to securely convert addresses to latitude/longitude using the Google Maps Geocoding API.
-- **Geofence Manager:** Implemented `GeofenceContext.jsx` using `navigator.geolocation.watchPosition`.
-  - **Auto-Start:** Automatically sets `ai_context.clock_in_time` when within 150m of the target job.
-  - **Auto-Stop:** Automatically completes the job and calculates `actual_duration` when departing (>250m) for more than 3 minutes.
-- **Active Job UI:** Created a "Mission Control" dark card variant on the Home dashboard that appears when a job is in progress.
-  - **Live Timer:** A real-time running timer (Fraunces serif) showing elapsed time since arrival.
-  - **Manual Override:** A "Done" button allows Sandra to manually end the timer if needed.
-- **Navigation Integration:** Wired the "GO!" buttons to simultaneously launch Google Maps navigation and start the geofence tracking.
+## Session: Phase 8 Real-World Services (Complete)
+This session saw a major leap in functionality, transforming the prototype into a fully autonomous operational tool for Sandra. We implemented the core logic for the Google Maps integration, real-time database synchronization, secure file storage, and hands-free geofenced job tracking.
 
----
+### 1. Google Maps Integration
+- **Secure API Proxy:** Created `api/distance.js` and `api/geocode.js` Vercel functions to proxy Google Maps requests, keeping the API key completely hidden from the client.
+- **Routing Logic:** Implemented `updateDailyRoutes` in `src/lib/maps.js` using "Option C" logic (Home -> Job A -> Job B -> Home). Estimates are saved directly to `jobs.ai_context` for AI-voice readiness.
+- **Navigation:** All "GO!" buttons now deep-link directly to Google Maps Navigation with the job's address.
 
-## Overview
-App is fully live with real-time sync, secure storage, and autonomous job tracking. All 5 pages read from Supabase. (Updated by Gemini CLI)
+### 2. Real-time Subscriptions
+- **Supabase Realtime:** Implemented a global subscription manager in `src/data/realtime.js`.
+- **Global Sync:** Wired `useRealtimeSync` into `src/App.jsx` (AuthedShell). The app now automatically reloads data for jobs, clients, payments, and expenses the moment a change occurs in the database, without requiring a manual refresh.
 
----
+### 3. Storage Bucket (Media)
+- **Secure Storage:** Configured a private `job-assets` Supabase bucket.
+- **Job Media UI:** Added a `MediaCard` to the Job Detail sheet. Sandra can now upload photos and record voice notes (via MediaRecorder API) directly to a job.
+- **Signed URLs:** Files are protected; the app generates temporary signed URLs (1-hour expiry) on-the-fly for viewing/playback.
 
-## What works end-to-end (Supabase-backed)
-
-| Path | Status |
-|---|---|
-| Login (`/`) | ✅ email/password + Forgot password |
-| Sign out | ✅ tap avatar (top-right pink bar) |
-| Home (`/`) | ✅ **Active Job UI with Live Timer**, Real-time updates, Maps estimates |
-| Clients (`/clients`) | ✅ list + Search |
-| Client Profile (`/clients/:id`) | ✅ history/upcoming |
-| Job Detail | ✅ Media uploads (photos + voice notes), Mark Paid/Complete |
-| Finance (`/finance`) | ✅ Nudge Drafts, mark-paid |
-| New Job FAB | ✅ books to jobs table |
+### 4. Geofence Service (Auto-Timer)
+- **Autonomous Tracking:** Implemented `GeofenceContext.jsx` using `watchPosition`.
+- **Auto-Start:** The app automatically "clocks in" and starts the timer when Sandra arrives within 150m of a client's home.
+- **Auto-Stop:** Automatically completes the job and calculates worked duration when she departs the area (>250m) for more than 3 minutes.
+- **Mission Control UI:** Added a dark "Active Job" variant to the Home Today Card with a large, live-running timer (Fraunces serif) and a manual "Done" button.
 
 ---
 
-## Technical Details (Phase 8 Geofence)
-- **Geocoding**: Lat/Lng is fetched on-demand when "GO!" is tapped.
-- **Timer Persistence**: Clock-in/out times are stored in `jobs.ai_context` to avoid schema migration constraints while remaining "AI ready".
-- **Tracking Logic**: Uses high-accuracy GPS with a 10s timeout to balance battery and precision.
+## Technical Overview
+- **Deployment Status:** Local build `npm run build` is passing. Version incremented to `0.0.5`. 
+- **Database:** Supabase project `lskzzsjmmtsosfneuovt` is fully active.
+- **Dependencies Added:** No new NPM packages were needed; used native Web APIs (MediaRecorder, Geolocation, Fetch).
 
 ---
 
-## Next steps (priority order)
+## Current Build Status (End of Phase 8)
 
-### 1. Google Calendar OAuth + Sync
-Create/edit/cancel events on every job mutation.
-
-### 2. AI Prep Notes Generator
-Summarize client history into actionable visit notes.
-
-### 3. Recurrence Series Editor
-"This / Future / All" editor for recurring jobs.
+| Feature | Status | Note |
+|---|---|---|
+| Auth / Login | ✅ Live | |
+| Home Dashboard | ✅ Live | Now features Live Timer and Maps drive estimates |
+| Calendar | ✅ Live | |
+| Client Roster | ✅ Live | |
+| Finance | ✅ Live | |
+| New Job / Client | ✅ Live | |
+| Job Detail | ✅ Live | Supports photo uploads and voice note recording |
+| Real-time Sync | ✅ Live | |
+| Auto-Timer | ✅ Live | |
 
 ---
 
-## Key files
-- `api/geocode.js` — Geocoding proxy
-- `src/context/GeofenceContext.jsx` — Tracking logic
-- `src/pages/Home.jsx` — Live Timer & Active Card UI
-- `src/lib/maps.js` — Geocode helper & distance math
+## Next Steps (Priority Order)
+
+1. **Google Calendar OAuth + Sync:** This is the last major "Real service" missing. Every job mutation must sync to Sandra's personal calendar.
+2. **AI Prep Notes Generator:** Summarize client history into actionable notes for the Job Detail sheet.
+3. **Recurrence Series Editor:** Add "This / Future / All" logic when editing or cancelling a recurring job series.
+4. **AI Duration Estimator:** Real logic for Step 2 of the booking flow.
+
+*(Updated by Gemini CLI)*

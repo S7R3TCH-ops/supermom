@@ -3,6 +3,7 @@ import { useAppTheme } from '../../context/AppThemeContext';
 import SectionLabel from '../ui/SectionLabel';
 import { fetchJobById, recordPayment } from '../../data/jobsRepo';
 import { notifyDataChanged } from '../../data/useData';
+import ThankYouDraftSheet from './ThankYouDraftSheet';
 
 function fmtDuration(hours) {
   if (!hours) return null;
@@ -23,6 +24,7 @@ export default function PostJobSheet({ jobId, onClose }) {
   const [busy, setBusy] = useState(false);
   const [mutErr, setMutErr] = useState(null);
   const [done, setDone] = useState(false);
+  const [showThankYou, setShowThankYou] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -204,33 +206,33 @@ export default function PostJobSheet({ jobId, onClose }) {
             </div>
           )}
 
-          {/* AI thank-you teaser — wires to item 13 when built */}
+          {/* AI thank-you draft */}
           {!loading && !fetchErr && job && (
-            <div style={{
-              background: 'linear-gradient(145deg,#1A0A12 0%,#2C0B1A 100%)',
-              borderRadius: 16, padding: '13px 14px', marginTop: 8,
-              position: 'relative', overflow: 'hidden',
-              display: 'flex', alignItems: 'center', gap: 12,
-              opacity: 0.55,
-            }}>
+            <button
+              onClick={() => setShowThankYou(true)}
+              style={{
+                width: '100%', marginTop: 8, cursor: 'pointer',
+                background: 'linear-gradient(145deg,#1A0A12 0%,#2C0B1A 100%)',
+                border: '1px solid rgba(233,30,106,0.28)',
+                borderRadius: 16, padding: '13px 14px',
+                display: 'flex', alignItems: 'center', gap: 12,
+                position: 'relative', overflow: 'hidden', textAlign: 'left',
+              }}
+            >
               <div style={{ position: 'absolute', top: -30, right: -20, width: 90, height: 90, borderRadius: '50%', background: 'radial-gradient(circle,rgba(233,30,106,0.22) 0%,transparent 70%)', pointerEvents: 'none' }} />
-              <div style={{
-                width: 28, height: 28, borderRadius: 9, flexShrink: 0,
-                background: 'linear-gradient(135deg,#FF5A9D,#E91E6A)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
+              <div style={{ width: 28, height: 28, borderRadius: 9, flexShrink: 0, background: 'linear-gradient(135deg,#FF5A9D,#E91E6A)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <span style={{ fontSize: 14, color: 'white' }}>✦</span>
               </div>
               <div style={{ flex: 1, position: 'relative' }}>
-                <div style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '1.1px', textTransform: 'uppercase', color: '#FF78B0', marginBottom: 2 }}>
-                  Thank-you Draft
-                </div>
-                <div style={{ fontFamily: T.font, fontSize: 11.5, color: 'rgba(255,255,255,0.7)', lineHeight: 1.4 }}>
-                  AI-drafted receipt message — coming soon.
+                <div style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '1.1px', textTransform: 'uppercase', color: '#FF78B0', marginBottom: 2 }}>✦ AI Draft</div>
+                <div style={{ fontFamily: T.font, fontSize: 12, color: 'rgba(255,255,255,0.75)', lineHeight: 1.4 }}>
+                  Draft a thank-you text for {job.client_name}
                 </div>
               </div>
-              <span style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.5px', flexShrink: 0 }}>SOON</span>
-            </div>
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style={{ flexShrink: 0 }}>
+                <path d="M3 1l4 4-4 4" stroke="rgba(255,255,255,0.4)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
           )}
         </div>
 
@@ -267,6 +269,12 @@ export default function PostJobSheet({ jobId, onClose }) {
           </div>
         )}
       </div>
+
+      <ThankYouDraftSheet
+        isOpen={showThankYou}
+        onClose={() => setShowThankYou(false)}
+        jobId={jobId}
+      />
     </div>
   );
 }

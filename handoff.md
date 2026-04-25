@@ -1,17 +1,18 @@
-# Handoff Report — April 24, 2026 (Night #2)
+# Handoff Report — April 24, 2026 (Night #4)
 
-## Session: Google Maps Integration (Phase 8)
-- **Vercel API Proxy:** Created `api/distance.js` to securely proxy Google Maps Distance Matrix API calls. This hides the `GOOGLE_MAPS_API_KEY` on the server and bypasses browser CORS restrictions.
-- **Option C Routing Logic:** Implemented `src/lib/maps.js` with `updateDailyRoutes(jobs)`. It calculates travel times and distances for the sequence: Home -> Job 1 -> Job 2 -> ... -> Home.
-- **Estimate Storage:** Calculated durations (e.g., "12 mins") and distances are now persisted directly into the `jobs.ai_context` JSON field (`drive_to` and `drive_home` objects). This ensures "AI voice readiness" for future prep notes.
-- **Navigation Deep-Linking:** Updated `src/components/ui/CapeUpButton.jsx` to launch Google Maps Navigation (`https://www.google.com/maps/dir/...`) when the "GO!" button is tapped.
-- **Auto-Update:** Added a `useEffect` to `Home.jsx` that automatically triggers route recalculation if today's jobs are missing estimates.
-- **Data Layer Enhancement:** Updated `src/data/selectors.js` to denormalize `address` and `ai_context` into the job objects consumed by the UI.
+## Session: Storage Bucket (Phase 8)
+- **Private Storage Bucket:** Established a `job-assets` Supabase Storage bucket for secure file management. 
+- **Storage Helpers:** Created `src/lib/storage.js` with functions for uploading photos/voice notes and generating temporary signed URLs (1 hour expiry) for secure viewing.
+- **Media UI:** Added a comprehensive media section to `JobDetailSheet.jsx` (`MediaCard`). It supports:
+  - **Photo Uploads:** Direct selection and upload from the camera or gallery.
+  - **Voice Notes:** Real-time audio recording using the browser's MediaRecorder API.
+  - **Secure Preview:** Photos are displayed in a horizontal scroll and voice notes are playable via a custom audio player using signed URLs.
+- **Data Persistence:** Media paths are stored in `jobs.photo_links` and `jobs.ai_context.voice_note`.
 
 ---
 
 ## Overview
-App is fully live. All 5 pages read from Supabase (`lskzzsjmmtsosfneuovt`). Login works. Live site at `supermom-v2.vercel.app` confirmed showing auth + real data. Vercel is connected to GitHub (`S7R3TCH-ops/supermom-v2`) — every push to `main` auto-deploys to production. Schema source of truth: `supabase_schema.sql`. (Updated by Gemini CLI)
+App is fully live with real-time sync and secure storage. All 5 pages read from Supabase. Media assets are protected and only accessible via signed URLs. (Updated by Gemini CLI)
 
 ---
 
@@ -19,22 +20,21 @@ App is fully live. All 5 pages read from Supabase (`lskzzsjmmtsosfneuovt`). Logi
 
 | Path | Status |
 |---|---|
-| Login (`/`) | ✅ email/password + **Forgot password** |
+| Login (`/`) | ✅ email/password + Forgot password |
 | Sign out | ✅ tap avatar (top-right pink bar) |
-| Home (`/`) | ✅ today's schedule, **Google Maps drive estimates**, conflict detection, revenue, overdue strip |
-| Clients (`/clients`) | ✅ list + NewClientSheet + Search |
-| Client Profile (`/clients/:id`) | ✅ upcoming/history from real jobs |
-| Calendar (`/calendar`) | ✅ Day/Week/Agenda, conflict detection, **GO button navigation** |
-| Finance (`/finance`) | ✅ Week/Month/Year/All, mark-paid, **Nudge Drafts** |
-| New Job FAB → NewJobSheet | ✅ books to `jobs` table |
-| New Client (inline from NewJobSheet) | ✅ |
+| Home (`/`) | ✅ today's schedule, Real-time updates, Maps estimates |
+| Clients (`/clients`) | ✅ list + Search |
+| Client Profile (`/clients/:id`) | ✅ history/upcoming |
+| Job Detail | ✅ **Media uploads (photos + voice notes)**, Mark Paid/Complete |
+| Finance (`/finance`) | ✅ Nudge Drafts, mark-paid |
+| New Job FAB | ✅ books to jobs table |
 
 ---
 
-## Implementation Details (Phase 8)
-- **API Key**: Requires `GOOGLE_MAPS_API_KEY` set in Vercel environment variables (and local `.env`).
-- **Home Base**: `HOME_ADDRESS` is currently hardcoded to "Georgetown, ON, Canada" in `src/lib/maps.js`.
-- **Trigger**: Recruitment of estimates happens on-the-fly when the Home dashboard is loaded and detect missing data.
+## Implementation Details (Phase 8 Storage)
+- **Bucket Configuration:** Ensure a **private** bucket named `job-assets` exists in Supabase.
+- **Policies:** Requires Supabase Storage policies allowing `INSERT`, `SELECT` based on `business_id` (managed via path prefixing in `storage.js`).
+- **Media Paths:** Photos are stored as `jobId/photos/photo_timestamp.jpg` and voice notes as `jobId/voices/voice_timestamp.webm`.
 
 ---
 
@@ -46,23 +46,12 @@ Auto-start timer on arrival, auto-stop on departure (3min, 250m).
 ### 2. Google Calendar OAuth + Sync
 Create/edit/cancel events on every job mutation.
 
-### 3. Storage Bucket
-Photos + voice notes for jobs.
-
-### 4. Real-time Subscriptions
-Refresh UI immediately on DB changes using Supabase Realtime.
+### 3. AI Prep Notes Generator
+Summarize client history into actionable visit notes.
 
 ---
 
-## Known issues / gotchas
-- **CORS**: Direct client-side calls to Google Maps API are blocked; always use the `/api/distance` proxy.
-- **API Quota**: `updateDailyRoutes` updates the DB. Be mindful of excessive re-renders triggering multiple writes (added `loading` and `length` checks).
-- **Toronto DST math** hardcoded in `jobsRepo.decorateJob` and `NewJobSheet.torontoISO` — wrong on boundary days.
-- **Recurrence** stored in `jobs.ai_context.recurrence_rule` — migrate to `job_templates` when that UI ships.
-
 ## Key files
-- `api/distance.js` — Vercel API proxy
-- `src/lib/maps.js` — Distance Matrix & Navigation logic
-- `src/components/ui/CapeUpButton.jsx` — Navigation launcher
-- `src/data/selectors.js` — Denormalization layer
-- `src/pages/Home.jsx` — Auto-trigger for estimates
+- `src/lib/storage.js` — Supabase Storage API wrapper
+- `src/components/sheets/JobDetailSheet.jsx` — `MediaCard` & `VoiceRecorder` implementation
+- `src/data/selectors.js` — Updated `toDisplayJob` for media fields

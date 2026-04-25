@@ -125,6 +125,8 @@ export function toDisplayJob(jobRow, clientLookup = {}) {
     status: jobRow.job_status,
     payment_status: jobRow.payment_status,
     notes: jobRow.job_notes ?? '',
+    photo_links: jobRow.photo_links ?? '',
+    voice_note: jobRow.ai_context?.voice_note ?? null,
     ai_context: jobRow.ai_context || {},
     recurrence_rule: jobRow.ai_context?.recurrence_rule ?? null,
     gcal_event_id: jobRow.calendar_event_id,

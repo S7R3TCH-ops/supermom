@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { fetchJobById, updateJob, softDeleteJob, recordPayment } from '../../data/jobsRepo';
 import { notifyDataChanged } from '../../data/useData';
 import { SERVICES, RECURRENCE } from '../../data/services';
+import { uploadFile, getSignedUrls, getSignedUrl } from '../../lib/storage';
 
 const STATUS_COLORS = {
   Scheduled: { bg: 'rgba(59,130,246,0.12)',   color: '#3B82F6', border: 'rgba(59,130,246,0.25)' },
@@ -203,6 +204,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
             onConfirmDelete={deleteJob}
             onDismissConfirm={() => setConfirm(false)}
             onEdit={openEditMode}
+            onUpdate={(patch) => updateJob(job.id, patch).then(() => notifyDataChanged())}
           />
         )}
 
@@ -223,7 +225,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
 function ReadMode({
   job, T, mode, isScheduled, isPaid, isCancelled,
   busy, toast, confirm, mutErr,
-  onClose, onMarkComplete, onMarkPaid, onCancelConfirm, onConfirmDelete, onDismissConfirm, onEdit,
+  onClose, onMarkComplete, onMarkPaid, onCancelConfirm, onConfirmDelete, onDismissConfirm, onEdit, onUpdate,
 }) {
   const statusC = STATUS_COLORS[job.job_status] || STATUS_COLORS.Scheduled;
   const payKey  = job.payment_status || '';
@@ -333,6 +335,11 @@ function ReadMode({
               {job.job_notes}
             </div>
           </InfoCard>
+        )}
+
+        {/* Media card */}
+        {!isCancelled && (
+          <MediaCard job={job} T={T} mode={mode} onUpdate={onUpdate} />
         )}
 
         {/* Mutation error */}
@@ -756,4 +763,141 @@ function iStyle(T) {
     outline: 'none',
     boxSizing: 'border-box',
   };
+}
+
+/* ============= MEDIA COMPONENTS ============= */
+
+function MediaCard({ job, T, mode, onUpdate }) {
+  const [photoUrls, setPhotoUrls] = useState([]);
+  const [voiceUrl, setVoiceUrl] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const photoPaths = (job.photo_links || '').split(',').filter(Boolean);
+
+  useEffect(() => {
+    let alive = true;
+    if (photoPaths.length > 0) {
+      getSignedUrls(photoPaths).then(urls => {
+        if (alive) setPhotoUrls(urls);
+      });
+    }
+    if (job.voice_note) {
+      getSignedUrl(job.voice_note).then(url => {
+        if (alive) setVoiceUrl(url);
+      });
+    }
+    return () => { alive = false; };
+  }, [job.photo_links, job.voice_note]);
+
+  async function handlePhotoUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const path = await uploadFile(job.id, file, 'photo');
+      const newLinks = [...photoPaths, path].join(',');
+      await onUpdate({ photo_links: newLinks });
+    } catch (err) {
+      console.error('Photo upload failed:', err);
+      alert('Upload failed: ' + err.message);
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }
+
+  async function handleVoiceUpload(blob) {
+    setUploading(true);
+    try {
+      const path = await uploadFile(job.id, blob, 'voice');
+      const updatedAiContext = { ...(job.ai_context || {}), voice_note: path };
+      await onUpdate({ ai_context: updatedAiContext });
+    } catch (err) {
+      console.error('Voice upload failed:', err);
+      alert('Upload failed: ' + err.message);
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <InfoCard T={T}>
+      <div style={{
+        fontFamily: T.font, fontSize: 9, fontWeight: 700,
+        letterSpacing: '0.5px', textTransform: 'uppercase',
+        color: T.inkMuted, marginBottom: 6,
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+      }}>
+        <span>Media</span>
+        {uploading && <span style={{ color: T.pink, fontSize: 8 }}>Uploading...</span>}
+      </div>
+
+      {photoUrls.length > 0 && (
+        <div className="sm-scroll" style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8, marginBottom: 8 }}>
+          {photoUrls.map((url, i) => (
+            url ? <img key={i} src={url} alt="" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8, flexShrink: 0, border: `1px solid ${T.cardBorder}` }} /> : null
+          ))}
+        </div>
+      )}
+
+      {voiceUrl && (
+        <div style={{ marginBottom: 12 }}>
+          <audio controls src={voiceUrl} style={{ width: '100%', height: 32 }} />
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: 8 }}>
+        <input type="file" accept="image/*" ref={fileInputRef} onChange={handlePhotoUpload} style={{ display: 'none' }} />
+        <Btn onClick={() => fileInputRef.current?.click()} disabled={uploading} bg={mode === 'dark' ? 'rgba(255,255,255,0.05)' : T.pinkTint} color={T.pink} T={T} style={{ flex: 1, padding: '8px 0', fontSize: 11.5 }}>
+          📸 Add Photo
+        </Btn>
+        <VoiceRecorder T={T} mode={mode} onRecordComplete={handleVoiceUpload} disabled={uploading} />
+      </div>
+    </InfoCard>
+  );
+}
+
+function VoiceRecorder({ T, mode, onRecordComplete, disabled }) {
+  const [recording, setRecording] = useState(false);
+  const mediaRecorder = useRef(null);
+  const chunks = useRef([]);
+
+  async function startRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder.current = new MediaRecorder(stream);
+      chunks.current = [];
+      mediaRecorder.current.ondataavailable = e => chunks.current.push(e.data);
+      mediaRecorder.current.onstop = () => {
+        const blob = new Blob(chunks.current, { type: 'audio/webm' });
+        onRecordComplete(blob);
+        stream.getTracks().forEach(t => t.stop());
+      };
+      mediaRecorder.current.start();
+      setRecording(true);
+    } catch (err) {
+      console.error('Mic error:', err);
+      alert('Microphone access denied or unavailable.');
+    }
+  }
+
+  function stopRecording() {
+    mediaRecorder.current?.stop();
+    setRecording(false);
+  }
+
+  if (recording) {
+    return (
+      <Btn onClick={stopRecording} bg="#E91E6A" color="white" T={T} style={{ flex: 1, padding: '8px 0', fontSize: 11.5 }}>
+        ⏹ Stop Recording
+      </Btn>
+    );
+  }
+
+  return (
+    <Btn onClick={startRecording} disabled={disabled} bg={mode === 'dark' ? 'rgba(255,255,255,0.05)' : T.pinkTint} color={T.pink} T={T} style={{ flex: 1, padding: '8px 0', fontSize: 11.5 }}>
+      🎙 Voice Note
+    </Btn>
+  );
 }

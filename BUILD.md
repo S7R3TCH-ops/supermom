@@ -111,7 +111,8 @@ When done:
 - [ ] **25. Google Calendar OAuth + sync service** — create/edit/cancel events on every job mutation.
 - [ ] **26. Geofence service** — auto-start timer on arrival, auto-stop on departure (3min, 250m).
 - [x] **27. Mileage tracker** — Google Maps Distance Matrix integration (Home -> Job A -> Job B -> Home) via Vercel API proxy. Estimates stored in `ai_context` for AI voice readiness. GO! buttons deep-link to navigation.
-- [ ] **28. Storage bucket** — photos + voice notes for jobs.
+- [x] **27.1 Real-time Subscriptions** — UI auto-refreshes on database changes (jobs, clients, payments, expenses) using Supabase Realtime, filtered by business_id.
+- [x] **28. Storage bucket** — Private `job-assets` bucket implemented for photos and voice notes. Secure signed URLs (1hr expiry) generated for viewing/playback. Built-in voice recorder (MediaRecorder API) added to Job Detail sheet.
 
 ### 🎯 Phase 9 — Polish
 

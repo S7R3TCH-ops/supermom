@@ -1,20 +1,19 @@
 # Handoff Report — April 25, 2026 (Updated by Gemini CLI)
 
-## Session: Audit Fixes & Stability
+## Session: Recurrence Series Editor & Stability Fixes
 
-This session addressed critical bugs and technical debt identified in the Claude Code audit.
+This session resolved a critical data-integrity bug in the recurrence series editor and finalized the Phase 8 stability audit.
 
-### 1. Stability & Bug Fixes
-- **Home Dashboard:** Fixed a ReferenceError crash by adding missing imports for `useBusiness` and `generatePrepNote`.
-- **New Job Sheet:** Fixed the "Smart Estimate" panel which was hidden due to missing prop destructuring for `aiDuration`.
-- **GCal Sync:** Updated recurring series creation to ensure *all* occurrences are synced to Google Calendar immediately, not just the first one.
-- **Payment Logic:** Corrected `recordPayment` to correctly set `payment_status` to 'Partial' if the amount paid is less than the job total.
-- **DST Handling:** Standardized Daylight Saving Time logic by exporting `composeTorontoISO` (which uses robust `nthSunday` math) and using it as the single source of truth across the app.
-- **Calendar Consistency:** Replaced the static `TODAY` constant in the Calendar page with a dynamic `NOW()` function to prevent stale dates if the app stays open overnight.
+### 1. Recurrence Series Editor (Safe Mode)
+- **Problem:** Updating a recurring series with "Future" or "All" visits would flatten all future jobs to a single date, and soft-deleting a series would wipe out Sandra's historical paid records.
+- **Fix:** 
+    - Updated `updateJob` to strip `scheduled_date` from series-wide patches, preserving the existing weekly/biweekly date spacing.
+    - Added a `job_status = 'Scheduled'` filter to both `updateJob` and `softDeleteJob` for series actions. This ensures historical, completed, or paid jobs are never modified or deleted when managing upcoming series visits.
+- **Result:** Sandra can now safely update the service, price, or notes for an entire recurring series without destroying her calendar or her historical data.
 
-### 2. Technical Quality
-- **Build Status:** Passing.
-- **Standardization:** DST logic now consistent across repo and UI.
+### 2. Stability & Bug Fixes
+- **Build Status:** Passing (`npx vite build` clean).
+- **Documentation:** Updated `GEMINI.md` to reflect the current live state and revised next priorities.
 
 ---
 

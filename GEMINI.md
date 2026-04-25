@@ -32,7 +32,7 @@ At the end of every productive session, or upon major milestone completion, Gemi
 
 ---
 
-## Current State (as of April 25, 2026 — updated post Series Editor fix)
+## Current State (as of April 25, 2026 — updated post AI Prep Notes)
 
 | Feature | Status |
 |---|---|
@@ -43,7 +43,9 @@ At the end of every productive session, or upon major milestone completion, Gemi
 | Finance — mark-paid | ✅ Live |
 | New Job sheet | ✅ Live |
 | **Job Detail sheet** | ✅ **Live** — tap any job card (Home or Calendar) to view/edit/act |
+| **AI Prep Notes** | ✅ **Live** — Summarizes last 5 visits via Claude API |
 | **Recurrence series editor** | ✅ **Live** — 'this / future / all' safely implemented |
+| **GCal Sync Security** | ✅ **Live** — CSRF nonce + multi-tenant state param |
 | **Drive time / mileage** | ✅ **Live** — Google Maps Distance Matrix API proxy |
 | **payments table audit row** | ✅ **Live** — mark-paid inserts into `payments` via `recordPayment()` |
 | **Client search** (Clients page) | ✅ **Live** — live filter by name/address |

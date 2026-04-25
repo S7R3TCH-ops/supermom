@@ -61,11 +61,11 @@ When done:
   - Built as `src/components/sheets/NewJobSheet.jsx` + `src/context/NewJobSheet.jsx` + `src/data/jobs.js` + `src/components/ui/FAB.jsx`; global FAB + ClientProfile Book Job wired; conflict detection hits `findConflicts()`.
 - [x] **2. Job Detail page** — tap any job (Home / Calendar / Profile) → full view. Shows service, time, client, address, notes, photos, voice note, payment status, timer state.
   - Built as `src/components/sheets/JobDetailSheet.jsx` + `src/context/JobDetailSheetContext.js`. Includes Mark Complete/Paid, Delete Job (soft delete), and Edit mode.
-- [ ] **3. Edit Job** — reuses New Job sheet in edit mode (pass `jobId` prop).
-- [ ] **4. Active Job state** — Home Today card variant when geofence triggers. Big running timer, "Auto-started on arrival" label, Voice note / Photo / Done buttons.
+- [x] **3. Edit Job** — built as `EditMode` component inside `src/components/sheets/JobDetailSheet.jsx`; inline edit with series picker (this/future/all).
+- [x] **4. Active Job state** — `LiveTimer` component in `src/pages/Home.jsx`; reads from `GeofenceContext`, shows running timer + "Auto-started on arrival".
 - [ ] **5. Post-job / Payment sheet** — UNPAID badge, Cash / e-Transfer pill toggle, Log Payment button. Opens from Active Job "Done" or Job Detail.
-- [ ] **6. Cancel Job confirm sheet** — small confirm sheet, soft-deletes.
-- [ ] **7. Recurrence series editor** — on edit/cancel of recurring job: "this one / this + future / all" picker.
+- [x] **6. Cancel Job confirm sheet** — confirm + soft-delete flow wired in `JobDetailSheet.jsx` via `initiateDelete` / `onConfirmDelete`.
+- [x] **7. Recurrence series editor** — "this / this+future / all" picker built into `EditMode` in `JobDetailSheet.jsx`. Safely implemented in `jobsRepo.js` with date-preservation and status guards.
 
 ### 🎯 Phase 2 — Clients
 
@@ -77,15 +77,15 @@ When done:
 
 ### 🎯 Phase 3 — Calendar expansion
 
-- [ ] **10. Calendar Week view** — 7-column grid, color-coded cells (pink=unpaid, green=paid, amber=conflict).
-- [ ] **11. Calendar Agenda view** — date headers, full job cards with badge set.
+- [x] **10. Calendar Week view** — built in `src/pages/Calendar.jsx`; 7-column grid, color-coded by payment status.
+- [x] **11. Calendar Agenda view** — built in `src/pages/Calendar.jsx`; date headers, full job cards.
 
 ### 🎯 Phase 4 — AI-powered sheets (Claude API)
 
 - [x] **12. Nudge Draft sheet** — AI-drafted text for overdue client. Opens from Finance Outstanding card or Client Profile. Edit before send.
   - Built as `src/components/sheets/NudgeDraftSheet.jsx`, wired to Finance page "Draft nudges" buttons.
 - [ ] **13. Thank-you / Receipt draft sheet** — AI-drafted post-job message. Opens from Post-job state.
-- [ ] **14. Prep Notes generator** — AI summarizes client history into prep notes. Opens from Job Detail.
+- [x] **14. Prep Notes generator** — AI summarizes client history (last 5 visits) into prep notes via Claude API. Built as `PrepNoteSheet.jsx` wired to `JobDetailSheet.jsx`.
 - [ ] **15. Duration Estimator card** — inline in New Job Step 2. "X hrs based on last N visits."
 
 ### 🎯 Phase 5 — Finance

@@ -1,12 +1,13 @@
-const { google } = require('googleapis');
+import { google } from 'googleapis';
 
 export default async function handler(req, res) {
+  const protocol = process.env.VERCEL_URL ? 'https' : 'http';
+  const host = process.env.VERCEL_URL || 'localhost:3000';
+  
   const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
-    // Note: In production VERCEL_URL is used, in dev localhost:3000 or similar
-    // The redirect URI must be registered in Google Cloud Console
-    `https://${process.env.VERCEL_URL || 'localhost:3000'}/api/auth/google/callback`
+    `${protocol}://${host}/api/auth/google/callback`
   );
 
   const scopes = [
@@ -15,9 +16,9 @@ export default async function handler(req, res) {
   ];
 
   const url = oauth2Client.generateAuthUrl({
-    access_type: 'offline', // Critical for getting a refresh_token
+    access_type: 'offline',
     scope: scopes,
-    prompt: 'consent' // Force show consent screen to ensure refresh_token is sent
+    prompt: 'consent'
   });
 
   res.redirect(url);

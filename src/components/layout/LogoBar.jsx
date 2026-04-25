@@ -1,16 +1,15 @@
+import { useNavigate } from 'react-router-dom';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { clearBusinessCache } from '../../data/currentBusiness';
 
 export default function LogoBar() {
+  const navigate = useNavigate();
   const { mode, toggleMode, privacyOn, togglePrivacy } = useAppTheme();
   const { user, signOut } = useAuth();
 
-  const onAvatarClick = async () => {
-    if (!user) return;
-    if (!window.confirm(`Sign out ${user.email}?`)) return;
-    clearBusinessCache();
-    await signOut();
+  const onAvatarClick = () => {
+    if (user) navigate('/settings');
   };
   const initial = (user?.email || 'S').charAt(0).toUpperCase();
   return (

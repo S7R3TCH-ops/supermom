@@ -64,7 +64,6 @@ export default function ClientProfile() {
       console.error('Failed to save client intel:', err);
       alert('Failed to save changes. Please try again.');
     } finally {
-      setIsSavingAi(true); // Wait for re-render
       setIsSavingAi(false);
     }
   };

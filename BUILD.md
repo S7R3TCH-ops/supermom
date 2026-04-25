@@ -73,7 +73,8 @@ When done:
   - Built as `src/components/sheets/NewClientSheet.jsx`, opens from Clients page and Who step of NewJobSheet.
 - [x] **8.1 Client search** — wire the search bar on Clients page.
   - Implemented as live filtering by name/address in `src/pages/Clients.jsx`.
-- [ ] **9. Edit Client / AI context** — tap "Edit" on Profile AI card → opens this. Separate editor for each context bucket (prefs/access/comms/personal).
+- [x] **9. Edit Client / AI context** — tap "Edit" on Profile AI card → opens this. Separate editor for each context bucket (prefs/access/comms/personal).
+  - Built inline in `ClientProfile.jsx`; "Edit" toggles textareas for Notes, Prefs, Access, Comms, Personal; saves to `clients.notes` + `clients.ai_context` via `updateClient`.
 
 ### 🎯 Phase 3 — Calendar expansion
 

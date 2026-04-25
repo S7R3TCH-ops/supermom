@@ -32,7 +32,7 @@ At the end of every productive session, or upon major milestone completion, Gemi
 
 ---
 
-## Current State (as of April 25, 2026 — updated post AI Prep Notes)
+## Current State (as of April 25, 2026 — updated post Edit Client / AI context)
 
 | Feature | Status |
 |---|---|
@@ -45,6 +45,8 @@ At the end of every productive session, or upon major milestone completion, Gemi
 | **Job Detail sheet** | ✅ **Live** — tap any job card (Home or Calendar) to view/edit/act |
 | **AI Prep Notes** | ✅ **Live** — Summarizes last 5 visits via Claude API |
 | **AI Duration Estimator** | ✅ **Live** — Step 2 prediction with Claude reasoning |
+| **Post-job / Payment sheet** | ✅ **Live** — UNPAID badge, Cash/e-Transfer toggle, editable amount, AI thank-you teaser |
+| **Edit Client / AI context** | ✅ **Live** — Inline edit on Profile "What I know" card; Notes + Prefs/Access/Comms/Personal buckets |
 | **Recurrence series editor** | ✅ **Live** — 'this / future / all' safely implemented |
 | **GCal Sync Security** | ✅ **Live** — CSRF nonce + multi-tenant state param |
 | **Drive time / mileage** | ✅ **Live** — Google Maps Distance Matrix API proxy |
@@ -81,6 +83,6 @@ Key stability fixes implemented:
 - Mutation errors shown inline; fetch errors replace the sheet body
 
 ## Next priorities
-1. Expense logging (Finance Phase 5)
-2. Thank-you / Receipt draft sheet (AI Phase 4)
-3. Edit Client / AI context (AI Phase 3)
+1. Thank-you / Receipt draft sheet — item #13, AI Phase 4 (opens from Post-job sheet)
+2. Expense logging — item #16, Finance Phase 5
+3. CSV Export — item #17, Finance Phase 5

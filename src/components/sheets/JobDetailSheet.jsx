@@ -6,6 +6,7 @@ import { SERVICES, RECURRENCE } from '../../data/services';
 import { uploadFile, getSignedUrls, getSignedUrl } from '../../lib/storage';
 import { generateCommandBrief, speakBrief, stopSpeaking } from '../../data/ai';
 import { useBusiness } from '../../data/useData';
+import PrepNoteSheet from '../sheets/PrepNoteSheet';
 
 const STATUS_COLORS = {
   Scheduled: { bg: 'rgba(59,130,246,0.12)',   color: '#3B82F6', border: 'rgba(59,130,246,0.25)' },
@@ -53,6 +54,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
   const [seriesAction, setSeriesAction] = useState(null); // 'this', 'future', 'all'
   const [showSeriesPicker, setShowSeriesPicker] = useState(false);
   const [pendingAction, setPendingAction] = useState(null); // 'save' or 'delete'
+  const [showDeepPrep, setShowDeepPrep] = useState(false);
 
   useEffect(() => {
     if (!jobId) return;
@@ -237,6 +239,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
             onDismissConfirm={() => { setConfirm(false); setShowSeriesPicker(false); }}
             onEdit={openEditMode}
             onUpdate={(patch) => updateJob(job.id, patch).then(() => notifyDataChanged())}
+            onDeepPrep={() => setShowDeepPrep(true)}
           />
         )}
 
@@ -249,6 +252,15 @@ export default function JobDetailSheet({ jobId, onClose }) {
             onCancelEdit={() => { setEditMode(false); setMutErr(null); setShowSeriesPicker(false); }}
           />
         )}
+
+        {job && (
+          <PrepNoteSheet
+            isOpen={showDeepPrep}
+            onClose={() => setShowDeepPrep(false)}
+            clientId={job.client_id}
+            businessProfile={business}
+          />
+        )}
       </div>
     </div>
   );
@@ -258,7 +270,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
 function ReadMode({
   job, T, mode, business, isScheduled, isPaid, isCancelled,
   busy, toast, confirm, mutErr,
-  onClose, onMarkComplete, onMarkPaid, onCancelConfirm, onConfirmDelete, onDismissConfirm, onEdit, onUpdate,
+  onClose, onMarkComplete, onMarkPaid, onCancelConfirm, onConfirmDelete, onDismissConfirm, onEdit, onUpdate, onDeepPrep,
 }) {
   const statusC = STATUS_COLORS[job.job_status] || STATUS_COLORS.Scheduled;
   const payKey  = job.payment_status || '';
@@ -345,7 +357,7 @@ function ReadMode({
       <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '12px 14px 4px' }}>
 
         {/* AI Prep Note */}
-        <PrepNoteCard job={job} T={T} business={business} />
+        <PrepNoteCard job={job} T={T} business={business} onDeepPrep={onDeepPrep} />
 
         {/* Info card */}
         <InfoCard T={T}>
@@ -859,7 +871,7 @@ function SeriesBtn({ onClick, disabled, T, children }) {
   );
 }
 
-function PrepNoteCard({ job, T, business }) {
+function PrepNoteCard({ job, T, business, onDeepPrep }) {
   const brief = generateCommandBrief(job, business);
   const [isSpeaking, setIsSpeaking] = useState(false);
 
@@ -928,6 +940,26 @@ function PrepNoteCard({ job, T, business }) {
             <span style={{ fontFamily: T.font, fontSize: 12, color: 'rgba(255,255,255,0.9)', lineHeight: 1.5 }}>{b.text}</span>
           </div>
         ))}
+      </div>
+
+      <div style={{ marginTop: 12, display: 'flex', justifyContent: 'center', position: 'relative', zIndex: 1 }}>
+        <button
+          onClick={(e) => { e.stopPropagation(); onDeepPrep?.(); }}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: '#FFB2D1',
+            fontFamily: T.font,
+            fontSize: 10.5,
+            fontWeight: 700,
+            letterSpacing: '0.4px',
+            textTransform: 'uppercase',
+            cursor: 'pointer',
+            padding: '4px 8px',
+          }}
+        >
+          ✦ Full Briefing & History
+        </button>
       </div>
     </div>
   );

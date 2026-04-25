@@ -4,6 +4,8 @@ import { fetchJobById, updateJob, softDeleteJob, recordPayment } from '../../dat
 import { notifyDataChanged } from '../../data/useData';
 import { SERVICES, RECURRENCE } from '../../data/services';
 import { uploadFile, getSignedUrls, getSignedUrl } from '../../lib/storage';
+import { generateCommandBrief, speakBrief, stopSpeaking } from '../../data/ai';
+import { useBusiness } from '../../data/useData';
 
 const STATUS_COLORS = {
   Scheduled: { bg: 'rgba(59,130,246,0.12)',   color: '#3B82F6', border: 'rgba(59,130,246,0.25)' },
@@ -38,6 +40,7 @@ function calcEnd(timeStr, hours) {
 /* ============= ROOT COMPONENT ============= */
 export default function JobDetailSheet({ jobId, onClose }) {
   const { T, mode } = useAppTheme();
+  const { business } = useBusiness();
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);       // fetch errors — blocks sheet body
@@ -47,6 +50,9 @@ export default function JobDetailSheet({ jobId, onClose }) {
   const [confirm, setConfirm] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [form, setForm] = useState({});
+  const [seriesAction, setSeriesAction] = useState(null); // 'this', 'future', 'all'
+  const [showSeriesPicker, setShowSeriesPicker] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null); // 'save' or 'delete'
 
   useEffect(() => {
     if (!jobId) return;
@@ -85,16 +91,35 @@ export default function JobDetailSheet({ jobId, onClose }) {
     } catch (e) { setMutErr(e.message || String(e)); setBusy(false); }
   }
 
-  async function deleteJob() {
+  function initiateDelete() {
+    if (job.template_id) {
+      setPendingAction('delete');
+      setShowSeriesPicker(true);
+    } else {
+      setConfirm(true);
+    }
+  }
+
+  async function deleteJob(action = 'this') {
     setBusy(true); setMutErr(null);
     try {
-      await softDeleteJob(job.id);
+      await softDeleteJob(job.id, action);
       setConfirm(false);
-      showToast('Job deleted');
+      setShowSeriesPicker(false);
+      showToast(action === 'this' ? 'Job deleted' : 'Series deleted');
     } catch (e) { setMutErr(e.message || String(e)); setBusy(false); }
   }
 
-  async function saveEdit() {
+  function initiateSave() {
+    if (job.template_id) {
+      setPendingAction('save');
+      setShowSeriesPicker(true);
+    } else {
+      saveEdit('this');
+    }
+  }
+
+  async function saveEdit(action = 'this') {
     setBusy(true); setMutErr(null);
     try {
       await updateJob(job.id, {
@@ -114,9 +139,15 @@ export default function JobDetailSheet({ jobId, onClose }) {
           payment_method:  form.payment_method,
           recurrence_rule: form.recurrence || null,
         },
-      });
+      }, action);
+      setShowSeriesPicker(false);
       showToast('Job updated');
     } catch (e) { setMutErr(e.message || String(e)); setBusy(false); }
+  }
+
+  function onSeriesChoice(action) {
+    if (pendingAction === 'save') saveEdit(action);
+    else if (pendingAction === 'delete') deleteJob(action);
   }
 
   function openEditMode() {
@@ -194,15 +225,16 @@ export default function JobDetailSheet({ jobId, onClose }) {
 
         {!loading && !error && job && !editMode && (
           <ReadMode
-            job={job} T={T} mode={mode}
+            job={job} T={T} mode={mode} business={business}
             isScheduled={isScheduled} isPaid={isPaid} isCancelled={isCancelled}
             busy={busy} toast={toast} confirm={confirm} mutErr={mutErr}
+            showSeriesPicker={showSeriesPicker} onSeriesChoice={onSeriesChoice}
             onClose={onClose}
             onMarkComplete={markComplete}
             onMarkPaid={markPaid}
-            onCancelConfirm={() => setConfirm(true)}
-            onConfirmDelete={deleteJob}
-            onDismissConfirm={() => setConfirm(false)}
+            onCancelConfirm={initiateDelete}
+            onConfirmDelete={() => deleteJob('this')}
+            onDismissConfirm={() => { setConfirm(false); setShowSeriesPicker(false); }}
             onEdit={openEditMode}
             onUpdate={(patch) => updateJob(job.id, patch).then(() => notifyDataChanged())}
           />
@@ -212,8 +244,9 @@ export default function JobDetailSheet({ jobId, onClose }) {
           <EditMode
             form={form} setForm={setForm}
             T={T} busy={busy} mutErr={mutErr}
-            onSave={saveEdit}
-            onCancelEdit={() => { setEditMode(false); setMutErr(null); }}
+            showSeriesPicker={showSeriesPicker} onSeriesChoice={onSeriesChoice}
+            onSave={initiateSave}
+            onCancelEdit={() => { setEditMode(false); setMutErr(null); setShowSeriesPicker(false); }}
           />
         )}
       </div>
@@ -223,7 +256,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
 
 /* ============= READ MODE ============= */
 function ReadMode({
-  job, T, mode, isScheduled, isPaid, isCancelled,
+  job, T, mode, business, isScheduled, isPaid, isCancelled,
   busy, toast, confirm, mutErr,
   onClose, onMarkComplete, onMarkPaid, onCancelConfirm, onConfirmDelete, onDismissConfirm, onEdit, onUpdate,
 }) {
@@ -310,6 +343,9 @@ function ReadMode({
 
       {/* Scrollable body */}
       <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '12px 14px 4px' }}>
+
+        {/* AI Prep Note */}
+        <PrepNoteCard job={job} T={T} business={business} />
 
         {/* Info card */}
         <InfoCard T={T}>
@@ -457,7 +493,7 @@ function ReadMode({
 }
 
 /* ============= EDIT MODE ============= */
-function EditMode({ form, setForm, T, busy, mutErr, onSave, onCancelEdit }) {
+function EditMode({ form, setForm, T, busy, mutErr, showSeriesPicker, onSeriesChoice, onSave, onCancelEdit }) {
   function set(k, v) { setForm(f => ({ ...f, [k]: v })); }
 
   function onPickService(e) {
@@ -629,6 +665,13 @@ function EditMode({ form, setForm, T, busy, mutErr, onSave, onCancelEdit }) {
             {mutErr}
           </div>
         )}
+
+        <SeriesPicker
+          show={showSeriesPicker}
+          onChoice={onSeriesChoice}
+          onCancel={() => onSeriesChoice(null)} // basically close it
+          busy={busy} T={T} mode={mode}
+        />
       </div>
 
       {/* Bottom buttons */}
@@ -763,6 +806,131 @@ function iStyle(T) {
     outline: 'none',
     boxSizing: 'border-box',
   };
+}
+
+function SeriesPicker({ show, onChoice, onCancel, busy, T, mode }) {
+  if (!show) return null;
+
+  return (
+    <div style={{
+      background: T.hero, borderRadius: 16, padding: '14px 16px', marginBottom: 12,
+      position: 'relative', overflow: 'hidden', border: '1.5px solid rgba(233,30,106,0.35)',
+    }}>
+      <div style={{ position: 'absolute', top: -30, right: -20, width: 90, height: 90, borderRadius: '50%', background: `radial-gradient(circle,${T.pinkGlow} 0%,transparent 70%)`, pointerEvents: 'none' }} />
+      <div style={{ position: 'relative' }}>
+        <div style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '1.1px', textTransform: 'uppercase', color: '#FF78B0', marginBottom: 4 }}>
+          ✦ Recurring Series
+        </div>
+        <div style={{ fontFamily: T.serif, fontSize: 16, fontWeight: 500, color: 'white', marginBottom: 12, letterSpacing: '-0.2px' }}>
+          Apply changes to...
+        </div>
+        
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+          <SeriesBtn onClick={() => onChoice('this')} disabled={busy} T={T}>Just this visit</SeriesBtn>
+          <SeriesBtn onClick={() => onChoice('future')} disabled={busy} T={T}>This and future visits</SeriesBtn>
+          <SeriesBtn onClick={() => onChoice('all')} disabled={busy} T={T}>All visits in series</SeriesBtn>
+          <button 
+            onClick={onCancel}
+            style={{ 
+              background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.4)',
+              fontFamily: T.font, fontSize: 11, fontWeight: 600, marginTop: 4, cursor: 'pointer' 
+            }}
+          >Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SeriesBtn({ onClick, disabled, T, children }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        width: '100%', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)',
+        borderRadius: 10, padding: '10px 12px', textAlign: 'left',
+        fontFamily: T.font, fontSize: 12.5, fontWeight: 600, color: 'white',
+        cursor: disabled ? 'wait' : 'pointer',
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function PrepNoteCard({ job, T, business }) {
+  const brief = generateCommandBrief(job, business);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
+  useEffect(() => {
+    return () => stopSpeaking();
+  }, []);
+
+  if (!brief) return null;
+
+  const handleToggleSpeak = (e) => {
+    e.stopPropagation();
+    if (isSpeaking) {
+      stopSpeaking();
+      setIsSpeaking(false);
+    } else {
+      setIsSpeaking(true);
+      speakBrief(brief.speechText, () => setIsSpeaking(false));
+    }
+  };
+
+  return (
+    <div style={{
+      background: T.hero,
+      borderRadius: 16,
+      padding: '13px 15px',
+      marginBottom: 10,
+      position: 'relative',
+      overflow: 'hidden',
+    }}>
+      <div style={{
+        position: 'absolute', top: -30, right: -20, width: 90, height: 90, borderRadius: '50%',
+        background: 'radial-gradient(circle,rgba(233,30,106,0.22) 0%,transparent 70%)',
+        pointerEvents: 'none',
+      }} />
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10,
+        position: 'relative', zIndex: 1
+      }}>
+        <div style={{
+          fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '1.1px',
+          textTransform: 'uppercase', color: '#FF78B0',
+          display: 'flex', alignItems: 'center', gap: 6,
+        }}>
+          <span style={{ fontSize: 12 }}>✦</span> Command Brief
+        </div>
+        <button 
+          onClick={handleToggleSpeak}
+          style={{ 
+            background: isSpeaking ? '#E91E6A' : 'rgba(255,255,255,0.1)', 
+            border: 'none', borderRadius: 20, padding: '4px 10px',
+            display: 'flex', alignItems: 'center', gap: 6,
+            cursor: 'pointer'
+          }}
+        >
+          <span style={{ fontSize: 10 }}>{isSpeaking ? '⏹' : '▶'}</span>
+          <span style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, color: 'white' }}>
+            {isSpeaking ? 'STOP' : 'LISTEN'}
+          </span>
+        </button>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, position: 'relative', zIndex: 1 }}>
+        {brief.bullets.map((b, i) => (
+          <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+            <span style={{ fontSize: 14 }}>{b.icon}</span>
+            <span style={{ fontFamily: T.font, fontSize: 12, color: 'rgba(255,255,255,0.9)', lineHeight: 1.5 }}>{b.text}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 /* ============= MEDIA COMPONENTS ============= */

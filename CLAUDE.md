@@ -96,7 +96,9 @@ The schema is multi-tenant and agentic-AI-ready (richer than this app strictly n
 - **Sandra books all jobs herself** — no self-serve client booking yet
 - **Payment is cash or e-Transfer only** — no Stripe, no online processing
 - **Soft deletes only** — never hard delete jobs or clients. Set `deleted_at = now()`, never `is_deleted`. Filter with `.is('deleted_at', null)`.
-- **Recurrence**: jobs can repeat weekly/biweekly/monthly. Each occurrence is its own row with a `recurrence_parent_id` pointer
+- **Recurrence**: Jobs can repeat weekly, biweekly, or monthly. Each series is managed via the `job_templates` table. `jobs.template_id` links occurrences to their template.
+- **Series Actions**: The UI and `jobsRepo` support `'this'`, `'future'`, and `'all'` actions for updates and deletions.
+- **AI Module**: `src/data/ai.js` contains the logic for briefings and duration estimation.
 - **HST is currently OFF** — Sandra is below the threshold. The toggle exists in config for when she crosses it
 - **Timezone is always `America/Toronto`** — never use system timezone
 
@@ -140,5 +142,8 @@ The schema is multi-tenant and agentic-AI-ready (richer than this app strictly n
 - [ ] Self-serve client booking link (Phase 2)
 - [ ] Sandra's user guide (separate doc, after app stable)
 - [ ] Settings / Profile screen (service rates config etc)
+- [ ] Onboarding flow
+- [ ] Minxy project (same template, different operator — after SMHQ ships)
+ings / Profile screen (service rates config etc)
 - [ ] Onboarding flow
 - [ ] Minxy project (same template, different operator — after SMHQ ships)

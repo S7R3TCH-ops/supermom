@@ -118,6 +118,10 @@ export function toDisplayJob(jobRow, clientLookup = {}) {
     client_init: c ? c.init : '?',
     client_color: c ? c.color : '#888',
     address: c ? c.address : '',
+    // Attach client intel for AI Prep Notes
+    client_notes: c?.note || '',
+    client_ai_context: c?.raw?.ai_context || {},
+    client_tags: c?.raw?.tags || [],
     service_name: jobRow.service_name,
     scheduled_at: jobRow.scheduled_at,
     duration_est: jobRow.duration_est,

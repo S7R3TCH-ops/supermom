@@ -6,6 +6,7 @@ const items = [
   { to: '/calendar', k: 'schedule', icon: '◫', label: 'Schedule' },
   { to: '/clients',  k: 'clients',  icon: '◉', label: 'Clients' },
   { to: '/finance',  k: 'finance',  icon: '$', label: 'Finance' },
+  { to: '/admin',    k: 'admin',    icon: '⚙', label: 'Admin' },
 ];
 
 export default function BottomNav() {

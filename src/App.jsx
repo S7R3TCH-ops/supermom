@@ -19,6 +19,7 @@ const ClientProfile = lazy(() => import('./pages/ClientProfile'));
 const Finance = lazy(() => import('./pages/Finance'));
 const Login = lazy(() => import('./pages/Login'));
 const Settings = lazy(() => import('./pages/Settings'));
+const Admin = lazy(() => import('./pages/Admin'));
 
 function AuthedShell() {
   const { T } = useAppTheme();
@@ -39,6 +40,7 @@ function AuthedShell() {
             <Route path="/clients/:id" element={<ClientProfile />} />
             <Route path="/finance" element={<Finance />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/admin" element={<Admin />} />
           </Routes>
         </Suspense>
         <FAB />

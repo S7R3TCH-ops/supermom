@@ -28,6 +28,29 @@ export async function getCurrentBusinessId() {
   return cachedBusinessId;
 }
 
+export async function getBusinessProfile() {
+  const bid = await getCurrentBusinessId();
+  const { data, error } = await supabase
+    .from('businesses')
+    .select('*')
+    .eq('id', bid)
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateBusinessProfile(patch) {
+  const bid = await getCurrentBusinessId();
+  const { data, error } = await supabase
+    .from('businesses')
+    .update(patch)
+    .eq('id', bid)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
 export function clearBusinessCache() {
   cachedBusinessId = null;
   cachedAuthId = null;

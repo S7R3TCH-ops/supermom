@@ -1,9 +1,12 @@
+import { useState } from 'react';
 import { useNavigate, useParams, Navigate } from 'react-router-dom';
 import { useAppTheme } from '../context/AppThemeContext';
+import { useJobDetailSheet } from '../context/JobDetailSheetContext';
 import { useNewJobSheet } from '../context/NewJobSheetContext';
 import AmtCell from '../components/ui/AmtCell';
 import SectionLabel from '../components/ui/SectionLabel';
-import { useClient } from '../data/useData';
+import { useClient, notifyDataChanged } from '../data/useData';
+import { updateClient } from '../data/clientsRepo';
 
 function formatPhone(p) {
   if (!p) return '';
@@ -17,7 +20,54 @@ export default function ClientProfile() {
   const navigate = useNavigate();
   const { T, privacyOn } = useAppTheme();
   const { openFor } = useNewJobSheet();
-  const { client, loading, error } = useClient(id);
+  const { openJob } = useJobDetailSheet();
+  const { client, raw, loading, error, refresh } = useClient(id);
+
+  // Edit AI Context state
+  const [isEditingAi, setIsEditingAi] = useState(false);
+  const [isSavingAi, setIsSavingAi] = useState(false);
+  const [aiDraft, setAiDraft] = useState({});
+
+  const handleEditAi = () => {
+    setAiDraft({
+      notes: client.note || '',
+      prefs: client.aiContext.prefs || '',
+      access: client.aiContext.access || '',
+      comms: client.aiContext.comms || '',
+      personal: client.aiContext.personal || '',
+    });
+    setIsEditingAi(true);
+  };
+
+  const handleSaveAi = async () => {
+    setIsSavingAi(true);
+    try {
+      const newAiContext = {
+        ...(raw?.ai_context || {}),
+        prefs: aiDraft.prefs,
+        access: aiDraft.access,
+        comms: aiDraft.comms,
+        personal: aiDraft.personal,
+      };
+
+      await updateClient(id, {
+        notes: aiDraft.notes,
+        ai_context: newAiContext,
+      });
+
+      // Refetch and WAIT for it before closing edit mode
+      // This prevents the UI from reverting to old values momentarily
+      await refresh();
+      setIsEditingAi(false);
+      notifyDataChanged(); // Notify others (e.g. Clients list)
+    } catch (err) {
+      console.error('Failed to save client intel:', err);
+      alert('Failed to save changes. Please try again.');
+    } finally {
+      setIsSavingAi(true); // Wait for re-render
+      setIsSavingAi(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -176,30 +226,68 @@ export default function ClientProfile() {
             position: 'absolute', top: -28, right: -18, width: 90, height: 90, borderRadius: '50%',
             background: 'radial-gradient(circle,rgba(233,30,106,0.12) 0%,transparent 70%)', pointerEvents: 'none',
           }} />
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, position: 'relative' }}>
             <div style={{
               fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '1.1px',
               textTransform: 'uppercase', color: '#FF78B0',
             }}>✦ What I know</div>
-            <button style={{
-              background: 'none', border: 'none', padding: 0,
-              fontFamily: T.font, fontSize: 10, fontWeight: 600, color: T.inkMuted, cursor: 'pointer',
-            }}>Edit</button>
+            {!isEditingAi ? (
+              <button
+                onClick={handleEditAi}
+                style={{
+                  background: 'none', border: 'none', padding: 0,
+                  fontFamily: T.font, fontSize: 10, fontWeight: 600, color: T.pink, cursor: 'pointer',
+                }}>Edit</button>
+            ) : (
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button
+                  onClick={() => setIsEditingAi(false)}
+                  disabled={isSavingAi}
+                  style={{
+                    background: 'none', border: 'none', padding: 0,
+                    fontFamily: T.font, fontSize: 10, fontWeight: 600, color: T.inkMuted, cursor: 'pointer',
+                  }}>Cancel</button>
+                <button
+                  onClick={handleSaveAi}
+                  disabled={isSavingAi}
+                  style={{
+                    background: 'none', border: 'none', padding: 0,
+                    fontFamily: T.font, fontSize: 10, fontWeight: 700, color: T.pink, cursor: 'pointer',
+                  }}>{isSavingAi ? 'Saving...' : 'Save'}</button>
+              </div>
+            )}
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, position: 'relative' }}>
             {[
-              { k: 'Prefs',    v: client.aiContext.prefs },
-              { k: 'Access',   v: client.aiContext.access },
-              { k: 'Comms',    v: client.aiContext.comms },
-              { k: 'Personal', v: client.aiContext.personal },
+              { k: 'Notes',    f: 'notes',    v: client.note },
+              { k: 'Prefs',    f: 'prefs',    v: client.aiContext.prefs },
+              { k: 'Access',   f: 'access',   v: client.aiContext.access },
+              { k: 'Comms',    f: 'comms',    v: client.aiContext.comms },
+              { k: 'Personal', f: 'personal', v: client.aiContext.personal },
             ].map(row => (
               <div key={row.k} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
                 <span style={{
                   fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.5px',
                   textTransform: 'uppercase', color: T.inkMuted,
-                  flexShrink: 0, width: 58, marginTop: 2,
+                  flexShrink: 0, width: 58, marginTop: isEditingAi ? 6 : 2,
                 }}>{row.k}</span>
-                <span style={{ fontFamily: T.font, fontSize: 11.5, color: T.inkSub, lineHeight: 1.45, flex: 1 }}>{row.v}</span>
+                {isEditingAi ? (
+                  <textarea
+                    value={aiDraft[row.f]}
+                    onChange={(e) => setAiDraft({ ...aiDraft, [row.f]: e.target.value })}
+                    placeholder={`Enter ${row.k.toLowerCase()}...`}
+                    style={{
+                      flex: 1, background: T.pinkTint, border: `1px solid ${T.pinkBorder}`,
+                      borderRadius: 8, padding: '4px 8px', fontFamily: T.font, fontSize: 11.5,
+                      color: T.ink, minHeight: 44, resize: 'none',
+                    }}
+                  />
+                ) : (
+                  <span style={{
+                    fontFamily: T.font, fontSize: 11.5, color: T.inkSub, lineHeight: 1.45, flex: 1,
+                    minHeight: row.v ? 0 : 16,
+                  }}>{row.v || <span style={{ color: T.inkMuted, fontStyle: 'italic', fontSize: 10 }}>None</span>}</span>
+                )}
               </div>
             ))}
           </div>
@@ -251,10 +339,11 @@ export default function ClientProfile() {
             </div>
           ) : (
             client.upcoming.map((j, i) => (
-              <div key={i} style={{
+              <div key={i} onClick={() => openJob(j.id)} style={{
                 background: T.card, border: `1.5px solid ${T.cardBorder}`,
                 borderRadius: 13, padding: '10px 12px',
                 display: 'flex', alignItems: 'center', gap: 10,
+                cursor: 'pointer',
               }}>
                 <div style={{
                   width: 42, flexShrink: 0, textAlign: 'center',

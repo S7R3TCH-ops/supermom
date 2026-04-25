@@ -6,6 +6,7 @@ import { fetchClients, fetchClientById } from './clientsRepo';
 import { fetchActiveJobs, fetchJobsByClientId } from './jobsRepo';
 import { toDisplayClient, toDisplayJob } from './selectors';
 import { initRealtime, stopRealtime } from './realtime';
+import { getBusinessProfile, updateBusinessProfile } from './currentBusiness';
 
 const CHANGE_EVENT = 'supermom:data-changed';
 export function notifyDataChanged() {
@@ -109,4 +110,34 @@ export function useJobs() {
   );
   const display = rows.map(j => toDisplayJob(j, clientLookup));
   return { jobs: display, raw: rows, clients: clientLookup, loading, error, refresh };
+}
+
+export function useBusiness() {
+  const [business, setBusiness] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await getBusinessProfile();
+      setBusiness(data);
+    } catch (e) {
+      setError(e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { refresh(); }, [refresh]);
+  useChangeListener(refresh);
+
+  const update = async (patch) => {
+    const data = await updateBusinessProfile(patch);
+    setBusiness(data);
+    return data;
+  };
+
+  return { business, loading, error, refresh, update };
 }

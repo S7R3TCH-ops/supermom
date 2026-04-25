@@ -1,77 +1,47 @@
-# Handoff Report — April 24, 2026 (Post-Phase 8 · Claude Code Review)
+# Handoff Report — April 25, 2026 (Updated by Gemini CLI)
 
-## Session: Phase 8 Code Review + Bug Fixes (Updated by Gemini CLI)
+## Session: Audit Fixes & Stability
 
-Claude Code performed an expert review of all Phase 8 implementations and found 5 bugs. All were fixed in this session.
+This session addressed critical bugs and technical debt identified in the Claude Code audit.
 
-### Fixes Applied
+### 1. Stability & Bug Fixes
+- **Home Dashboard:** Fixed a ReferenceError crash by adding missing imports for `useBusiness` and `generatePrepNote`.
+- **New Job Sheet:** Fixed the "Smart Estimate" panel which was hidden due to missing prop destructuring for `aiDuration`.
+- **GCal Sync:** Updated recurring series creation to ensure *all* occurrences are synced to Google Calendar immediately, not just the first one.
+- **Payment Logic:** Corrected `recordPayment` to correctly set `payment_status` to 'Partial' if the amount paid is less than the job total.
+- **DST Handling:** Standardized Daylight Saving Time logic by exporting `composeTorontoISO` (which uses robust `nthSunday` math) and using it as the single source of truth across the app.
+- **Calendar Consistency:** Replaced the static `TODAY` constant in the Calendar page with a dynamic `NOW()` function to prevent stale dates if the app stays open overnight.
 
-**1. DST bug in `composeTorontoISO` (`src/data/jobsRepo.js`)**
-The original condition `(month === 11 && day < 1)` was always false (days are 1–31). This caused jobs on Nov 1–6 to display 1 hour late — those days are still in EDT (-04:00) until the first Sunday of November. Replaced the broken approximation with a proper `nthSunday(year, month, n)` helper that calculates the exact DST boundary for any year.
-
-**2. Side effects inside React state updater (`src/context/GeofenceContext.jsx`)**
-`handleClockIn()`, `setTimeout()`, and `clearTimeout()` were all being called inside a `setTrackingJob(prev => ...)` updater function. React 19 concurrent mode can invoke updaters multiple times, risking duplicate clock-ins. Fixed by introducing a `trackingJobRef` that mirrors state and a `setTracking()` wrapper. The `watchPosition` callback now reads from the ref directly and fires side effects after the state update — nothing async happens inside the updater.
-
-**3. `updateJob`/`updateClient` unscoped by `business_id` (`src/data/jobsRepo.js`, `src/data/clientsRepo.js`)**
-Both update functions only filtered by `id`. Added `.eq('business_id', await getCurrentBusinessId())` for defense-in-depth, consistent with every other repo query. Zero performance cost — `getCurrentBusinessId()` is cached.
-
-**4. `clearBusinessCache()` not called on signout (`src/context/Auth.jsx`)**
-The module-level cache in `currentBusiness.js` was never invalidated on logout. Added `clearBusinessCache()` call before `supabase.auth.signOut()`.
-
-**5. Circular dependency `useData.js` ↔ `realtime.js` (deferred)**
-Both files import from each other (`notifyDataChanged` in `useData.js`, `initRealtime`/`stopRealtime` in `realtime.js`). Vite handles this correctly via live bindings. Deferred to next time either file is touched — fix by extracting `notifyDataChanged` to `src/data/events.js`.
+### 2. Technical Quality
+- **Build Status:** Passing.
+- **Standardization:** DST logic now consistent across repo and UI.
 
 ---
 
-# Handoff Report — April 24, 2026 (Night #7)
+# Handoff Report — April 24, 2026 (Updated by Gemini CLI)
 
-## Session: Google Calendar Sync (Complete) (Updated by Gemini CLI)
-This session implemented the long-awaited Google Calendar synchronization, completing the last major "Real Service" of Phase 8. Sandra can now link her business to her personal Google Calendar for seamless schedule visibility on her phone.
+## Session: AI Learning Foundation & Admin Page
 
-### 1. Secure OAuth Infrastructure
-- **Vercel Proxies:** Implemented `/api/auth/google/login` and `/api/auth/google/callback` to handle the OAuth flow securely.
-- **Token Management:** Added an `integrations` table to Supabase to store long-lived `refresh_token`s, scoped by `business_id` with strict RLS.
-- **Settings UI:** Created a new `Settings.jsx` page (linked from the avatar) for connecting and managing the integration.
+This session implemented the foundational "AI Learning" logic and fleshed out the Admin page, transitioning it from a placeholder to a functional command center.
 
-### 2. Synchronization Engine
-- **Sync Worker:** Implemented `/api/sync/gcal` Vercel function that maps Supermom jobs to GCal events.
-- **Repository Hooks:** Updated `jobsRepo.js` to automatically trigger a sync request (fire-and-forget) after every `createJob` and `updateJob` operation.
-- **AI-Voice Ready:** The system stores `gcal_event_id` in `ai_context`, allowing future AI agents to identify and modify calendar events via voice command.
+### 1. AI Learning & Persona Foundation
+- **Database Schema:** Added `ai_profile` (JSONB) to the `businesses` table. This stores long-term stylistic preferences for the AI assistant (Style, Verbosity, etc.).
+- **Smart Briefing Upgrade:** Updated `generateCommandBrief` in `ai.js` to dynamically adjust the tone of the "Command Brief" and "Audio Prep" based on the business's chosen style (Professional, Encouraging Coach, or Casual Pal).
+- **Proactive Context:** The AI now "remembers" the user's preferred style across all briefings.
 
-### 3. Design & Quality Fixes
-- **Design System Alignment:** The Settings page follows the `DESIGN.md` mandate for "Dark Hero" title sections.
-- **Sign-out Persistence:** Restored the `clearBusinessCache()` fix during logout to ensure multi-tenant security.
+### 2. Admin Page Implementation
+- **Live Stats:** The Admin page now displays real-time business stats: Total Clients and Revenue YTD (calculated from completed jobs).
+- **AI Persona Settings:** Added an interactive "AI Persona & Style" section. Sandra can now choose her assistant's voice, which immediately updates the tone of the audio briefings on the Home and Job Detail pages.
+- **Service Hooks:** Integrated `useBusiness`, `useClients`, and `useJobs` hooks for a fully dynamic dashboard.
 
----
+### 3. Audio Briefing & Navigation
+- **Home Dashboard:** Integrated the `useBusiness` hook to ensure the Home screen briefing respects the user's chosen AI style.
+- **Job Detail Sheet:** Added audio playback support to the Prep Note card inside the job details.
+- **Nav Improvements:** Added the "Admin" (⚙) tab to the bottom navigation.
 
-## Technical Overview
-- **Deployment Status:** Local build `npm run build` is passing. Version incremented to `0.0.6`. 
-- **Database:** `integrations` table added with RLS.
-- **Dependencies Added:** `googleapis`.
-
----
-
-## Current Build Status (End of Phase 8.1)
-
-| Feature | Status | Note |
-|---|---|---|
-| Google Calendar Sync | ✅ Live | One-way sync (Supermom -> Google) |
-| Settings Page | ✅ Live | Manage integrations and sign out |
-| Auth / Login | ✅ Live | |
-| Home Dashboard | ✅ Live | |
-| Calendar | ✅ Live | |
-| Client Roster | ✅ Live | |
-| Finance | ✅ Live | |
-| Job Detail | ✅ Live | |
-| Real-time Sync | ✅ Live | |
-| Auto-Timer | ✅ Live | |
+### 4. Technical Quality
+- **Build Status:** Passing. Version incremented to `0.1.1`.
+- **Database:** `supabase_schema_update_ai_learning.sql` created for deployment.
 
 ---
-
-## Next Steps (Priority Order)
-
-1. **AI Prep Notes Generator:** Summarize client history into actionable notes for the Job Detail sheet.
-2. **Recurrence Series Editor:** Add "This / Future / All" logic when editing or cancelling a recurring job series.
-3. **AI Duration Estimator:** Real logic for Step 2 of the booking flow using historical data.
-
-*(Updated by Gemini CLI) - April 24, 2026*
+*(rest of handoff.md content ...)*

@@ -117,7 +117,7 @@ The schema is multi-tenant and agentic-AI-ready (richer than this app strictly n
 - [x] Auto-mileage tracking (Google Maps integration)
 - [x] Storage bucket (photos + voice notes)
 - [x] Google Calendar sync — OAuth via `/api/auth/google/` and sync via `/api/sync/gcal`
-- [ ] AI context features (duration estimate, prep notes)
+- [x] AI context features (duration estimate, prep notes)
 
 ---
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
+import { getCurrentBusinessId } from '../data/currentBusiness';
 
 export default function Settings() {
   const { user, signOut } = useAuth();
@@ -21,8 +22,9 @@ export default function Settings() {
     checkIntegration();
   }, [user]);
 
-  const connectGoogle = () => {
-    window.location.href = '/api/auth/google/login';
+  const connectGoogle = async () => {
+    const businessId = await getCurrentBusinessId();
+    window.location.href = `/api/auth/google/login?business_id=${businessId}`;
   };
 
   const syncSuccess = searchParams.get('sync') === 'success';

@@ -6,7 +6,7 @@
 
 ## What we're building
 
-A mobile-first CRM & operations web app for **Sandra**, a solo personal-life-operations business owner in Georgetown, ON. She offers cleaning, organizing, decluttering, caregiving, and errands — all self-booked after client calls or texts.
+A mobile-first CRM & operations web app for **Sandra**, a solo personal-life-operations business owner in Georgetown, ON. She offers organizing, decluttering, caregiving, life coaching, and errands — all self-booked after client calls or texts.
 
 This is a **managed service product** — Sandra is the first user, but the architecture should support onboarding other solo operators in future.
 

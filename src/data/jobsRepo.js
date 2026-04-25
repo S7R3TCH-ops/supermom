@@ -248,10 +248,10 @@ export async function softDeleteJob(id, seriesAction = 'this') {
 export async function recordPayment(jobId, amount, method = 'Cash', notes = null) {
   const businessId = await getCurrentBusinessId();
 
-  // 1. Get job info (we need client_id)
+  // 1. Get job info (we need client_id and total_amount)
   const { data: job, error: getErr } = await supabase
     .from('jobs')
-    .select('client_id, business_id')
+    .select('client_id, business_id, total_amount')
     .eq('id', jobId)
     .single();
   if (getErr) throw getErr;
@@ -271,8 +271,10 @@ export async function recordPayment(jobId, amount, method = 'Cash', notes = null
   if (payErr) throw payErr;
 
   // 3. Update job status
+  const status = amount >= (job.total_amount || 0) ? 'Paid' : 'Partial';
+
   return updateJob(jobId, {
-    payment_status: 'Paid',
+    payment_status: status,
     job_status: 'Completed',
     payment_method: method // also update this field on the job table for redundancy/quick lookup
   });

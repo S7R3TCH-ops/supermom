@@ -5,11 +5,19 @@ import { useCallback, useEffect, useState } from 'react';
 import { fetchClients, fetchClientById } from './clientsRepo';
 import { fetchActiveJobs, fetchJobsByClientId } from './jobsRepo';
 import { toDisplayClient, toDisplayJob } from './selectors';
+import { initRealtime } from './realtime';
 
 const CHANGE_EVENT = 'supermom:data-changed';
 export function notifyDataChanged() {
   window.dispatchEvent(new Event(CHANGE_EVENT));
 }
+
+export function useRealtimeSync() {
+  useEffect(() => {
+    initRealtime();
+  }, []);
+}
+
 function useChangeListener(refresh) {
   useEffect(() => {
     const h = () => refresh();
@@ -23,6 +31,8 @@ export function useClients() {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  useRealtimeSync();
 
   const refresh = useCallback(async () => {
     setLoading(true);

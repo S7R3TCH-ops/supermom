@@ -32,7 +32,7 @@ At the end of every productive session, or upon major milestone completion, Gemi
 
 ---
 
-## Current State (as of April 25, 2026 — updated post Edit Client / AI context)
+## Current State (as of April 25, 2026 — updated post CSV Export batch)
 
 | Feature | Status |
 |---|---|
@@ -47,6 +47,11 @@ At the end of every productive session, or upon major milestone completion, Gemi
 | **AI Duration Estimator** | ✅ **Live** — Step 2 prediction with Claude reasoning |
 | **Post-job / Payment sheet** | ✅ **Live** — UNPAID badge, Cash/e-Transfer toggle, editable amount, AI thank-you teaser |
 | **Edit Client / AI context** | ✅ **Live** — Inline edit on Profile "What I know" card; Notes + Prefs/Access/Comms/Personal buckets |
+| **7-day week strip** | ✅ **Live** — Mon–Sun on Home, today dark plum pill, pink job dots |
+| **Loading / error states** | ✅ **Live** — Error cards added to Home, Calendar, Finance |
+| **Thank-you Draft sheet** | ✅ **Live** — AI-drafted post-job text via Claude Haiku; SMS send from Post-job sheet |
+| **Expense logging** | ✅ **Live** — NewExpenseSheet (5 categories); Finance Expenses stat card + Recent Activity amber rows |
+| **CSV Export / Tax Ready** | ✅ **Live** — Finance Tax Ready section: YTD stats + date range picker + CSV download |
 | **Recurrence series editor** | ✅ **Live** — 'this / future / all' safely implemented |
 | **GCal Sync Security** | ✅ **Live** — CSRF nonce + multi-tenant state param |
 | **Drive time / mileage** | ✅ **Live** — Google Maps Distance Matrix API proxy |
@@ -83,6 +88,6 @@ Key stability fixes implemented:
 - Mutation errors shown inline; fetch errors replace the sheet body
 
 ## Next priorities
-1. Thank-you / Receipt draft sheet — item #13, AI Phase 4 (opens from Post-job sheet)
-2. Expense logging — item #16, Finance Phase 5
-3. CSV Export — item #17, Finance Phase 5
+1. PDF Invoice module — needs Sandra's invoice template from Joel first
+2. Settings page — item #18 (service rates, HST toggle, working hours)
+3. Conflict detection — item #29 (real travel-time logic)

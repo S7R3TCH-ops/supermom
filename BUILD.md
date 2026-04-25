@@ -94,7 +94,8 @@ When done:
 
 - [x] **16. Expense logging sheet** — category (gas/supplies/other), amount, receipt photo upload.
   - Built as `expensesRepo.js` + `useExpenses()` + `NewExpenseSheet.jsx`; Finance page Expenses stat card (amber) with "+ Add" entry; expenses merged into Recent Activity (amber 🧾 rows). Photos deferred.
-- [ ] **17. CSV Export flow** — tax-ready export with date range picker.
+- [x] **17. CSV Export flow** — tax-ready export with date range picker.
+  - Tax Ready section in Finance.jsx: YTD Income/Deductibles/Mileage/Est.Taxable 2×2 grid, date range pickers, client-side CSV download merging jobs + expenses.
 
 ### 🎯 Phase 6 — Settings & onboarding
 

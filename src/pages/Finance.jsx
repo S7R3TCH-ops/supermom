@@ -26,6 +26,44 @@ function periodStart(period, now) {
   return new Date(0);
 }
 function fmtShort(d) { return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
+function todayISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function generateCSV(jobs, expenses, start, end) {
+  const s = new Date(start);
+  const e = new Date(end + 'T23:59:59');
+  const escape = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const rows = [];
+
+  jobs
+    .filter(j => {
+      const d = new Date(j.scheduled_at);
+      return d >= s && d <= e && j.status !== 'Cancelled';
+    })
+    .forEach(j => rows.push({
+      date: new Date(j.scheduled_at).toLocaleDateString('en-CA', { timeZone: 'America/Toronto' }),
+      type: 'Income', description: `${j.service_name} - ${j.client_name}`,
+      amount: Number(j.total || 0).toFixed(2), category: '',
+      status: j.payment_status === 'Paid' ? 'Paid' : 'Unpaid',
+    }));
+
+  expenses
+    .filter(ex => !ex.deleted_at && new Date(ex.expense_date) >= s && new Date(ex.expense_date) <= e)
+    .forEach(ex => rows.push({
+      date: ex.expense_date, type: 'Expense',
+      description: ex.notes || ex.category,
+      amount: Number(ex.amount || 0).toFixed(2), category: ex.category, status: '',
+    }));
+
+  rows.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  return [
+    ['Date', 'Type', 'Description', 'Amount', 'Category', 'Status'].map(escape).join(','),
+    ...rows.map(r => [r.date, r.type, r.description, r.amount, r.category, r.status].map(escape).join(',')),
+  ].join('\n');
+}
 
 export default function Finance() {
   const { T, mode, privacyOn } = useAppTheme();
@@ -33,6 +71,8 @@ export default function Finance() {
   const [busyId, setBusyId] = useState(null);
   const [showNudges, setShowNudges] = useState(false);
   const [showNewExpense, setShowNewExpense] = useState(false);
+  const [csvStart, setCsvStart] = useState(() => `${new Date().getFullYear()}-01-01`);
+  const [csvEnd, setCsvEnd] = useState(todayISO);
   const { jobs: allJobs, loading, error } = useJobs();
   const { expenses: allExpenses } = useExpenses();
   const { clients } = useClients();
@@ -103,6 +143,30 @@ export default function Finance() {
   const periodExpenses = allExpenses
     .filter(e => !e.deleted_at && new Date(e.expense_date) >= expPeriodStart)
     .reduce((s, e) => s + Number(e.amount || 0), 0);
+
+  const ytdStart = new Date(now.getFullYear(), 0, 1);
+  const ytdIncome = allJobs
+    .filter(j => j.payment_status === 'Paid' && new Date(j.scheduled_at) >= ytdStart)
+    .reduce((s, j) => s + Number(j.total || 0), 0);
+  const ytdExpenses = allExpenses
+    .filter(e => !e.deleted_at && new Date(e.expense_date) >= ytdStart)
+    .reduce((s, e) => s + Number(e.amount || 0), 0);
+  const ytdMileage = allJobs
+    .filter(j => j.ai_context?.mileage_km && new Date(j.scheduled_at) >= ytdStart)
+    .reduce((s, j) => s + Number(j.ai_context.mileage_km || 0), 0);
+
+  function handleExport() {
+    const csv = generateCSV(allJobs, allExpenses, csvStart, csvEnd);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `supermom-${csvStart}-to-${csvEnd}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
 
   // Last 7 days bars
   const todayStart = new Date(now); todayStart.setHours(0,0,0,0);
@@ -289,7 +353,46 @@ export default function Finance() {
             </div>
           );
         })}
-      </div>
+
+        {/* Tax Ready */}
+        <SectionLabel>Tax Ready · {now.getFullYear()}</SectionLabel>
+        <div style={{ background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 14, padding: '12px 14px', marginBottom: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 7, marginBottom: 14 }}>
+            {[
+              { l: 'YTD Income',   v: `$${ytdIncome.toFixed(0)}`,                    c: '#22C55E' },
+              { l: 'Deductibles',  v: `$${ytdExpenses.toFixed(0)}`,                   c: '#F59E0B' },
+              { l: 'Mileage',      v: ytdMileage > 0 ? `${ytdMileage.toFixed(1)} km` : '— km', c: T.inkSub },
+              { l: 'Est. Taxable', v: `$${Math.max(0, ytdIncome - ytdExpenses).toFixed(0)}`, c: T.ink },
+            ].map(s => (
+              <div key={s.l} style={{ textAlign: 'center', padding: '9px 6px', background: T.bg, borderRadius: 10, border: `1px solid ${T.cardBorder}` }}>
+                <div style={{ fontFamily: T.serif, fontSize: 17, fontWeight: 500, color: s.c, fontVariantNumeric: 'tabular-nums' }}>
+                  {privacyOn ? '•••' : s.v}
+                </div>
+                <div style={{ fontFamily: T.font, fontSize: 8.5, fontWeight: 700, color: T.inkMuted, letterSpacing: '0.4px', textTransform: 'uppercase', marginTop: 3 }}>{s.l}</div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.7px', textTransform: 'uppercase', color: T.inkMuted, marginBottom: 8 }}>Export range</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 7, marginBottom: 12 }}>
+            {[{ label: 'From', val: csvStart, set: setCsvStart }, { label: 'To', val: csvEnd, set: setCsvEnd }].map(f => (
+              <div key={f.label} style={{ background: T.bg, border: `1px solid ${T.cardBorder}`, borderRadius: 10, padding: '8px 10px' }}>
+                <div style={{ fontFamily: T.font, fontSize: 8.5, color: T.inkMuted, marginBottom: 3 }}>{f.label}</div>
+                <input type="date" value={f.val} onChange={e => f.set(e.target.value)}
+                  style={{ background: 'transparent', border: 'none', outline: 'none', fontFamily: T.font, fontSize: 12, fontWeight: 500, color: T.ink, width: '100%' }} />
+              </div>
+            ))}
+          </div>
+
+          <button onClick={handleExport} style={{
+            width: '100%', padding: '11px 0', borderRadius: 10, border: 'none',
+            background: '#1A0A12', color: 'white',
+            fontFamily: T.font, fontSize: 12, fontWeight: 700, cursor: 'pointer', letterSpacing: '0.2px',
+          }}>
+            Export CSV ↓
+          </button>
+        </div>
+      </div>  {/* end sm-scroll */}
 
       <NudgeDraftSheet
         isOpen={showNudges}

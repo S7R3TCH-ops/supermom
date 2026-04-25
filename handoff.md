@@ -1,17 +1,17 @@
-# Handoff Report — April 24, 2026 (Night)
+# Handoff Report — April 24, 2026 (Night #2)
 
-## Session: Feature Expansion and Audit
-- **Client Search:** Wired the search bar on the Clients page. It now performs live filtering of the client roster by name or address.
-- **Payments Audit:** Implemented `recordPayment(jobId, amount, method, notes)` in `jobsRepo.js`. This helper handles the job status update AND inserts an audit row into the `payments` table. Both `Finance.jsx` and `JobDetailSheet.jsx` were updated to use this.
-- **Finance Nudge Buttons:** Created `NudgeDraftSheet.jsx` and wired it to the "Draft nudges" buttons on the Finance page. It generates a SMS draft with the client's name and unpaid balance.
-- **Code-Splitting:** Implemented `React.lazy` and `Suspense` for all top-level pages in `App.jsx`. This reduces the initial bundle size and improves load performance.
-- **Project Tracking:** Updated `BUILD.md` and `GEMINI.md` to reflect the current state and updated next priorities.
-- **Bug Fixes:** (From previous session) Fixed greeting to use profile `first_name`, and fixed Job Detail deletion logic to use `softDeleteJob`.
+## Session: Google Maps Integration (Phase 8)
+- **Vercel API Proxy:** Created `api/distance.js` to securely proxy Google Maps Distance Matrix API calls. This hides the `GOOGLE_MAPS_API_KEY` on the server and bypasses browser CORS restrictions.
+- **Option C Routing Logic:** Implemented `src/lib/maps.js` with `updateDailyRoutes(jobs)`. It calculates travel times and distances for the sequence: Home -> Job 1 -> Job 2 -> ... -> Home.
+- **Estimate Storage:** Calculated durations (e.g., "12 mins") and distances are now persisted directly into the `jobs.ai_context` JSON field (`drive_to` and `drive_home` objects). This ensures "AI voice readiness" for future prep notes.
+- **Navigation Deep-Linking:** Updated `src/components/ui/CapeUpButton.jsx` to launch Google Maps Navigation (`https://www.google.com/maps/dir/...`) when the "GO!" button is tapped.
+- **Auto-Update:** Added a `useEffect` to `Home.jsx` that automatically triggers route recalculation if today's jobs are missing estimates.
+- **Data Layer Enhancement:** Updated `src/data/selectors.js` to denormalize `address` and `ai_context` into the job objects consumed by the UI.
 
 ---
 
 ## Overview
-App is fully live. All 5 pages read from Supabase (`lskzzsjmmtsosfneuovt`). Login works. Live site at `supermom-v2.vercel.app` confirmed showing auth + real data. Vercel is now connected to GitHub (`S7R3TCH-ops/supermom-v2`) — every push to `main` auto-deploys to production. Schema source of truth: `supabase_schema.sql`. (Updated by Gemini CLI)
+App is fully live. All 5 pages read from Supabase (`lskzzsjmmtsosfneuovt`). Login works. Live site at `supermom-v2.vercel.app` confirmed showing auth + real data. Vercel is connected to GitHub (`S7R3TCH-ops/supermom-v2`) — every push to `main` auto-deploys to production. Schema source of truth: `supabase_schema.sql`. (Updated by Gemini CLI)
 
 ---
 
@@ -21,65 +21,48 @@ App is fully live. All 5 pages read from Supabase (`lskzzsjmmtsosfneuovt`). Logi
 |---|---|
 | Login (`/`) | ✅ email/password + **Forgot password** |
 | Sign out | ✅ tap avatar (top-right pink bar) |
-| Home (`/`) | ✅ today's schedule, conflict detection, revenue, overdue strip |
-| Clients (`/clients`) | ✅ list + NewClientSheet |
+| Home (`/`) | ✅ today's schedule, **Google Maps drive estimates**, conflict detection, revenue, overdue strip |
+| Clients (`/clients`) | ✅ list + NewClientSheet + Search |
 | Client Profile (`/clients/:id`) | ✅ upcoming/history from real jobs |
-| Calendar (`/calendar`) | ✅ Day/Week/Agenda, conflict detection, GO button |
-| Finance (`/finance`) | ✅ Week/Month/Year/All, mark-paid |
+| Calendar (`/calendar`) | ✅ Day/Week/Agenda, conflict detection, **GO button navigation** |
+| Finance (`/finance`) | ✅ Week/Month/Year/All, mark-paid, **Nudge Drafts** |
 | New Job FAB → NewJobSheet | ✅ books to `jobs` table |
 | New Client (inline from NewJobSheet) | ✅ |
 
 ---
 
-## Done this session (Evening → Night)
-- **Vercel env vars added**: `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` set in Vercel dashboard → redeployed → live site now Supabase-connected
-- **Supabase redirect URL** added for password reset in prod
-- **GO button PNG** (`public/branding/Supermom_go.png`) committed and pushed
-- **`.gitignore` fixed**: changed `branding/` → `/branding/` so root design assets stay ignored but `public/branding/` is tracked
-- **Live site verified**: login + all pages confirmed working at `supermom-v2.vercel.app`
-- **Vercel ↔ GitHub connected**: `S7R3TCH-ops/supermom-v2` linked to Vercel project — `git push origin main` now auto-deploys to production (no more manual `vercel --prod`)
-
----
-
-## Known gaps / not yet wired
-- **Drive time / mileage** — hardcoded "—" placeholders. Needs Google Maps integration.
-- **AI cards** (nudges, agent activity) — static UI, no LLM call.
-- **`payments` table audit row** — mark-paid flips `jobs.payment_status` only; doesn't insert into `payments` yet.
-- **Real-time subscriptions** — refresh is event-driven from local writes only.
-
----
-
-## Provisioning (already done)
-- `jlundie@gmail.com` / `TempPass2026!` (change in Supabase Authentication tab)
-- Business: "Supermom for Hire" (Georgetown ON), 7 services seeded
-- **Sandra's account intentionally NOT created** until Joel signs off
+## Implementation Details (Phase 8)
+- **API Key**: Requires `GOOGLE_MAPS_API_KEY` set in Vercel environment variables (and local `.env`).
+- **Home Base**: `HOME_ADDRESS` is currently hardcoded to "Georgetown, ON, Canada" in `src/lib/maps.js`.
+- **Trigger**: Recruitment of estimates happens on-the-fly when the Home dashboard is loaded and detect missing data.
 
 ---
 
 ## Next steps (priority order)
 
-### A. ~~Verify live site~~ ✅ Done
-Login works, GO button shows PNG, all pages load real data.
+### 1. Geofence Service (Phase 8 continued)
+Auto-start timer on arrival, auto-stop on departure (3min, 250m).
 
-### B. `payments` audit row on mark-paid
-Change `markPaid()` in `src/pages/Finance.jsx` to also insert into `payments` (method, amount, paid_at) when invoice flow lands.
+### 2. Google Calendar OAuth + Sync
+Create/edit/cancel events on every job mutation.
 
-### C. Google Maps integration
-Drive time + mileage — currently hardcoded "—". Wire Google Maps API for routing.
+### 3. Storage Bucket
+Photos + voice notes for jobs.
 
-### D. Code-split the bundle
-`@supabase/supabase-js` pushed bundle to 520 kB. Lazy-load auth/repos. Not urgent.
+### 4. Real-time Subscriptions
+Refresh UI immediately on DB changes using Supabase Realtime.
 
 ---
 
 ## Known issues / gotchas
-- **Toronto DST math** hardcoded in `jobsRepo.decorateJob` and `NewJobSheet.torontoISO` — wrong on boundary days
-- **Conflict detection** runs in JS over fetched jobs, not a DB query
-- **Recurrence** stored in `jobs.ai_context.recurrence_rule` — migrate to `job_templates` when that UI ships
+- **CORS**: Direct client-side calls to Google Maps API are blocked; always use the `/api/distance` proxy.
+- **API Quota**: `updateDailyRoutes` updates the DB. Be mindful of excessive re-renders triggering multiple writes (added `loading` and `length` checks).
+- **Toronto DST math** hardcoded in `jobsRepo.decorateJob` and `NewJobSheet.torontoISO` — wrong on boundary days.
+- **Recurrence** stored in `jobs.ai_context.recurrence_rule` — migrate to `job_templates` when that UI ships.
 
 ## Key files
-- `src/data/useData.js`, `selectors.js`, `clientsRepo.js`, `jobsRepo.js`, `currentBusiness.js` — data layer
-- `src/pages/Finance.jsx` — mark-paid handler
-- `src/pages/Login.jsx` — forgot-password handler
-- `supabase_schema.sql` — schema source of truth
-- `scripts/provision.mjs`, `scripts/inspect.mjs`, `scripts/seed.mjs` — DB tools
+- `api/distance.js` — Vercel API proxy
+- `src/lib/maps.js` — Distance Matrix & Navigation logic
+- `src/components/ui/CapeUpButton.jsx` — Navigation launcher
+- `src/data/selectors.js` — Denormalization layer
+- `src/pages/Home.jsx` — Auto-trigger for estimates

@@ -1,17 +1,27 @@
 import { useState } from 'react';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { getGoLabel } from '../../lib/goLabel';
+import { getNavigationUrl } from '../../lib/maps';
 
 export default function CapeUpButton({ job, onGo, name }) {
   const { T } = useAppTheme();
   const [flying, setFlying] = useState(false);
-  const [label] = useState(() => getGoLabel(job.service, name));
+  const [label] = useState(() => getGoLabel(job.service || job.service_name, name));
+
+  const driveTimeDisplay = job.driveTime && job.driveTime !== '—' 
+    ? job.driveTime 
+    : (job.ai_context?.drive_to?.duration || '—');
 
   const tap = (e) => {
     e.stopPropagation();
     if (flying) return;
     setFlying(true);
-    setTimeout(() => { setFlying(false); onGo?.(); }, 900);
+    setTimeout(() => { 
+      setFlying(false); 
+      onGo?.(); 
+      const url = getNavigationUrl(job.address);
+      if (url) window.open(url, '_blank');
+    }, 900);
   };
 
   return (
@@ -66,7 +76,7 @@ export default function CapeUpButton({ job, onGo, name }) {
           {flying ? 'En Route ✓' : label}
         </div>
         <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, marginTop: 1 }}>
-          {job.address} · {job.driveTime} · auto-timer on
+          {job.address} · {driveTimeDisplay} · auto-timer on
         </div>
       </div>
       {!flying && (

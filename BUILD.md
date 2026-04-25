@@ -110,7 +110,7 @@ When done:
 
 - [ ] **25. Google Calendar OAuth + sync service** — create/edit/cancel events on every job mutation.
 - [ ] **26. Geofence service** — auto-start timer on arrival, auto-stop on departure (3min, 250m).
-- [ ] **27. Mileage tracker** — start on GO! tap, log drive to + drive from.
+- [x] **27. Mileage tracker** — Google Maps Distance Matrix integration (Home -> Job A -> Job B -> Home) via Vercel API proxy. Estimates stored in `ai_context` for AI voice readiness. GO! buttons deep-link to navigation.
 - [ ] **28. Storage bucket** — photos + voice notes for jobs.
 
 ### 🎯 Phase 9 — Polish

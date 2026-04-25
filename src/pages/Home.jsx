@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { useAppTheme } from '../context/AppThemeContext';
 import AmtCell from '../components/ui/AmtCell';
 import SectionLabel from '../components/ui/SectionLabel';
@@ -6,6 +6,7 @@ import CapeUpButton from '../components/ui/CapeUpButton';
 import { useJobs } from '../data/useData';
 import { useJobDetailSheet } from '../context/JobDetailSheetContext';
 import { useAuth } from '../context/AuthContext';
+import { updateDailyRoutes } from '../lib/maps';
 
 const NOW = () => new Date();
 
@@ -66,6 +67,16 @@ export default function Home() {
     return null;
   }, [todayJobs]);
 
+  useEffect(() => {
+    if (!loading && todayJobs.length > 0) {
+      const needsUpdate = todayJobs.some(j => !j.ai_context?.drive_to);
+      if (needsUpdate) {
+        // Pass raw rows to updateDailyRoutes to ensure we have IDs for patching
+        updateDailyRoutes(todayJobs.map(j => j.raw));
+      }
+    }
+  }, [todayJobs, loading]);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: T.bg, color: T.ink }}>
       <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', paddingBottom: 8 }}>
@@ -92,7 +103,7 @@ export default function Home() {
             {[
               { n: String(todayJobs.length), l: 'Jobs' },
               { n: privacyOn ? '•••' : `$${revenueToday.toFixed(0)}`, l: 'Today' },
-              { n: '—', l: 'Drive' },
+              { n: next?.ai_context?.drive_to?.duration || '—', l: 'Drive' },
             ].map(s => (
               <div key={s.l} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: '7px 6px', textAlign: 'center' }}>
                 <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 500, color: 'white', letterSpacing: '-0.3px' }}>{s.n}</div>
@@ -150,7 +161,7 @@ export default function Home() {
                   </div>
                 )}
 
-                <CapeUpButton job={{ address: '', driveTime: '—', service: next.service_name }} name={firstName} />
+                <CapeUpButton job={next} name={firstName} />
 
                 <div style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 600, color: T.pinkLabel, marginTop: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
                   <span className="sm-pulse" style={{ display: 'inline-block', width: 5, height: 5, borderRadius: '50%', background: T.pinkLabel }} />

@@ -241,11 +241,7 @@ function DayView({ T, mode, privacyOn, todayJobs, nextUpcoming, onJobPress, firs
       {nextUpcoming && sameDay(nextUpcoming.start, TODAY) && (
         <div style={{ marginTop: 10, marginBottom: 4 }}>
           <CapeUpButton
-            job={{
-              service: nextUpcoming.service?.label,
-              address: nextUpcoming.client?.address ?? '',
-              driveTime: '12 min',
-            }}
+            job={nextUpcoming}
             name={firstName}
           />
         </div>
@@ -405,11 +401,7 @@ function AgendaView({ T, mode, privacyOn, allJobs, nextUpcoming, onJobPress, fir
             {isToday && nextUpcoming && sameDay(nextUpcoming.start, TODAY) && (
               <div style={{ marginTop: 8 }}>
                 <CapeUpButton
-                  job={{
-                    service: nextUpcoming.service?.label,
-                    address: nextUpcoming.client?.address ?? '',
-                    driveTime: '12 min',
-                  }}
+                  job={nextUpcoming}
                   name={firstName}
                 />
               </div>

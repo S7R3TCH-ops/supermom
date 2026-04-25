@@ -64,6 +64,8 @@ Five bugs were found and fixed after Phase 8 landed. Do not regress these:
 | C | `updateJob` / `updateClient` — no `business_id` scope on UPDATE queries | Added `.eq('business_id', await getCurrentBusinessId())` to both | `src/data/jobsRepo.js`, `src/data/clientsRepo.js` |
 | D | `signOut` — never called `clearBusinessCache()`; stale business_id after logout | Added `clearBusinessCache()` call before `supabase.auth.signOut()` | `src/context/Auth.jsx` |
 | E | Circular dep — `useData.js` ↔ `realtime.js` import each other | Vite handles this via live bindings; deferred until next touch of either file | `src/data/realtime.js` |
+| F | `api/sync/gcal.js` — end time built via `new Date(localString)` + `toISOString()`, brittle on non-UTC servers | Replaced with pure string arithmetic (split hh/mm, add duration in minutes, reformat) | `api/sync/gcal.js` |
+| G | `softDeleteJob` — routed through `updateJob`, firing `triggerGCalSync(id, 'upsert')` on delete; worked accidentally because endpoint checks `job.deleted_at` | Gave `softDeleteJob` its own direct DB update + explicit `triggerGCalSync(id, 'delete')` | `src/data/jobsRepo.js` |
 
 ## Job Detail Sheet — architecture notes
 - Context: `src/context/JobDetailSheetContext.js` → `useJobDetailSheet()` → `{ openJob, closeJob, jobId }`
@@ -75,7 +77,7 @@ Five bugs were found and fixed after Phase 8 landed. Do not regress these:
 - Mutation errors shown inline; fetch errors replace the sheet body
 
 ## Next priorities
-1. Google Calendar sync (create/edit/cancel events)
-2. AI Prep Notes generator (summarize history)
-3. Recurrence series editor (this / future / all)
-4. AI Duration Estimator (Step 2 of New Job)
+1. AI Prep Notes generator (summarize client history)
+2. Recurrence series editor (this / future / all)
+3. AI Duration Estimator (Step 2 of New Job)
+4. OAuth `state` param + CSRF nonce in GCal auth flow (required before second operator onboards)

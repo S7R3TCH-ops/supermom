@@ -56,12 +56,11 @@ export default async function handler(req, res) {
     const description = `${job.job_notes || ''}\n\nSynced from Supermom for Hire`;
     
     const startTime = `${job.scheduled_date}T${job.scheduled_time || '09:00'}:00`;
-    const durationHours = job.estimated_hours || 1;
-    const startDate = new Date(`${job.scheduled_date}T${job.scheduled_time || '09:00'}:00`);
-    const endDate = new Date(startDate.getTime() + durationHours * 3600000);
-    
-    // Format to YYYY-MM-DDTHH:mm:ss without the Z so we can use timeZone
-    const endTime = endDate.toISOString().split('.')[0].replace('Z', '');
+    const [hh, mm] = (job.scheduled_time || '09:00').split(':').map(Number);
+    const totalMin = hh * 60 + mm + Math.round((job.estimated_hours || 1) * 60);
+    const endHH = String(Math.floor(totalMin / 60) % 24).padStart(2, '0');
+    const endMM = String(totalMin % 60).padStart(2, '0');
+    const endTime = `${job.scheduled_date}T${endHH}:${endMM}:00`;
 
     const event = {
       summary,

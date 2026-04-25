@@ -82,7 +82,17 @@ export async function updateJob(id, patch) {
 }
 
 export async function softDeleteJob(id) {
-  return updateJob(id, { deleted_at: new Date().toISOString() });
+  const businessId = await getCurrentBusinessId();
+  const { data, error } = await supabase
+    .from('jobs')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', id)
+    .eq('business_id', businessId)
+    .select()
+    .single();
+  if (error) throw error;
+  triggerGCalSync(id, 'delete');
+  return decorateJob(data);
 }
 
 export async function recordPayment(jobId, amount, method = 'Cash', notes = null) {

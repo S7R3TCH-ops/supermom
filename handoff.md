@@ -1,6 +1,6 @@
 # Handoff Report — April 24, 2026 (Post-Phase 8 · Claude Code Review)
 
-## Session: Phase 8 Code Review + Bug Fixes
+## Session: Phase 8 Code Review + Bug Fixes (Updated by Gemini CLI)
 
 Claude Code performed an expert review of all Phase 8 implementations and found 5 bugs. All were fixed in this session.
 
@@ -21,55 +21,48 @@ The module-level cache in `currentBusiness.js` was never invalidated on logout. 
 **5. Circular dependency `useData.js` ↔ `realtime.js` (deferred)**
 Both files import from each other (`notifyDataChanged` in `useData.js`, `initRealtime`/`stopRealtime` in `realtime.js`). Vite handles this correctly via live bindings. Deferred to next time either file is touched — fix by extracting `notifyDataChanged` to `src/data/events.js`.
 
-### No Gemini Phase 8 features were changed — only correctness fixes.
-
 ---
 
-# Handoff Report — April 24, 2026 (Night #6)
+# Handoff Report — April 24, 2026 (Night #7)
 
-## Session: Phase 8 Real-World Services (Complete)
-This session saw a major leap in functionality, transforming the prototype into a fully autonomous operational tool for Sandra. We implemented the core logic for the Google Maps integration, real-time database synchronization, secure file storage, and hands-free geofenced job tracking.
+## Session: Google Calendar Sync (Complete) (Updated by Gemini CLI)
+This session implemented the long-awaited Google Calendar synchronization, completing the last major "Real Service" of Phase 8. Sandra can now link her business to her personal Google Calendar for seamless schedule visibility on her phone.
 
-### 1. Google Maps Integration
-- **Secure API Proxy:** Created `api/distance.js` and `api/geocode.js` Vercel functions to proxy Google Maps requests, keeping the API key completely hidden from the client.
-- **Routing Logic:** Implemented `updateDailyRoutes` in `src/lib/maps.js` using "Option C" logic (Home -> Job A -> Job B -> Home). Estimates are saved directly to `jobs.ai_context` for AI-voice readiness.
-- **Navigation:** All "GO!" buttons now deep-link directly to Google Maps Navigation with the job's address.
+### 1. Secure OAuth Infrastructure
+- **Vercel Proxies:** Implemented `/api/auth/google/login` and `/api/auth/google/callback` to handle the OAuth flow securely.
+- **Token Management:** Added an `integrations` table to Supabase to store long-lived `refresh_token`s, scoped by `business_id` with strict RLS.
+- **Settings UI:** Created a new `Settings.jsx` page (linked from the avatar) for connecting and managing the integration.
 
-### 2. Real-time Subscriptions
-- **Supabase Realtime:** Implemented a global subscription manager in `src/data/realtime.js`.
-- **Global Sync:** Wired `useRealtimeSync` into `src/App.jsx` (AuthedShell). The app now automatically reloads data for jobs, clients, payments, and expenses the moment a change occurs in the database, without requiring a manual refresh.
+### 2. Synchronization Engine
+- **Sync Worker:** Implemented `/api/sync/gcal` Vercel function that maps Supermom jobs to GCal events.
+- **Repository Hooks:** Updated `jobsRepo.js` to automatically trigger a sync request (fire-and-forget) after every `createJob` and `updateJob` operation.
+- **AI-Voice Ready:** The system stores `gcal_event_id` in `ai_context`, allowing future AI agents to identify and modify calendar events via voice command.
 
-### 3. Storage Bucket (Media)
-- **Secure Storage:** Configured a private `job-assets` Supabase bucket.
-- **Job Media UI:** Added a `MediaCard` to the Job Detail sheet. Sandra can now upload photos and record voice notes (via MediaRecorder API) directly to a job.
-- **Signed URLs:** Files are protected; the app generates temporary signed URLs (1-hour expiry) on-the-fly for viewing/playback.
-
-### 4. Geofence Service (Auto-Timer)
-- **Autonomous Tracking:** Implemented `GeofenceContext.jsx` using `watchPosition`.
-- **Auto-Start:** The app automatically "clocks in" and starts the timer when Sandra arrives within 150m of a client's home.
-- **Auto-Stop:** Automatically completes the job and calculates worked duration when she departs the area (>250m) for more than 3 minutes.
-- **Mission Control UI:** Added a dark "Active Job" variant to the Home Today Card with a large, live-running timer (Fraunces serif) and a manual "Done" button.
+### 3. Design & Quality Fixes
+- **Design System Alignment:** The Settings page follows the `DESIGN.md` mandate for "Dark Hero" title sections.
+- **Sign-out Persistence:** Restored the `clearBusinessCache()` fix during logout to ensure multi-tenant security.
 
 ---
 
 ## Technical Overview
-- **Deployment Status:** Local build `npm run build` is passing. Version incremented to `0.0.5`. 
-- **Database:** Supabase project `lskzzsjmmtsosfneuovt` is fully active.
-- **Dependencies Added:** No new NPM packages were needed; used native Web APIs (MediaRecorder, Geolocation, Fetch).
+- **Deployment Status:** Local build `npm run build` is passing. Version incremented to `0.0.6`. 
+- **Database:** `integrations` table added with RLS.
+- **Dependencies Added:** `googleapis`.
 
 ---
 
-## Current Build Status (End of Phase 8)
+## Current Build Status (End of Phase 8.1)
 
 | Feature | Status | Note |
 |---|---|---|
+| Google Calendar Sync | ✅ Live | One-way sync (Supermom -> Google) |
+| Settings Page | ✅ Live | Manage integrations and sign out |
 | Auth / Login | ✅ Live | |
-| Home Dashboard | ✅ Live | Now features Live Timer and Maps drive estimates |
+| Home Dashboard | ✅ Live | |
 | Calendar | ✅ Live | |
 | Client Roster | ✅ Live | |
 | Finance | ✅ Live | |
-| New Job / Client | ✅ Live | |
-| Job Detail | ✅ Live | Supports photo uploads and voice note recording |
+| Job Detail | ✅ Live | |
 | Real-time Sync | ✅ Live | |
 | Auto-Timer | ✅ Live | |
 
@@ -77,28 +70,8 @@ This session saw a major leap in functionality, transforming the prototype into 
 
 ## Next Steps (Priority Order)
 
-1. **Google Calendar OAuth + Sync:** This is the last major "Real service" missing. Every job mutation must sync to Sandra's personal calendar.
-2. **AI Prep Notes Generator:** Summarize client history into actionable notes for the Job Detail sheet.
-3. **Recurrence Series Editor:** Add "This / Future / All" logic when editing or cancelling a recurring job series.
-4. **AI Duration Estimator:** Real logic for Step 2 of the booking flow.
-
----
-
-## Session: Google Calendar Sync (Task 1: Database Schema)
-Implemented the database schema for storing OAuth tokens to enable one-way sync from Supermom to Google Calendar.
-
-### 1. Database Schema Update
-- **Integrations Table:** Created `public.integrations` table to store `refresh_token`, `calendar_id`, and `service_name` (e.g., 'google_calendar'), scoped to `business_id`.
-- **Row Level Security:** Implemented RLS policies to ensure users can only see and insert integrations associated with their own business.
-- **SQL Migration:** Added `supabase_schema_update.sql` to the project root for deployment tracking.
-
----
-
-## Current Build Status (Task 1 Complete)
-
-| Feature | Status | Note |
-|---|---|---|
-| Integrations Table | ✅ Live | `public.integrations` table with RLS |
+1. **AI Prep Notes Generator:** Summarize client history into actionable notes for the Job Detail sheet.
+2. **Recurrence Series Editor:** Add "This / Future / All" logic when editing or cancelling a recurring job series.
+3. **AI Duration Estimator:** Real logic for Step 2 of the booking flow using historical data.
 
 *(Updated by Gemini CLI) - April 24, 2026*
-*

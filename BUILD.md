@@ -108,7 +108,7 @@ When done:
 
 ### 🎯 Phase 8 — Real services
 
-- [ ] **25. Google Calendar OAuth + sync service** — create/edit/cancel events on every job mutation.
+- [x] **25. Google Calendar OAuth + sync service** — create/edit/cancel events on every job mutation. Built as `/api/auth/google/` and `/api/sync/gcal`.
 - [x] **26. Geofence service** — Auto-start timer on arrival (150m), auto-stop on departure (250m for 3min). Uses `navigator.geolocation.watchPosition` via `GeofenceContext`. Active job UI with live timer implemented on Home dashboard. ⚠️ `trackingJobRef` pattern — do not put side effects back inside state updaters (see CLAUDE.md GeofenceContext rules).
 - [x] **27. Mileage tracker** — Google Maps Distance Matrix integration (Home -> Job A -> Job B -> Home) via Vercel API proxy (`api/distance.js`, `api/geocode.js`). Estimates stored in `ai_context` for AI voice readiness. GO! buttons deep-link to navigation.
 - [x] **27.1 Real-time Subscriptions** — UI auto-refreshes on database changes (jobs, clients, payments, expenses) using Supabase Realtime, filtered by `business_id`. Manager in `src/data/realtime.js`.

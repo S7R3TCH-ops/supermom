@@ -51,7 +51,7 @@ At the end of every productive session, or upon major milestone completion, Gemi
 | **Real-time subscriptions** | ✅ **Live** — Supabase Realtime auto-refresh |
 | **Storage bucket** | ✅ **Live** — Photos + Voice Notes in Job Detail |
 | **Geofence / auto-timer** | ✅ **Live** — Auto-start/stop with Live Timer card |
-| Google Calendar sync | ❌ Not started |
+| **Google Calendar sync** | ✅ **Live** — One-way sync (Supermom -> Google) |
 
 ## Phase 8 bug fixes (Claude Code session, April 24, 2026)
 

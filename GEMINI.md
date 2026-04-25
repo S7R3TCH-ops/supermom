@@ -32,7 +32,7 @@ At the end of every productive session, or upon major milestone completion, Gemi
 
 ---
 
-## Current State (as of April 24, 2026 — updated post Claude Code review)
+## Current State (as of April 25, 2026 — updated post Series Editor fix)
 
 | Feature | Status |
 |---|---|
@@ -43,6 +43,7 @@ At the end of every productive session, or upon major milestone completion, Gemi
 | Finance — mark-paid | ✅ Live |
 | New Job sheet | ✅ Live |
 | **Job Detail sheet** | ✅ **Live** — tap any job card (Home or Calendar) to view/edit/act |
+| **Recurrence series editor** | ✅ **Live** — 'this / future / all' safely implemented |
 | **Drive time / mileage** | ✅ **Live** — Google Maps Distance Matrix API proxy |
 | **payments table audit row** | ✅ **Live** — mark-paid inserts into `payments` via `recordPayment()` |
 | **Client search** (Clients page) | ✅ **Live** — live filter by name/address |
@@ -51,21 +52,21 @@ At the end of every productive session, or upon major milestone completion, Gemi
 | **Real-time subscriptions** | ✅ **Live** — Supabase Realtime auto-refresh |
 | **Storage bucket** | ✅ **Live** — Photos + Voice Notes in Job Detail |
 | **Geofence / auto-timer** | ✅ **Live** — Auto-start/stop with Live Timer card |
-| **Google Calendar sync** | ✅ **Live** — One-way sync (Supermom -> Google) |
+| **Google Calendar sync** | ✅ **Live** — One-way sync (Supermom -> Google); CSRF nonce + multi-tenant `business_id` in OAuth `state` |
 
-## Phase 8 bug fixes (Claude Code session, April 24, 2026)
+## Phase 8 bug fixes (Claude Code session, April 24-25, 2026)
 
-Five bugs were found and fixed after Phase 8 landed. Do not regress these:
+Key stability fixes implemented:
 
 | # | Bug | Fix | File |
 |---|---|---|---|
-| A | `composeTorontoISO` — `(month === 11 && day < 1)` always false; Nov 1–6 showed 1hr off | Replaced with `nthSunday()` helper computing exact DST boundary per year | `src/data/jobsRepo.js` |
-| B | `GeofenceContext` — `handleClockIn`, `setTimeout`, `clearTimeout` called inside `setTrackingJob()` updater; React 19 can call updaters multiple times → duplicate DB writes | Added `trackingJobRef` + `setTracking()` wrapper; side effects moved outside updater | `src/context/GeofenceContext.jsx` |
-| C | `updateJob` / `updateClient` — no `business_id` scope on UPDATE queries | Added `.eq('business_id', await getCurrentBusinessId())` to both | `src/data/jobsRepo.js`, `src/data/clientsRepo.js` |
-| D | `signOut` — never called `clearBusinessCache()`; stale business_id after logout | Added `clearBusinessCache()` call before `supabase.auth.signOut()` | `src/context/Auth.jsx` |
-| E | Circular dep — `useData.js` ↔ `realtime.js` import each other | Vite handles this via live bindings; deferred until next touch of either file | `src/data/realtime.js` |
-| F | `api/sync/gcal.js` — end time built via `new Date(localString)` + `toISOString()`, brittle on non-UTC servers | Replaced with pure string arithmetic (split hh/mm, add duration in minutes, reformat) | `api/sync/gcal.js` |
-| G | `softDeleteJob` — routed through `updateJob`, firing `triggerGCalSync(id, 'upsert')` on delete; worked accidentally because endpoint checks `job.deleted_at` | Gave `softDeleteJob` its own direct DB update + explicit `triggerGCalSync(id, 'delete')` | `src/data/jobsRepo.js` |
+| A | `composeTorontoISO` — Nov 1–6 showed 1hr off | Replaced with `nthSunday()` helper computing exact DST boundary per year | `src/data/jobsRepo.js` |
+| B | `GeofenceContext` — duplicate DB writes | Side effects moved outside `setTracking()` updater | `src/context/GeofenceContext.jsx` |
+| C | `updateJob`/`Client` — scoping | Added `.eq('business_id', await getCurrentBusinessId())` to all writes | `src/data/jobsRepo.js` |
+| D | `signOut` — stale cache | Added `clearBusinessCache()` call before signout | `src/context/Auth.jsx` |
+| E | Series Editor — data flattening | Strips `scheduled_date` from series updates; adds `job_status = 'Scheduled'` filter | `src/data/jobsRepo.js` |
+| F | `api/sync/gcal.js` — brittle dates | Replaced with pure string arithmetic for end-time calculation | `api/sync/gcal.js` |
+| G | `softDeleteJob` — redundant sync | Explicit `triggerGCalSync(id, 'delete')` on delete | `src/data/jobsRepo.js` |
 
 ## Job Detail Sheet — architecture notes
 - Context: `src/context/JobDetailSheetContext.js` → `useJobDetailSheet()` → `{ openJob, closeJob, jobId }`
@@ -78,6 +79,5 @@ Five bugs were found and fixed after Phase 8 landed. Do not regress these:
 
 ## Next priorities
 1. AI Prep Notes generator (summarize client history)
-2. Recurrence series editor (this / future / all)
-3. AI Duration Estimator (Step 2 of New Job)
-4. OAuth `state` param + CSRF nonce in GCal auth flow (required before second operator onboards)
+2. AI Duration Estimator (Step 2 of New Job)
+3. Expense logging (Finance Phase 5)

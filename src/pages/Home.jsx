@@ -1,13 +1,14 @@
-import { useMemo, useEffect, useState } from 'react';
+import { useMemo, useEffect, useState, useCallback } from 'react';
 import { useAppTheme } from '../context/AppThemeContext';
 import AmtCell from '../components/ui/AmtCell';
 import SectionLabel from '../components/ui/SectionLabel';
 import CapeUpButton from '../components/ui/CapeUpButton';
-import { useJobs } from '../data/useData';
+import { useJobs, useBusiness } from '../data/useData';
 import { useJobDetailSheet } from '../context/JobDetailSheetContext';
 import { useAuth } from '../context/AuthContext';
 import { updateDailyRoutes } from '../lib/maps';
 import { useGeofence } from '../context/GeofenceContext';
+import { generateCommandBrief, generatePrepNote, speakBrief, stopSpeaking } from '../data/ai';
 
 const NOW = () => new Date();
 
@@ -58,6 +59,8 @@ export default function Home() {
   const { openJob } = useJobDetailSheet();
   const { profile } = useAuth();
   const { handleClockOut } = useGeofence();
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const { business } = useBusiness();
   const today = NOW();
 
   const firstName = profile?.first_name || 'Sandra';
@@ -83,6 +86,23 @@ export default function Home() {
   const next = todayJobs.find(j => j.end >= today) || todayJobs[0];
   const activeJob = todayJobs.find(j => j.status === 'Scheduled' && j.ai_context?.clock_in_time != null);
   const revenueToday = todayJobs.reduce((s, j) => s + Number(j.total || 0), 0);
+
+  const commandBrief = useMemo(() => next ? generateCommandBrief(next, business) : null, [next, business]);
+
+  const handleToggleSpeak = (e) => {
+    e.stopPropagation();
+    if (isSpeaking) {
+      stopSpeaking();
+      setIsSpeaking(false);
+    } else {
+      setIsSpeaking(true);
+      speakBrief(commandBrief?.speechText, () => setIsSpeaking(false));
+    }
+  };
+
+  useEffect(() => {
+    return () => stopSpeaking();
+  }, []);
 
   // Tight-gap detection: any consecutive pair within < 60min
   const tightGap = useMemo(() => {
@@ -221,10 +241,47 @@ export default function Home() {
                   {fmtTime12(next.start).time} – {fmtTime12(next.end).time} {fmtTime12(next.end).period}
                 </div>
 
-                {next.notes && (
-                  <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: '8px 10px', marginBottom: 10 }}>
-                    <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: T.pinkLabel, marginBottom: 3 }}>✦ PREP NOTES</div>
-                    <div style={{ fontFamily: T.font, fontSize: 11, color: 'rgba(255,255,255,0.68)', lineHeight: 1.5 }}>{next.notes}</div>
+                {commandBrief && (
+                  <div style={{ 
+                    background: 'rgba(255,255,255,0.06)', 
+                    border: '1px solid rgba(255,255,255,0.1)', 
+                    borderRadius: 12, padding: '12px', marginBottom: 12,
+                    position: 'relative', overflow: 'hidden'
+                  }}>
+                    <div style={{ 
+                      position: 'absolute', top: -20, right: -20, width: 60, height: 60, 
+                      borderRadius: '50%', background: 'radial-gradient(circle,rgba(233,30,106,0.1) 0%,transparent 70%)', 
+                      pointerEvents: 'none' 
+                    }} />
+                    
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                      <div style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: T.pinkLabel }}>
+                        ✦ Command Brief
+                      </div>
+                      <button 
+                        onClick={handleToggleSpeak}
+                        style={{ 
+                          background: isSpeaking ? '#E91E6A' : 'rgba(255,255,255,0.1)', 
+                          border: 'none', borderRadius: 20, padding: '4px 10px',
+                          display: 'flex', alignItems: 'center', gap: 6,
+                          cursor: 'pointer', transition: 'all 0.2s'
+                        }}
+                      >
+                        <span style={{ fontSize: 10 }}>{isSpeaking ? '⏹' : '▶'}</span>
+                        <span style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, color: 'white' }}>
+                          {isSpeaking ? 'STOP' : 'LISTEN'}
+                        </span>
+                      </button>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {commandBrief.bullets.map((b, i) => (
+                        <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                          <span style={{ fontSize: 12 }}>{b.icon}</span>
+                          <span style={{ fontFamily: T.font, fontSize: 11, color: 'rgba(255,255,255,0.8)', lineHeight: 1.4 }}>{b.text}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 
@@ -251,10 +308,11 @@ export default function Home() {
                 const t = fmtTime12(j.start);
                 const e = fmtTime12(j.end);
                 const amt = `$${Number(j.total || 0).toFixed(0)}`;
+                const prepNote = generatePrepNote(j);
 
                 return (
                   <div key={j.id} onClick={() => openJob(j.id)} style={{ background: bg, border: `1px solid ${border}`, borderRadius: 12, padding: '9px 11px', marginBottom: 7, cursor: 'pointer' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: j.notes ? 7 : 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: prepNote ? 7 : 0 }}>
                       <div style={{ width: 44, height: 46, borderRadius: 10, flexShrink: 0, background: conflict ? (mode === 'dark' ? 'rgba(245,158,11,0.12)' : '#FEF3C7') : T.pinkTint, border: `1px solid ${conflict ? 'rgba(245,158,11,0.22)' : T.cardBorder}`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                         <div style={{ fontFamily: T.serif, fontSize: 13.5, fontWeight: 500, color: conflict ? '#F59E0B' : T.pink, lineHeight: 1 }}>{t.time}</div>
                         <div style={{ fontFamily: T.font, fontSize: 7.5, fontWeight: 700, color: T.inkMuted, letterSpacing: '0.3px', marginTop: 2 }}>–{e.time}</div>
@@ -273,14 +331,15 @@ export default function Home() {
                       </div>
                     </div>
 
-                    {j.notes && (
+                    {prepNote && (
                       <div style={{ borderTop: `1px dashed ${mode === 'dark' ? 'rgba(255,255,255,0.07)' : '#FFE8F2'}`, paddingTop: 6, display: 'flex', alignItems: 'flex-start', gap: 5 }}>
-                        <span style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', color: conflict ? '#F59E0B' : T.pinkLabel, flexShrink: 0, marginTop: 1 }}>✦ NOTES</span>
-                        <span style={{ fontFamily: T.font, fontSize: 10.5, color: T.inkSub, lineHeight: 1.45 }}>{j.notes}</span>
+                        <span style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', color: conflict ? '#F59E0B' : T.pinkLabel, flexShrink: 0, marginTop: 1 }}>✦ PREP NOTE</span>
+                        <span style={{ fontFamily: T.font, fontSize: 10.5, color: T.inkSub, lineHeight: 1.45, whiteSpace: 'pre-wrap' }}>{prepNote}</span>
                       </div>
                     )}
                   </div>
                 );
+
               })}
             </>
           )}

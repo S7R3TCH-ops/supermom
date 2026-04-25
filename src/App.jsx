@@ -6,6 +6,7 @@ import { AuthProvider } from './context/Auth';
 import { useAuth } from './context/AuthContext';
 import { NewJobSheetProvider } from './context/NewJobSheet';
 import { JobDetailSheetProvider } from './context/JobDetailSheet';
+import { PostJobSheetProvider } from './context/PostJobSheet';
 import { GeofenceProvider } from './context/GeofenceContext';
 import LogoBar from './components/layout/LogoBar';
 import BottomNav from './components/layout/BottomNav';
@@ -80,13 +81,15 @@ function Gate() {
   }
   if (!session || !configured) return <LoginShell />;
   return (
-    <NewJobSheetProvider>
-      <JobDetailSheetProvider>
-        <GeofenceProvider>
-          <AuthedShell />
-        </GeofenceProvider>
-      </JobDetailSheetProvider>
-    </NewJobSheetProvider>
+    <PostJobSheetProvider>
+      <NewJobSheetProvider>
+        <JobDetailSheetProvider>
+          <GeofenceProvider>
+            <AuthedShell />
+          </GeofenceProvider>
+        </JobDetailSheetProvider>
+      </NewJobSheetProvider>
+    </PostJobSheetProvider>
   );
 }
 

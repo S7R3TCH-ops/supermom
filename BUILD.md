@@ -63,7 +63,7 @@ When done:
   - Built as `src/components/sheets/JobDetailSheet.jsx` + `src/context/JobDetailSheetContext.js`. Includes Mark Complete/Paid, Delete Job (soft delete), and Edit mode.
 - [x] **3. Edit Job** — built as `EditMode` component inside `src/components/sheets/JobDetailSheet.jsx`; inline edit with series picker (this/future/all).
 - [x] **4. Active Job state** — `LiveTimer` component in `src/pages/Home.jsx`; reads from `GeofenceContext`, shows running timer + "Auto-started on arrival".
-- [ ] **5. Post-job / Payment sheet** — UNPAID badge, Cash / e-Transfer pill toggle, Log Payment button. Opens from Active Job "Done" or Job Detail.
+- [x] **5. Post-job / Payment sheet** — built as `PostJobSheet.jsx` + `PostJobSheetContext.js`; opens from Active Job "Done" (awaits clock-out first) and Job Detail "Mark Paid"; UNPAID badge, Cash/e-Transfer toggle, editable amount, AI thank-you teaser.
 - [x] **6. Cancel Job confirm sheet** — confirm + soft-delete flow wired in `JobDetailSheet.jsx` via `initiateDelete` / `onConfirmDelete`.
 - [x] **7. Recurrence series editor** — "this / this+future / all" picker built into `EditMode` in `JobDetailSheet.jsx`. Safely implemented in `jobsRepo.js` with date-preservation and status guards.
 

@@ -5,6 +5,7 @@ import SectionLabel from '../components/ui/SectionLabel';
 import CapeUpButton from '../components/ui/CapeUpButton';
 import { useJobs, useBusiness } from '../data/useData';
 import { useJobDetailSheet } from '../context/JobDetailSheetContext';
+import { usePostJobSheet } from '../context/PostJobSheetContext';
 import { useAuth } from '../context/AuthContext';
 import { updateDailyRoutes } from '../lib/maps';
 import { useGeofence } from '../context/GeofenceContext';
@@ -57,6 +58,7 @@ export default function Home() {
   const { T, mode, privacyOn } = useAppTheme();
   const { jobs: allJobs, loading } = useJobs();
   const { openJob } = useJobDetailSheet();
+  const { openPostJob } = usePostJobSheet();
   const { profile } = useAuth();
   const { handleClockOut } = useGeofence();
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -205,7 +207,7 @@ export default function Home() {
                 <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
                   <LiveTimer startTime={activeJob.ai_context.clock_in_time} T={T} />
                   <button 
-                    onClick={(e) => { e.stopPropagation(); handleClockOut(activeJob.id); }}
+                    onClick={async (e) => { e.stopPropagation(); await handleClockOut(activeJob.id); openPostJob(activeJob.id); }}
                     style={{ 
                       background: '#E91E6A', color: 'white', border: 'none', borderRadius: 10, 
                       padding: '10px 20px', fontFamily: T.font, fontSize: 13, fontWeight: 700,

@@ -1,7 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { useAppTheme } from '../../context/AppThemeContext';
-import { fetchJobById, updateJob, softDeleteJob, recordPayment } from '../../data/jobsRepo';
+import { fetchJobById, updateJob, softDeleteJob } from '../../data/jobsRepo';
 import { notifyDataChanged } from '../../data/useData';
+import { usePostJobSheet } from '../../context/PostJobSheetContext';
 import { SERVICES, RECURRENCE } from '../../data/services';
 import { uploadFile, getSignedUrls, getSignedUrl } from '../../lib/storage';
 import { generateCommandBrief, speakBrief, stopSpeaking } from '../../data/ai';
@@ -83,14 +84,11 @@ export default function JobDetailSheet({ jobId, onClose }) {
     } catch (e) { setMutErr(e.message || String(e)); setBusy(false); }
   }
 
-  async function markPaid() {
-    setBusy(true); setMutErr(null);
-    try {
-      const amt = Number(job.total_amount ?? job.flat_rate ?? 0);
-      const method = job.ai_context?.payment_method || 'Cash';
-      await recordPayment(job.id, amt, method);
-      showToast('Payment recorded');
-    } catch (e) { setMutErr(e.message || String(e)); setBusy(false); }
+  const { openPostJob } = usePostJobSheet();
+
+  function markPaid() {
+    onClose();
+    openPostJob(job.id);
   }
 
   function initiateDelete() {

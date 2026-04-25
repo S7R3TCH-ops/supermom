@@ -3,10 +3,11 @@ import { useAppTheme } from '../../context/AppThemeContext';
 import SectionLabel from '../ui/SectionLabel';
 import NewClientSheet from './NewClientSheet';
 import { fetchClients } from '../../data/clientsRepo';
-import { fetchActiveJobs, createJob, findConflicts } from '../../data/jobsRepo';
+import { fetchActiveJobs, createJob, findConflicts, fetchJobsByClientId } from '../../data/jobsRepo';
 import { toDisplayClient } from '../../data/selectors';
 import { notifyDataChanged } from '../../data/useData';
 import { SERVICES, RECURRENCE } from '../../data/services';
+import { calculateEstimatedDuration } from '../../data/ai';
 
 function todayISODate() {
   const d = new Date();
@@ -55,6 +56,7 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
   // Fetch clients + jobs on mount (for the picker + conflict detection).
   const [clientRows, setClientRows] = useState([]);
   const [jobRows, setJobRows] = useState([]);
+  const [clientJobs, setClientJobs] = useState([]);
   const [loadErr, setLoadErr] = useState(null);
   const [showNewClient, setShowNewClient] = useState(false);
 
@@ -66,13 +68,29 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
     return () => { alive = false; };
   }, []);
 
+  const [clientId, setClientId] = useState(prefillClientId || null);
+
+  useEffect(() => {
+    if (!clientId) {
+      setClientJobs([]);
+      return;
+    }
+    fetchJobsByClientId(clientId).then(setClientJobs).catch(console.error);
+  }, [clientId]);
+
   const clientsDisplay = useMemo(
     () => clientRows.map(r => toDisplayClient(r, [])),
     [clientRows]
   );
   const getDisplayClient = id => clientsDisplay.find(c => c.id === id) || null;
 
-  const [clientId, setClientId] = useState(prefillClientId || null);
+  // For the selected client, we want the "full" display model with history for the AI estimator
+  const selectedClient = useMemo(() => {
+    if (!clientId) return null;
+    const row = clientRows.find(r => r.id === clientId);
+    if (!row) return null;
+    return toDisplayClient(row, clientJobs);
+  }, [clientId, clientRows, clientJobs]);
   const prefillClient = prefillClientId ? getDisplayClient(prefillClientId) : null;
 
   const seededService = useMemo(() => {
@@ -92,15 +110,21 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
   const [bookErr, setBookErr] = useState('');
 
   const [durationTouched, setDurationTouched] = useState(false);
+  const [aiDuration, setAiDuration] = useState(null);
+
   const onPickService = key => {
     setServiceKey(key);
-    if (!durationTouched) {
-      const svc = SERVICES.find(s => s.key === key);
-      if (svc) setDuration(svc.defaultDuration);
+    const svc = SERVICES.find(s => s.key === key);
+    if (svc) {
+      const estimate = calculateEstimatedDuration(selectedClient, key, SERVICES);
+      setAiDuration(estimate !== svc.defaultDuration ? estimate : null);
+      
+      if (!durationTouched) {
+        setDuration(estimate);
+      }
     }
   };
 
-  const selectedClient = clientId ? getDisplayClient(clientId) : null;
   const canNext1 = !!clientId;
   const canNext2 = !!serviceKey && !!date && !!time;
 
@@ -221,6 +245,7 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
               date={date} setDate={setDate} time={time} setTime={setTime}
               duration={duration} setDuration={d => { setDurationTouched(true); setDuration(d); }}
               recurrence={recurrence} setRecurrence={setRecurrence}
+              aiDuration={aiDuration}
             />
           )}
           {step === 3 && (
@@ -401,7 +426,7 @@ function Step1Who({ T, mode, clients, selectedId, onSelect, onAddNew }) {
 function Step2What({
   T, mode, client, serviceKey, onPickService,
   date, setDate, time, setTime, duration, setDuration,
-  recurrence, setRecurrence,
+  recurrence, setRecurrence, aiDuration,
 }) {
   const usualKey = client && client.service ? (
     SERVICES.find(s => s.label.toLowerCase() === client.service.toLowerCase())?.key
@@ -486,6 +511,37 @@ function Step2What({
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>+</button>
       </div>
+
+      {aiDuration && aiDuration !== duration && (
+        <div style={{
+          background: T.hero, borderRadius: 16, padding: '12px 14px', marginBottom: 14,
+          position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', gap: 12,
+        }}>
+          <div style={{ position: 'absolute', top: -30, right: -20, width: 90, height: 90, borderRadius: '50%', background: `radial-gradient(circle,${T.pinkGlow} 0%,transparent 70%)`, pointerEvents: 'none' }} />
+          <div style={{
+            width: 28, height: 28, borderRadius: 9, background: 'linear-gradient(135deg,#FF5A9D,#E91E6A)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+          }}>
+            <span style={{ fontSize: 14, color: 'white' }}>✦</span>
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '1.1px', textTransform: 'uppercase', color: '#FF78B0', marginBottom: 2 }}>
+              Smart Estimate
+            </div>
+            <div style={{ fontFamily: T.font, fontSize: 11.5, color: 'rgba(255,255,255,0.85)', lineHeight: 1.4 }}>
+              Typically takes <strong>{fmtDuration(aiDuration)}</strong> for this client.
+            </div>
+          </div>
+          <button
+            onClick={() => setDuration(aiDuration)}
+            style={{
+              background: '#E91E6A', color: 'white', border: 'none', borderRadius: 8,
+              padding: '6px 10px', fontFamily: T.font, fontSize: 10, fontWeight: 700,
+              cursor: 'pointer', position: 'relative', zIndex: 1,
+            }}
+          >Use it</button>
+        </div>
+      )}
 
       <SectionLabel>Recurrence</SectionLabel>
       <div style={{ display: 'flex', background: mode === 'dark' ? 'rgba(255,255,255,0.04)' : T.pinkTint, borderRadius: 10, padding: 3 }}>

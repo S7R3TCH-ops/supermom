@@ -31,7 +31,7 @@ export default function Finance() {
   const [period, setPeriod] = useState('Week');
   const [busyId, setBusyId] = useState(null);
   const [showNudges, setShowNudges] = useState(false);
-  const { jobs: allJobs, loading } = useJobs();
+  const { jobs: allJobs, loading, error } = useJobs();
   const { clients } = useClients();
 
   async function markPaid(id) {
@@ -177,6 +177,12 @@ export default function Finance() {
       <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '11px 13px 8px' }}>
         {loading && (
           <div style={{ padding: '8px 0 12px', color: T.inkMuted, fontFamily: T.font, fontSize: 12 }}>Loading…</div>
+        )}
+
+        {error && (
+          <div style={{ margin: '0 0 12px', padding: '10px 12px', borderRadius: 10, background: T.redBg, border: `1px solid ${T.redBorder}`, fontFamily: T.font, fontSize: 12, color: T.ink }}>
+            {error.message || 'Could not load finance data.'}
+          </div>
         )}
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 11 }}>

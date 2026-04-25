@@ -188,6 +188,15 @@ export default function Calendar() {
         </div>
       )}
 
+      {loading && (
+        <div style={{ padding: '10px 13px', color: T.inkMuted, fontFamily: T.font, fontSize: 12 }}>Loading…</div>
+      )}
+      {error && (
+        <div style={{ margin: '6px 13px', padding: '10px 12px', borderRadius: 10, background: T.redBg, border: `1px solid ${T.redBorder}`, fontFamily: T.font, fontSize: 12, color: T.ink }}>
+          {error.message || 'Could not load calendar.'}
+        </div>
+      )}
+
       {view === 'Day'    && <DayView    T={T} mode={mode} privacyOn={privacyOn} selectedDay={selectedDay} todayJobs={selectedDayJobs} nextUpcoming={nextUpcoming} onJobPress={openJob} firstName={firstName} />}
       {view === 'Week'   && <WeekView   T={T} mode={mode} weekDays={weekDays} allJobs={allJobs} onPickDay={handlePickDay} onJobPress={openJob} />}
       {view === 'Agenda' && <AgendaView T={T} mode={mode} privacyOn={privacyOn} allJobs={allJobs} nextUpcoming={nextUpcoming} onJobPress={openJob} firstName={firstName} />}

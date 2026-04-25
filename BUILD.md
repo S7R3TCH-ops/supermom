@@ -119,9 +119,11 @@ When done:
 ### 🎯 Phase 9 — Polish
 
 - [ ] **29. Conflict detection** — real logic (any 2 jobs within 1 hr incl. drive time).
-- [ ] **30. 7-day week strip** on Home (below Today card).
+- [x] **30. 7-day week strip** on Home (below Today card).
+  - Built inline in `Home.jsx`; Mon–Sun, today highlighted dark plum, pink job dots per day.
 - [ ] **31. Keyboard / accessibility pass** — ARIA labels, tab order, focus states.
-- [ ] **32. Loading / empty / error states** — every page.
+- [x] **32. Loading / empty / error states** — every page.
+  - Error cards added to Home, Calendar, Finance (using `T.redBg`/`T.redBorder`); `error` destructured from `useJobs()` on all three pages.
 
 ---
 

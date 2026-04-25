@@ -12,12 +12,19 @@ import { useGeofence } from '../context/GeofenceContext';
 import { generateCommandBrief, generatePrepNote, speakBrief, stopSpeaking } from '../data/ai';
 
 const NOW = () => new Date();
+const DOW_SHORT = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
 function sameDay(a, b) {
   return a.getFullYear() === b.getFullYear()
     && a.getMonth() === b.getMonth()
     && a.getDate() === b.getDate();
 }
+function startOfWeek(d) {
+  const x = new Date(d); x.setHours(0, 0, 0, 0);
+  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
+  return x;
+}
+function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
 
 function fmtTime12(d) {
   const h = d.getHours(), m = d.getMinutes();
@@ -56,7 +63,7 @@ function LiveTimer({ startTime, T }) {
 
 export default function Home() {
   const { T, mode, privacyOn } = useAppTheme();
-  const { jobs: allJobs, loading } = useJobs();
+  const { jobs: allJobs, loading, error } = useJobs();
   const { openJob } = useJobDetailSheet();
   const { openPostJob } = usePostJobSheet();
   const { profile } = useAuth();
@@ -64,6 +71,7 @@ export default function Home() {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const { business } = useBusiness();
   const today = NOW();
+  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(startOfWeek(today), i));
 
   const firstName = profile?.first_name || 'Sandra';
 
@@ -179,7 +187,13 @@ export default function Home() {
             <div style={{ padding: '12px 0', color: T.inkMuted, fontFamily: T.font, fontSize: 12 }}>Loading…</div>
           )}
 
-          {!loading && todayJobs.length === 0 && (
+          {error && (
+            <div style={{ margin: '4px 0 10px', padding: '10px 12px', borderRadius: 10, background: T.redBg, border: `1px solid ${T.redBorder}`, fontFamily: T.font, fontSize: 12, color: T.ink }}>
+              {error.message || 'Could not load today\'s jobs.'}
+            </div>
+          )}
+
+          {!loading && !error && todayJobs.length === 0 && (
             <div style={{ background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 12, padding: '18px 16px', textAlign: 'center', marginBottom: 12 }}>
               <div style={{ fontFamily: T.serif, fontSize: 16, color: T.ink, marginBottom: 4 }}>Nothing scheduled today.</div>
               <div style={{ fontFamily: T.font, fontSize: 12, color: T.inkMuted }}>Tap the pink + button to book a job.</div>
@@ -345,6 +359,29 @@ export default function Home() {
               })}
             </>
           )}
+
+          {/* 7-day week strip */}
+          <SectionLabel>This Week</SectionLabel>
+          <div style={{ background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 13, padding: '10px 12px', marginBottom: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 3 }}>
+              {weekDays.map((d, i) => {
+                const isToday = sameDay(d, today);
+                const dayJobs = allJobs.filter(j => j.status !== 'Cancelled' && sameDay(new Date(j.scheduled_at), d));
+                const dots = Math.min(dayJobs.length, 3);
+                return (
+                  <div key={i} style={{ textAlign: 'center', padding: '5px 2px 6px', borderRadius: 8, background: isToday ? '#1A0A12' : 'transparent' }}>
+                    <div style={{ fontFamily: T.font, fontSize: 7.5, fontWeight: 700, letterSpacing: '0.3px', textTransform: 'uppercase', color: isToday ? 'rgba(255,255,255,0.7)' : T.inkMuted }}>{DOW_SHORT[i]}</div>
+                    <div style={{ fontFamily: T.serif, fontSize: 13, fontWeight: 500, color: isToday ? 'white' : T.ink, marginTop: 2, lineHeight: 1.2 }}>{d.getDate()}</div>
+                    <div style={{ display: 'flex', gap: 2, justifyContent: 'center', marginTop: 3, minHeight: 5 }}>
+                      {Array.from({ length: dots }).map((_, k) => (
+                        <span key={k} style={{ width: 4, height: 4, borderRadius: '50%', background: isToday ? 'rgba(255,255,255,0.5)' : '#E91E6A', display: 'block' }} />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
 
           {overdueJobs.length > 0 && (
             <div style={{ background: T.redBg, border: `1px solid ${T.redBorder}`, borderRadius: 10, padding: '8px 11px', display: 'flex', alignItems: 'center', gap: 9, marginBottom: 9, marginTop: 4 }}>

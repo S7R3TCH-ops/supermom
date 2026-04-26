@@ -118,7 +118,13 @@ The schema is multi-tenant and agentic-AI-ready (richer than this app strictly n
 - [x] Storage bucket (photos + voice notes)
 - [x] Google Calendar sync — OAuth via `/api/auth/google/` and sync via `/api/sync/gcal`
 - [x] AI context features (duration estimate, prep notes)
-
+- [x] Thank-you / Receipt draft sheet — AI-drafted messages with receipt toggle
+- [x] Expense logging — NewExpenseSheet (5 categories); Finance Expenses stat card
+- [x] CSV Export / Tax Ready — YTD stats + date range picker + CSV download
+- [x] Settings page — business profile (name, phone, email, address, hourly rate), HST toggle, avatar upload, signature field
+- [x] Onboarding flow — `OnboardingWalkthrough` on first run, gated on `ai_profile.onboarding_complete`
+- [x] Auto-learning / client intelligence — `enrich-client.js` fires after each payment; Claude Haiku writes to `clients.ai_context.learned`
+- [x] Automated Invoicing — sequential `YYYY-XXX` numbering; public `/i/:id` web view; auto-generation on payment; SMS/Email sending with AI drafts
 
 ---
 
@@ -142,6 +148,4 @@ The schema is multi-tenant and agentic-AI-ready (richer than this app strictly n
 - [ ] Dark mode toggle (planned, not designed)
 - [ ] Self-serve client booking link (Phase 2)
 - [ ] Sandra's user guide (separate doc, after app stable)
-- [ ] Settings / Profile screen (service rates config etc)
-- [ ] Onboarding flow
 - [ ] Minxy project (same template, different operator — after SMHQ ships)

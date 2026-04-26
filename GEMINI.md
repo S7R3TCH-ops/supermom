@@ -103,8 +103,9 @@ Key stability fixes implemented:
 - Bug fixed: `prep-notes.js` was selecting `client_notes` (wrong column); now `notes + ai_context`
 - Bug fixed: `estimate-duration.js` was treating `actual_duration` (hours) as minutes in prompt; now × 60
 
-## Next priorities
-1. Test auto-learning with seed data; verify `ai_context.learned` populates in Supabase after payment
-2. Review any remaining open GitHub issues
-3. Phase 8 monitoring: Google Calendar sync and Geofence reliability in the field
-4. Future: dark mode UI polish, self-serve client booking link (Phase 2)
+## Next priorities (as of April 25, 2026 — v0.1.7 deployed)
+1. **Live test invoicing flow** — mark a job paid on production, verify VIEW button appears, `/i/:id` renders correctly, SMS/Email prefill works
+2. **Live test auto-learning** — after payment, check `clients.ai_context.learned` in Supabase dashboard for `synthesis_note` + `behavioral_flags`
+3. **E2E edit flows** — verify edit-job and edit-client flows end-to-end on production data
+4. Review any remaining open GitHub issues
+5. Future: dark mode UI polish, self-serve client booking link (Phase 2)

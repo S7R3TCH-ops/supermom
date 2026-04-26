@@ -88,7 +88,7 @@ export default function ThankYouDraftSheet({ isOpen, onClose, jobId }) {
           borderRadius: '24px 24px 0 0',
           boxShadow: '0 -10px 40px rgba(0,0,0,0.38)',
           maxHeight: '82svh', display: 'flex', flexDirection: 'column',
-          animation: tySlide 260ms cubic-bezier(0.2,0.8,0.2,1)',
+          animation: 'tySlide 260ms cubic-bezier(0.2,0.8,0.2,1)',
           border: `1px solid ${T.cardBorder}`, borderBottom: 'none',
         }}
       >

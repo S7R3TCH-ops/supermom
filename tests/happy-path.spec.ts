@@ -46,20 +46,10 @@ test.describe('Supermom Happy Path', () => {
 
     // 4. Complete the job
     console.log('Clicking job card for Chen Family...');
-    // Programmatic click on the card that has NEXT UP
-    await page.evaluate(() => {
-       const els = Array.from(document.querySelectorAll('div, span'));
-       const nextUp = els.find(e => e.innerText === 'NEXT UP');
-       if (nextUp) {
-          // Find parent with onClick
-          let curr = nextUp;
-          while (curr && !curr.onclick && curr !== document.body) {
-             curr = curr.parentElement;
-          }
-          if (curr && curr.onclick) curr.click();
-          else if (nextUp.parentElement) nextUp.parentElement.click();
-       }
-    });
+    
+    // Find the text "Chen Family" and click its parent card
+    const chenCard = page.locator('div').filter({ hasText: /Chen Family/i }).last();
+    await chenCard.click({ force: true });
     
     await page.waitForTimeout(2000);
     

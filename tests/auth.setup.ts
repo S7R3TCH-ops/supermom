@@ -7,8 +7,8 @@ setup('authenticate', async ({ page }) => {
   await page.goto('/');
 
   // 2. Fill login form
-  await page.getByLabel('EMAIL').fill('jlundie@gmail.com');
-  await page.getByLabel('PASSWORD').fill('TempPass2026!');
+  await page.getByLabel('EMAIL').fill('tester@supermom.io');
+  await page.getByLabel('PASSWORD').fill('TestPass2026!');
   await page.getByRole('button', { name: 'Sign in' }).click();
 
   // 3. Wait for redirect/loading

@@ -9,6 +9,8 @@ const SELECT_FULL = '*';
 
 export async function fetchClients() {
   const businessId = await getCurrentBusinessId();
+  if (!businessId) return []; // Global Admin fallback
+
   const { data, error } = await supabase
     .from('clients')
     .select(SELECT_FULL)
@@ -21,6 +23,8 @@ export async function fetchClients() {
 
 export async function fetchClientById(id) {
   const businessId = await getCurrentBusinessId();
+  if (!businessId) return null;
+
   const { data, error } = await supabase
     .from('clients')
     .select(SELECT_FULL)

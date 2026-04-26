@@ -12,6 +12,7 @@ import { useAuth } from '../context/AuthContext';
 import { updateDailyRoutes } from '../lib/maps';
 import { useGeofence } from '../context/GeofenceContext';
 import { generateCommandBrief, generatePrepNote, speakBrief, stopSpeaking } from '../data/ai';
+import { getRandomEmptyMessage } from '../lib/greetings';
 
 const NOW = () => new Date();
 const DOW_SHORT = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
@@ -84,6 +85,10 @@ export default function Home() {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const { business } = useBusiness();
   const today = NOW();
+  const [selectedDate, setSelectedDate] = useState(today);
+  const [missionDismissed, setMissionDismissed] = useState(() => localStorage.getItem('sm_mission_dismissed') === 'true');
+  const emptyMessage = useMemo(() => getRandomEmptyMessage(), [today.toDateString()]);
+
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(startOfWeek(today), i));
 
   const firstName = profile?.first_name || business?.owner_name?.split(' ')[0] || 'there';
@@ -98,6 +103,17 @@ export default function Home() {
       .filter(j => sameDay(j.start, today) && j.status !== 'Cancelled')
       .sort((a, b) => a.start - b.start);
   }, [allJobs, today]);
+
+  const filteredSelectedJobs = useMemo(() => {
+    return allJobs
+      .map(j => {
+        const start = new Date(j.scheduled_at);
+        const end = new Date(start.getTime() + (j.duration_est || 60) * 60000);
+        return { ...j, start, end };
+      })
+      .filter(j => sameDay(j.start, selectedDate) && j.status !== 'Cancelled')
+      .sort((a, b) => a.start - b.start);
+  }, [allJobs, selectedDate]);
 
   const overdueJobs = useMemo(() => {
     return allJobs
@@ -116,17 +132,22 @@ export default function Home() {
 
   const revenueToday = todayJobs.reduce((s, j) => s + Number(j.total || 0), 0);
 
-  const todayJobsWithConflicts = useMemo(() => {
-    return todayJobs.map((j, i) => {
-      const conflict = (i < todayJobs.length - 1)
-        && Math.round((todayJobs[i + 1].start - j.end) / 60000) < 60;
+  const filteredSelectedJobsWithConflicts = useMemo(() => {
+    return filteredSelectedJobs.map((j, i) => {
+      const conflict = (i < filteredSelectedJobs.length - 1)
+        && Math.round((filteredSelectedJobs[i + 1].start - j.end) / 60000) < 60;
       return { ...j, conflict };
     });
-  }, [todayJobs]);
+  }, [filteredSelectedJobs]);
 
   const heroJobId = activeJob?.id || next?.id;
-  // Later jobs include anything Scheduled OR anything Completed but Unpaid (excluding the hero)
-  const laterJobs = todayJobsWithConflicts.filter(j => j.id !== heroJobId && (j.status === 'Scheduled' || j.payment_status !== 'Paid'));
+  const isSelectedToday = sameDay(selectedDate, today);
+
+  // If showing Today: hero + later
+  // If showing other day: all as later
+  const laterJobs = isSelectedToday 
+    ? filteredSelectedJobsWithConflicts.filter(j => j.id !== heroJobId && (j.status === 'Scheduled' || j.payment_status !== 'Paid'))
+    : filteredSelectedJobsWithConflicts;
 
   const commandBrief = useMemo(() => next ? generateCommandBrief(next, business) : null, [next, business]);
 
@@ -186,9 +207,9 @@ export default function Home() {
           </div>
           <div style={{ fontFamily: T.font, fontSize: 11.5, color: 'rgba(255,255,255,0.6)', lineHeight: 1.5, marginBottom: 12 }}>
             {todayJobs.length === 0
-              ? 'No jobs scheduled for today.'
+              ? emptyMessage
               : allDone 
-                ? 'All done for today! 🦸‍♀️'
+                ? emptyMessage
                 : <>{todayJobs.length} {todayJobs.length === 1 ? 'house' : 'houses'} today{tightGap ? <> · <span style={{ color: T.pinkLabel }}>1 flag needs you</span></> : ''}</>
             }
           </div>
@@ -231,7 +252,7 @@ export default function Home() {
             </div>
           )}
 
-          {!loading && !error && !clientsLoading && clients.length === 0 && (
+          {!loading && !error && !clientsLoading && clients.length === 0 && !missionDismissed && (
             <div style={{ 
               background: 'linear-gradient(135deg, #1A0B2E 0%, #0D0517 100%)', 
               border: '2px solid #E91E6A', borderRadius: 16, padding: '24px 20px', 
@@ -239,6 +260,22 @@ export default function Home() {
               boxShadow: '0 10px 30px rgba(233,30,106,0.25)'
             }}>
               <div style={{ position: 'absolute', top: -40, right: -20, width: 140, height: 140, borderRadius: '50%', background: 'radial-gradient(circle,rgba(233,30,106,0.25) 0%,transparent 70%)', pointerEvents: 'none' }} />
+              
+              <button 
+                onClick={() => {
+                  setMissionDismissed(true);
+                  localStorage.setItem('sm_mission_dismissed', 'true');
+                }}
+                style={{
+                  position: 'absolute', top: 12, right: 12, background: 'none', border: 'none',
+                  color: 'rgba(255,255,255,0.3)', cursor: 'pointer', padding: 4
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              </button>
+
               <div style={{ width: 56, height: 56, borderRadius: 18, background: 'var(--grad-action)', margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 20px rgba(233,30,106,0.4)', border: '2px solid rgba(255,255,255,0.2)' }}>
                 <span style={{ fontSize: 28 }}>✦</span>
               </div>
@@ -260,14 +297,61 @@ export default function Home() {
             </div>
           )}
 
-          {!loading && !error && todayJobs.length === 0 && (
+          {/* 7-day week strip */}
+          <SectionLabel>This Week</SectionLabel>
+          <div style={{ background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 13, padding: '10px 12px', marginBottom: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 3 }}>
+              {weekDays.map((d, i) => {
+                const isSelected = sameDay(d, selectedDate);
+                const isActuallyToday = sameDay(d, today);
+                const dayJobs = allJobs.filter(j => j.status !== 'Cancelled' && sameDay(new Date(j.scheduled_at), d));
+                const dots = Math.min(dayJobs.length, 3);
+                
+                return (
+                  <div 
+                    key={i} 
+                    onClick={() => setSelectedDate(d)}
+                    style={{ 
+                      textAlign: 'center', padding: '5px 2px 6px', borderRadius: 8, 
+                      background: isSelected ? (mode === 'dark' ? '#1A0B2E' : T.pinkTint) : 'transparent',
+                      border: `1.5px solid ${isSelected ? T.pink : 'transparent'}`,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <div style={{ fontFamily: T.font, fontSize: 7.5, fontWeight: 700, letterSpacing: '0.3px', textTransform: 'uppercase', color: isActuallyToday ? T.pink : (isSelected ? T.ink : T.inkMuted) }}>{DOW_SHORT[i]}</div>
+                    <div style={{ fontFamily: T.serif, fontSize: 13, fontWeight: 500, color: isSelected ? T.pink : T.ink, marginTop: 2, lineHeight: 1.2 }}>{d.getDate()}</div>
+                    <div style={{ display: 'flex', gap: 2, justifyContent: 'center', marginTop: 3, minHeight: 5 }}>
+                      {Array.from({ length: dots }).map((_, k) => (
+                        <span key={k} style={{ width: 4, height: 4, borderRadius: '50%', background: isActuallyToday ? T.pink : (isSelected ? T.pink : '#E91E6A'), display: 'block', opacity: isSelected || isActuallyToday ? 1 : 0.4 }} />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {!isSelectedToday && (
+              <button 
+                onClick={() => setSelectedDate(today)}
+                style={{
+                  width: '100%', marginTop: 8, background: 'none', border: 'none',
+                  color: T.pink, fontFamily: T.font, fontSize: 10, fontWeight: 700,
+                  textTransform: 'uppercase', cursor: 'pointer', letterSpacing: '0.5px'
+                }}
+              >
+                Snap back to today ↺
+              </button>
+            )}
+          </div>
+
+          {!loading && !error && isSelectedToday && todayJobs.length === 0 && (
             <div style={{ background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 12, padding: '18px 16px', textAlign: 'center', marginBottom: 12 }}>
-              <div style={{ fontFamily: T.serif, fontSize: 16, color: T.ink, marginBottom: 4 }}>Nothing scheduled today.</div>
+              <div style={{ fontFamily: T.serif, fontSize: 16, color: T.ink, marginBottom: 4 }}>{emptyMessage}</div>
               <div style={{ fontFamily: T.font, fontSize: 12, color: T.inkMuted }}>Tap the pink + button to book a job.</div>
             </div>
           )}
 
-          {activeJob && (
+          {activeJob && isSelectedToday && (
             <>
               <SectionLabel>Active Job · {activeJob.client_name}</SectionLabel>
               <div style={{ 
@@ -307,15 +391,15 @@ export default function Home() {
             </>
           )}
 
-          {!activeJob && allDone && (
+          {!activeJob && allDone && isSelectedToday && (
             <div style={{ background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 14, padding: '24px 16px', textAlign: 'center', marginBottom: 12 }}>
               <div style={{ fontSize: 32, marginBottom: 12 }}>🦸‍♀️</div>
               <div style={{ fontFamily: T.serif, fontSize: 18, color: T.ink, marginBottom: 4 }}>All done for today!</div>
-              <div style={{ fontFamily: T.font, fontSize: 12, color: T.inkMuted }}>You've crushed your mission.</div>
+              <div style={{ fontFamily: T.font, fontSize: 12, color: T.inkMuted }}>{emptyMessage}</div>
             </div>
           )}
 
-          {!activeJob && next && (
+          {!activeJob && next && isSelectedToday && (
             <>
               <SectionLabel>Opening Act · {next.client_name}</SectionLabel>
 
@@ -386,10 +470,31 @@ export default function Home() {
             </>
           )}
 
-          {laterJobs.length > 0 && (
-            <>
-              <SectionLabel>Later Today</SectionLabel>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <SectionLabel>
+              {isSelectedToday ? 'Later Today' : `Schedule: ${selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
+            </SectionLabel>
+            {!isSelectedToday && filteredSelectedJobs.length > 0 && (
+              <span style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, color: T.inkMuted, marginRight: 13, textTransform: 'uppercase' }}>
+                {filteredSelectedJobs.length} {filteredSelectedJobs.length === 1 ? 'job' : 'jobs'}
+              </span>
+            )}
+          </div>
 
+          {laterJobs.length === 0 ? (
+             isSelectedToday && !allDone && todayJobs.length > 0 ? (
+              <div style={{ padding: '12px 0', color: T.inkMuted, fontFamily: T.font, fontSize: 12, textAlign: 'center' }}>
+                No more jobs for today.
+              </div>
+             ) : (
+              <div style={{ background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 12, padding: '24px 16px', textAlign: 'center', marginBottom: 12 }}>
+                <div style={{ fontFamily: T.serif, fontSize: 14, color: T.inkMuted }}>
+                  {isSelectedToday ? emptyMessage : 'No missions found for this day.'}
+                </div>
+              </div>
+             )
+          ) : (
+            <>
               {laterJobs.map((j) => {
                 const conflict = j.conflict;
                 const isNext = next && j.id === next.id;
@@ -436,30 +541,7 @@ export default function Home() {
             </>
           )}
 
-          {/* 7-day week strip */}
-          <SectionLabel>This Week</SectionLabel>
-          <div style={{ background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 13, padding: '10px 12px', marginBottom: 12 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 3 }}>
-              {weekDays.map((d, i) => {
-                const isToday = sameDay(d, today);
-                const dayJobs = allJobs.filter(j => j.status !== 'Cancelled' && sameDay(new Date(j.scheduled_at), d));
-                const dots = Math.min(dayJobs.length, 3);
-                return (
-                  <div key={i} style={{ textAlign: 'center', padding: '5px 2px 6px', borderRadius: 8, background: isToday ? '#1A0A12' : 'transparent' }}>
-                    <div style={{ fontFamily: T.font, fontSize: 7.5, fontWeight: 700, letterSpacing: '0.3px', textTransform: 'uppercase', color: isToday ? 'rgba(255,255,255,0.7)' : T.inkMuted }}>{DOW_SHORT[i]}</div>
-                    <div style={{ fontFamily: T.serif, fontSize: 13, fontWeight: 500, color: isToday ? 'white' : T.ink, marginTop: 2, lineHeight: 1.2 }}>{d.getDate()}</div>
-                    <div style={{ display: 'flex', gap: 2, justifyContent: 'center', marginTop: 3, minHeight: 5 }}>
-                      {Array.from({ length: dots }).map((_, k) => (
-                        <span key={k} style={{ width: 4, height: 4, borderRadius: '50%', background: isToday ? 'rgba(255,255,255,0.5)' : '#E91E6A', display: 'block' }} />
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {overdueJobs.length > 0 && (
+          {overdueJobs.length > 0 && isSelectedToday && (
             <div style={{ background: T.redBg, border: `1px solid ${T.redBorder}`, borderRadius: 10, padding: '8px 11px', display: 'flex', alignItems: 'center', gap: 9, marginBottom: 9, marginTop: 4 }}>
               <span style={{ fontSize: 13 }}>💰</span>
               <div style={{ flex: 1 }}>

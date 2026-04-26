@@ -37,7 +37,12 @@ export default function BottomNav() {
         >
           {({ isActive }) => (
             <>
-              <div aria-hidden="true" style={{ fontSize: 17, lineHeight: 1 }}>{icon}</div>
+              <div aria-hidden="true" style={{ 
+                fontSize: 17, 
+                lineHeight: 1,
+                textShadow: isActive ? '0 0 12px rgba(233,30,106,0.3)' : 'none',
+                transition: 'all 0.3s'
+              }}>{icon}</div>
               <div style={{
                 fontFamily: T.font,
                 fontSize: 9,
@@ -51,6 +56,8 @@ export default function BottomNav() {
                 background: T.pink,
                 marginTop: -1,
                 opacity: isActive ? 1 : 0,
+                boxShadow: isActive ? '0 0 8px rgba(233,30,106,0.6)' : 'none',
+                transition: 'all 0.3s'
               }} />
             </>
           )}

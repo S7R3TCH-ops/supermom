@@ -5,12 +5,13 @@ export default function SectionLabel({ children }) {
   return (
     <div style={{
       fontFamily: T.font,
-      fontSize: 9.5,
-      fontWeight: 700,
-      letterSpacing: '0.7px',
+      fontSize: 9,
+      fontWeight: 800,
+      letterSpacing: '1px',
       textTransform: 'uppercase',
       color: T.secLabel,
-      marginBottom: 7,
+      marginBottom: 8,
+      opacity: 0.85,
     }}>
       {children}
     </div>

@@ -219,10 +219,11 @@ export default function JobDetailSheet({ jobId, onClose }) {
         }}
       >
         {/* Drag handle */}
-        <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 8, paddingBottom: 4 }}>
+        <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 9, paddingBottom: 6 }}>
           <div style={{
-            width: 40, height: 4, borderRadius: 4,
-            background: '#FFD6E8', opacity: mode === 'dark' ? 0.35 : 1,
+            width: 42, height: 5, borderRadius: 10,
+            background: '#FFD6E8', opacity: mode === 'dark' ? 0.3 : 1,
+            transition: 'all 0.2s',
           }} />
         </div>
 

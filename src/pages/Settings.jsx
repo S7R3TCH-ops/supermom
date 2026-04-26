@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { getCurrentBusinessId } from '../data/currentBusiness';
 import { useBusiness } from '../data/useData';
 import { useAppTheme } from '../context/AppThemeContext';
+import SectionLabel from '../components/ui/SectionLabel';
 import { uploadAsset, getSignedUrl } from '../lib/storage';
 
 const SUPER_ADMIN_EMAIL = 'jlundie@gmail.com';
@@ -36,7 +37,7 @@ const FIELDS = [
 ];
 
 export default function Settings() {
-  const { T } = useAppTheme();
+  const { T, mode, toggleMode } = useAppTheme();
   const { user, signOut } = useAuth();
   const { business, update } = useBusiness();
   const [searchParams] = useSearchParams();
@@ -235,6 +236,39 @@ export default function Settings() {
 
       <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '16px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
 
+        <SectionLabel>Appearance</SectionLabel>
+        <div style={{
+          background: T.card, border: `1.5px solid ${T.cardBorder}`,
+          borderRadius: 16, padding: '14px', marginBottom: 8,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+        }}>
+          <div>
+            <div style={{ fontFamily: T.font, fontSize: 13, fontWeight: 700, color: T.ink }}>Dark Mode</div>
+            <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, marginTop: 2 }}>Easier on the eyes at night.</div>
+          </div>
+          <button 
+            role="switch"
+            aria-checked={mode === 'dark'}
+            aria-label="Toggle Dark Mode"
+            onClick={toggleMode}
+            style={{
+              width: 44, height: 26, borderRadius: 13, border: 'none', cursor: 'pointer',
+              background: mode === 'dark' ? T.pink : T.cardBorder,
+              position: 'relative', transition: 'background 0.2s', flexShrink: 0,
+            }}
+          >
+            <span style={{
+              position: 'absolute', top: 3, left: mode === 'dark' ? 21 : 3,
+              width: 20, height: 20, borderRadius: '50%', background: 'white',
+              transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10
+            }}>
+              {mode === 'dark' ? '🌙' : '☀️'}
+            </span>
+          </button>
+        </div>
+
+        <SectionLabel>Personal Profile</SectionLabel>
         {/* Owner Profile */}
         <div style={{ background: 'white', borderRadius: 'var(--r-card)', border: '1.5px solid var(--pink-border)', padding: 16 }}>
           <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)', display: 'block', marginBottom: 14 }}>Personal Profile</span>
@@ -374,8 +408,9 @@ export default function Settings() {
           </div>
         )}
 
+        <SectionLabel>Integrations</SectionLabel>
         {/* Google Calendar Sync */}
-        <div style={{ background: 'white', borderRadius: 'var(--r-card)', border: '1.5px solid var(--pink-border)', padding: 16 }}>
+        <div style={{ background: T.card, borderRadius: 16, border: `1.5px solid ${T.cardBorder}`, padding: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
             <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>Google Calendar Sync</span>
             {integration ? (
@@ -416,8 +451,9 @@ export default function Settings() {
           </div>
         )}
 
+        <SectionLabel>Security</SectionLabel>
         {/* Security / Password */}
-        <div style={{ background: 'white', borderRadius: 'var(--r-card)', border: '1.5px solid var(--pink-border)', padding: 16 }}>
+        <div style={{ background: T.card, borderRadius: 16, border: `1.5px solid ${T.cardBorder}`, padding: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
             <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>Security</span>
             {pwSaved && (
@@ -483,7 +519,9 @@ export default function Settings() {
 
         {/* Danger Zone — super admin only */}
         {user?.email === SUPER_ADMIN_EMAIL && (
-          <div style={{ background: '#1a0a0a', borderRadius: 'var(--r-card)', border: '1.5px solid #7f1d1d', padding: 16 }}>
+          <>
+            <SectionLabel>System</SectionLabel>
+            <div style={{ background: '#1a0a0a', borderRadius: 16, border: '1.5px solid #7f1d1d', padding: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
               <span style={{ fontSize: 14, fontWeight: 700, color: '#fca5a5' }}>Danger Zone</span>
               <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.8px', color: '#ef4444', background: 'rgba(239,68,68,0.15)', padding: '2px 7px', borderRadius: 'var(--r-badge)', border: '1px solid #7f1d1d' }}>SUPER ADMIN</span>
@@ -550,17 +588,23 @@ export default function Settings() {
                   onClick={() => setResetPhase(null)}
                   style={{ width: '100%', padding: '11px', background: 'transparent', border: '1px solid #7f1d1d', borderRadius: 'var(--r-input)', color: '#f87171', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
                 >
-                  Dismiss
-                </button>
-              </div>
-            )}
-          </div>
-        )}
+                  Cancel
+                  </button>
+                  </div>
+                  )}
+                  </div>
+                  </>
+                  )}
 
-        <div style={{ paddingTop: 8, paddingBottom: 16 }}>
+        <div style={{ paddingTop: 8, paddingBottom: 24 }}>
           <button
             onClick={signOut}
-            style={{ width: '100%', padding: '12px', background: 'transparent', border: '1px solid var(--pink-border)', borderRadius: 'var(--r-input)', color: 'var(--ink-muted)', fontSize: 12, fontWeight: 600 }}
+            style={{ 
+              width: '100%', padding: '12px', 
+              background: 'transparent', border: `1px solid ${T.cardBorder}`, 
+              borderRadius: 12, color: T.inkMuted, 
+              fontSize: 12, fontWeight: 600, cursor: 'pointer' 
+            }}
           >
             Sign Out
           </button>

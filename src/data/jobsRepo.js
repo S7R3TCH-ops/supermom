@@ -11,6 +11,8 @@ const SELECT_FULL = '*';
 
 export async function fetchActiveJobs() {
   const businessId = await getCurrentBusinessId();
+  if (!businessId) return [];
+
   const { data, error } = await supabase
     .from('jobs')
     .select(SELECT_FULL)
@@ -24,6 +26,8 @@ export async function fetchActiveJobs() {
 
 export async function fetchJobsByClientId(clientId) {
   const businessId = await getCurrentBusinessId();
+  if (!businessId) return [];
+
   const { data, error } = await supabase
     .from('jobs')
     .select(SELECT_FULL)
@@ -38,6 +42,8 @@ export async function fetchJobsByClientId(clientId) {
 
 export async function fetchJobById(id) {
   const businessId = await getCurrentBusinessId();
+  if (!businessId) return null;
+
   const { data, error } = await supabase
     .from('jobs')
     .select(`${SELECT_FULL}, clients(first_name, last_name, notes, ai_context, tags)`)

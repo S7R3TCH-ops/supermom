@@ -16,7 +16,7 @@ export function setSuperOverride(id) {
 export async function getCurrentBusinessId() {
   // Super Admin Viewpoint Override
   const overrideId = superOverrideId || window.__SUPER_VIEW_ID;
-  if (overrideId) return overrideId;
+  if (overrideId && overrideId !== 'null') return overrideId;
 
   const { data: { user }, error: authErr } = await supabase.auth.getUser();
   if (authErr) throw authErr;
@@ -46,6 +46,8 @@ export async function getCurrentBusinessId() {
 
 export async function getBusinessProfile() {
   const bid = await getCurrentBusinessId();
+  if (!bid) return null; // Safe fallback for Global Admins
+
   const { data, error } = await supabase
     .from('businesses')
     .select('*')

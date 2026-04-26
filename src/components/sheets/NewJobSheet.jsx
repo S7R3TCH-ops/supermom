@@ -58,7 +58,10 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
     return () => { alive = false; };
   }, []);
 
-  const [clientId, setClientId] = useState(prefillClientId || null);
+  const [clientId, setClientId] = useState(() => {
+    if (prefillClientId === 'null') return null;
+    return prefillClientId || null;
+  });
 
   useEffect(() => {
     if (!clientId) {
@@ -203,8 +206,8 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
         animation: 'njSlide 260ms cubic-bezier(0.2,0.8,0.2,1)',
         border: `1px solid ${T.cardBorder}`, borderBottom: 'none',
       }}>
-        <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 8 }}>
-          <div style={{ width: 40, height: 4, background: '#FFD6E8', borderRadius: 4, opacity: mode === 'dark' ? 0.35 : 1 }} />
+        <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 9 }}>
+          <div style={{ width: 42, height: 5, background: '#FFD6E8', borderRadius: 10, opacity: mode === 'dark' ? 0.3 : 1 }} />
         </div>
 
         <div style={{ padding: '10px 18px 6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

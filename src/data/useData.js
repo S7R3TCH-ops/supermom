@@ -69,6 +69,12 @@ export function useClient(id) {
   const [error, setError] = useState(null);
 
   const refresh = useCallback(async () => {
+    if (!id || id === 'null') {
+      setRow(null);
+      setJobs([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {

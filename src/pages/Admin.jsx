@@ -9,7 +9,7 @@ import { useViewpoint } from '../context/ViewpointContext';
 
 export default function Admin() {
   const { T, mode } = useAppTheme();
-  const { profile } = useAuth();
+  const { profile, signOut } = useAuth();
   const { business, loading: bizLoading, update: updateBiz } = useBusiness();
   const { clients, loading: clientsLoading } = useClients();
   const { jobs, loading: jobsLoading } = useJobs();
@@ -20,9 +20,10 @@ export default function Admin() {
   const [selectedBizId, setSelectedBizId] = useState('');
 
   const handleStyleChange = async (style) => {
+    if (!business) return;
     setIsSaving(true);
     try {
-      const newProfile = { ...(business.ai_profile || {}), style };
+      const newProfile = { ...(business?.ai_profile || {}), style };
       await updateBiz({ ai_profile: newProfile });
     } catch (err) {
       console.error('Failed to update AI style:', err);
@@ -185,34 +186,42 @@ export default function Admin() {
           background: T.card, border: `1.5px solid ${T.cardBorder}`,
           borderRadius: 16, padding: '14px', marginBottom: 20,
         }}>
-          <div style={{ fontFamily: T.font, fontSize: 11, color: T.inkMuted, marginBottom: 12, lineHeight: 1.4 }}>
-            Choose how your AI assistant speaks to you in briefings. It learns your preferences over time.
-          </div>
-          
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {[
-              { id: 'professional', label: 'Professional', desc: 'Clear, concise, and business-focused.' },
-              { id: 'coach', label: 'Encouraging Coach', desc: 'Warm, supportive, and motivating.' },
-              { id: 'casual', label: 'Casual Pal', desc: 'Relaxed, friendly, and low-key.' },
-            ].map(s => (
-              <div 
-                key={s.id}
-                onClick={() => !isSaving && handleStyleChange(s.id)}
-                style={{
-                  padding: '10px 12px', borderRadius: 12, cursor: 'pointer',
-                  background: aiStyle === s.id ? T.pinkTint : 'rgba(255,255,255,0.03)',
-                  border: `1.5px solid ${aiStyle === s.id ? T.pink : T.cardBorder}`,
-                  transition: 'all 0.2s'
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontFamily: T.font, fontSize: 13, fontWeight: 700, color: aiStyle === s.id ? T.pink : T.ink }}>{s.label}</span>
-                  {aiStyle === s.id && <span style={{ color: T.pink, fontSize: 12 }}>✓</span>}
-                </div>
-                <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, marginTop: 2 }}>{s.desc}</div>
+          {!business ? (
+            <div style={{ fontFamily: T.font, fontSize: 13, color: T.inkMuted, textAlign: 'center', padding: '10px 0' }}>
+              Select a business viewpoint above to configure AI preferences.
+            </div>
+          ) : (
+            <>
+              <div style={{ fontFamily: T.font, fontSize: 11, color: T.inkMuted, marginBottom: 12, lineHeight: 1.4 }}>
+                Choose how your AI assistant speaks to you in briefings. It learns your preferences over time.
               </div>
-            ))}
-          </div>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {[
+                  { id: 'professional', label: 'Professional', desc: 'Clear, concise, and business-focused.' },
+                  { id: 'coach', label: 'Encouraging Coach', desc: 'Warm, supportive, and motivating.' },
+                  { id: 'casual', label: 'Casual Pal', desc: 'Relaxed, friendly, and low-key.' },
+                ].map(s => (
+                  <div 
+                    key={s.id}
+                    onClick={() => !isSaving && handleStyleChange(s.id)}
+                    style={{
+                      padding: '10px 12px', borderRadius: 12, cursor: 'pointer',
+                      background: aiStyle === s.id ? T.pinkTint : 'rgba(255,255,255,0.03)',
+                      border: `1.5px solid ${aiStyle === s.id ? T.pink : T.cardBorder}`,
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontFamily: T.font, fontSize: 13, fontWeight: 700, color: aiStyle === s.id ? T.pink : T.ink }}>{s.label}</span>
+                      {aiStyle === s.id && <span style={{ color: T.pink, fontSize: 12 }}>✓</span>}
+                    </div>
+                    <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, marginTop: 2 }}>{s.desc}</div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
         <SectionLabel>Tools</SectionLabel>
@@ -292,6 +301,20 @@ export default function Admin() {
               {savingPw ? 'Updating…' : 'Save New Password'}
             </button>
           </div>
+        </div>
+
+        <div style={{ paddingTop: 8, paddingBottom: 24 }}>
+          <button
+            onClick={signOut}
+            style={{ 
+              width: '100%', padding: '12px', 
+              background: 'transparent', border: `1px solid ${T.cardBorder}`, 
+              borderRadius: 12, color: T.inkMuted, 
+              fontSize: 12, fontWeight: 600, cursor: 'pointer' 
+            }}
+          >
+            Sign Out
+          </button>
         </div>
       </div>
     </div>

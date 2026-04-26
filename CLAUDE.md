@@ -82,13 +82,13 @@ This is a **managed service product** — Sandra is the first user, but the arch
 ## Core features (build status)
 
 - [x] Auth (Supabase login)
-- [x] Home screen — Today Card (Dynamic greeting; Next Up filtering)
+- [x] Home screen — Today Card (Dynamic greeting; Next Up filtering; Interactive Week Strip)
 - [x] New Job booking flow (bottom sheet, 3 steps)
-- [x] Calendar screen (Day view, Week, Agenda)
 - [x] Payments Audit — `recordPayment` logs to `payments` table
 - [x] Automated Invoicing — public `/i/:id` web view; auto-generation on payment
 - [x] Super Admin Dashboard — Viewpoint switching, platform management
-- [x] Onboarding flow — Bypassed for Super Admins; gated on `owner` role
+- [x] Onboarding flow — EA Mission persona; Magic Button showoff
+- [x] Dark mode toggle (Settings > Appearance)
 
 ---
 
@@ -102,6 +102,6 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 ## Parked / not building yet
 
-- [ ] Dark mode toggle (planned, not designed)
 - [ ] Self-serve client booking link (Phase 2)
 - [ ] Sandra's user guide (separate doc, after app stable)
+

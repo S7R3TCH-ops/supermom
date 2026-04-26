@@ -123,25 +123,38 @@
 
 ## Components
 
-### 1. Logo Banner (every screen — identical)
+### 1. Logo Banner (every screen — route aware)
 
 ```jsx
-// Sits below status bar, above all content on every screen
-// In production: replace SVG with <img src="/supermom_logo_wide.png" />
+// Sits below status bar, above all content on every screen.
+// Top-level tabs show the Logo. Deep routes (Profile, Settings) show a Back button.
 <div className="logo-bar" style={{
   background: 'var(--grad-pink)',
-  padding: '10px 16px 12px',
+  padding: '6px 14px 7px',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
   flexShrink: 0
 }}>
-  <img src="/supermom_logo_wide.png" alt="Supermom for Hire" height="40" />
-  <div className="avatar-pill">S</div>
+  {isTopLevel ? (
+    <img src="/branding/logo-final.png" alt="Supermom for Hire" height="30" />
+  ) : (
+    <button className="back-btn">‹ Back</button>
+  )}
+  <div className="right-actions">
+    <PrivacyToggle />
+    <Avatar initial="S" />
+  </div>
 </div>
 ```
 
-**Rule:** This component is 100% identical on every screen. No exceptions. No variants.
+**Rule:** The Logo Banner is route-aware. Top-level tabs (`/`, `/calendar`, `/clients`, `/finance`, `/admin`) show the brand logo. Any sub-route (e.g., `/clients/:id`, `/settings`) replaces the logo with a contextual **‹ Back** button that triggers `navigate(-1)`.
+
+---
+
+### 1a. Theme Toggle (Settings only)
+
+**Rule:** To maintain a clean navigation experience, the light/dark mode toggle lives exclusively in **Settings > Appearance**. It uses a sliding switch UI with Sun/Moon icons. No theme toggles should appear in the top Logo Bar or Bottom Nav.
 
 ---
 
@@ -608,13 +621,13 @@ Profile view (dark plum hero — differentiates from pink banner):
 ## Rules — DO
 
 - Every dark hero section has `border-bottom: var(--border-hero)` (3px pink)
-- All section labels: 10px, 700, uppercase, `--ink-mid`, 0.7px letter-spacing
+- All section labels: 9px, 800, uppercase, `--ink-mid`, 1px letter-spacing, 85% opacity
 - All AI card labels: `#FF78B0`, 9.5px, 700, 1.1px spacing, uppercase, `✦` prefix
 - All cards: `1.5px solid #FFD6E8` border, `16px` border-radius
 - FAB always: `bottom: 56px`, `right: 14px`
 - View toggles always on dark plum background
 - Dollar amounts always: Fraunces, tabular-nums
-- Logo banner always: identical on every screen
+- Logo banner: Shows brand logo on top-level tabs, `< Back` on sub-routes.
 
 ## Rules — DON'T
 
@@ -629,4 +642,4 @@ Profile view (dark plum hero — differentiates from pink banner):
 
 ---
 
-*Design System v1.1 (Updated by Gemini CLI) · April 2026 · Supermom for Hire*
+*Design System v1.2 (Updated by Gemini CLI) · April 2026 · Supermom for Hire*

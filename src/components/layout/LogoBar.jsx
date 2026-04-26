@@ -1,12 +1,15 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { useViewpoint } from '../../context/ViewpointContext';
+import { useBusiness } from '../../data/useData';
 
 export default function LogoBar() {
   const navigate = useNavigate();
-  const { mode, toggleMode, privacyOn, togglePrivacy } = useAppTheme();
+  const location = useLocation();
+  const { T, mode, privacyOn, togglePrivacy } = useAppTheme();
   const { user } = useAuth();
+  const { business } = useBusiness();
   const { isSuperAdmin } = useViewpoint();
 
   const onAvatarClick = () => {
@@ -15,7 +18,13 @@ export default function LogoBar() {
       else navigate('/settings');
     }
   };
-  const initial = (user?.email || 'S').charAt(0).toUpperCase();
+
+  const displayName = business?.owner_name || user?.email || 'User';
+  const initial = displayName.charAt(0).toUpperCase();
+
+  const topLevelRoutes = ['/', '/calendar', '/clients', '/finance', '/admin'];
+  const isTopLevel = topLevelRoutes.includes(location.pathname) || location.pathname.startsWith('/login');
+
   return (
     <div style={{
       background: 'linear-gradient(110deg,#FF4D96 0%,#E91E6A 45%,#B01550 100%)',
@@ -23,11 +32,23 @@ export default function LogoBar() {
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       flexShrink: 0, minHeight: 46,
     }}>
-      <img
-        src="/branding/logo-final.png"
-        alt="Supermom for Hire"
-        style={{ height: 30, objectFit: 'contain', objectPosition: 'left center' }}
-      />
+      {isTopLevel ? (
+        <img
+          src="/branding/logo-final.png"
+          alt="Supermom for Hire"
+          style={{ height: 30, objectFit: 'contain', objectPosition: 'left center' }}
+        />
+      ) : (
+        <button onClick={() => navigate(-1)} style={{ 
+          background: 'none', border: 'none', color: 'white', 
+          display: 'flex', alignItems: 'center', gap: 4, 
+          fontFamily: T.font, fontSize: 15, fontWeight: 600, 
+          cursor: 'pointer', padding: '4px 8px 4px 0' 
+        }}>
+          <span style={{ fontSize: 20, lineHeight: 1, marginTop: -2 }}>‹</span> Back
+        </button>
+      )}
+
       <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
         <button
           onClick={togglePrivacy}
@@ -41,17 +62,6 @@ export default function LogoBar() {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: 'pointer', fontSize: 12,
           }}>{privacyOn ? '🙈' : '👁'}</button>
-        <button
-          onClick={toggleMode}
-          aria-label={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-          title="Toggle theme"
-          style={{
-            width: 28, height: 28, borderRadius: 7,
-            background: 'rgba(255,255,255,0.15)',
-            border: '1px solid rgba(255,255,255,0.28)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', fontSize: 12,
-          }}>{mode === 'dark' ? '☀️' : '🌙'}</button>
         <button
           onClick={onAvatarClick}
           aria-label="Settings"

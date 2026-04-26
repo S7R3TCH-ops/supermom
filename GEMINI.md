@@ -78,6 +78,7 @@ At the end of every productive session, or upon major milestone completion, Gemi
 | **Contextual Nav** | ✅ **Live** — Route-aware Back button in LogoBar |
 | **Theme Toggle** | ✅ **Live** — Moved to Settings; premium switch UI |
 | **Test Isolation** | ✅ **Live** — Dedicated `tester@supermom.io` environment |
+| **Specialized Services** | ✅ **Live** — Declutter, Organize, Assist roster for Sandra |
 
 ## Phase 14 UI/UX Polish & Dynamic Intelligence (Gemini CLI session, April 26, 2026)
 
@@ -94,6 +95,8 @@ Key enhancements for "Premium 2026" feel and intuitive navigation:
 | AU | Critical Bug Fixes | Fixed signOut ReferenceError and stringified 'null' UUID database crash | `Admin.jsx`, `currentBusiness.js`, `NewJobSheet.jsx`, `useData.js` |
 | AV | Dark Mode Access | Increased contrast for muted labels/handles (WCAG compliance) | `tokens.js`, `SectionLabel.jsx`, `sheets/*.jsx` |
 | AW | Test Isolation | Decoupled E2E tests from personal accounts via `tester@supermom.io` | `auth.setup.ts`, `happy-path.spec.ts` |
+| AX | Viewpoint Identity | Home greeting and 7-day strip now respect active Viewpoint | `Home.jsx` |
+| AY | Roster Refresh | Sandra's business updated with "Supermom" specialized services | `seed.mjs` |
 
 (Updated by Gemini CLI)
 

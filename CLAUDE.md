@@ -89,6 +89,8 @@ This is a **managed service product** — Sandra is the first user, but the arch
 - [x] Super Admin Dashboard — Viewpoint switching, platform management
 - [x] Onboarding flow — EA Mission persona; Magic Button showoff
 - [x] Dark mode toggle (Settings > Appearance)
+- [x] Test Isolation — Dedicated `tester@supermom.io` account
+- [x] Platform Hierarchy — Joel as Global Admin; Viewpoint switcher verified
 
 ---
 

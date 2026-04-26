@@ -235,7 +235,7 @@ export default function Settings() {
 
       <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '16px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
 
-        {/* Sandra's Profile */}
+        {/* Owner Profile */}
         <div style={{ background: 'white', borderRadius: 'var(--r-card)', border: '1.5px solid var(--pink-border)', padding: 16 }}>
           <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)', display: 'block', marginBottom: 14 }}>Personal Profile</span>
           
@@ -264,7 +264,7 @@ export default function Settings() {
             <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" style={{ display: 'none' }} />
             
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink)', marginBottom: 2 }}>{form?.owner_name || 'Sandra'}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink)', marginBottom: 2 }}>{form?.owner_name || '—'}</div>
               <div style={{ fontSize: 11, color: 'var(--ink-muted)' }}>{form?.email}</div>
             </div>
           </div>
@@ -276,7 +276,7 @@ export default function Settings() {
             <input
               id="settings-signature"
               type="text"
-              placeholder="e.g. Sandra S."
+              placeholder="e.g. Sandra S. or Joel L."
               value={form?.signature}
               onChange={e => setForm(f => ({ ...f, signature: e.target.value }))}
               style={{ ...inputStyle, fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: 16 }}

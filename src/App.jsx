@@ -71,7 +71,8 @@ function AuthedShell() {
             <Route path="/clients" element={<Clients />} />
             <Route path="/clients/:id" element={<ClientProfile />} />
             <Route path="/finance" element={<Finance />} />
-            <Route path="/admin" element={<Settings />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/admin" element={<Admin />} />
           </Routes>
         </Suspense>
         <FAB />

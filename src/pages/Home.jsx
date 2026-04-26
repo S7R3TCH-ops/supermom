@@ -61,6 +61,14 @@ function LiveTimer({ startTime, T }) {
   );
 }
 
+function getGreeting(name) {
+  const hour = new Date().getHours();
+  let g = 'Good morning';
+  if (hour >= 12 && hour < 17) g = 'Good afternoon';
+  else if (hour >= 17) g = 'Good evening';
+  return <>{g},<br />{name}.</>;
+}
+
 export default function Home() {
   const { T, mode, privacyOn } = useAppTheme();
   const { jobs: allJobs, loading, error } = useJobs();
@@ -93,8 +101,13 @@ export default function Home() {
       .filter(j => (today - j.start) / 86400000 >= 1);
   }, [allJobs, today]);
 
-  const next = todayJobs.find(j => j.end >= today) || todayJobs[0];
+  // Next up should be the first job that is NOT completed AND NOT paid, or the current active job
   const activeJob = todayJobs.find(j => j.status === 'Scheduled' && j.ai_context?.clock_in_time != null);
+  const next = todayJobs.find(j => j.status === 'Scheduled' && j.payment_status !== 'Paid' && j.end >= today);
+  
+  // If no "next" job (all done), but we have jobs today, then we are done
+  const allDone = todayJobs.length > 0 && !activeJob && !next;
+
   const revenueToday = todayJobs.reduce((s, j) => s + Number(j.total || 0), 0);
 
   const todayJobsWithConflicts = useMemo(() => {
@@ -106,7 +119,7 @@ export default function Home() {
   }, [todayJobs]);
 
   const heroJobId = activeJob?.id || next?.id;
-  const laterJobs = todayJobsWithConflicts.filter(j => j.id !== heroJobId);
+  const laterJobs = todayJobsWithConflicts.filter(j => j.id !== heroJobId && j.status === 'Scheduled' && j.payment_status !== 'Paid');
 
   const commandBrief = useMemo(() => next ? generateCommandBrief(next, business) : null, [next, business]);
 
@@ -162,12 +175,14 @@ export default function Home() {
             ✦ Command Brief · {dateBrief(today)}
           </div>
           <div style={{ fontFamily: T.serif, fontSize: 22, fontWeight: 500, letterSpacing: '-0.5px', color: 'white', lineHeight: 1.15, marginBottom: 4 }}>
-            Good morning,<br />{firstName}.
+            {getGreeting(firstName)}
           </div>
           <div style={{ fontFamily: T.font, fontSize: 11.5, color: 'rgba(255,255,255,0.6)', lineHeight: 1.5, marginBottom: 12 }}>
             {todayJobs.length === 0
               ? 'No jobs scheduled for today.'
-              : <>{todayJobs.length} {todayJobs.length === 1 ? 'house' : 'houses'} today{tightGap ? <> · <span style={{ color: T.pinkLabel }}>1 flag needs you</span></> : ''}</>
+              : allDone 
+                ? 'All done for today! 🦸‍♀️'
+                : <>{todayJobs.length} {todayJobs.length === 1 ? 'house' : 'houses'} today{tightGap ? <> · <span style={{ color: T.pinkLabel }}>1 flag needs you</span></> : ''}</>
             }
           </div>
 
@@ -254,6 +269,14 @@ export default function Home() {
                 </div>
               </div>
             </>
+          )}
+
+          {!activeJob && allDone && (
+            <div style={{ background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 14, padding: '24px 16px', textAlign: 'center', marginBottom: 12 }}>
+              <div style={{ fontSize: 32, marginBottom: 12 }}>🦸‍♀️</div>
+              <div style={{ fontFamily: T.serif, fontSize: 18, color: T.ink, marginBottom: 4 }}>All done for today!</div>
+              <div style={{ fontFamily: T.font, fontSize: 12, color: T.inkMuted }}>You've crushed your mission.</div>
+            </div>
           )}
 
           {!activeJob && next && (

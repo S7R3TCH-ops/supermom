@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
 import { useAppTheme } from '../context/AppThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useBusiness, useClients, useJobs } from '../data/useData';
@@ -12,6 +14,7 @@ export default function Admin() {
   const { clients, loading: clientsLoading } = useClients();
   const { jobs, loading: jobsLoading } = useJobs();
   const { isSuperAdmin, allBusinesses, switchTo, viewingAsId, reset } = useViewpoint();
+  const navigate = useNavigate();
 
   const [isSaving, setIsSaving] = useState(false);
   const [selectedBizId, setSelectedBizId] = useState('');
@@ -214,9 +217,10 @@ export default function Admin() {
 
         <SectionLabel>Tools</SectionLabel>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
+          <ToolRow T={T} icon="⚙" label="Business Settings" sub="Profile, rates, Google Calendar" onClick={() => navigate('/settings')} />
           <ToolRow T={T} icon="📊" label="Detailed Reports" sub="Coming soon" />
           <ToolRow T={T} icon="👥" label="Staff Management" sub="Coming soon" />
-          <ToolRow T={T} icon="⚙" label="Service Catalog" sub="Coming soon" />
+          <ToolRow T={T} icon="🗂" label="Service Catalog" sub="Coming soon" />
         </div>
 
         <SectionLabel>Security</SectionLabel>
@@ -306,17 +310,22 @@ function StatCard({ T, label, value }) {
   );
 }
 
-function ToolRow({ T, icon, label, sub }) {
+function ToolRow({ T, icon, label, sub, onClick }) {
   return (
-    <div style={{
-      background: T.card, border: `1.5px solid ${T.cardBorder}`,
-      borderRadius: 13, padding: 12, display: 'flex', alignItems: 'center', gap: 12
-    }}>
+    <div
+      onClick={onClick}
+      style={{
+        background: T.card, border: `1.5px solid ${T.cardBorder}`,
+        borderRadius: 13, padding: 12, display: 'flex', alignItems: 'center', gap: 12,
+        cursor: onClick ? 'pointer' : 'default',
+      }}
+    >
       <div style={{ fontSize: 20 }}>{icon}</div>
-      <div>
+      <div style={{ flex: 1 }}>
         <div style={{ fontFamily: T.font, fontSize: 13, fontWeight: 600, color: T.ink }}>{label}</div>
         <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted }}>{sub}</div>
       </div>
+      {onClick && <div style={{ color: T.inkMuted, fontSize: 14 }}>›</div>}
     </div>
   );
 }

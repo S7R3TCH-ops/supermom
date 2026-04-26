@@ -266,7 +266,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
         {!loading && !error && job && editMode && (
           <EditMode
             form={form} setForm={setForm}
-            T={T} busy={busy} mutErr={mutErr}
+            T={T} mode={mode} busy={busy} mutErr={mutErr}
             showSeriesPicker={showSeriesPicker} onSeriesChoice={onSeriesChoice}
             onSave={initiateSave}
             onCancelEdit={() => { setEditMode(false); setMutErr(null); setShowSeriesPicker(false); }}
@@ -546,7 +546,7 @@ function ReadMode({
 }
 
 /* ============= EDIT MODE ============= */
-function EditMode({ form, setForm, T, busy, mutErr, showSeriesPicker, onSeriesChoice, onSave, onCancelEdit }) {
+function EditMode({ form, setForm, T, mode, busy, mutErr, showSeriesPicker, onSeriesChoice, onSave, onCancelEdit }) {
   function set(k, v) { setForm(f => ({ ...f, [k]: v })); }
 
   function onPickService(e) {

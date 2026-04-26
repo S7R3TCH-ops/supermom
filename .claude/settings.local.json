@@ -23,7 +23,8 @@
       "Bash(npx vercel *)",
       "Bash(git push *)",
       "Bash(xargs grep *)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(node -e ' *)"
     ]
   }
 }

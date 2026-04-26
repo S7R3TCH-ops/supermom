@@ -13,7 +13,13 @@ export default function OnboardingWalkthrough() {
   const [localComplete, setLocalComplete] = useState(() => localStorage.getItem('sm_onboarding_complete') === 'true');
 
   // Only show onboarding to the business owner, not admins/workers
-  if (loading || !business || profile?.role !== 'owner' || business.ai_profile?.onboarding_complete || localComplete || window.__SKIP_ONBOARDING) return null;
+  // CRITICAL: Super Admins (Joel) should NEVER see this.
+  const SUPER_ADMIN_EMAILS = ['jlundie@gmail.com', 'joel@supermom.com', 'joel@supermomforhire.com'];
+  const isSuperAdmin = profile?.email && SUPER_ADMIN_EMAILS.includes(profile.email);
+
+  if (loading || !business || profile?.role !== 'owner' || isSuperAdmin || business.ai_profile?.onboarding_complete || localComplete || window.__SKIP_ONBOARDING) {
+    return null;
+  }
 
   const handleFinish = async () => {
     setIsSaving(true);

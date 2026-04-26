@@ -4,7 +4,7 @@ import { clearBusinessCache } from '../data/currentBusiness';
 
 const ViewpointContext = createContext();
 
-const SUPER_ADMIN_EMAIL = 'jlundie@gmail.com';
+const SUPER_ADMIN_EMAILS = ['jlundie@gmail.com', 'joel@supermom.com', 'joel@supermomforhire.com'];
 
 export function ViewpointProvider({ children }) {
   const [session, setSession] = useState(null);
@@ -14,14 +14,35 @@ export function ViewpointProvider({ children }) {
   const [allBusinesses, setAllBusinesses] = useState([]);
 
   useEffect(() => {
+    const checkAdmin = async (s) => {
+      if (!s?.user) {
+        setIsSuperAdmin(false);
+        return;
+      }
+      
+      const isEmailAdmin = SUPER_ADMIN_EMAILS.includes(s.user.email);
+      if (isEmailAdmin) {
+        setIsSuperAdmin(true);
+        return;
+      }
+
+      // Check DB role
+      const { data } = await supabase.from('users').select('role').eq('id', s.user.id).maybeSingle();
+      if (data?.role === 'admin') {
+        setIsSuperAdmin(true);
+      } else {
+        setIsSuperAdmin(false);
+      }
+    };
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      setIsSuperAdmin(session?.user?.email === SUPER_ADMIN_EMAIL);
+      checkAdmin(session);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      setIsSuperAdmin(session?.user?.email === SUPER_ADMIN_EMAIL);
+      checkAdmin(session);
       if (!session) {
         setViewingAsId(null);
         setViewingAsName(null);

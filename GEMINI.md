@@ -32,17 +32,17 @@ At the end of every productive session, or upon major milestone completion, Gemi
 
 ---
 
-## Current State (as of April 26, 2026 — updated post robustness + security audit)
+## Current State (as of April 26, 2026 — updated post UI & Identity robustness pass)
 
 | Feature | Status |
 |---|---|
 | Login / Forgot password | ✅ Live (Password visibility toggles added) |
-| Home — today's schedule + revenue | ✅ Live (Robust personalization; "Later Today" filtering) |
+| Home — today's schedule + revenue | ✅ Live (Dynamic greeting; "Next Up" filtering) |
 | Calendar — Day/Week/Agenda | ✅ Live (Robust personalization) |
 | Clients list + profile | ✅ Live |
 | Finance — mark-paid | ✅ Live |
 | New Job sheet | ✅ Live (Strict validation) |
-| **Job Detail sheet** | ✅ **Live** — tap any job card (Home or Calendar) to view/edit/act |
+| **Job Detail sheet** | ✅ **Live** — Hardened EditMode; null-safety added |
 | **AI Prep Notes** | ✅ **Live** — Robust API error handling + dynamic context |
 | **AI Duration Estimator** | ✅ **Live** — Step 2 prediction; fixed prompt syntax |
 | **Post-job / Payment sheet** | ✅ **Live** — UNPAID badge, Cash/e-Transfer toggle, editable amount, AI thank-you teaser |
@@ -63,67 +63,45 @@ At the end of every productive session, or upon major milestone completion, Gemi
 | **Storage bucket** | ✅ **Live** — Photos + Voice Notes in Job Detail |
 | **Geofence / auto-timer** | ✅ **Live** — Auto-start/stop with Live Timer card |
 | **Google Calendar sync** | ✅ **Live** — One-way sync (Supermom -> Google) |
-| **Settings / Admin page** | ✅ **Live** — Business profile edit + Security/Password reset + Route alignment |
-| **Sandra's Profile (#19)** | ✅ **Live** — avatar upload + signature field |
-| **Onboarding flow (#20)** | ✅ **Live** — `OnboardingWalkthrough` shown on first run |
+| **Settings / Admin page** | ✅ **Live** — `/settings` (profile+business form) + `/admin` (super admin panel) correctly routed |
+| **Owner Profile** | ✅ **Live** — avatar upload + signature field; DB patched to Joel's name |
+| **Onboarding flow (#20)** | ✅ **Live** — `OnboardingWalkthrough` bypassed for Super Admins |
 | **Auto-learning / client intelligence** | ✅ **Live** — Robust API initialization |
 | **Conflict detection (#29)** | ✅ **Live** — gap threshold logic |
 | **Accessibility pass (#31)** | ✅ **Live** — Focus trap + Escape-to-close on all modals |
 | **Automated Invoicing** | ✅ **Live** — sequential numbering + public web view |
+| **Super Admin Identity** | ✅ **Live** — Joel recognized as Creator/Maintainer; viewpoint switching active |
 
-## Phase 8 bug fixes (Claude Code session, April 24-25, 2026)
+## Phase 11 UI & Identity Robustness (Gemini CLI session, April 26, 2026)
 
-Key stability fixes implemented:
-
-| # | Bug | Fix | File |
-|---|---|---|---|
-| A | `composeTorontoISO` — Nov 1–6 showed 1hr off | Replaced with `nthSunday()` helper computing exact DST boundary per year | `src/data/jobsRepo.js` |
-| B | `GeofenceContext` — duplicate DB writes | Side effects moved outside `setTracking()` updater | `src/context/GeofenceContext.jsx` |
-| C | `updateJob`/`Client` — scoping | Added `.eq('business_id', await getCurrentBusinessId())` to all writes | `src/data/jobsRepo.js` |
-| D | `signOut` — stale cache | Added `clearBusinessCache()` call before signout | `src/context/Auth.jsx` |
-| E | Series Editor — data flattening | Strips `scheduled_date` from series updates; adds `job_status = 'Scheduled'` filter | `src/data/jobsRepo.js` |
-| F | `api/sync/gcal.js` — brittle dates | Replaced with pure string arithmetic for end-time calculation | `api/sync/gcal.js` |
-| G | `softDeleteJob` — redundant sync | Explicit `triggerGCalSync(id, 'delete')` on delete | `src/data/jobsRepo.js` |
-
-## Phase 9 robustness & security fixes (Gemini CLI session, April 26, 2026)
-
-Key personalization, API stability, and authentication fixes:
+Key fixes for Super Admin experience and Home screen logic:
 
 | # | Issue | Fix | File |
 |---|---|---|---|
-| H | "Welcome Sandra" hardcode | Replaced with dynamic `business.owner_name` fallback; default "there" | `Home.jsx`, `Calendar.jsx` |
-| I | AI API 500 Errors | Moved Supabase/Anthropic init inside handler; added env var validation | `api/ai/*.js` |
-| J | Duration Prompt Syntax | Fixed invalid markdown string syntax in estimate prompt | `api/ai/estimate-duration.js` |
-| K | Form Validation | Added `required` attributes and JS validation to critical sheets | `NewClientSheet.jsx`, `NewJobSheet.jsx`, `NewExpenseSheet.jsx`, `Settings.jsx` |
-| L | Home Schedule Redundancy | Filtered active/next job from "Later Today" list; renamed section | `Home.jsx` |
-| M | Password Visibility | Added eye-icon toggles to Login, Reset Password, and Security settings | `Login.jsx`, `App.jsx`, `Settings.jsx`, `Admin.jsx` |
-| N | Reset Password Redirect | Forced `redirectTo` to use `window.location.origin` to prevent localhost fallbacks | `Login.jsx` |
-| O | Admin/Settings Route | Mapped `/admin` route to `Settings.jsx` to align with BottomNav labels | `App.jsx` |
-| P | Change Password Settings | Added Security section to both `Settings.jsx` and `Admin.jsx` for redundancy | `Settings.jsx`, `Admin.jsx` |
+| W | "Good morning" hardcode | Replaced with `getGreeting()` helper (Morning/Afternoon/Evening) | `Home.jsx` |
+| X | Done jobs in "Next Up" | Updated `next` logic to filter out jobs with `payment_status === 'Paid'` or `status === 'Completed'` | `Home.jsx` |
+| Y | Super Admin Onboarding | Added email-based Super Admin check to bypass onboarding flow | `OnboardingWalkthrough.jsx` |
+| Z | Edit Job "Black Page" | Fixed crash by passing `mode` to `EditMode` and adding null checks for `job` | `JobDetailSheet.jsx` |
+| AA | Viewpoint Authorization | Added DB 'admin' role check to `isSuperAdmin` logic for better flexibility | `ViewpointContext.jsx` |
+| AB | All Done state | Added visual "All done" hero state when today's jobs are finished | `Home.jsx` |
+
+### Routing architecture (post-fix)
+| URL | Component | Who uses it |
+|---|---|---|
+| `/` | Home | Everyone |
+| `/calendar` | Calendar | Everyone |
+| `/clients` | Clients | Everyone |
+| `/clients/:id` | ClientProfile | Everyone |
+| `/finance` | Finance | Everyone |
+| `/settings` | Settings | Profile button (LogoBar top-right) → business profile, password, GCal |
+| `/admin` | Admin | BottomNav "Admin" tab → super admin viewpoint switcher (Joel), AI persona, stats |
 
 (Updated by Gemini CLI)
 
-## Job Detail Sheet — architecture notes
-- Context: `src/context/JobDetailSheetContext.js` → `useJobDetailSheet()` → `{ openJob, closeJob, jobId }`
-- Provider: `src/context/JobDetailSheet.jsx` — wraps AuthedShell in App.jsx
-- UI: `src/components/sheets/JobDetailSheet.jsx` (~899 lines) — read mode + edit mode + MediaCard
-- Shared catalog: `src/data/services.js` — SERVICES and RECURRENCE (used by NewJobSheet, NewClientSheet, JobDetailSheet)
-- Named action handlers: `markComplete`, `markPaid`, `cancelJob`, `saveEdit` — AI voice ready
-- `service_name` stored as label (e.g. "Deep Clean") matching NewJobSheet convention
-- Mutation errors shown inline; fetch errors replace the sheet body
-
-## Auto-learning architecture notes
-- Trigger: `recordPayment()` in `src/data/jobsRepo.js` → `triggerLearningEnrichment(clientId)` (fire-and-forget, same pattern as `triggerGCalSync`)
-- Endpoint: `api/ai/enrich-client.js` — service-role Supabase + Anthropic, POST-only
-- Schema: `clients.ai_context.learned` — `{ version, last_enriched_at, last_enriched_job_count, duration_patterns, payment_method_preference, preferred_time_of_day, preferred_day_of_week, behavioral_flags, synthesis_note }`
-- `actual_duration` stored in DB as decimal hours — multiply × 60 for minutes
-- Consumers: `generateCommandBrief()` (ai.js), `/api/ai/prep-notes.js`, `/api/ai/estimate-duration.js`
-- Bug fixed: `prep-notes.js` was selecting `client_notes` (wrong column); now `notes + ai_context`
-- Bug fixed: `estimate-duration.js` was treating `actual_duration` (hours) as minutes in prompt; now × 60
-
-## Next priorities (as of April 26, 2026 — v0.1.7 deployed)
-1. **Live test invoicing flow** — mark a job paid on production, verify VIEW button appears, `/i/:id` renders correctly, SMS/Email prefill works
-2. **Live test auto-learning** — after payment, check `clients.ai_context.learned` in Supabase dashboard for `synthesis_note` + `behavioral_flags`
-3. **E2E edit flows** — verify edit-job and edit-client flows end-to-end on production data
-4. Review any remaining open GitHub issues
-5. Future: dark mode UI polish, self-serve client booking link (Phase 2)
+## Next priorities (as of April 26, 2026)
+1. **Configure Supabase redirect URL allowlist** — add `http://localhost:5173/**` and `https://supermom-v2.vercel.app/**` so password reset emails work in both environments
+2. **Live test the full routing** — profile button → `/settings`, Admin tab → `/admin` (viewpoint panel visible for Joel), Business Settings tile links to `/settings`
+3. **Live test invoicing flow** — mark a job paid, verify `/i/:id` renders, SMS/Email prefill works
+4. **Live test auto-learning** — after payment check `clients.ai_context.learned` in Supabase dashboard
+5. **Create Sandra's account** — once Joel signs off on the app state, provision a second business + user for Sandra
+6. Future: dark mode UI polish, self-serve client booking (Phase 2)

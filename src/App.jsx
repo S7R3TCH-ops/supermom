@@ -7,6 +7,7 @@ import { AuthProvider } from './context/Auth';
 import { useAuth } from './context/AuthContext';
 import { ViewpointProvider, useViewpoint } from './context/ViewpointContext';
 import { NewJobSheetProvider } from './context/NewJobSheet';
+import { NewClientSheetProvider } from './context/NewClientSheet';
 import { JobDetailSheetProvider } from './context/JobDetailSheet';
 import { PostJobSheetProvider } from './context/PostJobSheet';
 import { GeofenceProvider } from './context/GeofenceContext';
@@ -247,11 +248,13 @@ function Gate() {
   return (
     <PostJobSheetProvider>
       <NewJobSheetProvider>
-        <JobDetailSheetProvider>
-          <GeofenceProvider>
-            <AuthedShell />
-          </GeofenceProvider>
-        </JobDetailSheetProvider>
+        <NewClientSheetProvider>
+          <JobDetailSheetProvider>
+            <GeofenceProvider>
+              <AuthedShell />
+            </GeofenceProvider>
+          </JobDetailSheetProvider>
+        </NewClientSheetProvider>
       </NewJobSheetProvider>
     </PostJobSheetProvider>
   );

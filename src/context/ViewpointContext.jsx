@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { clearBusinessCache } from '../data/currentBusiness';
+import { clearBusinessCache, setSuperOverride } from '../data/currentBusiness';
 
 const ViewpointContext = createContext();
 
@@ -64,13 +64,17 @@ export function ViewpointProvider({ children }) {
     if (!isSuperAdmin) return;
     setViewingAsId(bizId);
     setViewingAsName(ownerName);
-    clearBusinessCache(); // Force repos to re-resolve business_id
+    window.__SUPER_VIEW_ID = bizId;
+    setSuperOverride(bizId); // New explicit override
+    clearBusinessCache(); 
     window.dispatchEvent(new Event('supermom:data-changed'));
   };
 
   const reset = () => {
     setViewingAsId(null);
     setViewingAsName(null);
+    window.__SUPER_VIEW_ID = null;
+    setSuperOverride(null); // New explicit reset
     clearBusinessCache();
     window.dispatchEvent(new Event('supermom:data-changed'));
   };

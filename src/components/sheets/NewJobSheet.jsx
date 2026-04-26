@@ -623,7 +623,7 @@ function Step3Review({
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
             <InfoTile T={T} label="When"     value={dateLabel} sub={timeRange} />
             <InfoTile T={T} label="Duration" value={fmtDuration(duration)} sub="estimated" />
-            <InfoTile T={T} label="Repeats"  value={recurrence ? (recurrence.charAt(0).toUpperCase() + recurrence.slice(1)) : 'One-time'} sub={recurrence ? '↻ auto-books' : 'single visit'} />
+            <InfoTile T={T} label="Repeats"  value={recurrence ? recurrence : 'One-time'} sub={recurrence ? '↻ auto-books' : 'single visit'} />
             <InfoTile T={T} label="Address"  value={client?.address ? client.address.split(',')[0] : '—'} sub={client?.address ? (client.address.split(',')[1] || '').trim() : ''} />
           </div>
         </div>

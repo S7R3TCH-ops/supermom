@@ -42,19 +42,19 @@ export default function OnboardingWalkthrough() {
 
   const steps = [
     {
-      title: `Welcome, ${business.owner_name?.split(' ')[0] || 'there'}!`,
-      desc: "Let's get your mission control ready. You're about to become a solo-operating superhero.",
-      btn: 'Start the mission',
+      title: "Your Executive Assistant is Ready",
+      desc: `Welcome, ${business.owner_name?.split(' ')[0] || 'there'}. I'm here to handle the prep, tracking, and details so you can focus on the work.`,
+      btn: "Let's get started",
     },
     {
-      title: 'Your AI Sidekick',
-      desc: "I'm here to help you prep, estimate, and nudge. You can choose how I speak to you in Settings.",
-      btn: 'Sounds good',
+      title: "I'll learn as we go",
+      desc: "The more jobs we complete, the smarter I get. I'll soon start predicting your drive times and duration for every client.",
+      btn: "Understood",
     },
     {
-      title: "You're All Set",
-      desc: "Tap the + to add your first client or book a job. Your calendar is waiting.",
-      btn: "Let's Go!",
+      title: "First Mission: Add a VIP",
+      desc: "Tap the button on your Home screen to add your first client. I'll take it from there.",
+      btn: "Start the mission",
       action: handleFinish,
     }
   ];

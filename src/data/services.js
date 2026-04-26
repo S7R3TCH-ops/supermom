@@ -15,7 +15,7 @@ export const SERVICES = [
 // Future: migrate to job_templates table when the recurrence UI is built.
 export const RECURRENCE = [
   { key: null,       label: 'None' },
-  { key: 'weekly',   label: 'Weekly' },
-  { key: 'biweekly', label: 'Biweekly' },
-  { key: 'monthly',  label: 'Monthly' },
+  { key: 'Weekly',   label: 'Weekly' },
+  { key: 'Biweekly', label: 'Biweekly' },
+  { key: 'Monthly',  label: 'Monthly' },
 ];

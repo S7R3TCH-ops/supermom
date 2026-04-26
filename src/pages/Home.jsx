@@ -3,9 +3,10 @@ import { useAppTheme } from '../context/AppThemeContext';
 import AmtCell from '../components/ui/AmtCell';
 import SectionLabel from '../components/ui/SectionLabel';
 import CapeUpButton from '../components/ui/CapeUpButton';
-import { useJobs, useBusiness } from '../data/useData';
+import { useJobs, useBusiness, useClients } from '../data/useData';
 import { useJobDetailSheet } from '../context/JobDetailSheetContext';
 import { usePostJobSheet } from '../context/PostJobSheetContext';
+import { useNewClientSheet } from '../context/NewClientSheetContext';
 import { useAuth } from '../context/AuthContext';
 import { updateDailyRoutes } from '../lib/maps';
 import { useGeofence } from '../context/GeofenceContext';
@@ -72,8 +73,10 @@ function getGreeting(name) {
 export default function Home() {
   const { T, mode, privacyOn } = useAppTheme();
   const { jobs: allJobs, loading, error } = useJobs();
+  const { clients, loading: clientsLoading } = useClients();
   const { openJob } = useJobDetailSheet();
   const { openPostJob } = usePostJobSheet();
+  const { open: openNewClient } = useNewClientSheet();
   const { profile } = useAuth();
   const { handleClockOut } = useGeofence();
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -105,8 +108,9 @@ export default function Home() {
   const activeJob = todayJobs.find(j => j.status === 'Scheduled' && j.ai_context?.clock_in_time != null);
   const next = todayJobs.find(j => j.status === 'Scheduled' && j.payment_status !== 'Paid' && j.end >= today);
   
-  // If no "next" job (all done), but we have jobs today, then we are done
-  const allDone = todayJobs.length > 0 && !activeJob && !next;
+  // A mission is only "done" if it's Completed AND Paid. 
+  // We are "All Done" only when no jobs for today are Scheduled OR Unpaid.
+  const allDone = todayJobs.length > 0 && !todayJobs.some(j => j.status === 'Scheduled' || j.payment_status !== 'Paid');
 
   const revenueToday = todayJobs.reduce((s, j) => s + Number(j.total || 0), 0);
 
@@ -119,7 +123,8 @@ export default function Home() {
   }, [todayJobs]);
 
   const heroJobId = activeJob?.id || next?.id;
-  const laterJobs = todayJobsWithConflicts.filter(j => j.id !== heroJobId && j.status === 'Scheduled' && j.payment_status !== 'Paid');
+  // Later jobs include anything Scheduled OR anything Completed but Unpaid (excluding the hero)
+  const laterJobs = todayJobsWithConflicts.filter(j => j.id !== heroJobId && (j.status === 'Scheduled' || j.payment_status !== 'Paid'));
 
   const commandBrief = useMemo(() => next ? generateCommandBrief(next, business) : null, [next, business]);
 
@@ -221,6 +226,35 @@ export default function Home() {
           {error && (
             <div style={{ margin: '4px 0 10px', padding: '10px 12px', borderRadius: 10, background: T.redBg, border: `1px solid ${T.redBorder}`, fontFamily: T.font, fontSize: 12, color: T.ink }}>
               {error.message || 'Could not load today\'s jobs.'}
+            </div>
+          )}
+
+          {!loading && !error && !clientsLoading && clients.length === 0 && (
+            <div style={{ 
+              background: 'linear-gradient(135deg, #1A0B2E 0%, #0D0517 100%)', 
+              border: '2px solid #E91E6A', borderRadius: 16, padding: '24px 20px', 
+              textAlign: 'center', marginBottom: 16, position: 'relative', overflow: 'hidden',
+              boxShadow: '0 10px 30px rgba(233,30,106,0.25)'
+            }}>
+              <div style={{ position: 'absolute', top: -40, right: -20, width: 140, height: 140, borderRadius: '50%', background: 'radial-gradient(circle,rgba(233,30,106,0.25) 0%,transparent 70%)', pointerEvents: 'none' }} />
+              <div style={{ width: 56, height: 56, borderRadius: 18, background: 'var(--grad-action)', margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 20px rgba(233,30,106,0.4)', border: '2px solid rgba(255,255,255,0.2)' }}>
+                <span style={{ fontSize: 28 }}>✦</span>
+              </div>
+              <div style={{ fontFamily: T.font, fontSize: 10, fontWeight: 700, letterSpacing: '1.2px', textTransform: 'uppercase', color: '#FF78B0', marginBottom: 6 }}>Mission #1</div>
+              <div style={{ fontFamily: T.serif, fontSize: 20, fontWeight: 500, color: 'white', marginBottom: 10, letterSpacing: '-0.3px' }}>Initialize your first VIP</div>
+              <div style={{ fontFamily: T.font, fontSize: 12, color: 'rgba(255,255,255,0.6)', lineHeight: 1.5, marginBottom: 20, maxWidth: 260, margin: '0 auto 20px' }}>
+                Your Executive Assistant is ready to learn. Add a client to see your first aligned Prep Note.
+              </div>
+              <button 
+                onClick={() => openNewClient()}
+                style={{ 
+                  background: 'var(--grad-pink)', color: 'white', border: 'none', borderRadius: 12, 
+                  padding: '12px 24px', fontFamily: T.font, fontSize: 13, fontWeight: 700,
+                  boxShadow: '0 4px 15px rgba(233,30,106,0.4)', cursor: 'pointer'
+                }}
+              >
+                Add first client
+              </button>
             </div>
           )}
 
@@ -357,8 +391,9 @@ export default function Home() {
               {laterJobs.map((j) => {
                 const conflict = j.conflict;
                 const isNext = next && j.id === next.id;
-                const border = conflict ? 'rgba(245,158,11,0.35)' : isNext ? 'rgba(233,30,106,0.38)' : T.cardBorder;
-                const bg = conflict ? (mode === 'dark' ? 'rgba(245,158,11,0.05)' : '#FFFBEB') : T.card;
+                const isUnpaid = j.status === 'Completed' && j.payment_status !== 'Paid';
+                const border = isUnpaid ? 'rgba(233,30,106,0.5)' : conflict ? 'rgba(245,158,11,0.35)' : isNext ? 'rgba(233,30,106,0.38)' : T.cardBorder;
+                const bg = isUnpaid ? (mode === 'dark' ? 'rgba(233,30,106,0.08)' : '#FFF0F7') : conflict ? (mode === 'dark' ? 'rgba(245,158,11,0.05)' : '#FFFBEB') : T.card;
                 const t = fmtTime12(j.start);
                 const e = fmtTime12(j.end);
                 const amt = `$${Number(j.total || 0).toFixed(0)}`;
@@ -379,6 +414,7 @@ export default function Home() {
                       </div>
 
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
+                        {isUnpaid && <span style={{ background: '#FFE0EC', borderRadius: 4, padding: '2px 6px', fontFamily: T.font, fontSize: 8, fontWeight: 700, color: '#9B0D3A' }}>UNPAID</span>}
                         {conflict && <span style={{ background: '#FEF3C7', borderRadius: 4, padding: '2px 6px', fontFamily: T.font, fontSize: 8, fontWeight: 700, color: '#78350F', whiteSpace: 'nowrap' }}>⚠ GAP</span>}
                         {isNext && <span style={{ background: '#E91E6A', borderRadius: 4, padding: '2px 6px', fontFamily: T.font, fontSize: 8, fontWeight: 700, color: 'white' }}>UP NEXT</span>}
                         <AmtCell amount={amt} size={13} />

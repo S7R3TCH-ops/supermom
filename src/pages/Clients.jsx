@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppTheme } from '../context/AppThemeContext';
+import { useNewClientSheet } from '../context/NewClientSheetContext';
 import AmtCell from '../components/ui/AmtCell';
-import NewClientSheet from '../components/sheets/NewClientSheet';
 import { useClients } from '../data/useData';
 
 const filters = ['All', 'Owes $', 'VIP', 'Active', 'Leads'];
@@ -11,7 +11,7 @@ export default function Clients() {
   const { T, mode, privacyOn } = useAppTheme();
   const [filter, setFilter] = useState('All');
   const [search, setSearch] = useState('');
-  const [showNew, setShowNew] = useState(false);
+  const { open } = useNewClientSheet();
   const navigate = useNavigate();
   const { clients, loading, error, refresh } = useClients();
 
@@ -46,7 +46,7 @@ export default function Clients() {
             <div style={{ fontFamily: T.serif, fontSize: 21, fontWeight: 500, letterSpacing: '-0.4px', color: 'white', marginBottom: 10 }}>Your people.</div>
           </div>
           <button
-            onClick={() => setShowNew(true)}
+            onClick={() => open(() => refresh())}
             aria-label="Add client"
             style={{
               width: 36, height: 36, borderRadius: 12,
@@ -189,13 +189,6 @@ export default function Clients() {
           </div>
         ))}
       </div>
-
-      {showNew && (
-        <NewClientSheet
-          onClose={() => setShowNew(false)}
-          onCreated={() => refresh()}
-        />
-      )}
     </div>
   );
 }

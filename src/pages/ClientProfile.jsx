@@ -6,7 +6,7 @@ import { useNewJobSheet } from '../context/NewJobSheetContext';
 import AmtCell from '../components/ui/AmtCell';
 import SectionLabel from '../components/ui/SectionLabel';
 import { useClient, notifyDataChanged } from '../data/useData';
-import { updateClient } from '../data/clientsRepo';
+import { updateClient, simulateAILearning } from '../data/clientsRepo';
 
 function formatPhone(p) {
   if (!p) return '';
@@ -63,6 +63,19 @@ export default function ClientProfile() {
     } catch (err) {
       console.error('Failed to save client intel:', err);
       alert('Failed to save changes. Please try again.');
+    } finally {
+      setIsSavingAi(false);
+    }
+  };
+
+  const handleSimulateFuture = async () => {
+    setIsSavingAi(true);
+    try {
+      await simulateAILearning(id, client.name);
+      await refresh();
+      notifyDataChanged();
+    } catch (err) {
+      console.error('Simulation failed:', err);
     } finally {
       setIsSavingAi(false);
     }
@@ -230,14 +243,30 @@ export default function ClientProfile() {
               fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '1.1px',
               textTransform: 'uppercase', color: '#FF78B0',
             }}>✦ What I know</div>
-            {!isEditingAi ? (
-              <button
-                onClick={handleEditAi}
-                style={{
-                  background: 'none', border: 'none', padding: 0,
-                  fontFamily: T.font, fontSize: 10, fontWeight: 600, color: T.pink, cursor: 'pointer',
-                }}>Edit</button>
-            ) : (
+            {!isEditingAi && (
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                {!client.aiContext.learned && (
+                  <button
+                    onClick={handleSimulateFuture}
+                    disabled={isSavingAi}
+                    style={{
+                      background: 'var(--grad-pink)', border: 'none', borderRadius: 8, padding: '4px 10px',
+                      fontFamily: T.font, fontSize: 9, fontWeight: 700, color: 'white', cursor: 'pointer',
+                      boxShadow: '0 4px 10px rgba(233,30,106,0.2)'
+                    }}
+                  >
+                    See my future ✦
+                  </button>
+                )}
+                <button
+                  onClick={handleEditAi}
+                  style={{
+                    background: 'none', border: 'none', padding: 0,
+                    fontFamily: T.font, fontSize: 10, fontWeight: 600, color: T.pink, cursor: 'pointer',
+                  }}>Edit</button>
+              </div>
+            )}
+            {isEditingAi && (
               <div style={{ display: 'flex', gap: 10 }}>
                 <button
                   onClick={() => setIsEditingAi(false)}
@@ -290,6 +319,41 @@ export default function ClientProfile() {
               </div>
             ))}
           </div>
+
+          {client.aiContext.learned && (
+            <div style={{ 
+              marginTop: 14, paddingTop: 12, 
+              borderTop: `1px dashed ${T.cardBorder}`,
+              position: 'relative'
+            }}>
+              <div style={{
+                fontFamily: T.font, fontSize: 8.5, fontWeight: 700, letterSpacing: '1px',
+                textTransform: 'uppercase', color: T.pink, marginBottom: 8,
+                display: 'flex', alignItems: 'center', gap: 6
+              }}>
+                <span style={{ fontSize: 10 }}>✦</span> AI Learned Intelligence
+              </div>
+              <div style={{
+                fontFamily: T.font, fontSize: 11.5, color: T.ink, lineHeight: 1.5,
+                background: T.pinkTint, borderRadius: 10, padding: '10px 12px',
+                border: `1px solid ${T.pinkBorder}`, marginBottom: 10,
+                fontStyle: 'italic'
+              }}>
+                "{client.aiContext.learned.synthesis_note}"
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                {client.aiContext.learned.behavioral_flags.map((flag, i) => (
+                  <span key={i} style={{
+                    background: 'rgba(233,30,106,0.08)', border: `1px solid ${T.pinkBorder}`,
+                    borderRadius: 6, padding: '3px 8px',
+                    fontFamily: T.font, fontSize: 9, fontWeight: 600, color: T.pink,
+                  }}>
+                    {flag}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Contact */}

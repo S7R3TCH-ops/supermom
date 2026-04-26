@@ -81,6 +81,7 @@ export function toDisplayClient(row, jobs = []) {
       access: ai.access ?? row.access_info ?? '',
       comms: ai.comms ?? '',
       personal: ai.personal ?? '',
+      learned: ai.learned || null,
     },
     stats: {
       jobsTotal: sorted.length,

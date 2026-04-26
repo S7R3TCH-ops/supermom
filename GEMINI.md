@@ -77,6 +77,7 @@ At the end of every productive session, or upon major milestone completion, Gemi
 | **Interactive Home** | ✅ **Live** — Interactive 7-day strip; Dynamic EA empty-state messages |
 | **Contextual Nav** | ✅ **Live** — Route-aware Back button in LogoBar |
 | **Theme Toggle** | ✅ **Live** — Moved to Settings; premium switch UI |
+| **Test Isolation** | ✅ **Live** — Dedicated `tester@supermom.io` environment |
 
 ## Phase 14 UI/UX Polish & Dynamic Intelligence (Gemini CLI session, April 26, 2026)
 
@@ -91,12 +92,14 @@ Key enhancements for "Premium 2026" feel and intuitive navigation:
 | AS | UI Polish Pass | Active BottomNav glow, standardized sheet handles, editorial typography | `BottomNav.jsx`, `SectionLabel.jsx`, `JobDetailSheet.jsx` |
 | AT | Admin Sign Out | Direct Sign Out button added to Admin page for better accessibility | `Admin.jsx` |
 | AU | Critical Bug Fixes | Fixed signOut ReferenceError and stringified 'null' UUID database crash | `Admin.jsx`, `currentBusiness.js`, `NewJobSheet.jsx`, `useData.js` |
+| AV | Dark Mode Access | Increased contrast for muted labels/handles (WCAG compliance) | `tokens.js`, `SectionLabel.jsx`, `sheets/*.jsx` |
+| AW | Test Isolation | Decoupled E2E tests from personal accounts via `tester@supermom.io` | `auth.setup.ts`, `happy-path.spec.ts` |
 
 (Updated by Gemini CLI)
 
 ## Next priorities (as of April 26, 2026)
-1. **Complete UI/UX Polish List** — Haptic/Visual feedback (pulse effects), empty state icon illustrations, typography standardization.
-2. **Dark Mode Accessibility** — High-contrast check for `inkMuted` labels in dark theme.
+1. **Empty state icon illustrations** — Add visual interest to empty schedule/finance states.
+2. **Typography standardization** — Review all `SectionLabel` usages for consistency.
 3. **Configure Supabase redirect URL allowlist** — add `http://localhost:5173/**` and `https://supermom-v2.vercel.app/**`.
 4. **Self-serve client booking** — Start Phase 2 discovery.
 

@@ -438,10 +438,11 @@ export default function ClientProfile() {
             </div>
           ) : (
             client.history.slice(0, 5).map((h, i) => (
-              <div key={i} style={{
+              <div key={i} onClick={() => openJob(h.id)} style={{
                 background: T.card, border: `1.5px solid ${T.cardBorder}`,
                 borderRadius: 13, padding: '10px 12px',
                 display: 'flex', alignItems: 'center', gap: 10,
+                cursor: 'pointer'
               }}>
                 <div style={{
                   width: 42, flexShrink: 0, textAlign: 'center',
@@ -455,7 +456,7 @@ export default function ClientProfile() {
                   <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, marginTop: 1 }}>{h.duration}</div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
-                  <AmtCell amount={h.amt} size={13} />
+                  <AmtCell amount={privacyOn ? '•••' : h.amt} size={13} color={h.status === 'paid' ? T.ink : '#E91E6A'} />
                   <span style={{
                     background: h.status === 'paid' ? '#DCFCE7' : '#FFE0EC',
                     color:      h.status === 'paid' ? '#14532D' : '#9B0D3A',

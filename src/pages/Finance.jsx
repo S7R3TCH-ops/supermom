@@ -3,6 +3,7 @@ import { useAppTheme } from '../context/AppThemeContext';
 import SectionLabel from '../components/ui/SectionLabel';
 import { useJobs, useExpenses, notifyDataChanged, useClients, useInvoices } from '../data/useData';
 import { updateJob, recordPayment } from '../data/jobsRepo';
+import { useFinanceDetailSheet } from '../context/FinanceDetailSheetContext';
 import NudgeDraftSheet from '../components/sheets/NudgeDraftSheet';
 import NewExpenseSheet from '../components/sheets/NewExpenseSheet';
 
@@ -77,6 +78,7 @@ export default function Finance() {
   const { expenses: allExpenses } = useExpenses();
   const { clients } = useClients();
   const { invoices } = useInvoices();
+  const { open: openDetail } = useFinanceDetailSheet();
 
   async function markPaid(id) {
     if (busyId) return;
@@ -106,10 +108,13 @@ export default function Finance() {
   const collected = filtered
     .filter(j => j.payment_status === 'Paid')
     .reduce((s, j) => s + Number(j.total || 0), 0);
+  const collectedJobs = filtered.filter(j => j.payment_status === 'Paid');
+
   const outstanding = allJobs
     .filter(j => j.status === 'Completed' && j.payment_status !== 'Paid')
     .reduce((s, j) => s + Number(j.total || 0), 0);
-  const outstandingCount = allJobs.filter(j => j.status === 'Completed' && j.payment_status !== 'Paid').length;
+  const outstandingJobs = allJobs.filter(j => j.status === 'Completed' && j.payment_status !== 'Paid');
+  const outstandingCount = outstandingJobs.length;
   const periodTotal = filtered
     .filter(j => j.status !== 'Cancelled')
     .reduce((s, j) => s + Number(j.total || 0), 0);
@@ -141,9 +146,8 @@ export default function Finance() {
   const hourlyAvg = hoursWorked > 0 ? collected / hoursWorked : 0;
 
   const expPeriodStart = periodStart(period, now);
-  const periodExpenses = allExpenses
-    .filter(e => !e.deleted_at && new Date(e.expense_date) >= expPeriodStart)
-    .reduce((s, e) => s + Number(e.amount || 0), 0);
+  const periodExpList = allExpenses.filter(e => !e.deleted_at && new Date(e.expense_date) >= expPeriodStart);
+  const periodExpenses = periodExpList.reduce((s, e) => s + Number(e.amount || 0), 0);
 
   const ytdStart = new Date(now.getFullYear(), 0, 1);
   const ytdIncome = allJobs
@@ -275,12 +279,12 @@ export default function Finance() {
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 11 }}>
           {[
-            { label: 'Collected',    val: `$${collected.toFixed(0)}`,       sub: `This ${period.toLowerCase()}`,         color: '#22C55E', bg: mode === 'dark' ? 'rgba(34,197,94,0.1)'  : '#F0FFF5', border: mode === 'dark' ? 'rgba(34,197,94,0.22)'  : '#86EFAC' },
-            { label: 'Outstanding',  val: `$${outstanding.toFixed(0)}`,     sub: `${outstandingCount} unpaid`,           color: '#E91E6A', bg: mode === 'dark' ? 'rgba(233,30,106,0.1)' : '#FFF0F7', border: mode === 'dark' ? 'rgba(233,30,106,0.25)' : '#FFD6E8', action: outstandingCount > 0 ? 'Nudge all' : null, onAction: () => setShowNudges(true) },
-            { label: 'Expenses',     val: `$${periodExpenses.toFixed(0)}`,  sub: `This ${period.toLowerCase()}`,         color: '#F59E0B', bg: mode === 'dark' ? 'rgba(245,158,11,0.1)' : '#FFFBEB', border: mode === 'dark' ? 'rgba(245,158,11,0.25)' : '#FCD34D', action: '+ Add', onAction: () => setShowNewExpense(true) },
+            { label: 'Collected',    val: `$${collected.toFixed(0)}`,       sub: `This ${period.toLowerCase()}`,         color: '#22C55E', bg: mode === 'dark' ? 'rgba(34,197,94,0.1)'  : '#F0FFF5', border: mode === 'dark' ? 'rgba(34,197,94,0.22)'  : '#86EFAC', onClick: () => openDetail(`Collected (${period})`, collectedJobs, 'jobs') },
+            { label: 'Outstanding',  val: `$${outstanding.toFixed(0)}`,     sub: `${outstandingCount} unpaid`,           color: '#E91E6A', bg: mode === 'dark' ? 'rgba(233,30,106,0.1)' : '#FFF0F7', border: mode === 'dark' ? 'rgba(233,30,106,0.25)' : '#FFD6E8', action: outstandingCount > 0 ? 'Nudge all' : null, onAction: (e) => { e.stopPropagation(); setShowNudges(true); }, onClick: () => openDetail('Outstanding', outstandingJobs, 'jobs') },
+            { label: 'Expenses',     val: `$${periodExpenses.toFixed(0)}`,  sub: `This ${period.toLowerCase()}`,         color: '#F59E0B', bg: mode === 'dark' ? 'rgba(245,158,11,0.1)' : '#FFFBEB', border: mode === 'dark' ? 'rgba(245,158,11,0.25)' : '#FCD34D', action: '+ Add', onAction: (e) => { e.stopPropagation(); setShowNewExpense(true); }, onClick: () => openDetail(`Expenses (${period})`, periodExpList, 'expenses') },
             { label: 'Hours / rate', val: `${hoursWorked.toFixed(1)}h`,     sub: hourlyAvg > 0 ? `$${hourlyAvg.toFixed(0)} / hr avg` : 'no completed jobs', color: mode === 'dark' ? 'rgba(255,255,255,0.7)' : '#5A3040', bg: T.card, border: T.cardBorder },
           ].map((s, i) => (
-            <div key={i} style={{ background: s.bg, border: `1.5px solid ${s.border}`, borderRadius: 12, padding: '10px 11px' }}>
+            <div key={i} onClick={s.onClick} style={{ background: s.bg, border: `1.5px solid ${s.border}`, borderRadius: 12, padding: '10px 11px', cursor: s.onClick ? 'pointer' : 'default' }}>
               <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', color: T.inkMuted, marginBottom: 4 }}>{s.label}</div>
               <div style={{ fontFamily: T.serif, fontSize: 19, fontWeight: 500, letterSpacing: '-0.4px', color: s.color, marginBottom: 2, fontVariantNumeric: 'tabular-nums' }}>
                 {privacyOn && (i === 0 || i === 1) ? '•••' : s.val}

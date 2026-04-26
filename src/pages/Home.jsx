@@ -7,6 +7,7 @@ import { useJobs, useBusiness, useClients } from '../data/useData';
 import { useJobDetailSheet } from '../context/JobDetailSheetContext';
 import { usePostJobSheet } from '../context/PostJobSheetContext';
 import { useNewClientSheet } from '../context/NewClientSheetContext';
+import { useFinanceDetailSheet } from '../context/FinanceDetailSheetContext';
 import { useAuth } from '../context/AuthContext';
 import { updateDailyRoutes } from '../lib/maps';
 import { useGeofence } from '../context/GeofenceContext';
@@ -77,6 +78,7 @@ export default function Home() {
   const { openJob } = useJobDetailSheet();
   const { openPostJob } = usePostJobSheet();
   const { open: openNewClient } = useNewClientSheet();
+  const { open: openDetail } = useFinanceDetailSheet();
   const { profile } = useAuth();
   const { handleClockOut } = useGeofence();
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -193,11 +195,11 @@ export default function Home() {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: tightGap ? 12 : 0 }}>
             {[
-              { n: String(todayJobs.length), l: 'Jobs' },
-              { n: privacyOn ? '•••' : `$${revenueToday.toFixed(0)}`, l: 'Today' },
+              { n: String(todayJobs.length), l: 'Jobs', onClick: () => openDetail("Today's Schedule", todayJobs, 'jobs') },
+              { n: privacyOn ? '•••' : `$${revenueToday.toFixed(0)}`, l: 'Today', onClick: () => openDetail("Today's Revenue", todayJobs, 'jobs') },
               { n: next?.ai_context?.drive_to?.duration || '—', l: 'Drive' },
             ].map(s => (
-              <div key={s.l} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: '7px 6px', textAlign: 'center' }}>
+              <div key={s.l} onClick={s.onClick} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: '7px 6px', textAlign: 'center', cursor: s.onClick ? 'pointer' : 'default' }}>
                 <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 500, color: 'white', letterSpacing: '-0.3px' }}>{s.n}</div>
                 <div style={{ fontFamily: T.font, fontSize: 8.5, fontWeight: 600, color: 'rgba(255,255,255,0.38)', letterSpacing: '0.4px', textTransform: 'uppercase', marginTop: 2 }}>{s.l}</div>
               </div>

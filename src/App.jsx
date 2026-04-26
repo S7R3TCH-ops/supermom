@@ -9,6 +9,7 @@ import { ViewpointProvider, useViewpoint } from './context/ViewpointContext';
 import { NewJobSheetProvider } from './context/NewJobSheet';
 import { NewClientSheetProvider } from './context/NewClientSheet';
 import { JobDetailSheetProvider } from './context/JobDetailSheet';
+import { FinanceDetailSheetProvider } from './context/FinanceDetailSheet';
 import { PostJobSheetProvider } from './context/PostJobSheet';
 import { GeofenceProvider } from './context/GeofenceContext';
 import LogoBar from './components/layout/LogoBar';
@@ -250,9 +251,11 @@ function Gate() {
       <NewJobSheetProvider>
         <NewClientSheetProvider>
           <JobDetailSheetProvider>
-            <GeofenceProvider>
-              <AuthedShell />
-            </GeofenceProvider>
+            <FinanceDetailSheetProvider>
+              <GeofenceProvider>
+                <AuthedShell />
+              </GeofenceProvider>
+            </FinanceDetailSheetProvider>
           </JobDetailSheetProvider>
         </NewClientSheetProvider>
       </NewJobSheetProvider>

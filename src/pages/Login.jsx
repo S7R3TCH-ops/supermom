@@ -91,14 +91,14 @@ export default function Login() {
           </label>
 
           {err && (
-            <div style={{
+            <div aria-live="assertive" role="alert" style={{
               padding: 10, borderRadius: 8,
               background: T.redBg, border: `1px solid ${T.redBorder}`,
               font: `13px/1.3 ${T.font}`, color: T.ink,
             }}>{err}</div>
           )}
           {info && (
-            <div style={{
+            <div aria-live="polite" style={{
               padding: 10, borderRadius: 8,
               background: T.card, border: `1px solid ${T.cardBorder}`,
               font: `13px/1.3 ${T.font}`, color: T.ink,

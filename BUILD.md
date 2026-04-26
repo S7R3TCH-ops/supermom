@@ -85,7 +85,8 @@ When done:
 
 - [x] **12. Nudge Draft sheet** — AI-drafted text for overdue client. Opens from Finance Outstanding card or Client Profile. Edit before send.
   - Built as `src/components/sheets/NudgeDraftSheet.jsx`, wired to Finance page "Draft nudges" buttons.
-- [x] **13. Thank-you / Receipt draft sheet** — AI-drafted post-job message. Opens from Post-job state.
+- [x] **13. Thank-you / Receipt draft sheet** — AI-drafted post-job message with "Receipt" toggle. Respects AI Persona style.
+
   - Built as `ThankYouDraftSheet.jsx` + `api/ai/thank-you-draft.js`; teaser in PostJobSheet replaced with live button; SMS deep-link send, clipboard fallback if no phone.
 - [x] **14. Prep Notes generator** — AI summarizes client history (last 5 visits) into prep notes via Claude API. Built as `PrepNoteSheet.jsx` wired to `JobDetailSheet.jsx`.
 - [x] **15. Duration Estimator card** — AI-powered in `NewJobSheet.jsx` Step 2. Analyzes history/notes via Claude API to predict duration and explain reasoning.
@@ -99,9 +100,9 @@ When done:
 
 ### 🎯 Phase 6 — Settings & onboarding
 
-- [ ] **18. Settings page** — service rates, hourly rate, HST toggle, working hours.
-- [ ] **19. Sandra's Profile** — account info, avatar, signature line.
-- [ ] **20. Onboarding flow** — first-run walkthrough.
+- [x] **18. Settings page** — Business profile edit (name, phone, email, address, hourly rate) + HST toggle; saves to businesses table.
+- [x] **19. Sandra's Profile** — account info, avatar upload, and digital signature line added to Settings.
+- [x] **20. Onboarding flow** — Multi-step first-run walkthrough implemented in OnboardingWalkthrough.jsx.
 
 ### ✅ Phase 7 — Auth & backend wiring (DONE)
 
@@ -121,16 +122,26 @@ When done:
 
 ### 🎯 Phase 9 — Polish
 
-- [ ] **29. Conflict detection** — real logic (any 2 jobs within 1 hr incl. drive time).
+- [x] **29. Conflict detection** — `findConflicts()` implemented in jobsRepo.js; integrated into Home Today card and Calendar Day/Agenda views. Uses drive time data + 15m buffer.
 - [x] **30. 7-day week strip** on Home (below Today card).
   - Built inline in `Home.jsx`; Mon–Sun, today highlighted dark plum, pink job dots per day.
-- [ ] **31. Keyboard / accessibility pass** — ARIA labels, tab order, focus states.
+- [x] **31. Keyboard / accessibility pass** — Focus trap + Escape-to-close on all 8 sheet modals; aria-labels and roles added across core UI components.
 - [x] **32. Loading / empty / error states** — every page.
   - Error cards added to Home, Calendar, Finance (using `T.redBg`/`T.redBorder`); `error` destructured from `useJobs()` on all three pages.
 
+### ✅ Phase 10 — Automated Invoicing (DONE)
+
+- [x] **33. Database records** — `invoices` and `invoice_jobs` tables used to file formal records.
+- [x] **34. Sequential numbering** — `YYYY-XXX` format with auto-increment within current year.
+- [x] **35. Client-facing web view** — Secure, unguessable `/i/:id` route matching Sandra's branding.
+- [x] **36. Download PDF** — Integrated `window.print()` functionality for clients to save their invoice.
+- [x] **37. Post-job automation** — Auto-generation upon completion/payment; integrated preview in PostJobSheet.
+- [x] **38. Multi-channel sending** — AI-drafted messages now include invoice links with "Send via SMS" and "Send via Email" options.
+- [x] **39. Finance history** — Dedicated "Formal Invoices" list in Finance page with quick-view links.
+
 ---
 
-## How to mark an item done
+## Parked / Future Ideas
 
 When you finish an item:
 1. Change `[ ]` → `[x]`

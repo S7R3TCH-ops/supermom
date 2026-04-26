@@ -1,10 +1,13 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { createClient } from '../../data/clientsRepo';
 import { RECURRENCE } from '../../data/services';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 export default function NewClientSheet({ onClose, onCreated }) {
   const { T, mode } = useAppTheme();
+  const sheetRef = useRef(null);
+  useFocusTrap(sheetRef, true, onClose);
   const [first, setFirst] = useState('');
   const [last, setLast] = useState('');
   const [phone, setPhone] = useState('');
@@ -52,7 +55,7 @@ export default function NewClientSheet({ onClose, onCreated }) {
   }
 
   return (
-    <div role="dialog" aria-modal="true" style={{
+    <div ref={sheetRef} role="dialog" aria-modal="true" aria-label="Add new client" style={{
       position: 'fixed', inset: 0, zIndex: 60,
       display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
       background: 'rgba(4,1,12,0.62)',
@@ -88,38 +91,38 @@ export default function NewClientSheet({ onClose, onCreated }) {
         <form onSubmit={submit} className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '0 18px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{ display: 'flex', gap: 8 }}>
             <div style={{ flex: 1 }}>
-              <div style={label}>FIRST NAME *</div>
-              <input style={input} value={first} onChange={e => setFirst(e.target.value)} autoFocus />
+              <label htmlFor="nc-first" style={label}>FIRST NAME *</label>
+              <input id="nc-first" style={input} value={first} onChange={e => setFirst(e.target.value)} autoFocus />
             </div>
             <div style={{ flex: 1 }}>
-              <div style={label}>LAST NAME</div>
-              <input style={input} value={last} onChange={e => setLast(e.target.value)} />
+              <label htmlFor="nc-last" style={label}>LAST NAME</label>
+              <input id="nc-last" style={input} value={last} onChange={e => setLast(e.target.value)} />
             </div>
           </div>
           <div>
-            <div style={label}>PHONE</div>
-            <input style={input} type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="6475550100" />
+            <label htmlFor="nc-phone" style={label}>PHONE</label>
+            <input id="nc-phone" style={input} type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="6475550100" />
           </div>
           <div>
-            <div style={label}>EMAIL</div>
-            <input style={input} type="email" value={email} onChange={e => setEmail(e.target.value)} />
+            <label htmlFor="nc-email" style={label}>EMAIL</label>
+            <input id="nc-email" style={input} type="email" value={email} onChange={e => setEmail(e.target.value)} />
           </div>
           <div>
-            <div style={label}>STREET</div>
-            <input style={input} value={street} onChange={e => setStreet(e.target.value)} placeholder="12 Main St" />
+            <label htmlFor="nc-street" style={label}>STREET</label>
+            <input id="nc-street" style={input} value={street} onChange={e => setStreet(e.target.value)} placeholder="12 Main St" />
           </div>
           <div>
-            <div style={label}>CITY</div>
-            <input style={input} value={city} onChange={e => setCity(e.target.value)} />
+            <label htmlFor="nc-city" style={label}>CITY</label>
+            <input id="nc-city" style={input} value={city} onChange={e => setCity(e.target.value)} />
           </div>
 
           <div>
-            <div style={label}>RECURRENCE</div>
-            <div style={{ display: 'flex', background: mode === 'dark' ? 'rgba(255,255,255,0.04)' : T.pinkTint, borderRadius: 10, padding: 3 }}>
+            <div id="nc-recurrence-label" style={label}>RECURRENCE</div>
+            <div role="group" aria-labelledby="nc-recurrence-label" style={{ display: 'flex', background: mode === 'dark' ? 'rgba(255,255,255,0.04)' : T.pinkTint, borderRadius: 10, padding: 3 }}>
               {RECURRENCE.map(r => {
                 const on = r.key === recurrence;
                 return (
-                  <button type="button" key={r.label} onClick={() => setRecurrence(r.key)} style={{
+                  <button type="button" key={r.label} role="radio" aria-checked={on} onClick={() => setRecurrence(r.key)} style={{
                     flex: 1, padding: '8px 0', borderRadius: 8, border: 'none',
                     background: on ? '#E91E6A' : 'transparent',
                     fontFamily: T.font, fontSize: 11, fontWeight: 600,

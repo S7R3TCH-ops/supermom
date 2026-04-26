@@ -25,7 +25,7 @@ export default async function handler(req, res) {
     // 1. Fetch Client Details
     const { data: client, error: clientErr } = await supabase
       .from('clients')
-      .select('first_name, last_name, client_notes')
+      .select('first_name, last_name, notes, ai_context')
       .eq('id', clientId)
       .single();
 
@@ -51,15 +51,20 @@ export default async function handler(req, res) {
     // 3. Construct Prompt
     const style = businessProfile?.ai_profile?.style || 'professional';
     const clientName = [client.first_name, client.last_name].filter(Boolean).join(' ');
-    
-    let historyText = jobs.length > 0 
+
+    let historyText = jobs.length > 0
       ? jobs.map(j => `- ${j.scheduled_date}: ${j.service_name}${j.job_notes ? ` (${j.job_notes})` : ''}`).join('\n')
       : 'No previous completed jobs found.';
 
-    const prompt = `You are an AI assistant for Sandra, a busy business owner. 
+    const learned = client.ai_context?.learned;
+    const learnedBlock = learned?.synthesis_note
+      ? `\nLearned patterns: ${learned.synthesis_note}${learned.behavioral_flags?.length ? `\nFlags: ${learned.behavioral_flags.join(', ')}` : ''}${learned.preferred_time_of_day ? `\nPrefers ${learned.preferred_time_of_day} appointments.` : ''}`
+      : '';
+
+    const prompt = `You are an AI assistant for Sandra, a busy business owner.
 Your goal is to provide a concise, conversational 3-4 sentence briefing for her upcoming job with ${clientName}.
 
-Client Notes: ${client.client_notes || 'None'}
+Client Notes: ${client.notes || 'None'}${learnedBlock}
 
 Recent Job History:
 ${historyText}

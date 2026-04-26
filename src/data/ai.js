@@ -54,7 +54,19 @@ export function generateCommandBrief(job, businessProfile = null) {
     speechText += `Personal note: ${personal}. `;
   }
 
-  // 4. Job specific notes
+  // 5. Learned patterns (auto-enriched after each completed job)
+  const learned = clientAi.learned;
+  if (learned?.synthesis_note) {
+    bullets.push({ icon: '🧠', text: learned.synthesis_note });
+    speechText += `Pattern: ${learned.synthesis_note} `;
+  }
+  if (learned?.behavioral_flags?.length) {
+    learned.behavioral_flags.forEach(f =>
+      bullets.push({ icon: '📊', text: f.replace(/_/g, ' ') })
+    );
+  }
+
+  // 6. Job specific notes
   const jobNotes = job.job_notes || '';
   if (jobNotes) {
     bullets.push({ icon: '📌', text: jobNotes });

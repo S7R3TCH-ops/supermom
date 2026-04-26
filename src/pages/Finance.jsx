@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useAppTheme } from '../context/AppThemeContext';
 import SectionLabel from '../components/ui/SectionLabel';
-import { useJobs, useExpenses, notifyDataChanged, useClients } from '../data/useData';
+import { useJobs, useExpenses, notifyDataChanged, useClients, useInvoices } from '../data/useData';
 import { updateJob, recordPayment } from '../data/jobsRepo';
 import NudgeDraftSheet from '../components/sheets/NudgeDraftSheet';
 import NewExpenseSheet from '../components/sheets/NewExpenseSheet';
@@ -76,6 +76,7 @@ export default function Finance() {
   const { jobs: allJobs, loading, error } = useJobs();
   const { expenses: allExpenses } = useExpenses();
   const { clients } = useClients();
+  const { invoices } = useInvoices();
 
   async function markPaid(id) {
     if (busyId) return;
@@ -227,7 +228,7 @@ export default function Finance() {
 
         <div style={{ display: 'flex', background: 'rgba(255,255,255,0.07)', borderRadius: 9, padding: 3, marginBottom: 12 }}>
           {periods.map(p => (
-            <div key={p} onClick={() => setPeriod(p)} style={{ flex: 1, padding: '6px 0', borderRadius: 7, textAlign: 'center', background: period === p ? '#E91E6A' : 'transparent', fontFamily: T.font, fontSize: 10.5, fontWeight: 600, color: period === p ? 'white' : 'rgba(255,255,255,0.45)', cursor: 'pointer' }}>{p}</div>
+            <button key={p} onClick={() => setPeriod(p)} aria-pressed={period === p} style={{ flex: 1, padding: '6px 0', borderRadius: 7, textAlign: 'center', background: period === p ? '#E91E6A' : 'transparent', fontFamily: T.font, fontSize: 10.5, fontWeight: 600, color: period === p ? 'white' : 'rgba(255,255,255,0.45)', cursor: 'pointer', border: 'none' }}>{p}</button>
           ))}
         </div>
 
@@ -353,6 +354,61 @@ export default function Finance() {
             </div>
           );
         })}
+
+        <SectionLabel>Formal Invoices</SectionLabel>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginBottom: 16 }}>
+          {invoices.length === 0 ? (
+            <div style={{ padding: '16px 0', textAlign: 'center', color: T.inkMuted, fontFamily: T.font, fontSize: 12 }}>
+              No formal invoices yet.
+            </div>
+          ) : (
+            invoices.slice(0, 5).map(inv => (
+              <div
+                key={inv.id}
+                onClick={() => window.open(`/i/${inv.id}`, '_blank')}
+                style={{
+                  background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 12,
+                  padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 12,
+                  cursor: 'pointer'
+                }}
+              >
+                <div style={{ 
+                  width: 32, height: 32, borderRadius: 8, background: inv.status === 'Paid' ? 'rgba(34,197,94,0.1)' : 'rgba(233,30,106,0.1)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14
+                }}>
+                  {inv.status === 'Paid' ? '✅' : '📄'}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontFamily: T.serif, fontSize: 13, fontWeight: 500, color: T.ink }}>
+                    {inv.clients?.first_name} {inv.clients?.last_name}
+                  </div>
+                  <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, marginTop: 2 }}>
+                    {inv.invoice_number} · {inv.invoice_date}
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontFamily: T.serif, fontSize: 14, fontWeight: 600, color: T.ink }}>
+                    ${Number(inv.total_amount).toFixed(0)}
+                  </div>
+                  <div style={{ 
+                    fontFamily: T.font, fontSize: 8.5, fontWeight: 700, 
+                    color: inv.status === 'Paid' ? '#22C55E' : '#E91E6A', 
+                    textTransform: 'uppercase', marginTop: 2 
+                  }}>
+                    {inv.status}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+          {invoices.length > 5 && (
+            <div style={{ textAlign: 'center', padding: '4px 0' }}>
+              <button style={{ background: 'none', border: 'none', color: T.pink, fontFamily: T.font, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                View all {invoices.length} invoices
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* Tax Ready */}
         <SectionLabel>Tax Ready · {now.getFullYear()}</SectionLabel>

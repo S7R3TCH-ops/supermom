@@ -52,20 +52,26 @@ export default async function handler(req, res) {
     // 3. Construct Prompt
     const style = businessProfile?.ai_profile?.style || 'professional';
     const clientName = [client.first_name, client.last_name].filter(Boolean).join(' ');
+
+    const learnedPattern = client.ai_context?.learned?.duration_patterns?.[serviceName];
+    const patternBlock = learnedPattern
+      ? `\nLearned: avg actual ${learnedPattern.avg_actual_minutes} min, estimate ratio ${learnedPattern.avg_estimate_ratio?.toFixed(2)} over ${learnedPattern.sample_size} jobs. Weight this heavily.`
+      : '';
     
-    let historyText = jobs.length > 0 
+    let historyText = jobs.length > 0
       ? jobs.map(j => {
-          const dur = j.actual_duration || (j.estimated_hours ? j.estimated_hours * 60 : null);
-          return `- ${j.scheduled_date}: ${dur ? `${dur}m` : 'unknown duration'}${j.job_notes ? ` (${j.job_notes})` : ''}`;
+          const dur = j.actual_duration != null
+            ? j.actual_duration * 60
+            : j.estimated_hours ? j.estimated_hours * 60 : null;
+          return `- ${j.scheduled_date}: ${dur ? `${Math.round(dur)}m` : 'unknown duration'}${j.job_notes ? ` (${j.job_notes})` : ''}`;
         }).join('\n')
       : 'No previous completed jobs found for this service.';
 
-    const prompt = `You are an AI assistant for Sandra, a busy business owner. 
+    const prompt = `You are an AI assistant for Sandra, a busy business owner.
 Your goal is to provide a smart duration estimate for an upcoming ${serviceName} job with ${clientName}.
 
 Client Notes: ${client.notes || 'None'}
-Client Context: ${JSON.stringify(client.ai_context || {})}
-Client Tags: ${JSON.stringify(client.tags || [])}
+Client Tags: ${JSON.stringify(client.tags || [])}${patternBlock}
 
 Recent Job History for ${serviceName}:
 ${historyText}

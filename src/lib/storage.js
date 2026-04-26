@@ -2,16 +2,7 @@ import { supabase } from './supabase';
 
 const BUCKET = 'job-assets';
 
-/**
- * Uploads a file (photo or voice blob) to a private job-assets bucket.
- * Organizes by jobId/type/timestamp.
- * @param {string} jobId 
- * @param {File|Blob} file 
- * @param {'photo'|'voice'} type 
- * @returns {Promise<string>} The storage path (e.g. "uuid/photos/file.jpg")
- */
 export async function uploadFile(jobId, file, type = 'photo') {
-  // Extract extension or default to webm for audio
   const ext = file.name ? file.name.split('.').pop() : 'webm';
   const fileName = `${type}_${Date.now()}.${ext}`;
   const path = `${jobId}/${type}s/${fileName}`;
@@ -21,14 +12,22 @@ export async function uploadFile(jobId, file, type = 'photo') {
     .upload(path, file, { upsert: false });
 
   if (error) throw error;
-  return data.path; // Returns the internal path
+  return data.path;
 }
 
-/**
- * Generates temporary signed URLs for a list of storage paths.
- * @param {string[]} paths 
- * @returns {Promise<string[]>} List of signed URLs
- */
+export async function uploadAsset(businessId, file, category = 'logos') {
+  const ext = file.name.split('.').pop();
+  const fileName = `${category}_${Date.now()}.${ext}`;
+  const path = `assets/${businessId}/${category}/${fileName}`;
+
+  const { data, error } = await supabase.storage
+    .from(BUCKET)
+    .upload(path, file, { upsert: true });
+
+  if (error) throw error;
+  return data.path;
+}
+
 export async function getSignedUrls(paths) {
   if (!paths || paths.length === 0) return [];
   const { data, error } = await supabase.storage
@@ -42,11 +41,6 @@ export async function getSignedUrls(paths) {
   return data.map((d) => d.signedUrl || null);
 }
 
-/**
- * Helper for a single path.
- * @param {string} path 
- * @returns {Promise<string|null>}
- */
 export async function getSignedUrl(path) {
   if (!path) return null;
   const urls = await getSignedUrls([path]);

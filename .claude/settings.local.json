@@ -20,7 +20,10 @@
       "Bash(node scripts/provision.mjs)",
       "Bash(git -C \"C:/Users/jlund/Documents/Projects/supermom v2.0\" log --all --diff-filter=D --name-only)",
       "Bash(git commit *)",
-      "Bash(npx vercel *)"
+      "Bash(npx vercel *)",
+      "Bash(git push *)",
+      "Bash(xargs grep *)",
+      "Bash(npx tsc *)"
     ]
   }
 }

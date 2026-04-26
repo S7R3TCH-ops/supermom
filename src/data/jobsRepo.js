@@ -5,6 +5,7 @@
 
 import { supabase } from '../lib/supabase';
 import { getCurrentBusinessId } from './currentBusiness';
+import { generateInvoiceForJob } from './invoicesRepo';
 
 const SELECT_FULL = '*';
 
@@ -279,11 +280,21 @@ export async function recordPayment(jobId, amount, method = 'Cash', notes = null
   // 3. Update job status
   const status = amount >= (job.total_amount || 0) ? 'Paid' : 'Partial';
 
-  return updateJob(jobId, {
+  const updated = await updateJob(jobId, {
     payment_status: status,
     job_status: 'Completed',
-    payment_method: method // also update this field on the job table for redundancy/quick lookup
+    payment_method: method,
   });
+
+  // Automatically generate invoice
+  try {
+    await generateInvoiceForJob(jobId);
+  } catch (invErr) {
+    console.error('Auto Invoice Generation Error:', invErr);
+  }
+
+  triggerLearningEnrichment(job.client_id);
+  return updated;
 }
 
 // ---------- helpers ----------
@@ -319,6 +330,8 @@ function nthSunday(year, month, n) {
 // Returns jobs within `windowMinutes` of the given scheduled_at ISO string.
 // Operates on already-fetched + decorated jobs (so the UI can pre-load and
 // then check conflicts without a roundtrip).
+// When a job has a known drive_to.durationValue (seconds), that travel time
+// plus a 15-min comfort buffer replaces the flat windowMinutes threshold.
 export function findConflicts(allJobs, scheduledAtISO, durationMin, windowMinutes = 60) {
   const t = new Date(scheduledAtISO).getTime();
   if (Number.isNaN(t)) return [];
@@ -331,11 +344,24 @@ export function findConflicts(allJobs, scheduledAtISO, durationMin, windowMinute
     const overlap = jt < endT && je > t;
     if (overlap) return true;
     const gap = Math.min(Math.abs(jt - endT), Math.abs(t - je));
-    return gap < windowMinutes * 60_000;
+    const driveS = j.ai_context?.drive_to?.durationValue ?? 0;
+    const threshold = driveS > 0
+      ? (Math.round(driveS / 60) + 15) * 60_000
+      : windowMinutes * 60_000;
+    return gap < threshold;
   });
 }
 
-// ---------- GCal Sync ----------
+// ---------- GCal Sync + Learning ----------
+
+function triggerLearningEnrichment(clientId) {
+  if (!clientId) return;
+  fetch('/api/ai/enrich-client', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ clientId }),
+  }).catch(err => console.error('Learning enrichment error:', err));
+}
 
 async function triggerGCalSync(jobId, action = 'upsert') {
   try {

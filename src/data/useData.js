@@ -166,3 +166,29 @@ export function useBusiness() {
 
   return { business, loading, error, refresh, update };
 }
+
+import { fetchInvoices } from './invoicesRepo';
+
+export function useInvoices() {
+  const [invoices, setInvoices] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await fetchInvoices();
+      setInvoices(data);
+    } catch (e) {
+      setError(e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { refresh(); }, [refresh]);
+  useChangeListener(refresh);
+
+  return { invoices, loading, error, refresh };
+}

@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useAppTheme } from '../../context/AppThemeContext';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { fetchJobById, updateJob, softDeleteJob } from '../../data/jobsRepo';
 import { notifyDataChanged } from '../../data/useData';
 import { usePostJobSheet } from '../../context/PostJobSheetContext';
@@ -8,6 +9,7 @@ import { uploadFile, getSignedUrls, getSignedUrl } from '../../lib/storage';
 import { generateCommandBrief, speakBrief, stopSpeaking } from '../../data/ai';
 import { useBusiness } from '../../data/useData';
 import PrepNoteSheet from '../sheets/PrepNoteSheet';
+import { supabase } from '../../lib/supabase';
 
 const STATUS_COLORS = {
   Scheduled: { bg: 'rgba(59,130,246,0.12)',   color: '#3B82F6', border: 'rgba(59,130,246,0.25)' },
@@ -43,6 +45,8 @@ function calcEnd(timeStr, hours) {
 export default function JobDetailSheet({ jobId, onClose }) {
   const { T, mode } = useAppTheme();
   const { business } = useBusiness();
+  const sheetRef = useRef(null);
+  useFocusTrap(sheetRef, true, onClose);
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);       // fetch errors — blocks sheet body
@@ -56,6 +60,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
   const [showSeriesPicker, setShowSeriesPicker] = useState(false);
   const [pendingAction, setPendingAction] = useState(null); // 'save' or 'delete'
   const [showDeepPrep, setShowDeepPrep] = useState(false);
+  const [invoiceId, setInvoiceId] = useState(null);
 
   useEffect(() => {
     if (!jobId) return;
@@ -63,7 +68,21 @@ export default function JobDetailSheet({ jobId, onClose }) {
     setLoading(true);
     setError(null);
     fetchJobById(jobId)
-      .then(j => { if (alive) { setJob(j); setLoading(false); } })
+      .then(j => { 
+        if (alive) { 
+          setJob(j); 
+          setLoading(false); 
+          // Check for existing invoice
+          supabase
+            .from('invoice_jobs')
+            .select('invoice_id')
+            .eq('job_id', jobId)
+            .maybeSingle()
+            .then(({ data }) => {
+              if (data && alive) setInvoiceId(data.invoice_id);
+            });
+        } 
+      })
       .catch(e => { if (alive) { setError(e.message || String(e)); setLoading(false); } });
     return () => { alive = false; };
   }, [jobId]);
@@ -171,8 +190,10 @@ export default function JobDetailSheet({ jobId, onClose }) {
 
   return (
     <div
+      ref={sheetRef}
       role="dialog"
       aria-modal="true"
+      aria-label="Job details"
       style={{
         position: 'fixed', inset: 0, zIndex: 200,
         display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
@@ -495,6 +516,27 @@ function ReadMode({
             >
               Delete Job
             </button>
+          )}
+
+          {invoiceId && (
+            <div style={{
+              marginTop: 12, background: 'white', borderRadius: 16, border: '1.5px solid var(--pink-border)', padding: '14px 16px',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+            }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink)' }}>Invoice Ready</div>
+                <div style={{ fontSize: 11, color: 'var(--ink-muted)', marginTop: 2 }}>Formal record for taxes</div>
+              </div>
+              <button 
+                onClick={() => window.open(`/i/${invoiceId}`, '_blank')}
+                style={{ 
+                  background: 'var(--pink-tint)', color: 'var(--pink)', border: 'none', 
+                  padding: '7px 14px', borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: 'pointer' 
+                }}
+              >
+                VIEW
+              </button>
+            </div>
           )}
         </div>
       )}

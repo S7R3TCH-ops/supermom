@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppTheme } from '../../context/AppThemeContext';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import SectionLabel from '../ui/SectionLabel';
 import NewClientSheet from './NewClientSheet';
 import { fetchClients } from '../../data/clientsRepo';
@@ -40,6 +41,8 @@ function fmtDuration(min) {
 
 export default function NewJobSheet({ prefillClientId, onClose }) {
   const { T, mode, privacyOn } = useAppTheme();
+  const sheetRef = useRef(null);
+  useFocusTrap(sheetRef, true, onClose);
   const [step, setStep] = useState(1);
 
   // Fetch clients + jobs on mount (for the picker + conflict detection).
@@ -177,7 +180,7 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
   }
 
   return (
-    <div role="dialog" aria-modal="true" style={{
+    <div ref={sheetRef} role="dialog" aria-modal="true" aria-label="Book new job" style={{
       position: 'fixed', inset: 0, zIndex: 50,
       display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
       background: 'rgba(4,1,12,0.62)', animation: 'njFade 180ms ease-out',

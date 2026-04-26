@@ -1,13 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { fetchDeepPrepNote } from '../../data/ai';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
-/**
- * PrepNoteSheet
- * A Sandra-style bottom sheet that generates and displays an AI prep note for a client.
- */
 export default function PrepNoteSheet({ isOpen, onClose, clientId, businessProfile }) {
   const { T, mode } = useAppTheme();
+  const sheetRef = useRef(null);
+  useFocusTrap(sheetRef, isOpen, onClose);
   const [summary, setSummary] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -33,7 +32,11 @@ export default function PrepNoteSheet({ isOpen, onClose, clientId, businessProfi
   if (!isOpen) return null;
 
   return (
-    <div 
+    <div
+      ref={sheetRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Prep note"
       style={{
         position: 'fixed', inset: 0, zIndex: 1000,
         display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',

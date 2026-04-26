@@ -24,6 +24,7 @@ export default function BottomNav() {
           key={k}
           to={to}
           end={to === '/'}
+          aria-label={label}
           style={({ isActive }) => ({
             flex: 1,
             display: 'flex',
@@ -36,7 +37,7 @@ export default function BottomNav() {
         >
           {({ isActive }) => (
             <>
-              <div style={{ fontSize: 17, lineHeight: 1 }}>{icon}</div>
+              <div aria-hidden="true" style={{ fontSize: 17, lineHeight: 1 }}>{icon}</div>
               <div style={{
                 fontFamily: T.font,
                 fontSize: 9,

@@ -114,12 +114,16 @@ export default function Home() {
     return () => stopSpeaking();
   }, []);
 
-  // Tight-gap detection: any consecutive pair within < 60min
+  // Tight-gap detection: any consecutive pair where free time (gap minus known drive) < 15 min,
+  // or gap < 60 min when drive time is unknown.
   const tightGap = useMemo(() => {
     for (let i = 0; i < todayJobs.length - 1; i++) {
       const a = todayJobs[i], b = todayJobs[i + 1];
       const gapMin = Math.round((b.start - a.end) / 60000);
-      if (gapMin < 60 && gapMin >= 0) return { a, b, gapMin };
+      if (gapMin < 0) continue;
+      const driveMin = Math.round((b.raw?.ai_context?.drive_to?.durationValue ?? 0) / 60);
+      const threshold = driveMin > 0 ? driveMin + 15 : 60;
+      if (gapMin < threshold) return { a, b, gapMin, driveMin };
     }
     return null;
   }, [todayJobs]);
@@ -175,7 +179,8 @@ export default function Home() {
               <div style={{ flex: 1 }}>
                 <div style={{ fontFamily: T.font, fontSize: 11, fontWeight: 700, color: '#FCD34D', marginBottom: 1 }}>Tight gap today</div>
                 <div style={{ fontFamily: T.font, fontSize: 10.5, color: 'rgba(255,255,255,0.55)', lineHeight: 1.4 }}>
-                  {tightGap.a.client_name} → {tightGap.b.client_name} = {tightGap.gapMin} min
+                  {tightGap.a.client_name} → {tightGap.b.client_name} = {tightGap.gapMin} min gap
+                  {tightGap.driveMin > 0 && ` (incl. ~${tightGap.driveMin} min drive)`}
                 </div>
               </div>
             </div>

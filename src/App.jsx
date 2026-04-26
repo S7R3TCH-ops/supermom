@@ -10,6 +10,7 @@ import { PostJobSheetProvider } from './context/PostJobSheet';
 import { GeofenceProvider } from './context/GeofenceContext';
 import LogoBar from './components/layout/LogoBar';
 import BottomNav from './components/layout/BottomNav';
+import OnboardingWalkthrough from './components/layout/OnboardingWalkthrough';
 import FAB from './components/ui/FAB';
 import { useRealtimeSync } from './data/useData';
 
@@ -21,6 +22,7 @@ const Finance = lazy(() => import('./pages/Finance'));
 const Login = lazy(() => import('./pages/Login'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Admin = lazy(() => import('./pages/Admin'));
+const InvoiceView = lazy(() => import('./pages/InvoiceView'));
 
 function AuthedShell() {
   const { T } = useAppTheme();
@@ -31,6 +33,7 @@ function AuthedShell() {
       height: '100svh', width: '100%',
       background: T.bg, color: T.ink, overflow: 'hidden',
     }}>
+      <OnboardingWalkthrough />
       <LogoBar />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
         <Suspense fallback={<div style={{ padding: 20, color: T.inkMuted, fontFamily: T.font, fontSize: 13 }}>Loading...</div>}>
@@ -98,7 +101,12 @@ export default function App() {
     <AppThemeProvider>
       <BrowserRouter>
         <AuthProvider>
-          <Gate />
+          <Suspense fallback={null}>
+            <Routes>
+              <Route path="/i/:id" element={<InvoiceView />} />
+              <Route path="*" element={<Gate />} />
+            </Routes>
+          </Suspense>
         </AuthProvider>
       </BrowserRouter>
     </AppThemeProvider>

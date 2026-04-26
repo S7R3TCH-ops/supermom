@@ -119,6 +119,7 @@ The schema is multi-tenant and agentic-AI-ready (richer than this app strictly n
 - [x] Google Calendar sync — OAuth via `/api/auth/google/` and sync via `/api/sync/gcal`
 - [x] AI context features (duration estimate, prep notes)
 
+
 ---
 
 ## Critical rules — read before every build

@@ -57,13 +57,17 @@ function enrichDisplayJobs(displayJobs, clientLookup) {
     .sort((a, b) => a.start - b.start);
 }
 
-// Returns [{a, b, minutes}] for consecutive-same-day jobs with <60min gap.
+// Returns [{a, b, minutes, driveMin}] for consecutive-same-day jobs where free
+// time (gap minus known drive) is < 15 min, or gap < 60 when drive is unknown.
 function findSameDayConflicts(jobsOnDay) {
   const out = [];
   for (let i = 0; i < jobsOnDay.length - 1; i++) {
     const a = jobsOnDay[i], b = jobsOnDay[i + 1];
     const gapMin = Math.round((b.start - a.end) / 60000);
-    if (gapMin < 60) out.push({ a, b, minutes: gapMin });
+    if (gapMin < 0) continue;
+    const driveMin = Math.round((b.raw?.ai_context?.drive_to?.durationValue ?? 0) / 60);
+    const threshold = driveMin > 0 ? driveMin + 15 : 60;
+    if (gapMin < threshold) out.push({ a, b, minutes: gapMin, driveMin });
   }
   return out;
 }
@@ -166,13 +170,13 @@ export default function Calendar() {
         {/* View toggle */}
         <div style={{ display: 'flex', background: 'rgba(255,255,255,0.07)', borderRadius: 9, padding: 3 }}>
           {VIEWS.map(v => (
-            <div key={v} onClick={() => setView(v)} style={{
+            <button key={v} onClick={() => setView(v)} aria-pressed={view === v} style={{
               flex: 1, padding: '6px 0', borderRadius: 7, textAlign: 'center',
               background: view === v ? '#E91E6A' : 'transparent',
               fontFamily: T.font, fontSize: 11, fontWeight: 600,
               color: view === v ? 'white' : 'rgba(255,255,255,0.55)',
-              cursor: 'pointer',
-            }}>{v}</div>
+              cursor: 'pointer', border: 'none',
+            }}>{v}</button>
           ))}
         </div>
       </div>

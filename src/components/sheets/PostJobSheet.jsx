@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useAppTheme } from '../../context/AppThemeContext';
 import SectionLabel from '../ui/SectionLabel';
 import { fetchJobById, recordPayment } from '../../data/jobsRepo';
 import { notifyDataChanged } from '../../data/useData';
 import ThankYouDraftSheet from './ThankYouDraftSheet';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { supabase } from '../../lib/supabase';
 
 function fmtDuration(hours) {
   if (!hours) return null;
@@ -16,6 +18,8 @@ function fmtDuration(hours) {
 
 export default function PostJobSheet({ jobId, onClose }) {
   const { T, mode } = useAppTheme();
+  const sheetRef = useRef(null);
+  useFocusTrap(sheetRef, true, onClose);
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
   const [fetchErr, setFetchErr] = useState(null);
@@ -25,6 +29,7 @@ export default function PostJobSheet({ jobId, onClose }) {
   const [mutErr, setMutErr] = useState(null);
   const [done, setDone] = useState(false);
   const [showThankYou, setShowThankYou] = useState(false);
+  const [invoiceId, setInvoiceId] = useState(null);
 
   useEffect(() => {
     setLoading(true);
@@ -33,6 +38,15 @@ export default function PostJobSheet({ jobId, onClose }) {
       .then(j => {
         setJob(j);
         setAmount(String(j?.total_amount ?? j?.flat_rate ?? 0));
+        // Check for existing invoice
+        supabase
+          .from('invoice_jobs')
+          .select('invoice_id')
+          .eq('job_id', jobId)
+          .maybeSingle()
+          .then(({ data }) => {
+            if (data) setInvoiceId(data.invoice_id);
+          });
       })
       .catch(e => setFetchErr(e.message))
       .finally(() => setLoading(false));
@@ -44,9 +58,18 @@ export default function PostJobSheet({ jobId, onClose }) {
     try {
       const amt = parseFloat(amount) || 0;
       await recordPayment(jobId, amt, method);
+      
+      // Fetch the newly generated invoiceId
+      const { data } = await supabase
+        .from('invoice_jobs')
+        .select('invoice_id')
+        .eq('job_id', jobId)
+        .maybeSingle();
+      if (data) setInvoiceId(data.invoice_id);
+
       notifyDataChanged();
       setDone(true);
-      setTimeout(onClose, 1400);
+      setTimeout(onClose, 2500); // Give them a bit more time to see the invoice link if they want
     } catch (e) {
       setMutErr(e.message || String(e));
       setBusy(false);
@@ -59,7 +82,7 @@ export default function PostJobSheet({ jobId, onClose }) {
   const parsedAmount = parseFloat(amount) || 0;
 
   return (
-    <div role="dialog" aria-modal="true" style={{
+    <div ref={sheetRef} role="dialog" aria-modal="true" aria-label="Complete job" style={{
       position: 'fixed', inset: 0, zIndex: 60,
       display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
       background: 'rgba(4,1,12,0.65)',
@@ -203,6 +226,28 @@ export default function PostJobSheet({ jobId, onClose }) {
           {done && (
             <div style={{ padding: '12px 0', textAlign: 'center', fontFamily: T.serif, fontSize: 15, color: '#22C55E' }}>
               Payment logged ✓
+            </div>
+          )}
+
+          {/* Invoice Generated Card */}
+          {invoiceId && (
+            <div style={{
+              marginTop: 14, background: 'white', borderRadius: 16, border: '1.5px solid var(--pink-border)', padding: '14px 16px',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+            }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink)' }}>Invoice Generated</div>
+                <div style={{ fontSize: 11, color: 'var(--ink-muted)', marginTop: 2 }}>Formal record filed in Finance</div>
+              </div>
+              <button 
+                onClick={() => window.open(`/i/${invoiceId}`, '_blank')}
+                style={{ 
+                  background: 'var(--pink-tint)', color: 'var(--pink)', border: 'none', 
+                  padding: '7px 14px', borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: 'pointer' 
+                }}
+              >
+                VIEW
+              </button>
             </div>
           )}
 

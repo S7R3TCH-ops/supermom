@@ -93,7 +93,7 @@ export default function Clients() {
       {/* Filter chips */}
       <div className="sm-scroll" style={{ display: 'flex', gap: 6, padding: '10px 13px 6px', overflowX: 'auto', flexShrink: 0, background: T.bg }}>
         {filters.map(f => (
-          <button key={f} onClick={() => setFilter(f)} style={{
+          <button key={f} onClick={() => setFilter(f)} aria-pressed={filter === f} style={{
             background: filter === f ? '#E91E6A' : T.card,
             border: `1px solid ${filter === f ? '#E91E6A' : T.cardBorder}`,
             borderRadius: 20, padding: '5px 12px', whiteSpace: 'nowrap',

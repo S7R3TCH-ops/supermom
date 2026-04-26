@@ -1,8 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAppTheme } from '../../context/AppThemeContext';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 export default function NudgeDraftSheet({ isOpen, onClose, clientsWithUnpaid }) {
   const { T, mode } = useAppTheme();
+  const sheetRef = useRef(null);
+  useFocusTrap(sheetRef, isOpen, onClose);
   const [selectedClient, setSelectedClient] = useState(null);
   const [draft, setDraft] = useState('');
 
@@ -23,7 +26,11 @@ export default function NudgeDraftSheet({ isOpen, onClose, clientsWithUnpaid }) 
   if (!isOpen) return null;
 
   return (
-    <div 
+    <div
+      ref={sheetRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Send payment nudge"
       style={{
         position: 'fixed', inset: 0, zIndex: 300,
         display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',

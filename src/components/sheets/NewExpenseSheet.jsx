@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { createExpense } from '../../data/expensesRepo';
 import { notifyDataChanged } from '../../data/useData';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 const CATEGORIES = [
   { key: 'Supplies',  icon: '🧹' },
@@ -18,6 +19,8 @@ function todayISO() {
 
 export default function NewExpenseSheet({ isOpen, onClose }) {
   const { T, mode } = useAppTheme();
+  const sheetRef = useRef(null);
+  useFocusTrap(sheetRef, isOpen, onClose);
   const [category, setCategory] = useState('Supplies');
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(todayISO);
@@ -59,6 +62,10 @@ export default function NewExpenseSheet({ isOpen, onClose }) {
 
   return (
     <div
+      ref={sheetRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Log expense"
       style={{
         position: 'fixed', inset: 0, zIndex: 300,
         display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
@@ -98,12 +105,12 @@ export default function NewExpenseSheet({ isOpen, onClose }) {
         <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '0 18px 6px' }}>
 
           {/* Category */}
-          <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.7px', textTransform: 'uppercase', color: T.inkMuted, marginBottom: 8 }}>Category</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 6, marginBottom: 18 }}>
+          <div id="ex-cat-label" style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.7px', textTransform: 'uppercase', color: T.inkMuted, marginBottom: 8 }}>Category</div>
+          <div role="group" aria-labelledby="ex-cat-label" style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 6, marginBottom: 18 }}>
             {CATEGORIES.map(c => {
               const on = category === c.key;
               return (
-                <button key={c.key} onClick={() => setCategory(c.key)} style={{
+                <button key={c.key} role="radio" aria-checked={on} onClick={() => setCategory(c.key)} style={{
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
                   padding: '10px 4px', borderRadius: 12,
                   border: `1.5px solid ${on ? '#F59E0B' : T.cardBorder}`,
@@ -118,10 +125,11 @@ export default function NewExpenseSheet({ isOpen, onClose }) {
           </div>
 
           {/* Amount */}
-          <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.7px', textTransform: 'uppercase', color: T.inkMuted, marginBottom: 8 }}>Amount</div>
+          <label htmlFor="ex-amount" style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.7px', textTransform: 'uppercase', color: T.inkMuted, marginBottom: 8, display: 'block' }}>Amount</label>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 12, padding: '10px 14px', marginBottom: 16 }}>
             <span style={{ fontFamily: T.serif, fontSize: 20, fontWeight: 500, color: T.inkSub }}>$</span>
             <input
+              id="ex-amount"
               type="number"
               value={amount}
               onChange={e => setAmount(e.target.value)}
@@ -134,9 +142,10 @@ export default function NewExpenseSheet({ isOpen, onClose }) {
           </div>
 
           {/* Date */}
-          <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.7px', textTransform: 'uppercase', color: T.inkMuted, marginBottom: 8 }}>Date</div>
+          <label htmlFor="ex-date" style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.7px', textTransform: 'uppercase', color: T.inkMuted, marginBottom: 8, display: 'block' }}>Date</label>
           <div style={{ background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 12, padding: '10px 14px', marginBottom: 16 }}>
             <input
+              id="ex-date"
               type="date"
               value={date}
               onChange={e => setDate(e.target.value)}
@@ -145,9 +154,10 @@ export default function NewExpenseSheet({ isOpen, onClose }) {
           </div>
 
           {/* Notes */}
-          <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.7px', textTransform: 'uppercase', color: T.inkMuted, marginBottom: 8 }}>Notes <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional)</span></div>
+          <label htmlFor="ex-notes" style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.7px', textTransform: 'uppercase', color: T.inkMuted, marginBottom: 8, display: 'block' }}>Notes <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional)</span></label>
           <div style={{ background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 12, padding: '10px 14px', marginBottom: 16 }}>
             <textarea
+              id="ex-notes"
               value={notes}
               onChange={e => setNotes(e.target.value)}
               placeholder="e.g. gas to Brampton, cleaning supplies from Walmart"

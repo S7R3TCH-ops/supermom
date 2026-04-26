@@ -24,23 +24,33 @@ export default function LogoBar() {
         style={{ height: 30, objectFit: 'contain', objectPosition: 'left center' }}
       />
       <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-        <button onClick={togglePrivacy} title="Privacy mode" style={{
-          width: 28, height: 28, borderRadius: 7,
-          background: privacyOn ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.15)',
-          border: '1px solid rgba(255,255,255,0.28)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          cursor: 'pointer', fontSize: 12,
-        }}>{privacyOn ? '🙈' : '👁'}</button>
-        <button onClick={toggleMode} title="Toggle theme" style={{
-          width: 28, height: 28, borderRadius: 7,
-          background: 'rgba(255,255,255,0.15)',
-          border: '1px solid rgba(255,255,255,0.28)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          cursor: 'pointer', fontSize: 12,
-        }}>{mode === 'dark' ? '☀️' : '🌙'}</button>
+        <button
+          onClick={togglePrivacy}
+          aria-label={privacyOn ? 'Privacy mode on — tap to show info' : 'Privacy mode off — tap to hide info'}
+          aria-pressed={privacyOn}
+          title="Privacy mode"
+          style={{
+            width: 28, height: 28, borderRadius: 7,
+            background: privacyOn ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.15)',
+            border: '1px solid rgba(255,255,255,0.28)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', fontSize: 12,
+          }}>{privacyOn ? '🙈' : '👁'}</button>
+        <button
+          onClick={toggleMode}
+          aria-label={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          title="Toggle theme"
+          style={{
+            width: 28, height: 28, borderRadius: 7,
+            background: 'rgba(255,255,255,0.15)',
+            border: '1px solid rgba(255,255,255,0.28)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', fontSize: 12,
+          }}>{mode === 'dark' ? '☀️' : '🌙'}</button>
         <button
           onClick={onAvatarClick}
-          title={user ? `Sign out ${user.email}` : 'Profile'}
+          aria-label="Settings"
+          title={user ? `Settings (${user.email})` : 'Settings'}
           style={{
             width: 28, height: 28, borderRadius: 8,
             background: 'rgba(255,255,255,0.22)',

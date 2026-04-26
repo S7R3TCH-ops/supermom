@@ -10,6 +10,10 @@ A mobile-first CRM & operations web app for **Sandra**, a solo personal-life-ope
 
 This is a **managed service product** — Sandra is the first user, but the architecture should support onboarding other solo operators in future.
 
+### Platform Hierarchy
+- **Super Admin (Joel)**: Global admin role (`admin` in DB). Not linked to any specific business. Has ultimate authority to switch "Viewpoints" and manage the platform.
+- **Business Owners (Sandra, etc.)**: Linked to their own `business_id` as `owner` role. They see only their own data.
+
 ---
 
 ## Tech Stack
@@ -28,70 +32,39 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 ---
 
-## Repo structure (target: supermom-v2)
+## Common Scripts
 
-```
-supermom-v2/
-├── CLAUDE.md
-├── DESIGN.md
-├── .env.example               ← Template for secrets
-├── public/
-```
+| Script | Purpose |
+|---|---|
+| `npm run dev` | Start local development server |
+| `node scripts/reset-platform.mjs` | Wipes all client data, preserves Super Admin (Joel) |
+| `node scripts/provision-sandra.mjs`| Re-creates Sandra's business and owner account fresh |
+| `node scripts/inspect.mjs` | Summary of current DB tables and users |
 
 ---
 
 ## Security & Environment
-- **CRITICAL**: Never commit `.env` or the `docs/` folder. They are ignored in `.gitignore`.
-- **API Keys**: Use `VITE_` prefix for all client-side env vars (e.g., `VITE_SUPABASE_URL`). Server-only keys (e.g. `GOOGLE_MAPS_API_KEY`) live in Vercel env without the `VITE_` prefix and are accessed only in `api/` serverless functions.
-- **Mock Data**: Gone. All pages query live Supabase data. Do not re-introduce mock data.
+- **CRITICAL**: Never commit `.env`. They are ignored in `.gitignore`.
+- **API Keys**: Use `VITE_` prefix for all client-side env vars (e.g., `VITE_SUPABASE_URL`). Server-only keys live in Vercel env without the `VITE_` prefix.
 
 ---
 
 ## Supabase Schema
 
-> **Source of truth: `supabase_schema.sql` at repo root.** That file is a snapshot of the live Supabase project (`lskzzsjmmtsosfneuovt`) and reflects the actual schema the app queries. Do not invent a parallel/simpler schema — extend the existing one.
-
-The schema is multi-tenant and agentic-AI-ready (richer than this app strictly needs today, designed to support multiple operators and future automation):
+> **Source of truth: `supabase_schema.sql` at repo root.**
 
 | Table | Purpose |
 |---|---|
 | `businesses` | One row per operator's business (Sandra → "Supermom for Hire") |
 | `users` | Links `auth.users.id` → `business_id`, with role (`owner`/`admin`/`worker`) |
-| `clients` | `first_name`/`last_name` (split), `business_id`-scoped, `ai_context` jsonb, `tags` array, soft-delete via `deleted_at` |
-| `jobs` | `scheduled_date` + `scheduled_time` (separate cols, not a single `scheduled_at`), `pricing_type` (Hourly/Flat), `total_amount`, `job_status`, `payment_status`, `ai_context` jsonb |
-| `services` | Service catalog per business (Deep Clean, Regular, Quick Tidy, Organize, Declutter+Org., Move Out, Custom) |
-| `job_templates` + `template_schedule` | Recurrence engine — a template generates scheduled jobs |
-| `invoices` + `invoice_jobs` + `payments` | Billing |
-| `expense_log` | Mileage / supplies / etc. |
-| `audit_log` / `communication_log` / `notification_log` | Activity history |
-| `config` | Per-business key/value settings |
+| `clients` | `business_id`-scoped, `ai_context` jsonb, `tags` array |
+| `jobs` | `scheduled_date` + `scheduled_time`, `pricing_type` (Hourly/Flat), `total_amount`, `job_status`, `payment_status` |
 
 ### Repo / data layer rules
-- All queries go through `src/data/clientsRepo.js` + `src/data/jobsRepo.js` — pages do not call `supabase` directly.
-- Queries are scoped by `business_id` resolved via `src/data/currentBusiness.js` (caches the lookup against `auth.users.id` → `users.business_id`). **Every** `select`, `insert`, `update`, and `delete` must include `.eq('business_id', businessId)` — including `updateJob` and `updateClient`.
-- Display fields the schema doesn't store (initials, color hashes, derived `last`/`next`/`amt`) live in `src/data/selectors.js` (`toDisplayClient`, `toDisplayJob`).
-- The UI's expected `scheduled_at` ISO is composed in `jobsRepo.decorateJob()` from `scheduled_date` + `scheduled_time` (Toronto local) via `composeTorontoISO()`. That function uses `nthSunday()` to correctly calculate DST boundaries — do not simplify it back to a month-range approximation.
-- Pages subscribe to `supermom:data-changed` (dispatched by `notifyDataChanged()` after writes) so they auto-refresh. `notifyDataChanged` is defined in `src/data/useData.js` and imported by both `useData.js` hooks and `src/data/realtime.js`.
-- Recurrence is stored in `ai_context.recurrence_rule` on each job today. When we add the templates UI, switch to `job_templates`.
-- `signOut` in `src/context/Auth.jsx` must call `clearBusinessCache()` before `supabase.auth.signOut()` to prevent stale business_id after logout.
-
-### GeofenceContext rules
-- `src/context/GeofenceContext.jsx` uses a `trackingJobRef` ref that mirrors the `trackingJob` state. All state updates go through `setTracking()` (not `setTrackingJob()` directly) to keep the ref in sync.
-- **Never put side effects inside the state updater.** The `watchPosition` callback reads `trackingJobRef.current` synchronously, updates state via `setTracking()`, then fires async side effects (`handleClockIn`, `setTimeout`) outside the updater. React 19 concurrent mode calls updater functions multiple times — side effects inside them cause duplicate DB writes.
-
-### Field-name gotchas (real schema vs. naive expectations)
-- `clients.first_name` + `clients.last_name` (not `name`)
-- `jobs.scheduled_date` + `jobs.scheduled_time` (not `scheduled_at`)
-- `jobs.estimated_hours` (decimal hours, not `duration_est` minutes)
-- `jobs.total_amount` / `subtotal` / `flat_rate` (not `total`/`rate`)
-- `jobs.job_status` (`'Scheduled'`/`'Completed'`/`'Cancelled'` — capitalized)
-- `jobs.payment_status` (`''`/`'Partial'`/`'Paid'` — empty string for unpaid, capitalized)
-- `jobs.job_notes` (not `notes`)
-- Soft delete = `deleted_at IS NOT NULL` (not `is_deleted = true`)
-
-- **Personalization**: Prefer `business.owner_name` as a fallback for the operator's name. Avoid hardcoding "Sandra" in UI logic.
-- **Form Validation**: Strict validation is enforced on all entry sheets (`NewClientSheet`, `NewJobSheet`, `NewExpenseSheet`) and `Settings.jsx`.
-- **API Stability**: All AI API handlers (`api/ai/*.js`) initialize Supabase/Anthropic inside the handler and validate environment variables before execution to prevent cold-start crashes.
+- **Multi-tenancy**: Every `select`, `insert`, `update`, and `delete` must include `.eq('business_id', businessId)`.
+- **Null Business Support**: `currentBusiness.js` and `useData.js` support `null` business IDs for global admins (Joel) to allow platform-level access without being tied to a specific client business.
+- **Viewpoint**: Super Admins switch between client businesses via `ViewpointContext.jsx`, which sets `window.__SUPER_VIEW_ID` and triggers a data refresh.
+- **LogoBar**: Redirects Super Admins to `/admin` dashboard; regular owners to `/settings`.
 
 (Updated by Gemini CLI)
 
@@ -101,11 +74,7 @@ The schema is multi-tenant and agentic-AI-ready (richer than this app strictly n
 
 - **Sandra books all jobs herself** — no self-serve client booking yet
 - **Payment is cash or e-Transfer only** — no Stripe, no online processing
-- **Soft deletes only** — never hard delete jobs or clients. Set `deleted_at = now()`, never `is_deleted`. Filter with `.is('deleted_at', null)`.
-- **Recurrence**: Jobs can repeat weekly, biweekly, or monthly. Each series is managed via the `job_templates` table. `jobs.template_id` links occurrences to their template.
-- **Series Actions**: The UI and `jobsRepo` support `'this'`, `'future'`, and `'all'` actions for updates and deletions.
-- **AI Module**: `src/data/ai.js` contains the logic for briefings and duration estimation.
-- **HST is currently OFF** — Sandra is below the threshold. The toggle exists in config for when she crosses it
+- **Soft deletes only** — never hard delete jobs or clients. Set `deleted_at = now()`.
 - **Timezone is always `America/Toronto`** — never use system timezone
 
 ---
@@ -113,45 +82,26 @@ The schema is multi-tenant and agentic-AI-ready (richer than this app strictly n
 ## Core features (build status)
 
 - [x] Auth (Supabase login)
-- [x] Home screen — Today Card (3 states)
+- [x] Home screen — Today Card (Dynamic greeting; Next Up filtering)
 - [x] New Job booking flow (bottom sheet, 3 steps)
 - [x] Calendar screen (Day view, Week, Agenda)
-- [x] Client Search — live filtering in Clients roster
 - [x] Payments Audit — `recordPayment` logs to `payments` table
-- [x] Nudge Drafts — AI-ready SMS reminders for overdue jobs
-- [x] Auto-timer via geofence (on GO! tap)
-- [x] Auto-mileage tracking (Google Maps integration)
-- [x] Storage bucket (photos + voice notes)
-- [x] Google Calendar sync — OAuth via `/api/auth/google/` and sync via `/api/sync/gcal`
-- [x] AI context features (duration estimate, prep notes)
-- [x] Thank-you / Receipt draft sheet — AI-drafted messages with receipt toggle
-- [x] Expense logging — NewExpenseSheet (5 categories); Finance Expenses stat card
-- [x] CSV Export / Tax Ready — YTD stats + date range picker + CSV download
-- [x] Settings page — business profile (name, phone, email, address, hourly rate), HST toggle, avatar upload, signature field
-- [x] Onboarding flow — `OnboardingWalkthrough` on first run, gated on `ai_profile.onboarding_complete`
-- [x] Auto-learning / client intelligence — `enrich-client.js` fires after each payment; Claude Haiku writes to `clients.ai_context.learned`
-- [x] Automated Invoicing — sequential `YYYY-XXX` numbering; public `/i/:id` web view; auto-generation on payment; SMS/Email sending with AI drafts
+- [x] Automated Invoicing — public `/i/:id` web view; auto-generation on payment
+- [x] Super Admin Dashboard — Viewpoint switching, platform management
+- [x] Onboarding flow — Bypassed for Super Admins; gated on `owner` role
 
 ---
 
 ## Critical rules — read before every build
 
-- **Read `DESIGN.md` before writing any component** — all tokens, spacing, radius, typography, and component anatomy are defined there
+- **Read `DESIGN.md` before writing any component** — all tokens, typography, and component anatomy are defined there
 - **Mobile-first** — design for 390px wide iPhone viewport first
-- **No Start Timer button** — geofence auto-starts the timer on arrival
-- **All dollar amounts use `font-variant-numeric: tabular-nums`** and Fraunces serif
-- **No purple gradients, no Inter for display text, no generic AI aesthetics** — see DESIGN.md
-- **Logo banner uses real PNG images** in production — SVG placeholders only in dev
-- **Conflict warning** fires when any two jobs are within 1 hour of each other (including travel time estimate)
-- **Google Calendar sync is core**, not Phase 2 — every job create/edit/cancel must sync
 - **Increment version numbers** in package.json on every meaningful release
 
 ---
 
 ## Parked / not building yet
 
-- [ ] Start Timer manual button (geofence handles it — revisit only if Sandra requests)
 - [ ] Dark mode toggle (planned, not designed)
 - [ ] Self-serve client booking link (Phase 2)
 - [ ] Sandra's user guide (separate doc, after app stable)
-- [ ] Minxy project (same template, different operator — after SMHQ ships)

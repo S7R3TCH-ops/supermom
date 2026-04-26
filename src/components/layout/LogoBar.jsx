@@ -1,14 +1,19 @@
 import { useNavigate } from 'react-router-dom';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { useAuth } from '../../context/AuthContext';
+import { useViewpoint } from '../../context/ViewpointContext';
 
 export default function LogoBar() {
   const navigate = useNavigate();
   const { mode, toggleMode, privacyOn, togglePrivacy } = useAppTheme();
   const { user } = useAuth();
+  const { isSuperAdmin } = useViewpoint();
 
   const onAvatarClick = () => {
-    if (user) navigate('/settings');
+    if (user) {
+      if (isSuperAdmin) navigate('/admin');
+      else navigate('/settings');
+    }
   };
   const initial = (user?.email || 'S').charAt(0).toUpperCase();
   return (

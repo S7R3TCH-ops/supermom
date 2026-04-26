@@ -39,6 +39,12 @@ export function useClients() {
     setLoading(true);
     setError(null);
     try {
+      const bid = await getBusinessProfile().catch(() => null);
+      if (!bid) {
+        setRows([]);
+        setJobs([]);
+        return;
+      }
       const [clientRows, jobRows] = await Promise.all([fetchClients(), fetchActiveJobs()]);
       setRows(clientRows);
       setJobs(jobRows);
@@ -66,6 +72,12 @@ export function useClient(id) {
     setLoading(true);
     setError(null);
     try {
+      const bid = await getBusinessProfile().catch(() => null);
+      if (!bid) {
+        setRow(null);
+        setJobs([]);
+        return;
+      }
       const [c, js] = await Promise.all([fetchClientById(id), fetchJobsByClientId(id)]);
       setRow(c);
       setJobs(js);
@@ -93,6 +105,12 @@ export function useJobs() {
     setLoading(true);
     setError(null);
     try {
+      const bid = await getBusinessProfile().catch(() => null);
+      if (!bid) {
+        setRows([]);
+        setClientRows([]);
+        return;
+      }
       const [js, cs] = await Promise.all([fetchActiveJobs(), fetchClients()]);
       setRows(js);
       setClientRows(cs);
@@ -122,6 +140,11 @@ export function useExpenses() {
     setLoading(true);
     setError(null);
     try {
+      const bid = await getBusinessProfile().catch(() => null);
+      if (!bid) {
+        setRows([]);
+        return;
+      }
       const data = await fetchExpenses();
       setRows(data);
     } catch (e) {
@@ -149,7 +172,8 @@ export function useBusiness() {
       const data = await getBusinessProfile();
       setBusiness(data);
     } catch (e) {
-      setError(e);
+      // If error is just "no business", that's fine for admins
+      setBusiness(null);
     } finally {
       setLoading(false);
     }

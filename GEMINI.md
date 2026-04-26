@@ -32,7 +32,7 @@ At the end of every productive session, or upon major milestone completion, Gemi
 
 ---
 
-## Current State (as of April 26, 2026 — updated post UI & Identity robustness pass)
+## Current State (as of April 26, 2026 — updated post Platform Reset)
 
 | Feature | Status |
 |---|---|
@@ -71,37 +71,23 @@ At the end of every productive session, or upon major milestone completion, Gemi
 | **Accessibility pass (#31)** | ✅ **Live** — Focus trap + Escape-to-close on all modals |
 | **Automated Invoicing** | ✅ **Live** — sequential numbering + public web view |
 | **Super Admin Identity** | ✅ **Live** — Joel recognized as Creator/Maintainer; viewpoint switching active |
+| **Platform Hierarchy** | ✅ **Live** — Joel as global admin; Sandra as business owner |
 
-## Phase 11 UI & Identity Robustness (Gemini CLI session, April 26, 2026)
+## Phase 12 Platform Reset & Hierarchy (Gemini CLI session, April 26, 2026)
 
-Key fixes for Super Admin experience and Home screen logic:
+Key architectural changes to support the platform/client model:
 
-| # | Issue | Fix | File |
+| # | Change | Detail | File |
 |---|---|---|---|
-| W | "Good morning" hardcode | Replaced with `getGreeting()` helper (Morning/Afternoon/Evening) | `Home.jsx` |
-| X | Done jobs in "Next Up" | Updated `next` logic to filter out jobs with `payment_status === 'Paid'` or `status === 'Completed'` | `Home.jsx` |
-| Y | Super Admin Onboarding | Added email-based Super Admin check to bypass onboarding flow | `OnboardingWalkthrough.jsx` |
-| Z | Edit Job "Black Page" | Fixed crash by passing `mode` to `EditMode` and adding null checks for `job` | `JobDetailSheet.jsx` |
-| AA | Viewpoint Authorization | Added DB 'admin' role check to `isSuperAdmin` logic for better flexibility | `ViewpointContext.jsx` |
-| AB | All Done state | Added visual "All done" hero state when today's jobs are finished | `Home.jsx` |
-
-### Routing architecture (post-fix)
-| URL | Component | Who uses it |
-|---|---|---|
-| `/` | Home | Everyone |
-| `/calendar` | Calendar | Everyone |
-| `/clients` | Clients | Everyone |
-| `/clients/:id` | ClientProfile | Everyone |
-| `/finance` | Finance | Everyone |
-| `/settings` | Settings | Profile button (LogoBar top-right) → business profile, password, GCal |
-| `/admin` | Admin | BottomNav "Admin" tab → super admin viewpoint switcher (Joel), AI persona, stats |
+| AC | Platform Reset Script | New script to wipe client data but preserve Super Admin (Joel) | `scripts/reset-platform.mjs` |
+| AD | Sandra Provisioning | New script to set up Sandra as a client of the platform | `scripts/provision-sandra.mjs` |
+| AE | Null Business Support | Updated data hooks to not crash when business_id is null (for global admins) | `src/data/currentBusiness.js`, `src/data/useData.js` |
+| AF | Admin Navigation | Profile button now goes to `/admin` for Super Admins | `src/components/layout/LogoBar.jsx` |
 
 (Updated by Gemini CLI)
 
 ## Next priorities (as of April 26, 2026)
-1. **Configure Supabase redirect URL allowlist** — add `http://localhost:5173/**` and `https://supermom-v2.vercel.app/**` so password reset emails work in both environments
-2. **Live test the full routing** — profile button → `/settings`, Admin tab → `/admin` (viewpoint panel visible for Joel), Business Settings tile links to `/settings`
-3. **Live test invoicing flow** — mark a job paid, verify `/i/:id` renders, SMS/Email prefill works
-4. **Live test auto-learning** — after payment check `clients.ai_context.learned` in Supabase dashboard
-5. **Create Sandra's account** — once Joel signs off on the app state, provision a second business + user for Sandra
-6. Future: dark mode UI polish, self-serve client booking (Phase 2)
+1. **Live test viewpoint switching** — Log in as Joel, go to `/admin`, switch to Sandra's business, and verify you see a clean slate.
+2. **Onboard Sandra's first client** — While in Sandra's viewpoint, try adding a new client and job to verify the "fresh start" flow works.
+3. **Configure Supabase redirect URL allowlist** — add `http://localhost:5173/**` and `https://supermom-v2.vercel.app/**` so password reset emails work.
+4. Future: dark mode UI polish, self-serve client booking (Phase 2).

@@ -20,10 +20,16 @@ export async function getCurrentBusinessId() {
 
   const { data, error } = await supabase
     .from('users')
-    .select('business_id')
+    .select('business_id, role')
     .eq('id', user.id)
     .maybeSingle();
   if (error) throw error;
+
+  if (data?.role === 'admin' && !data?.business_id) {
+    // Global Admin - return null to allow app to load
+    return null;
+  }
+
   if (!data?.business_id) {
     throw new Error(`User ${user.email} has no linked business — run scripts/seed.mjs to provision`);
   }

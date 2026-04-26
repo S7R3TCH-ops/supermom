@@ -50,6 +50,7 @@ export default async function handler(req, res) {
 
     // 3. Construct Prompt
     const style = businessProfile?.ai_profile?.style || 'professional';
+    const ownerName = businessProfile?.owner_name || 'Sandra';
     const clientName = [client.first_name, client.last_name].filter(Boolean).join(' ');
 
     let historyText = jobs.length > 0
@@ -61,7 +62,7 @@ export default async function handler(req, res) {
       ? `\nLearned patterns: ${learned.synthesis_note}${learned.behavioral_flags?.length ? `\nFlags: ${learned.behavioral_flags.join(', ')}` : ''}${learned.preferred_time_of_day ? `\nPrefers ${learned.preferred_time_of_day} appointments.` : ''}`
       : '';
 
-    const prompt = `You are an AI assistant for Sandra, a busy business owner.
+    const prompt = `You are an AI assistant for ${ownerName}, a busy business owner.
 Your goal is to provide a concise, conversational 3-4 sentence briefing for her upcoming job with ${clientName}.
 
 Client Notes: ${client.notes || 'None'}${learnedBlock}

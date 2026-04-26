@@ -6,12 +6,23 @@ export default function OnboardingWalkthrough() {
   const { T } = useAppTheme();
   const { business, update, loading } = useBusiness();
   const [step, setStep] = useState(0);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState(null);
 
   if (loading || !business || business.ai_profile?.onboarding_complete) return null;
 
   const handleFinish = async () => {
-    const ai_profile = { ...(business.ai_profile || {}), onboarding_complete: true };
-    await update({ ai_profile });
+    setIsSaving(true);
+    setError(null);
+    try {
+      const ai_profile = { ...(business.ai_profile || {}), onboarding_complete: true };
+      await update({ ai_profile });
+    } catch (err) {
+      console.error('Onboarding finish failed:', err);
+      setError(err.message || 'Failed to complete onboarding. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const steps = [
@@ -88,19 +99,36 @@ export default function OnboardingWalkthrough() {
 
         <button
           onClick={() => {
+            if (isSaving) return;
             if (current.action) current.action();
             else setStep(s => s + 1);
           }}
+          disabled={isSaving}
           style={{
             width: '100%', padding: '16px', borderRadius: 16,
-            background: 'var(--grad-pink)', color: 'white',
+            background: isSaving ? 'var(--pink-mid)' : 'var(--grad-pink)', 
+            color: 'white',
             border: 'none', fontSize: 15, fontWeight: 700,
-            fontFamily: 'var(--font-ui)', cursor: 'pointer',
-            boxShadow: '0 4px 15px rgba(233,30,106,0.3)'
+            fontFamily: 'var(--font-ui)', cursor: isSaving ? 'default' : 'pointer',
+            boxShadow: '0 4px 15px rgba(233,30,106,0.3)',
+            opacity: isSaving ? 0.8 : 1
           }}
         >
-          {current.btn}
+          {isSaving ? 'Saving...' : current.btn}
         </button>
+
+        {error && (
+          <div style={{ 
+            marginTop: 16, padding: '10px 12px', borderRadius: 12, 
+            background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)',
+            color: '#fca5a5', fontSize: 12, lineHeight: 1.4, textAlign: 'left'
+          }}>
+            <strong>Error:</strong> {error}
+            <div style={{ marginTop: 4, fontSize: 11, opacity: 0.8 }}>
+              This usually means the database schema needs updating.
+            </div>
+          </div>
+        )}
 
         <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginTop: 24 }}>
           {steps.map((_, i) => (

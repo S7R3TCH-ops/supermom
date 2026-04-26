@@ -3,6 +3,7 @@ import { useAppTheme } from '../context/AppThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useBusiness, useClients, useJobs } from '../data/useData';
 import SectionLabel from '../components/ui/SectionLabel';
+import { useViewpoint } from '../context/ViewpointContext';
 
 export default function Admin() {
   const { T, mode } = useAppTheme();
@@ -10,8 +11,10 @@ export default function Admin() {
   const { business, loading: bizLoading, update: updateBiz } = useBusiness();
   const { clients, loading: clientsLoading } = useClients();
   const { jobs, loading: jobsLoading } = useJobs();
+  const { isSuperAdmin, allBusinesses, switchTo, viewingAsId, reset } = useViewpoint();
 
   const [isSaving, setIsSaving] = useState(false);
+  const [selectedBizId, setSelectedBizId] = useState('');
 
   const handleStyleChange = async (style) => {
     setIsSaving(true);
@@ -23,6 +26,11 @@ export default function Admin() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleSwitch = () => {
+    const biz = allBusinesses.find(b => b.id === selectedBizId);
+    if (biz) switchTo(biz.id, biz.owner_name || biz.name);
   };
 
   const revenueYtd = jobs
@@ -50,11 +58,63 @@ export default function Admin() {
         }}>✦ Business Admin</div>
         
         <h2 style={{ fontFamily: T.serif, fontSize: 24, margin: 0, color: 'white' }}>
-          {profile?.business_name || 'Business Dashboard'}
+          {business?.name || profile?.business_name || 'Business Dashboard'}
         </h2>
       </div>
 
       <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '16px 14px' }}>
+        {isSuperAdmin && (
+          <>
+            <SectionLabel>Super Admin: Viewpoint</SectionLabel>
+            <div style={{
+              background: '#1a0a0a', border: '1.5px solid #7f1d1d',
+              borderRadius: 16, padding: '14px', marginBottom: 20,
+            }}>
+              <div style={{ fontSize: 11, color: '#fca5a5', marginBottom: 12, fontWeight: 600 }}>
+                Switch your viewpoint to see what another business owner sees.
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <select 
+                  value={selectedBizId} 
+                  onChange={e => setSelectedBizId(e.target.value)}
+                  style={{
+                    flex: 1, padding: '10px', borderRadius: 12, background: '#2d0f0f',
+                    border: '1px solid #7f1d1d', color: 'white', fontSize: 13, outline: 'none'
+                  }}
+                >
+                  <option value="">Select a business...</option>
+                  {allBusinesses.map(b => (
+                    <option key={b.id} value={b.id}>{b.name} ({b.owner_name || 'No Owner Name'})</option>
+                  ))}
+                </select>
+                <button 
+                  onClick={handleSwitch}
+                  disabled={!selectedBizId}
+                  style={{
+                    padding: '0 16px', borderRadius: 12, background: '#ef4444',
+                    color: 'white', border: 'none', fontWeight: 700, fontSize: 12,
+                    cursor: selectedBizId ? 'pointer' : 'default', opacity: selectedBizId ? 1 : 0.5
+                  }}
+                >
+                  Switch
+                </button>
+              </div>
+              {viewingAsId && (
+                <button 
+                  onClick={reset}
+                  style={{
+                    marginTop: 10, width: '100%', padding: '10px', borderRadius: 12,
+                    background: 'transparent', border: '1px solid #7f1d1d',
+                    color: '#f87171', fontWeight: 600, fontSize: 12, cursor: 'pointer'
+                  }}
+                >
+                  Reset to My Real View
+                </button>
+              )}
+            </div>
+          </>
+        )}
+
         <SectionLabel>Overview</SectionLabel>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
           <StatCard T={T} label="Total Clients" value={clientsLoading ? '...' : clients.length} />

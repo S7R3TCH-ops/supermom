@@ -8,6 +8,10 @@ let cachedBusinessId = null;
 let cachedAuthId = null;
 
 export async function getCurrentBusinessId() {
+  // Super Admin Viewpoint Override
+  const overrideId = window.__SUPER_VIEW_ID;
+  if (overrideId) return overrideId;
+
   const { data: { user }, error: authErr } = await supabase.auth.getUser();
   if (authErr) throw authErr;
   if (!user) throw new Error('Not signed in');

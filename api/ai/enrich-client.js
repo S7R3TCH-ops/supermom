@@ -37,10 +37,18 @@ export default async function handler(req, res) {
   try {
     const { data: client, error: clientErr } = await supabase
       .from('clients')
-      .select('id, ai_context')
+      .select('id, business_id, ai_context')
       .eq('id', clientId)
       .single();
     if (clientErr || !client) return res.status(404).json({ error: 'Client not found' });
+
+    const { data: business } = await supabase
+      .from('businesses')
+      .select('owner_name')
+      .eq('id', client.business_id)
+      .single();
+    
+    const ownerName = business?.owner_name || 'Sandra';
 
     const { data: jobs, error: jobsErr } = await supabase
       .from('jobs')
@@ -95,7 +103,7 @@ export default async function handler(req, res) {
       return `- ${j.scheduled_date}: ${j.service_name} (${mins})${j.job_notes ? ` — ${j.job_notes}` : ''}`;
     }).join('\n');
 
-    const prompt = `You are helping Sandra learn client patterns. Pre-computed stats:
+    const prompt = `You are helping ${ownerName} learn client patterns. Pre-computed stats:
 - Jobs completed: ${jobCount}
 - Duration patterns: ${JSON.stringify(duration_patterns)}
 - Payment preference: ${payment_method_preference || 'unknown'}

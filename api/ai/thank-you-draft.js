@@ -41,6 +41,8 @@ export default async function handler(req, res) {
     const clientFirstName = client.first_name || 'there';
     const amount = Number(job.total_amount ?? job.flat_rate ?? 0).toFixed(0);
     const style = businessProfile?.ai_profile?.style || 'professional';
+    const ownerName = businessProfile?.owner_name || 'Sandra';
+    const bizName = businessProfile?.name || 'Supermom for Hire';
 
     // Check for invoice
     const { data: invLink } = await supabase
@@ -54,12 +56,12 @@ export default async function handler(req, res) {
 
     let prompt = '';
     if (type === 'receipt') {
-      prompt = `Write a very brief, friendly text message receipt in a ${style} tone from Sandra (owner of Supermom for Hire) to her client ${clientFirstName}. 
+      prompt = `Write a very brief, friendly text message receipt in a ${style} tone from ${ownerName} (owner of ${bizName}) to her client ${clientFirstName}. 
 It must acknowledge receipt of $${amount} for the ${job.service_name} job completed on ${job.scheduled_date}. 
-Keep it to 2 sentences. No emojis. Sign off as "Sandra".${invoiceUrl ? `\n\nAppend this link to the end: ${invoiceUrl}` : ''}`;
+Keep it to 2 sentences. No emojis. Sign off as "${ownerName}".${invoiceUrl ? `\n\nAppend this link to the end: ${invoiceUrl}` : ''}`;
     } else {
-      prompt = `Write a warm, brief thank-you text in a ${style} tone from Sandra (owner of Supermom for Hire) to her client ${clientFirstName} after completing a ${job.service_name} job today worth $${amount}.
-2–3 sentences. Friendly and personal. No emojis. Sign off as "Sandra".${job.job_notes ? `\n\nJob notes for context: ${job.job_notes}` : ''}${invoiceUrl ? `\n\nAppend this link to the end: ${invoiceUrl}` : ''}`;
+      prompt = `Write a warm, brief thank-you text in a ${style} tone from ${ownerName} (owner of ${bizName}) to her client ${clientFirstName} after completing a ${job.service_name} job today worth $${amount}.
+2–3 sentences. Friendly and personal. No emojis. Sign off as "${ownerName}".${job.job_notes ? `\n\nJob notes for context: ${job.job_notes}` : ''}${invoiceUrl ? `\n\nAppend this link to the end: ${invoiceUrl}` : ''}`;
     }
 
     const response = await anthropic.messages.create({

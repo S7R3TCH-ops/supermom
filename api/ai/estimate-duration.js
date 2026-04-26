@@ -51,13 +51,14 @@ export default async function handler(req, res) {
 
     // 3. Construct Prompt
     const style = businessProfile?.ai_profile?.style || 'professional';
+    const ownerName = businessProfile?.owner_name || 'Sandra';
     const clientName = [client.first_name, client.last_name].filter(Boolean).join(' ');
 
     const learnedPattern = client.ai_context?.learned?.duration_patterns?.[serviceName];
     const patternBlock = learnedPattern
       ? `\nLearned: avg actual ${learnedPattern.avg_actual_minutes} min, estimate ratio ${learnedPattern.avg_estimate_ratio?.toFixed(2)} over ${learnedPattern.sample_size} jobs. Weight this heavily.`
       : '';
-    
+
     let historyText = jobs.length > 0
       ? jobs.map(j => {
           const dur = j.actual_duration != null
@@ -67,18 +68,18 @@ export default async function handler(req, res) {
         }).join('\n')
       : 'No previous completed jobs found for this service.';
 
-    const prompt = `You are an AI assistant for Sandra, a busy business owner.
-Your goal is to provide a smart duration estimate for an upcoming ${serviceName} job with ${clientName}.
+    const prompt = `You are an AI assistant for ${ownerName}, a busy business owner.
+    Your goal is to provide a smart duration estimate for an upcoming ${serviceName} job with ${clientName}.
 
-Client Notes: ${client.notes || 'None'}
-Client Tags: ${JSON.stringify(client.tags || [])}${patternBlock}
+    Client Notes: ${client.notes || 'None'}
+    Client Tags: ${JSON.stringify(client.tags || [])}${patternBlock}
 
-Recent Job History for ${serviceName}:
-${historyText}
+    Recent Job History for ${serviceName}:
+    ${historyText}
 
-Style Guidance: Use a ${style} tone.
+    Style Guidance: Use a ${style} tone.
 
-Based on the history and notes, estimate the duration in minutes. 
+    Generate an estimate in hours (decimal). Return ONLY a JSON object: {"hours": 2.5, "reasoning": "Brief 1-sentence explanation"}`;
 Return ONLY a JSON object in this format:
 {
   "duration_minutes": number,

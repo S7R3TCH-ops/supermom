@@ -4,6 +4,7 @@ import { AppThemeProvider } from './context/AppTheme';
 import { useAppTheme } from './context/AppThemeContext';
 import { AuthProvider } from './context/Auth';
 import { useAuth } from './context/AuthContext';
+import { ViewpointProvider, useViewpoint } from './context/ViewpointContext';
 import { NewJobSheetProvider } from './context/NewJobSheet';
 import { JobDetailSheetProvider } from './context/JobDetailSheet';
 import { PostJobSheetProvider } from './context/PostJobSheet';
@@ -13,6 +14,7 @@ import BottomNav from './components/layout/BottomNav';
 import OnboardingWalkthrough from './components/layout/OnboardingWalkthrough';
 import FAB from './components/ui/FAB';
 import { useRealtimeSync } from './data/useData';
+import { useEffect } from 'react';
 
 const Home = lazy(() => import('./pages/Home'));
 const Calendar = lazy(() => import('./pages/Calendar'));
@@ -24,15 +26,40 @@ const Settings = lazy(() => import('./pages/Settings'));
 const Admin = lazy(() => import('./pages/Admin'));
 const InvoiceView = lazy(() => import('./pages/InvoiceView'));
 
+function ViewpointBanner() {
+  const { viewingAsName, reset } = useViewpoint();
+  if (!viewingAsName) return null;
+  return (
+    <div style={{
+      background: '#1a0a0a', color: '#fca5a5', padding: '6px 12px',
+      fontSize: 11, fontWeight: 700, display: 'flex', justifyContent: 'space-between',
+      alignItems: 'center', borderBottom: '1px solid #7f1d1d', zIndex: 1100
+    }}>
+      <span>✦ VIEWING AS: {viewingAsName.toUpperCase()}</span>
+      <button onClick={reset} style={{
+        background: '#7f1d1d', color: 'white', border: 'none',
+        padding: '2px 8px', borderRadius: 4, fontSize: 10, fontWeight: 800, cursor: 'pointer'
+      }}>RESET</button>
+    </div>
+  );
+}
+
 function AuthedShell() {
   const { T } = useAppTheme();
+  const { viewingAsId } = useViewpoint();
   useRealtimeSync();
+
+  useEffect(() => {
+    window.__SUPER_VIEW_ID = viewingAsId;
+  }, [viewingAsId]);
+
   return (
     <div style={{
       display: 'flex', flexDirection: 'column',
       height: '100svh', width: '100%',
       background: T.bg, color: T.ink, overflow: 'hidden',
     }}>
+      <ViewpointBanner />
       <OnboardingWalkthrough />
       <LogoBar />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
@@ -101,12 +128,14 @@ export default function App() {
     <AppThemeProvider>
       <BrowserRouter>
         <AuthProvider>
-          <Suspense fallback={null}>
-            <Routes>
-              <Route path="/i/:id" element={<InvoiceView />} />
-              <Route path="*" element={<Gate />} />
-            </Routes>
-          </Suspense>
+          <ViewpointProvider>
+            <Suspense fallback={null}>
+              <Routes>
+                <Route path="/i/:id" element={<InvoiceView />} />
+                <Route path="*" element={<Gate />} />
+              </Routes>
+            </Suspense>
+          </ViewpointProvider>
         </AuthProvider>
       </BrowserRouter>
     </AppThemeProvider>

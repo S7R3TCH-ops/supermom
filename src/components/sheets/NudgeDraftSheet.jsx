@@ -56,7 +56,7 @@ export default function NudgeDraftSheet({ isOpen, onClose, clientsWithUnpaid }) 
           padding: '8px 0 24px',
         }}
       >
-        <div style={{ width: 40, height: 4, background: '#FFD6E8', borderRadius: 4, margin: '0 auto 16px', opacity: mode === 'dark' ? 0.35 : 1 }} />
+        <div style={{ width: 40, height: 4, background: '#FFD6E8', borderRadius: 4, margin: '0 auto 16px', opacity: mode === 'dark' ? 0.6 : 1 }} />
 
         <div style={{ padding: '0 18px' }}>
           <div style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '1.1px', textTransform: 'uppercase', color: '#FF78B0', marginBottom: 4 }}>✦ AI Draft</div>

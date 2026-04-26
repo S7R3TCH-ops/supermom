@@ -207,7 +207,7 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
         border: `1px solid ${T.cardBorder}`, borderBottom: 'none',
       }}>
         <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 9 }}>
-          <div style={{ width: 42, height: 5, background: '#FFD6E8', borderRadius: 10, opacity: mode === 'dark' ? 0.3 : 1 }} />
+          <div style={{ width: 42, height: 5, background: '#FFD6E8', borderRadius: 10, opacity: mode === 'dark' ? 0.6 : 1 }} />
         </div>
 
         <div style={{ padding: '10px 18px 6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

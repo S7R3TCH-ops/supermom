@@ -69,7 +69,7 @@ export default function NewClientSheet({ onClose, onCreated }) {
         border: `1px solid ${T.cardBorder}`, borderBottom: 'none',
       }}>
         <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 8 }}>
-          <div style={{ width: 40, height: 4, background: '#FFD6E8', borderRadius: 4, opacity: mode === 'dark' ? 0.35 : 1 }} />
+          <div style={{ width: 40, height: 4, background: '#FFD6E8', borderRadius: 4, opacity: mode === 'dark' ? 0.6 : 1 }} />
         </div>
         <div style={{ padding: '10px 18px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>

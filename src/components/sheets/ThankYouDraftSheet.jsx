@@ -94,7 +94,7 @@ export default function ThankYouDraftSheet({ isOpen, onClose, jobId }) {
       >
         {/* Handle */}
         <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 8, paddingBottom: 4 }}>
-          <div style={{ width: 40, height: 4, background: '#FFD6E8', borderRadius: 4, opacity: mode === 'dark' ? 0.35 : 1 }} />
+          <div style={{ width: 40, height: 4, background: '#FFD6E8', borderRadius: 4, opacity: mode === 'dark' ? 0.6 : 1 }} />
         </div>
 
         {/* Header */}

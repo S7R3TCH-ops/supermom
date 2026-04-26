@@ -106,7 +106,7 @@ export default function PostJobSheet({ jobId, onClose }) {
 
         {/* Handle */}
         <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 8 }}>
-          <div style={{ width: 40, height: 4, background: '#FFD6E8', borderRadius: 4, opacity: mode === 'dark' ? 0.35 : 1 }} />
+          <div style={{ width: 40, height: 4, background: '#FFD6E8', borderRadius: 4, opacity: mode === 'dark' ? 0.6 : 1 }} />
         </div>
 
         {/* Dark hero */}

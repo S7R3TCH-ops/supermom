@@ -222,7 +222,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
         <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 9, paddingBottom: 6 }}>
           <div style={{
             width: 42, height: 5, borderRadius: 10,
-            background: '#FFD6E8', opacity: mode === 'dark' ? 0.3 : 1,
+            background: '#FFD6E8', opacity: mode === 'dark' ? 0.6 : 1,
             transition: 'all 0.2s',
           }} />
         </div>

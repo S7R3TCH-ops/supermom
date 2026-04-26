@@ -40,7 +40,7 @@ export default function FinanceDetailSheet({ title, items, type, onClose }) {
         border: `1px solid ${T.cardBorder}`, borderBottom: 'none',
       }}>
         <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 9 }}>
-          <div style={{ width: 42, height: 5, background: '#FFD6E8', borderRadius: 10, opacity: mode === 'dark' ? 0.3 : 1 }} />
+          <div style={{ width: 42, height: 5, background: '#FFD6E8', borderRadius: 10, opacity: mode === 'dark' ? 0.6 : 1 }} />
         </div>
 
         <div style={{ padding: '14px 18px 14px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', borderBottom: `1px solid ${T.cardBorder}` }}>

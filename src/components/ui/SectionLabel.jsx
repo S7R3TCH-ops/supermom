@@ -11,7 +11,6 @@ export default function SectionLabel({ children }) {
       textTransform: 'uppercase',
       color: T.secLabel,
       marginBottom: 8,
-      opacity: 0.85,
     }}>
       {children}
     </div>

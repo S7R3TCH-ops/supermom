@@ -29,3 +29,8 @@ docs/
 
 .vercel
 .worktrees/
+
+# Playwright
+/playwright-report/
+/test-results/
+/playwright/.auth/

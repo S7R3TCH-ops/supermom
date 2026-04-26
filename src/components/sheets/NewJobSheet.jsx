@@ -11,9 +11,7 @@ import { SERVICES, RECURRENCE } from '../../data/services';
 import { calculateEstimatedDuration, fetchSmartDurationEstimate } from '../../data/ai';
 
 function todayISODate() {
-  const d = new Date();
-  // Toronto offset is roughly fine for a date-only stamp.
-  return d.toISOString().slice(0, 10);
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Toronto' }).format(new Date());
 }
 
 function fmtTimeRange(timeStr, durationMin) {

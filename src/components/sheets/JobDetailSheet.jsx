@@ -249,6 +249,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
             job={job} T={T} mode={mode} business={business}
             isScheduled={isScheduled} isPaid={isPaid} isCancelled={isCancelled}
             busy={busy} toast={toast} confirm={confirm} mutErr={mutErr}
+            invoiceId={invoiceId}
             showSeriesPicker={showSeriesPicker} onSeriesChoice={onSeriesChoice}
             onClose={onClose}
             onMarkComplete={markComplete}
@@ -288,7 +289,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
 /* ============= READ MODE ============= */
 function ReadMode({
   job, T, mode, business, isScheduled, isPaid, isCancelled,
-  busy, toast, confirm, mutErr,
+  busy, toast, confirm, mutErr, invoiceId,
   onClose, onMarkComplete, onMarkPaid, onCancelConfirm, onConfirmDelete, onDismissConfirm, onEdit, onUpdate, onDeepPrep,
 }) {
   const statusC = STATUS_COLORS[job.job_status] || STATUS_COLORS.Scheduled;

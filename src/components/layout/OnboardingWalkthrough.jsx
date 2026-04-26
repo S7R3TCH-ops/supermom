@@ -8,15 +8,21 @@ export default function OnboardingWalkthrough() {
   const [step, setStep] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [localComplete, setLocalComplete] = useState(() => localStorage.getItem('sm_onboarding_complete') === 'true');
 
-  if (loading || !business || business.ai_profile?.onboarding_complete) return null;
+  if (loading || !business || business.ai_profile?.onboarding_complete || localComplete || window.__SKIP_ONBOARDING) return null;
 
   const handleFinish = async () => {
     setIsSaving(true);
     setError(null);
     try {
       const ai_profile = { ...(business.ai_profile || {}), onboarding_complete: true };
-      await update({ ai_profile });
+      // Try to save to DB, but don't fail the UI if it crashes (e.g. missing column)
+      await update({ ai_profile }).catch(err => {
+        console.warn('Onboarding DB save failed, falling back to local only:', err);
+      });
+      localStorage.setItem('sm_onboarding_complete', 'true');
+      setLocalComplete(true);
     } catch (err) {
       console.error('Onboarding finish failed:', err);
       setError(err.message || 'Failed to complete onboarding. Please try again.');

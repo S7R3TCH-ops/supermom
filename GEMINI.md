@@ -72,22 +72,28 @@ At the end of every productive session, or upon major milestone completion, Gemi
 | **Automated Invoicing** | ✅ **Live** — sequential numbering + public web view |
 | **Super Admin Identity** | ✅ **Live** — Joel recognized as Creator/Maintainer; viewpoint switching active |
 | **Platform Hierarchy** | ✅ **Live** — Joel as global admin; Sandra as business owner |
+| **EA Run-through** | ✅ **Live** — New user onboarding, Mission #1 banner, and Magic Button |
+| **Finance Drilldown** | ✅ **Live** — Tappable stats with detail sheet; actionable history |
 
-## Phase 12 Platform Reset & Hierarchy (Gemini CLI session, April 26, 2026)
+## Phase 13 EA Run-through & Finance Drilldown (Gemini CLI session, April 26, 2026)
 
-Key architectural changes to support the platform/client model:
+Key enhancements for "1% SaaS" vibe and financial transparency:
 
 | # | Change | Detail | File |
 |---|---|---|---|
-| AC | Platform Reset Script | New script to wipe client data but preserve Super Admin (Joel) | `scripts/reset-platform.mjs` |
-| AD | Sandra Provisioning | New script to set up Sandra as a client of the platform | `scripts/provision-sandra.mjs` |
-| AE | Null Business Support | Updated data hooks to not crash when business_id is null (for global admins) | `src/data/currentBusiness.js`, `src/data/useData.js` |
-| AF | Admin Navigation | Profile button now goes to `/admin` for Super Admins | `src/components/layout/LogoBar.jsx` |
+| AG | EA Onboarding | Shifted tone to "Executive Assistant" persona in onboarding | `OnboardingWalkthrough.jsx` |
+| AH | Mission #1 Banner | Added high-contrast guidance banner for businesses with 0 clients | `Home.jsx` |
+| AI | Magic Button | "See my future" button in Profile populates synthetic learned AI context | `ClientProfile.jsx`, `clientsRepo.js` |
+| AJ | Finance Drilldown | Global `FinanceDetailSheet` context to see jobs/expenses behind stats | `App.jsx`, `Finance.jsx`, `Home.jsx` |
+| AK | Actionable History | Client history rows clickable; unpaid amounts colored red | `ClientProfile.jsx` |
+| AL | Unpaid Visibility | Completed but Unpaid jobs stay visible on Home with "UNPAID" badge | `Home.jsx` |
+| AM | PascalCase Fix | Fixed `job_templates` crash by aligning recurrence keys with DB constraints | `services.js`, `NewJobSheet.jsx` |
+| AN | Viewpoint Lag Fix | Added in-memory override to `currentBusiness.js` for instant viewpoint switching | `ViewpointContext.jsx`, `currentBusiness.js` |
 
 (Updated by Gemini CLI)
 
 ## Next priorities (as of April 26, 2026)
-1. **Live test viewpoint switching** — Log in as Joel, go to `/admin`, switch to Sandra's business, and verify you see a clean slate.
-2. **Onboard Sandra's first client** — While in Sandra's viewpoint, try adding a new client and job to verify the "fresh start" flow works.
-3. **Configure Supabase redirect URL allowlist** — add `http://localhost:5173/**` and `https://supermom-v2.vercel.app/**` so password reset emails work.
+1. **Live test Finance Drilldown** — Open Finance page, tap "Outstanding", verify drilldown works.
+2. **Verify "All Done" logic** — Mark a job complete but unpaid, verify it stays on Home. Mark it paid, verify it disappears.
+3. **Configure Supabase redirect URL allowlist** — add `http://localhost:5173/**` and `https://supermom-v2.vercel.app/**`.
 4. Future: dark mode UI polish, self-serve client booking (Phase 2).

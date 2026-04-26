@@ -1,19 +1,27 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.VITE_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
-
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
+
+  // Robust initialization
+  const supabaseUrl = process.env.VITE_SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+
+  if (!supabaseUrl || !supabaseServiceKey) {
+    console.error('Missing Supabase environment variables');
+    return res.status(500).json({ error: 'Database configuration missing' });
+  }
+  if (!anthropicKey) {
+    console.error('Missing Anthropic API key');
+    return res.status(500).json({ error: 'AI configuration missing' });
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  const anthropic = new Anthropic({ apiKey: anthropicKey });
 
   const { clientId, businessProfile } = req.body;
 
@@ -50,7 +58,7 @@ export default async function handler(req, res) {
 
     // 3. Construct Prompt
     const style = businessProfile?.ai_profile?.style || 'professional';
-    const ownerName = businessProfile?.owner_name || 'Sandra';
+    const ownerName = businessProfile?.owner_name || 'the business owner';
     const clientName = [client.first_name, client.last_name].filter(Boolean).join(' ');
 
     let historyText = jobs.length > 0

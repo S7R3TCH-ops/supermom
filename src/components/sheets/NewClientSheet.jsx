@@ -92,7 +92,7 @@ export default function NewClientSheet({ onClose, onCreated }) {
           <div style={{ display: 'flex', gap: 8 }}>
             <div style={{ flex: 1 }}>
               <label htmlFor="nc-first" style={label}>FIRST NAME *</label>
-              <input id="nc-first" style={input} value={first} onChange={e => setFirst(e.target.value)} autoFocus />
+              <input id="nc-first" required style={input} value={first} onChange={e => setFirst(e.target.value)} autoFocus />
             </div>
             <div style={{ flex: 1 }}>
               <label htmlFor="nc-last" style={label}>LAST NAME</label>

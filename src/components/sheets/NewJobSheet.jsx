@@ -149,6 +149,11 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
   const priceStr = `$${price}`;
 
   async function handleBook() {
+    if (!clientId) { setBookErr('Please select a client'); return; }
+    if (!serviceKey) { setBookErr('Please select a service'); return; }
+    if (!date || !time) { setBookErr('Please pick a date and time'); return; }
+    if (!duration || duration <= 0) { setBookErr('Duration must be at least 1 minute'); return; }
+
     setBusy(true);
     setBookErr('');
     try {

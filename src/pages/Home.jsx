@@ -73,7 +73,7 @@ export default function Home() {
   const today = NOW();
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(startOfWeek(today), i));
 
-  const firstName = profile?.first_name || 'Sandra';
+  const firstName = profile?.first_name || business?.owner_name?.split(' ')[0] || 'there';
 
   const todayJobs = useMemo(() => {
     return allJobs

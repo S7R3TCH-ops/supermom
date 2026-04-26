@@ -157,7 +157,7 @@ export default function InvoiceView() {
         {/* Payment & Thank You */}
         <div style={{ textAlign: 'center', fontSize: 13, color: '#444' }}>
           <div style={{ marginBottom: 60, fontWeight: 500 }}>
-            Please e-transfer to {biz.email || 'sandra.kovacevic60@gmail.com'}
+            Please e-transfer to {biz.email || 'the operator'}
           </div>
           <div style={{ fontSize: 16, fontWeight: 800, letterSpacing: '2px', textTransform: 'uppercase', color: '#1a1a1a' }}>
             Thank you for the opportunity to organize your home!

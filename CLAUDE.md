@@ -89,6 +89,12 @@ The schema is multi-tenant and agentic-AI-ready (richer than this app strictly n
 - `jobs.job_notes` (not `notes`)
 - Soft delete = `deleted_at IS NOT NULL` (not `is_deleted = true`)
 
+- **Personalization**: Prefer `business.owner_name` as a fallback for the operator's name. Avoid hardcoding "Sandra" in UI logic.
+- **Form Validation**: Strict validation is enforced on all entry sheets (`NewClientSheet`, `NewJobSheet`, `NewExpenseSheet`) and `Settings.jsx`.
+- **API Stability**: All AI API handlers (`api/ai/*.js`) initialize Supabase/Anthropic inside the handler and validate environment variables before execution to prevent cold-start crashes.
+
+(Updated by Gemini CLI)
+
 ---
 
 ## Key business rules

@@ -1,13 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.VITE_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
 function timeBucket(timeStr) {
   if (!timeStr) return null;
   const h = parseInt(timeStr.slice(0, 2), 10);
@@ -31,6 +24,23 @@ function mode(arr) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
+  // Robust initialization
+  const supabaseUrl = process.env.VITE_SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+
+  if (!supabaseUrl || !supabaseServiceKey) {
+    console.error('Missing Supabase environment variables');
+    return res.status(500).json({ error: 'Database configuration missing' });
+  }
+  if (!anthropicKey) {
+    console.error('Missing Anthropic API key');
+    return res.status(500).json({ error: 'AI configuration missing' });
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  const anthropic = new Anthropic({ apiKey: anthropicKey });
+
   const { clientId } = req.body;
   if (!clientId) return res.status(400).json({ error: 'Missing clientId' });
 
@@ -48,7 +58,7 @@ export default async function handler(req, res) {
       .eq('id', client.business_id)
       .single();
     
-    const ownerName = business?.owner_name || 'Sandra';
+    const ownerName = business?.owner_name || 'the business owner';
 
     const { data: jobs, error: jobsErr } = await supabase
       .from('jobs')

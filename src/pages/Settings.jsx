@@ -110,12 +110,17 @@ export default function Settings() {
   };
 
   const handleSave = async () => {
+    if (!form.name?.trim() || !form.owner_name?.trim()) {
+      setError('Business Name and Owner Name are required.');
+      return;
+    }
     setSaving(true);
+    setError(null);
     try {
       const ai_profile = { ...(business.ai_profile || {}), signature: form.signature };
       await update({
-        name:        form.name,
-        owner_name:  form.owner_name,
+        name:        form.name.trim(),
+        owner_name:  form.owner_name.trim(),
         phone:       form.phone,
         email:       form.email,
         address:     form.address,
@@ -127,6 +132,8 @@ export default function Settings() {
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
+    } catch (err) {
+      setError(err.message || 'Could not save changes.');
     } finally {
       setSaving(false);
     }
@@ -242,6 +249,7 @@ export default function Settings() {
                   <input
                     id={`settings-${key}`}
                     type={type}
+                    required={key === 'name' || key === 'owner_name'}
                     value={form[key]}
                     onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
                     style={inputStyle}

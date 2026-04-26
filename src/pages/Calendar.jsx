@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useAppTheme } from '../context/AppThemeContext';
-import { useJobs } from '../data/useData';
+import { useJobs, useBusiness } from '../data/useData';
 import CapeUpButton from '../components/ui/CapeUpButton';
 import { useJobDetailSheet } from '../context/JobDetailSheetContext';
 import { useAuth } from '../context/AuthContext';
@@ -79,7 +79,8 @@ export default function Calendar() {
   const [weekStart, setWeekStart] = useState(() => startOfWeek(NOW()));
   const { openJob } = useJobDetailSheet();
   const { profile } = useAuth();
-  const firstName = profile?.first_name || 'Sandra';
+  const { business } = useBusiness();
+  const firstName = profile?.first_name || business?.owner_name?.split(' ')[0] || 'there';
 
   const { jobs: displayJobs, clients: clientLookup, loading, error } = useJobs();
   const allJobs = useMemo(() => enrichDisplayJobs(displayJobs, clientLookup), [displayJobs, clientLookup]);

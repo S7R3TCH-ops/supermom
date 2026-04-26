@@ -131,6 +131,7 @@ export default function NewExpenseSheet({ isOpen, onClose }) {
             <input
               id="ex-amount"
               type="number"
+              required
               value={amount}
               onChange={e => setAmount(e.target.value)}
               placeholder="0"

@@ -32,26 +32,26 @@ At the end of every productive session, or upon major milestone completion, Gemi
 
 ---
 
-## Current State (as of April 25, 2026 — updated post auto-learning session)
+## Current State (as of April 26, 2026 — updated post robustness audit)
 
 | Feature | Status |
 |---|---|
 | Login / Forgot password | ✅ Live |
-| Home — today's schedule + revenue | ✅ Live |
-| Calendar — Day/Week/Agenda | ✅ Live |
+| Home — today's schedule + revenue | ✅ Live (Robust personalization) |
+| Calendar — Day/Week/Agenda | ✅ Live (Robust personalization) |
 | Clients list + profile | ✅ Live |
 | Finance — mark-paid | ✅ Live |
-| New Job sheet | ✅ Live |
+| New Job sheet | ✅ Live (Strict validation) |
 | **Job Detail sheet** | ✅ **Live** — tap any job card (Home or Calendar) to view/edit/act |
-| **AI Prep Notes** | ✅ **Live** — Summarizes last 5 visits via Claude API |
-| **AI Duration Estimator** | ✅ **Live** — Step 2 prediction with Claude reasoning |
+| **AI Prep Notes** | ✅ **Live** — Robust API error handling + dynamic context |
+| **AI Duration Estimator** | ✅ **Live** — Step 2 prediction; fixed syntax error |
 | **Post-job / Payment sheet** | ✅ **Live** — UNPAID badge, Cash/e-Transfer toggle, editable amount, AI thank-you teaser |
 | **Edit Client / AI context** | ✅ **Live** — Inline edit on Profile "What I know" card; Notes + Prefs/Access/Comms/Personal buckets |
 | **7-day week strip** | ✅ **Live** — Mon–Sun on Home, today dark plum pill, pink job dots |
 | **Loading / error states** | ✅ **Live** — Error cards added to Home, Calendar, Finance |
-| **Thank-you / Receipt sheet** | ✅ **Live** — AI-drafted messages with "Receipt" toggle; respects AI Persona style |
-| **Expense logging** | ✅ **Live** — NewExpenseSheet (5 categories); Finance Expenses stat card + Recent Activity amber rows |
-| **CSV Export / Tax Ready** | ✅ **Live** — Finance Tax Ready section: YTD stats + date range picker + CSV download |
+| **Thank-you / Receipt sheet** | ✅ **Live** — AI-drafted messages; Robust API initialization |
+| **Expense logging** | ✅ **Live** — NewExpenseSheet (Strict validation); Finance Expenses card |
+| **CSV Export / Tax Ready** | ✅ **Live** — Finance Tax Ready section |
 | **Recurrence series editor** | ✅ **Live** — 'this / future / all' safely implemented |
 | **GCal Sync Security** | ✅ **Live** — CSRF nonce + multi-tenant state param |
 | **Drive time / mileage** | ✅ **Live** — Google Maps Distance Matrix API proxy |
@@ -62,14 +62,14 @@ At the end of every productive session, or upon major milestone completion, Gemi
 | **Real-time subscriptions** | ✅ **Live** — Supabase Realtime auto-refresh |
 | **Storage bucket** | ✅ **Live** — Photos + Voice Notes in Job Detail |
 | **Geofence / auto-timer** | ✅ **Live** — Auto-start/stop with Live Timer card |
-| **Google Calendar sync** | ✅ **Live** — One-way sync (Supermom -> Google); CSRF nonce + multi-tenant `business_id` in OAuth `state` |
-| **Settings page (#18)** | ✅ **Live** — Business profile edit (name, phone, email, address, hourly rate) + HST toggle; saves to `businesses` table |
-| **Sandra's Profile (#19)** | ✅ **Live** — "Personal Profile" section in Settings: avatar upload (job-assets bucket via `uploadAsset()`), signature field stored in `ai_profile.signature` |
-| **Onboarding flow (#20)** | ✅ **Live** — `OnboardingWalkthrough` shown on first run; gated on `ai_profile.onboarding_complete`; completion persisted to DB |
-| **Auto-learning / client intelligence** | ✅ **Live** — After each payment, fires `POST /api/ai/enrich-client` (fire-and-forget). Computes duration patterns, payment preference, preferred time/day in pure JS, then calls Claude Haiku (150 tokens) for `synthesis_note` + `behavioral_flags`. Stored in `clients.ai_context.learned`. Feeds prep notes, duration estimates, and command brief automatically. Gates: skip if <2 jobs, skip if <24h + <3 new jobs. |
-| **Conflict detection (#29)** | ✅ **Live** — `findConflicts()`, Home `tightGap`, Calendar `findSameDayConflicts` all use `ai_context.drive_to.durationValue` as gap threshold (driveMin + 15 buffer); falls back to 60 min when drive data absent |
-| **Accessibility pass (#31)** | ✅ **Live** — Focus trap + Escape-to-close on all 8 sheet modals; `aria-label` on LogoBar buttons; `aria-hidden` on decorative nav icons; `aria-pressed` on filter chips; `role="radio"` + `aria-checked` on toggle groups; `<label htmlFor>` on all form inputs; `aria-live` on status messages |
-| **Automated Invoicing** | ✅ **Live** — Sequential `YYYY-XXX` numbering; unguessable public `/i/:id` web view; auto-generation on job completion; integrated SMS/Email sending with AI drafts |
+| **Google Calendar sync** | ✅ **Live** — One-way sync (Supermom -> Google) |
+| **Settings page (#18)** | ✅ **Live** — Business profile edit + strict validation |
+| **Sandra's Profile (#19)** | ✅ **Live** — avatar upload + signature field |
+| **Onboarding flow (#20)** | ✅ **Live** — `OnboardingWalkthrough` shown on first run |
+| **Auto-learning / client intelligence** | ✅ **Live** — Robust API initialization |
+| **Conflict detection (#29)** | ✅ **Live** — gap threshold logic |
+| **Accessibility pass (#31)** | ✅ **Live** — Focus trap + Escape-to-close on all modals |
+| **Automated Invoicing** | ✅ **Live** — sequential numbering + public web view |
 
 ## Phase 8 bug fixes (Claude Code session, April 24-25, 2026)
 
@@ -84,6 +84,19 @@ Key stability fixes implemented:
 | E | Series Editor — data flattening | Strips `scheduled_date` from series updates; adds `job_status = 'Scheduled'` filter | `src/data/jobsRepo.js` |
 | F | `api/sync/gcal.js` — brittle dates | Replaced with pure string arithmetic for end-time calculation | `api/sync/gcal.js` |
 | G | `softDeleteJob` — redundant sync | Explicit `triggerGCalSync(id, 'delete')` on delete | `src/data/jobsRepo.js` |
+
+## Phase 9 robustness fixes (Gemini CLI session, April 26, 2026)
+
+Key personalization and API stability fixes:
+
+| # | Issue | Fix | File |
+|---|---|---|---|
+| H | "Welcome Sandra" hardcode | Replaced with dynamic `business.owner_name` fallback; default "there" | `Home.jsx`, `Calendar.jsx` |
+| I | AI API 500 Errors | Moved Supabase/Anthropic init inside handler; added env var validation | `api/ai/*.js` |
+| J | Duration Prompt Syntax | Fixed invalid markdown string syntax in estimate prompt | `api/ai/estimate-duration.js` |
+| K | Form Validation | Added `required` attributes and JS validation to critical sheets | `NewClientSheet.jsx`, `NewJobSheet.jsx`, `NewExpenseSheet.jsx`, `Settings.jsx` |
+
+(Updated by Gemini CLI)
 
 ## Job Detail Sheet — architecture notes
 - Context: `src/context/JobDetailSheetContext.js` → `useJobDetailSheet()` → `{ openJob, closeJob, jobId }`
@@ -103,7 +116,7 @@ Key stability fixes implemented:
 - Bug fixed: `prep-notes.js` was selecting `client_notes` (wrong column); now `notes + ai_context`
 - Bug fixed: `estimate-duration.js` was treating `actual_duration` (hours) as minutes in prompt; now × 60
 
-## Next priorities (as of April 25, 2026 — v0.1.7 deployed)
+## Next priorities (as of April 26, 2026 — v0.1.7 deployed)
 1. **Live test invoicing flow** — mark a job paid on production, verify VIEW button appears, `/i/:id` renders correctly, SMS/Email prefill works
 2. **Live test auto-learning** — after payment, check `clients.ai_context.learned` in Supabase dashboard for `synthesis_note` + `behavioral_flags`
 3. **E2E edit flows** — verify edit-job and edit-client flows end-to-end on production data

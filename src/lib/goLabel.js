@@ -1,4 +1,4 @@
-export function getGoLabel(service, name = 'Sandra') {
+export function getGoLabel(service, name = 'there') {
   const svc = (service || '').toLowerCase();
   const h = new Date().getHours();
   const pools = {

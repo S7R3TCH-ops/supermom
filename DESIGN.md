@@ -7,9 +7,9 @@
 
 ## Brand direction
 
-**Zen but powerful. Superhuman-adjacent.** Warm, confident, clean. The app should make Sandra feel like she has a team of 10 behind her. Tasteful superhero energy — not cartoon, not toy-like. Premium solo-operator tooling.
+**Zen but powerful. Superhuman-adjacent.** Warm, confident, clean. The app should make the operator feel like they have a team of 10 behind them. Tasteful superhero energy — not cartoon, not toy-like. Premium solo-operator tooling.
 
-**The one thing someone will remember:** A glowing dark interface that feels like a mission control for a one-woman superhero operation — with a bright pink heart.
+**The one thing someone will remember:** A glowing dark interface that feels like a mission control for a solo superhero operation — with a bright pink heart.
 
 ---
 
@@ -573,8 +573,8 @@ Profile view (dark plum hero — differentiates from pink banner):
 
 ### Auto-timer
 - Triggered by tapping Supermom GO!
-- Start: Sandra arrives within ~150m of job address
-- Stop: Sandra moves 250m+ away for 3+ consecutive minutes
+- Start: The operator arrives within ~150m of job address
+- Stop: The operator moves 250m+ away for 3+ consecutive minutes
 - NO manual start button — geofence handles everything
 
 ### Auto-mileage
@@ -588,7 +588,7 @@ Profile view (dark plum hero — differentiates from pink banner):
 - Amber banner in Day/Week/Agenda views
 - Amber border + `⚠ <1HR GAP` badge on conflicting job cards
 - Also appears in New Job Step 3 review
-- Non-blocking — Sandra can proceed anyway
+- Non-blocking — the operator can proceed anyway
 
 ### Google Calendar sync
 - Every job created → GCal event (title: service + client, location: address, description: notes + link)
@@ -600,7 +600,7 @@ Profile view (dark plum hero — differentiates from pink banner):
 ### Pre-fill on rebook
 - When booking for an existing client: service, duration, price, recurrence, prep notes all pre-loaded
 - Toggle shown ON by default with summary of what's being copied
-- Sandra can flip it off
+- The operator can flip it off
 - New clients: blank form
 
 ---
@@ -629,4 +629,4 @@ Profile view (dark plum hero — differentiates from pink banner):
 
 ---
 
-*Design System v1.0 · April 2026 · Supermom for Hire*
+*Design System v1.1 (Updated by Gemini CLI) · April 2026 · Supermom for Hire*

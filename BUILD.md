@@ -101,7 +101,7 @@ When done:
 ### 🎯 Phase 6 — Settings & onboarding
 
 - [x] **18. Settings page** — Business profile edit (name, phone, email, address, hourly rate) + HST toggle; saves to businesses table.
-- [x] **19. Sandra's Profile** — account info, avatar upload, and digital signature line added to Settings.
+- [x] **19. Personal Profile** — account info, avatar upload, and digital signature line added to Settings.
 - [x] **20. Onboarding flow** — Multi-step first-run walkthrough implemented in OnboardingWalkthrough.jsx.
 
 ### ✅ Phase 7 — Auth & backend wiring (DONE)
@@ -133,11 +133,17 @@ When done:
 
 - [x] **33. Database records** — `invoices` and `invoice_jobs` tables used to file formal records.
 - [x] **34. Sequential numbering** — `YYYY-XXX` format with auto-increment within current year.
-- [x] **35. Client-facing web view** — Secure, unguessable `/i/:id` route matching Sandra's branding.
+- [x] **35. Client-facing web view** — Secure, unguessable `/i/:id` route matching the operator's branding.
 - [x] **36. Download PDF** — Integrated `window.print()` functionality for clients to save their invoice.
 - [x] **37. Post-job automation** — Auto-generation upon completion/payment; integrated preview in PostJobSheet.
 - [x] **38. Multi-channel sending** — AI-drafted messages now include invoice links with "Send via SMS" and "Send via Email" options.
 - [x] **39. Finance history** — Dedicated "Formal Invoices" list in Finance page with quick-view links.
+
+### ✅ Phase 11 — Robustness & Personalization (DONE)
+
+- [x] **40. Safe API Initialization** — Environment variable validation and internal client initialization for all `api/ai/*.js` endpoints to prevent cold-start crashes (500 errors).
+- [x] **41. Dynamic Personalization** — Replaced hardcoded "Sandra" fallbacks with `business.owner_name` in Home, Calendar, and AI briefings; default fallback is "there".
+- [x] **42. Field Validation** — Added HTML5 `required` attributes and JS-level validation for critical fields in New Client, New Job, New Expense, and Settings.
 
 ---
 
@@ -153,7 +159,7 @@ When you finish an item:
 
 ## Parked (don't build yet)
 
-- Start Timer manual button (geofence handles it — only revisit if Sandra asks)
+- Start Timer manual button (geofence handles it — only revisit if the operator asks)
 - Dark mode toggle UI polish (functionality works, design is fine)
 - Self-serve client booking link (Phase 2 product)
 - Minxy project (different operator — after Supermom ships)

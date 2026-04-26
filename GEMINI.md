@@ -32,19 +32,19 @@ At the end of every productive session, or upon major milestone completion, Gemi
 
 ---
 
-## Current State (as of April 26, 2026 — updated post robustness audit)
+## Current State (as of April 26, 2026 — updated post robustness + security audit)
 
 | Feature | Status |
 |---|---|
-| Login / Forgot password | ✅ Live |
-| Home — today's schedule + revenue | ✅ Live (Robust personalization) |
+| Login / Forgot password | ✅ Live (Password visibility toggles added) |
+| Home — today's schedule + revenue | ✅ Live (Robust personalization; "Later Today" filtering) |
 | Calendar — Day/Week/Agenda | ✅ Live (Robust personalization) |
 | Clients list + profile | ✅ Live |
 | Finance — mark-paid | ✅ Live |
 | New Job sheet | ✅ Live (Strict validation) |
 | **Job Detail sheet** | ✅ **Live** — tap any job card (Home or Calendar) to view/edit/act |
 | **AI Prep Notes** | ✅ **Live** — Robust API error handling + dynamic context |
-| **AI Duration Estimator** | ✅ **Live** — Step 2 prediction; fixed syntax error |
+| **AI Duration Estimator** | ✅ **Live** — Step 2 prediction; fixed prompt syntax |
 | **Post-job / Payment sheet** | ✅ **Live** — UNPAID badge, Cash/e-Transfer toggle, editable amount, AI thank-you teaser |
 | **Edit Client / AI context** | ✅ **Live** — Inline edit on Profile "What I know" card; Notes + Prefs/Access/Comms/Personal buckets |
 | **7-day week strip** | ✅ **Live** — Mon–Sun on Home, today dark plum pill, pink job dots |
@@ -63,7 +63,7 @@ At the end of every productive session, or upon major milestone completion, Gemi
 | **Storage bucket** | ✅ **Live** — Photos + Voice Notes in Job Detail |
 | **Geofence / auto-timer** | ✅ **Live** — Auto-start/stop with Live Timer card |
 | **Google Calendar sync** | ✅ **Live** — One-way sync (Supermom -> Google) |
-| **Settings page (#18)** | ✅ **Live** — Business profile edit + strict validation |
+| **Settings / Admin page** | ✅ **Live** — Business profile edit + Security/Password reset + Route alignment |
 | **Sandra's Profile (#19)** | ✅ **Live** — avatar upload + signature field |
 | **Onboarding flow (#20)** | ✅ **Live** — `OnboardingWalkthrough` shown on first run |
 | **Auto-learning / client intelligence** | ✅ **Live** — Robust API initialization |
@@ -85,9 +85,9 @@ Key stability fixes implemented:
 | F | `api/sync/gcal.js` — brittle dates | Replaced with pure string arithmetic for end-time calculation | `api/sync/gcal.js` |
 | G | `softDeleteJob` — redundant sync | Explicit `triggerGCalSync(id, 'delete')` on delete | `src/data/jobsRepo.js` |
 
-## Phase 9 robustness fixes (Gemini CLI session, April 26, 2026)
+## Phase 9 robustness & security fixes (Gemini CLI session, April 26, 2026)
 
-Key personalization and API stability fixes:
+Key personalization, API stability, and authentication fixes:
 
 | # | Issue | Fix | File |
 |---|---|---|---|
@@ -95,6 +95,11 @@ Key personalization and API stability fixes:
 | I | AI API 500 Errors | Moved Supabase/Anthropic init inside handler; added env var validation | `api/ai/*.js` |
 | J | Duration Prompt Syntax | Fixed invalid markdown string syntax in estimate prompt | `api/ai/estimate-duration.js` |
 | K | Form Validation | Added `required` attributes and JS validation to critical sheets | `NewClientSheet.jsx`, `NewJobSheet.jsx`, `NewExpenseSheet.jsx`, `Settings.jsx` |
+| L | Home Schedule Redundancy | Filtered active/next job from "Later Today" list; renamed section | `Home.jsx` |
+| M | Password Visibility | Added eye-icon toggles to Login, Reset Password, and Security settings | `Login.jsx`, `App.jsx`, `Settings.jsx`, `Admin.jsx` |
+| N | Reset Password Redirect | Forced `redirectTo` to use `window.location.origin` to prevent localhost fallbacks | `Login.jsx` |
+| O | Admin/Settings Route | Mapped `/admin` route to `Settings.jsx` to align with BottomNav labels | `App.jsx` |
+| P | Change Password Settings | Added Security section to both `Settings.jsx` and `Admin.jsx` for redundancy | `Settings.jsx`, `Admin.jsx` |
 
 (Updated by Gemini CLI)
 

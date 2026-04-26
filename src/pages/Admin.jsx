@@ -39,6 +39,62 @@ export default function Admin() {
 
   const aiStyle = business?.ai_profile?.style || 'professional';
 
+  const [pwForm, setPwForm] = useState({ pw: '', pw2: '' });
+  const [showPw, setShowPw] = useState(false);
+  const [showPw2, setShowPw2] = useState(false);
+  const [savingPw, setSavingPw] = useState(false);
+  const [pwSaved, setPwSaved] = useState(false);
+  const [pwError, setPwError] = useState(null);
+
+  const handleUpdatePassword = async () => {
+    if (!pwForm.pw || pwForm.pw.length < 8) {
+      setPwError('Password must be at least 8 characters.');
+      return;
+    }
+    if (pwForm.pw !== pwForm.pw2) {
+      setPwError('Passwords do not match.');
+      return;
+    }
+    setSavingPw(true);
+    setPwError(null);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: pwForm.pw });
+      if (error) throw error;
+      setPwSaved(true);
+      setPwForm({ pw: '', pw2: '' });
+      setTimeout(() => setPwSaved(false), 3000);
+    } catch (err) {
+      setPwError(err.message || 'Failed to update password.');
+    } finally {
+      setSavingPw(false);
+    }
+  };
+
+  const ToggleBtn = ({ show, onToggle }) => (
+    <button
+      type="button"
+      onClick={onToggle}
+      style={{
+        position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+        background: 'transparent', border: 'none', cursor: 'pointer',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 4, color: T.inkMuted,
+      }}
+    >
+      {show ? (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+          <line x1="1" y1="1" x2="23" y2="23" />
+        </svg>
+      ) : (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+          <circle cx="12" cy="12" r="3" />
+        </svg>
+      )}
+    </button>
+  );
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: T.bg, color: T.ink }}>
       <div style={{
@@ -157,10 +213,81 @@ export default function Admin() {
         </div>
 
         <SectionLabel>Tools</SectionLabel>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
           <ToolRow T={T} icon="📊" label="Detailed Reports" sub="Coming soon" />
           <ToolRow T={T} icon="👥" label="Staff Management" sub="Coming soon" />
           <ToolRow T={T} icon="⚙" label="Service Catalog" sub="Coming soon" />
+        </div>
+
+        <SectionLabel>Security</SectionLabel>
+        <div style={{
+          background: T.card, border: `1.5px solid ${T.cardBorder}`,
+          borderRadius: 16, padding: '14px', marginBottom: 20,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: T.ink }}>Change Password</span>
+            {pwSaved && (
+              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.5px', color: '#10b981', background: 'rgba(16,185,129,0.1)', padding: '3px 8px', borderRadius: 8 }}>UPDATED ✓</span>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div>
+              <label htmlFor="admin-pw" style={{ fontSize: 10, fontWeight: 700, color: T.inkMuted, textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>New Password</label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  id="admin-pw"
+                  type={showPw ? "text" : "password"}
+                  value={pwForm.pw}
+                  onChange={e => setPwForm(p => ({ ...p, pw: e.target.value }))}
+                  placeholder="Min 8 chars"
+                  style={{
+                    width: '100%', padding: '10px 12px', paddingRight: 36, borderRadius: 12,
+                    background: 'rgba(255,255,255,0.03)', border: `1px solid ${T.cardBorder}`,
+                    color: T.ink, fontSize: 13, outline: 'none'
+                  }}
+                />
+                <ToggleBtn show={showPw} onToggle={() => setShowPw(!showPw)} />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="admin-pw2" style={{ fontSize: 10, fontWeight: 700, color: T.inkMuted, textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Confirm</label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  id="admin-pw2"
+                  type={showPw2 ? "text" : "password"}
+                  value={pwForm.pw2}
+                  onChange={e => setPwForm(p => ({ ...p, pw2: e.target.value }))}
+                  style={{
+                    width: '100%', padding: '10px 12px', paddingRight: 36, borderRadius: 12,
+                    background: 'rgba(255,255,255,0.03)', border: `1px solid ${T.cardBorder}`,
+                    color: T.ink, fontSize: 13, outline: 'none'
+                  }}
+                />
+                <ToggleBtn show={showPw2} onToggle={() => setShowPw2(!showPw2)} />
+              </div>
+            </div>
+
+            {pwError && (
+              <div style={{ fontSize: 11, color: '#ef4444', background: 'rgba(239,68,68,0.1)', padding: '8px', borderRadius: 8 }}>
+                {pwError}
+              </div>
+            )}
+
+            <button
+              onClick={handleUpdatePassword}
+              disabled={savingPw}
+              style={{
+                marginTop: 4, width: '100%', padding: '12px',
+                background: savingPw ? T.pinkTint : T.pink,
+                color: 'white', border: 'none', borderRadius: 12,
+                fontSize: 13, fontWeight: 700, cursor: savingPw ? 'default' : 'pointer',
+              }}
+            >
+              {savingPw ? 'Updating…' : 'Save New Password'}
+            </button>
+          </div>
         </div>
       </div>
     </div>

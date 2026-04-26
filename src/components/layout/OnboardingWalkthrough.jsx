@@ -1,16 +1,19 @@
 import { useState } from 'react';
 import { useAppTheme } from '../../context/AppThemeContext';
+import { useAuth } from '../../context/AuthContext';
 import { useBusiness } from '../../data/useData';
 
 export default function OnboardingWalkthrough() {
   const { T } = useAppTheme();
+  const { profile } = useAuth();
   const { business, update, loading } = useBusiness();
   const [step, setStep] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
   const [localComplete, setLocalComplete] = useState(() => localStorage.getItem('sm_onboarding_complete') === 'true');
 
-  if (loading || !business || business.ai_profile?.onboarding_complete || localComplete || window.__SKIP_ONBOARDING) return null;
+  // Only show onboarding to the business owner, not admins/workers
+  if (loading || !business || profile?.role !== 'owner' || business.ai_profile?.onboarding_complete || localComplete || window.__SKIP_ONBOARDING) return null;
 
   const handleFinish = async () => {
     setIsSaving(true);

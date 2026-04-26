@@ -7,6 +7,7 @@ export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [recoveryMode, setRecoveryMode] = useState(false);
 
   useEffect(() => {
     if (!hasSupabaseConfig) {
@@ -26,14 +27,19 @@ export function AuthProvider({ children }) {
       setLoading(false);
     });
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setRecoveryMode(true);
+      } else if (recoveryMode) {
+        setRecoveryMode(false);
+      }
       setSession(s);
       if (s?.user) fetchProfile(s.user);
       else setProfile(null);
     });
 
     return () => sub.subscription.unsubscribe();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const value = useMemo(() => ({
     session,
@@ -41,10 +47,12 @@ export function AuthProvider({ children }) {
     profile,
     loading,
     configured: hasSupabaseConfig,
+    recoveryMode,
+    clearRecoveryMode: () => setRecoveryMode(false),
     signIn: (email, password) => supabase.auth.signInWithPassword({ email, password }),
     signUp: (email, password) => supabase.auth.signUp({ email, password }),
     signOut: async () => { clearBusinessCache(); return supabase.auth.signOut(); },
-  }), [session, profile, loading]);
+  }), [session, profile, loading, recoveryMode]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

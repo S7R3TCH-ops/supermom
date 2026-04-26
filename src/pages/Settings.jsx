@@ -43,10 +43,17 @@ export default function Settings() {
   const [integration, setIntegration] = useState(null);
 
   const [form, setForm] = useState(null);
+  const [pwForm, setPwForm] = useState({ pw: '', pw2: '' });
+  const [showPw, setShowPw] = useState(false);
+  const [showPw2, setShowPw2] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savingPw, setSavingPw] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [pwSaved, setPwSaved] = useState(false);
   const [resetPhase, setResetPhase] = useState(null); // null | 'confirm' | 'deleting' | 'done' | 'error'
   const [resetError, setResetError] = useState(null);
+  const [error, setError] = useState(null);
+  const [pwError, setPwError] = useState(null);
   const [avatarUrl, setAvatarUrl] = useState(null);
   const fileInputRef = useRef(null);
 
@@ -139,6 +146,30 @@ export default function Settings() {
     }
   };
 
+  const handleUpdatePassword = async () => {
+    if (!pwForm.pw || pwForm.pw.length < 8) {
+      setPwError('Password must be at least 8 characters.');
+      return;
+    }
+    if (pwForm.pw !== pwForm.pw2) {
+      setPwError('Passwords do not match.');
+      return;
+    }
+    setSavingPw(true);
+    setPwError(null);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: pwForm.pw });
+      if (error) throw error;
+      setPwSaved(true);
+      setPwForm({ pw: '', pw2: '' });
+      setTimeout(() => setPwSaved(false), 3000);
+    } catch (err) {
+      setPwError(err.message || 'Failed to update password.');
+    } finally {
+      setSavingPw(false);
+    }
+  };
+
   const handleDeleteAllData = async () => {
     setResetPhase('deleting');
     setResetError(null);
@@ -156,7 +187,7 @@ export default function Settings() {
   };
 
   const syncSuccess = searchParams.get('sync') === 'success';
-  const error = searchParams.get('error');
+  const urlError = searchParams.get('error');
 
   const inputStyle = {
     width: '100%', boxSizing: 'border-box',
@@ -166,6 +197,31 @@ export default function Settings() {
     background: 'var(--pink-pale)', outline: 'none',
     fontFamily: 'var(--font-ui)',
   };
+
+  const ToggleBtn = ({ show, onToggle }) => (
+    <button
+      type="button"
+      onClick={onToggle}
+      style={{
+        position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+        background: 'transparent', border: 'none', cursor: 'pointer',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 4, color: 'var(--ink-muted)',
+      }}
+    >
+      {show ? (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+          <line x1="1" y1="1" x2="23" y2="23" />
+        </svg>
+      ) : (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+          <circle cx="12" cy="12" r="3" />
+        </svg>
+      )}
+    </button>
+  );
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: T.bg ?? 'var(--pink-pale)', color: T.ink ?? 'var(--ink)' }}>
@@ -359,6 +415,71 @@ export default function Settings() {
             Error: {error}
           </div>
         )}
+
+        {/* Security / Password */}
+        <div style={{ background: 'white', borderRadius: 'var(--r-card)', border: '1.5px solid var(--pink-border)', padding: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>Security</span>
+            {pwSaved && (
+              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.5px', color: 'var(--green-text)', background: 'var(--green-light)', padding: '3px 8px', borderRadius: 'var(--r-badge)' }}>PASSWORD UPDATED ✓</span>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div>
+              <label htmlFor="settings-pw" style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-muted)', display: 'block', marginBottom: 4 }}>
+                New Password
+              </label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  id="settings-pw"
+                  type={showPw ? "text" : "password"}
+                  value={pwForm.pw}
+                  onChange={e => setPwForm(p => ({ ...p, pw: e.target.value }))}
+                  placeholder="At least 8 characters"
+                  style={{ ...inputStyle, paddingRight: 36 }}
+                />
+                <ToggleBtn show={showPw} onToggle={() => setShowPw(!showPw)} />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="settings-pw2" style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-muted)', display: 'block', marginBottom: 4 }}>
+                Confirm Password
+              </label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  id="settings-pw2"
+                  type={showPw2 ? "text" : "password"}
+                  value={pwForm.pw2}
+                  onChange={e => setPwForm(p => ({ ...p, pw2: e.target.value }))}
+                  style={{ ...inputStyle, paddingRight: 36 }}
+                />
+                <ToggleBtn show={showPw2} onToggle={() => setShowPw2(!showPw2)} />
+              </div>
+            </div>
+
+            {pwError && (
+              <div style={{ fontSize: 11, color: '#ef4444', background: 'rgba(239,68,68,0.1)', padding: '6px 10px', borderRadius: 8 }}>
+                {pwError}
+              </div>
+            )}
+
+            <button
+              onClick={handleUpdatePassword}
+              disabled={savingPw}
+              style={{
+                marginTop: 4, width: '100%', padding: '12px',
+                background: savingPw ? 'var(--pink-tint)' : 'var(--pink)',
+                color: savingPw ? 'var(--pink-mid)' : 'white',
+                border: 'none', borderRadius: 'var(--r-input)',
+                fontSize: 13, fontWeight: 700, cursor: savingPw ? 'default' : 'pointer',
+              }}
+            >
+              {savingPw ? 'Updating…' : 'Update Password'}
+            </button>
+          </div>
+        </div>
 
         {/* Danger Zone — super admin only */}
         {user?.email === SUPER_ADMIN_EMAIL && (

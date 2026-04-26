@@ -97,6 +97,17 @@ export default function Home() {
   const activeJob = todayJobs.find(j => j.status === 'Scheduled' && j.ai_context?.clock_in_time != null);
   const revenueToday = todayJobs.reduce((s, j) => s + Number(j.total || 0), 0);
 
+  const todayJobsWithConflicts = useMemo(() => {
+    return todayJobs.map((j, i) => {
+      const conflict = (i < todayJobs.length - 1)
+        && Math.round((todayJobs[i + 1].start - j.end) / 60000) < 60;
+      return { ...j, conflict };
+    });
+  }, [todayJobs]);
+
+  const heroJobId = activeJob?.id || next?.id;
+  const laterJobs = todayJobsWithConflicts.filter(j => j.id !== heroJobId);
+
   const commandBrief = useMemo(() => next ? generateCommandBrief(next, business) : null, [next, business]);
 
   const handleToggleSpeak = (e) => {
@@ -316,13 +327,12 @@ export default function Home() {
             </>
           )}
 
-          {todayJobs.length > 0 && (
+          {laterJobs.length > 0 && (
             <>
-              <SectionLabel>Today's Schedule</SectionLabel>
+              <SectionLabel>Later Today</SectionLabel>
 
-              {todayJobs.map((j, i) => {
-                const conflict = (i < todayJobs.length - 1)
-                  && Math.round((todayJobs[i + 1].start - j.end) / 60000) < 60;
+              {laterJobs.map((j) => {
+                const conflict = j.conflict;
                 const isNext = next && j.id === next.id;
                 const border = conflict ? 'rgba(245,158,11,0.35)' : isNext ? 'rgba(233,30,106,0.38)' : T.cardBorder;
                 const bg = conflict ? (mode === 'dark' ? 'rgba(245,158,11,0.05)' : '#FFFBEB') : T.card;

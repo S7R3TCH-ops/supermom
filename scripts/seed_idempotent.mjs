@@ -230,11 +230,17 @@ async function seedJobs(businessId, clientMap, serviceMap) {
   const { data: existingJobs } = await sb.from('jobs').select('client_id, scheduled_date, scheduled_time').eq('business_id', businessId).is('deleted_at', null);
   
   const finalRows = rows.filter(r => {
-    const isDup = existingJobs.some(ej => 
-        ej.client_id === r.client_id && 
-        ej.scheduled_date === r.scheduled_date && 
-        ej.scheduled_time === r.scheduled_time
-    );
+    const isDup = existingJobs.some(ej => {
+        let ejTime = ej.scheduled_time ?? 'null';
+        if (ejTime !== 'null' && ejTime.length > 5) ejTime = ejTime.substring(0, 5);
+        
+        let rTime = r.scheduled_time ?? 'null';
+        if (rTime !== 'null' && rTime.length > 5) rTime = rTime.substring(0, 5);
+
+        return ej.client_id === r.client_id && 
+               ej.scheduled_date === r.scheduled_date && 
+               ejTime === rTime;
+    });
     return !isDup;
   });
 

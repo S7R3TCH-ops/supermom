@@ -155,7 +155,13 @@ async function dedupJobs() {
   for (const j of jobs) {
     // Jobs without a scheduled_date are ASAP/floating — skip dedup (no natural key)
     if (!j.scheduled_date) continue;
-    const time = j.scheduled_time ?? 'null';
+    
+    // Normalize time (some come back as HH:mm:ss, others as HH:mm)
+    let time = j.scheduled_time ?? 'null';
+    if (time !== 'null' && time.length > 5) {
+      time = time.substring(0, 5);
+    }
+    
     const key = `${j.business_id}::${j.client_id}::${j.scheduled_date}::${time}`;
     if (!groups[key]) groups[key] = [];
     groups[key].push(j);

@@ -23,7 +23,19 @@
 
 ## Open Issues
 
-*(add new bugs here)*
+> The following 6 issues were identified in the Claude Code audit (April 25, 2026). None are critical/blocking but should be resolved in the next dedicated fix session.
+
+- [ ] **Home.jsx missing imports** — `useBusiness` not imported from `useData.js`; `generatePrepNote` not imported from `ai.js`. Will cause ReferenceError at runtime if those code paths are hit. Fix: add both to their respective import lines. *(Found April 25, 2026 — Claude Code audit)*
+
+- [ ] **NewJobSheet aiDuration prop not destructured** — `Step2What` component receives `aiDuration` but doesn't destructure it in the function signature, so the Smart Estimate panel silently receives `undefined`. Fix: add `aiDuration` to the `Step2What` destructured props. *(Found April 25, 2026 — Claude Code audit)*
+
+- [ ] **Recurring series GCal sync incomplete** — `createRecurringSeries` in `jobsRepo.js` only syncs the first job in the series to Google Calendar. Fix: loop through all results and call `triggerGCalSync(job.id, 'upsert')` for each. *(Found April 25, 2026 — Claude Code audit)*
+
+- [ ] **recordPayment always sets status to 'Paid'** — Logic doesn't check whether the amount paid covers the total. Fix: fetch `total_amount` from the job and set `payment_status` to `'Partial'` if `amount < total_amount`, otherwise `'Paid'`. *(Found April 25, 2026 — Claude Code audit)*
+
+- [ ] **Duplicate DST/timezone logic** — `NewJobSheet.jsx` has its own local `torontoISO()` function that duplicates `composeTorontoISO()` in `jobsRepo.js`. Risk of divergence. Fix: export `composeTorontoISO` from `jobsRepo.js` and import it in `NewJobSheet.jsx`; remove the local copy. *(Found April 25, 2026 — Claude Code audit)*
+
+- [ ] **Stale TODAY constant in Calendar.jsx** — `TODAY` is set once at module load time, meaning a user who leaves the app open past midnight gets stale date logic. Fix: replace `const TODAY = ...` with `const NOW = () => new Date()` and update all references. *(Found April 25, 2026 — Claude Code audit)*
 
 ---
 

@@ -176,11 +176,13 @@ export default function Home() {
     if (!allJobs) return [];
     return allJobs
       .map(j => {
+        if (!j.scheduled_at) return null;
         const start = new Date(j.scheduled_at);
+        if (isNaN(start.getTime())) return null;
         const end = new Date(start.getTime() + (j.duration_est || 60) * 60000);
         return { ...j, start, end };
       })
-      .filter(j => sameDay(j.start, today) && j.status !== 'Cancelled')
+      .filter(j => j && sameDay(j.start, today) && j.status !== 'Cancelled')
       .sort((a, b) => a.start - b.start);
   }, [allJobs, today]);
 
@@ -198,11 +200,13 @@ export default function Home() {
     if (!allJobs) return [];
     return allJobs
       .map(j => {
+        if (!j.scheduled_at) return null;
         const start = new Date(j.scheduled_at);
+        if (isNaN(start.getTime())) return null;
         const end = new Date(start.getTime() + (j.duration_est || 60) * 60000);
         return { ...j, start, end };
       })
-      .filter(j => sameDay(j.start, selectedDate) && j.status !== 'Cancelled')
+      .filter(j => j && sameDay(j.start, selectedDate) && j.status !== 'Cancelled')
       .sort((a, b) => a.start - b.start);
   }, [allJobs, selectedDate]);
 
@@ -210,8 +214,12 @@ export default function Home() {
     if (!allJobs) return [];
     return allJobs
       .filter(j => j.status === 'Completed' && j.payment_status !== 'Paid' && Number(j.total) > 0)
-      .map(j => ({ ...j, start: new Date(j.scheduled_at) }))
-      .filter(j => (today - j.start) / 86400000 >= 1);
+      .map(j => {
+        if (!j.scheduled_at) return null;
+        const start = new Date(j.scheduled_at);
+        return isNaN(start.getTime()) ? null : { ...j, start };
+      })
+      .filter(j => j && (today - j.start) / 86400000 >= 1);
   }, [allJobs, today]);
 
   const activeJob = todayJobs.find(j => j.status === 'Scheduled' && j.ai_context?.clock_in_time != null);
@@ -245,7 +253,15 @@ export default function Home() {
     return { incomplete, upcoming, done };
   }, [filteredSelectedJobs, activeJob, isSelectedToday]);
 
-  const commandBrief = useMemo(() => next ? generateCommandBrief(next, business) : null, [next, business]);
+  const commandBrief = useMemo(() => {
+    if (!next) return null;
+    try {
+      return generateCommandBrief(next, business);
+    } catch (e) {
+      console.error("Error generating command brief:", e);
+      return null;
+    }
+  }, [next, business]);
 
   const handleToggleSpeak = (e) => {
     e.stopPropagation();

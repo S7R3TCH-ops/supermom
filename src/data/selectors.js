@@ -32,30 +32,35 @@ function clientColor(row) {
 // Combine a client row + their job rows into the display object the UI consumes.
 // `jobs` should be all jobs for this client (already decorated by jobsRepo).
 export function toDisplayClient(row, jobs = []) {
+  if (!row) return null;
   const ai = row.ai_context || {};
   const name = clientDisplayName(row);
 
-  const sorted = [...jobs].sort((a, b) =>
-    new Date(b.scheduled_at || 0) - new Date(a.scheduled_at || 0)
-  );
-  const past = sorted.filter(j => j.job_status === 'Completed');
-  const future = sorted.filter(j => j.job_status === 'Scheduled');
+  const safeJobs = Array.isArray(jobs) ? jobs : [];
+  const sorted = [...safeJobs].sort((a, b) => {
+    const da = new Date(a?.scheduled_at || 0).getTime();
+    const db = new Date(b?.scheduled_at || 0).getTime();
+    return db - da;
+  });
+  
+  const past = sorted.filter(j => j?.job_status === 'Completed');
+  const future = sorted.filter(j => j?.job_status === 'Scheduled');
 
   const lastJob = past[0];
   const nextJob = future[future.length - 1];
   const unpaidJobs = sorted.filter(j =>
-    j.job_status !== 'Cancelled' &&
-    (j.payment_status === '' || j.payment_status === 'Partial')
+    j?.job_status !== 'Cancelled' &&
+    (j?.payment_status === '' || j?.payment_status === 'Partial')
   );
-  const owedTotal = unpaidJobs.reduce((sum, j) => sum + Number(j.total_amount || 0), 0);
+  const owedTotal = unpaidJobs.reduce((sum, j) => sum + Number(j?.total_amount || 0), 0);
   const lastService = lastJob?.service_name || nextJob?.service_name || '—';
 
   const recurrence = ai.recurrence ?? null;
-  const tags = [...(row.tags || [])];
-  if (recurrence && !tags.find(t => t.toLowerCase() === recurrence)) {
+  const tags = Array.isArray(row.tags) ? [...row.tags] : [];
+  if (recurrence && !tags.find(t => t?.toLowerCase() === recurrence)) {
     tags.unshift(recurrence.charAt(0).toUpperCase() + recurrence.slice(1));
   }
-  if (ai.vip && !tags.find(t => t.toLowerCase().includes('vip'))) tags.push('VIP ★');
+  if (ai.vip && !tags.find(t => t?.toLowerCase().includes('vip'))) tags.push('VIP ★');
   if (row.status === 'lead' && !tags.includes('Lead')) tags.push('Lead');
 
   return {
@@ -85,32 +90,33 @@ export function toDisplayClient(row, jobs = []) {
     },
     stats: {
       jobsTotal: sorted.length,
-      revenueYtd: past.reduce((sum, j) => sum + Number(j.total_amount || 0), 0),
+      revenueYtd: past.reduce((sum, j) => sum + Number(j?.total_amount || 0), 0),
       lastVisit: lastJob ? fmtShortDate(lastJob.scheduled_at) : '—',
     },
     upcoming: future.map(j => ({
-      id: j.id,
-      date: fmtShortDate(j.scheduled_at),
-      service: j.service_name,
-      time: fmtTime(j.scheduled_at),
-      amt: `$${Number(j.total_amount || 0).toFixed(0)}`,
+      id: j?.id,
+      date: fmtShortDate(j?.scheduled_at),
+      service: j?.service_name,
+      time: fmtTime(j?.scheduled_at),
+      amt: `$${Number(j?.total_amount || 0).toFixed(0)}`,
     })),
     history: past.map(j => ({
-      id: j.id,
-      date: fmtShortDate(j.scheduled_at),
-      service: j.service_name,
-      duration: j.actual_duration ? fmtDur(Number(j.actual_duration) * 60)
-              : j.estimated_hours ? fmtDur(Number(j.estimated_hours) * 60)
+      id: j?.id,
+      date: fmtShortDate(j?.scheduled_at),
+      service: j?.service_name,
+      duration: j?.actual_duration ? fmtDur(Number(j.actual_duration) * 60)
+              : j?.estimated_hours ? fmtDur(Number(j.estimated_hours) * 60)
               : '—',
-      amt: `$${Number(j.total_amount || 0).toFixed(0)}`,
-      status: j.payment_status === 'Paid' ? 'paid' : 'unpaid',
+      amt: `$${Number(j?.total_amount || 0).toFixed(0)}`,
+      status: j?.payment_status === 'Paid' ? 'paid' : 'unpaid',
     })),
   };
 }
 
 // Decorate the jobs themselves with the display shape pages expect.
 export function toDisplayJob(jobRow, clientLookup = {}) {
-  const c = clientLookup[jobRow.client_id];
+  if (!jobRow) return null;
+  const c = clientLookup[jobRow.client_id] || null;
   return {
     id: jobRow.id,
     raw: jobRow,
@@ -122,13 +128,13 @@ export function toDisplayJob(jobRow, clientLookup = {}) {
     // Attach client intel for AI Prep Notes
     client_notes: c?.note || '',
     client_ai_context: c?.raw?.ai_context || {},
-    client_tags: c?.raw?.tags || [],
-    service_name: jobRow.service_name,
+    client_tags: Array.isArray(c?.raw?.tags) ? c.raw.tags : [],
+    service_name: jobRow.service_name || 'Service',
     scheduled_at: jobRow.scheduled_at,
     duration_est: jobRow.duration_est,
     total: Number(jobRow.total_amount || 0),
-    status: jobRow.job_status,
-    payment_status: jobRow.payment_status,
+    status: jobRow.job_status || 'Scheduled',
+    payment_status: jobRow.payment_status || '',
     notes: jobRow.job_notes ?? '',
     photo_links: jobRow.photo_links ?? '',
     voice_note: jobRow.ai_context?.voice_note ?? null,

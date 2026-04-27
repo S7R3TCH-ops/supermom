@@ -69,14 +69,15 @@ export async function fetchJobById(id) {
 export async function createJob(payload) {
   const businessId = await getCurrentBusinessId();
   const recurrence = payload.ai_context?.recurrence_rule;
+  const cleanPayload = normalizeJobPayload(payload);
 
   if (recurrence && recurrence !== 'None') {
-    return createRecurringSeries(payload, businessId);
+    return createRecurringSeries(cleanPayload, businessId);
   }
 
   const { data, error } = await supabase
     .from('jobs')
-    .insert({ ...payload, business_id: businessId })
+    .insert({ ...cleanPayload, business_id: businessId })
     .select()
     .single();
   if (error) throw error;
@@ -111,7 +112,7 @@ async function createRecurringSeries(payload, businessId) {
 
   for (let i = 0; i < count; i++) {
     const dateStr = currentDate.toISOString().split('T')[0];
-    occurrences.push({
+    const occurrence = normalizeJobPayload({
       ...payload,
       business_id: businessId,
       template_id: template.id,
@@ -122,6 +123,7 @@ async function createRecurringSeries(payload, businessId) {
         occurrence_index: i,
       }
     });
+    occurrences.push(occurrence);
 
     // Advance date
     if (template.frequency === 'Weekly') currentDate.setDate(currentDate.getDate() + 7);
@@ -144,11 +146,12 @@ async function createRecurringSeries(payload, businessId) {
 
 export async function updateJob(id, patch, seriesAction = 'this') {
   const businessId = await getCurrentBusinessId();
+  const cleanPatch = normalizeJobPayload(patch);
 
   if (seriesAction === 'this') {
     const { data, error } = await supabase
       .from('jobs')
-      .update(patch)
+      .update(cleanPatch)
       .eq('id', id)
       .eq('business_id', businessId)
       .select()
@@ -166,10 +169,10 @@ export async function updateJob(id, patch, seriesAction = 'this') {
     .eq('id', id)
     .single();
   if (fErr) throw fErr;
-  if (!job.template_id) return updateJob(id, patch, 'this');
+  if (!job.template_id) return updateJob(id, cleanPatch, 'this');
 
   // Protect series updates from flattening dates
-  const seriesPatch = { ...patch };
+  const seriesPatch = { ...cleanPatch };
   delete seriesPatch.scheduled_date;
 
   let query = supabase
@@ -194,12 +197,12 @@ export async function updateJob(id, patch, seriesAction = 'this') {
     await supabase
       .from('job_templates')
       .update({
-        service_name: patch.service_name,
-        preferred_time: patch.scheduled_time,
-        pricing_type: patch.pricing_type,
-        estimated_hours: patch.estimated_hours,
-        flat_rate: patch.flat_rate,
-        notes: patch.job_notes,
+        service_name: cleanPatch.service_name,
+        preferred_time: cleanPatch.scheduled_time,
+        pricing_type: cleanPatch.pricing_type,
+        estimated_hours: cleanPatch.estimated_hours,
+        flat_rate: cleanPatch.flat_rate,
+        notes: cleanPatch.job_notes,
       })
       .eq('id', job.template_id);
   }
@@ -346,15 +349,31 @@ function decorateJob(j) {
 
 export function composeTorontoISO(dateStr, timeStr) {
   if (!dateStr) return null;
-  const t = (timeStr || '00:00').slice(0, 5);
+  
+  // Ensure we have a valid HH:mm format, stripping any seconds if present
+  let t = '00:00';
+  if (timeStr && typeof timeStr === 'string') {
+    const parts = timeStr.split(':');
+    if (parts.length >= 2) {
+      t = `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`;
+    }
+  }
+
   const [year, month, day] = dateStr.split('-').map(Number);
-  const dstStart = nthSunday(year, 3, 2);  // 2nd Sunday in March
-  const dstEnd   = nthSunday(year, 11, 1); // 1st Sunday in November
-  const date  = new Date(Date.UTC(year, month - 1, day));
-  const start = new Date(Date.UTC(year, 2,  dstStart));
-  const end   = new Date(Date.UTC(year, 10, dstEnd));
-  const isDST = date >= start && date < end;
-  return `${dateStr}T${t}:00${isDST ? '-04:00' : '-05:00'}`;
+  if (isNaN(year) || isNaN(month) || isNaN(day)) return null;
+
+  try {
+    const dstStart = nthSunday(year, 3, 2);  // 2nd Sunday in March
+    const dstEnd   = nthSunday(year, 11, 1); // 1st Sunday in November
+    const date  = new Date(Date.UTC(year, month - 1, day));
+    const start = new Date(Date.UTC(year, 2,  dstStart));
+    const end   = new Date(Date.UTC(year, 10, dstEnd));
+    const isDST = date >= start && date < end;
+    return `${dateStr}T${t}:00${isDST ? '-04:00' : '-05:00'}`;
+  } catch (e) {
+    console.error('Error composing ISO date:', e);
+    return null;
+  }
 }
 
 function nthSunday(year, month, n) {
@@ -410,4 +429,29 @@ async function triggerGCalSync(jobId, action = 'upsert') {
   } catch (e) {
     console.error('GCal Sync Trigger Error:', e);
   }
+}
+
+// ---------- Normalization ----------
+
+function normalizeJobPayload(payload) {
+  if (!payload) return payload;
+  const clean = { ...payload };
+  
+  // 1. Normalize Time (Force HH:mm:00)
+  if (clean.scheduled_time && typeof clean.scheduled_time === 'string') {
+    const parts = clean.scheduled_time.split(':');
+    if (parts.length === 1 && parts[0].length === 4) { // handle "1000"
+      clean.scheduled_time = `${parts[0].slice(0,2)}:${parts[0].slice(2,4)}:00`;
+    } else if (parts.length === 2) { // handle "10:00"
+      clean.scheduled_time = `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}:00`;
+    } else if (parts.length === 3) { // handle "10:00:00"
+      clean.scheduled_time = `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}:${parts[2].padStart(2, '0')}`;
+    }
+  }
+
+  // 2. Ensure numbers are numbers
+  if (clean.total_amount !== undefined) clean.total_amount = Number(clean.total_amount || 0);
+  if (clean.estimated_hours !== undefined) clean.estimated_hours = Number(clean.estimated_hours || 0);
+
+  return clean;
 }

@@ -133,25 +133,78 @@ The app is a dark, high-intensity mission-control interface for the operator. Th
 
 ## Tone & copy direction
 
-- **Voice:** Warm, confident, direct. Like a trusted friend who happens to be extremely capable. No jargon, no corporate-speak, no hype.
-- **Headlines:** Fraunces serif, slightly italic feel. Conversational, not salesy. Example: *"Your life, running smoothly at last."* / *"Georgetown's secret weapon for getting life in order."*
-- **Body copy:** Inter, 15–16px, comfortable line-height (1.7). First-person where Sandra speaks. Plain English. Real.
-- **CTAs:** Action-oriented but not pushy. "Get in Touch" / "Book a Consultation" / "See the Work" — not "BUY NOW" energy
+- **Voice:** Warm, funny, real, a little sarcastic — like your most capable friend who also swears occasionally and isn't afraid to call herself a "bad mom." NOT polished or corporate. NOT "wellness brand." Think: the friend who shows up with sleeves rolled and gets shit done, then makes you laugh about it.
+- **Headlines:** Fraunces serif. Conversational, not salesy. Pull directly from her real language where possible:
+  - *"We've got this."*
+  - *"Your home. Your rules. My sleeves, rolled up."*
+  - *"Good enough beats perfect every single time."*
+  - *"Georgetown's secret weapon for getting life in order."*
+  - *"Nothing phases me — and you don't have to do it alone."*
+- **Body copy:** Inter, 15–16px, line-height 1.7. First-person. Direct. Short paragraphs. She uses exclamation marks and the occasional emoji — the copy should feel like a real person wrote it.
+- **Anti-perfection is core messaging** — explicitly contrast against Pinterest/Instagram perfection culture. She's built her brand around rejecting that.
+- **CTAs:** Warm and inviting, not pushy. "Let's talk." / "Get in touch." / "Reach out." — conversational, not transactional.
+- **Signature sign-off:** Every major section or CTA area should feel like it could end with *"We've got this. 💗"*
 - **Eyebrow labels:** Always `✦ LABEL TEXT` — 10px, uppercase, 1.2–1.4px letter-spacing, `--pink-label` color on dark, `--ink-muted` on light
 
 ---
 
-## Placeholder content (replace with Sandra's real content when available)
+## Sandra's real voice & content (sourced from Facebook posts, April 2026)
 
-Sandra will provide:
+> This section replaces generic placeholders. Use this as the copy foundation — her actual words, phrases, and stories. Do not invent generic marketing copy when her real voice is better.
+
+### Her signature sign-off
+**"We've got this. 💗"** — closes nearly every post. Use this prominently on the site (hero section, contact CTA, or footer). It's her brand in four words.
+
+### Her actual taglines & philosophy (use these verbatim or close to it)
+- *"Sustainable systems tailored to how your family actually lives"*
+- *"No judgment. No perfection pressure. No need for a million fancy organizers."*
+- *"Good enough is SO much better and more freeing than perfect."*
+- *"I'm not here to give you Pinterest-perfect rooms that fall apart in two days."*
+- *"Self-care isn't always a bubble bath. Sometimes it's handing off some of your mental load."*
+- *"Nothing phases me — and you don't have to do it alone."*
+- *"I think fast, move fast and sometimes find the best solutions under pressure."*
+- *"Big life changes are heavy. Moving, welcoming a new baby, navigating illness, aging parents… none of it is easy. The good news? Nothing phases me."*
+- *"Trust me. Trust the process. And trust that I'll get it done right for you."*
+
+### Real testimonials (use these verbatim — client names omitted or first-name only)
+1. *"I so love the fact that Sandra doesn't judge us. I think anybody else coming in here would just think we're pigs but she just handles it all and doesn't stress out… It's kind of cool that she's so chill, that a complete stranger can walk into my house and ask me to help clean and it feels normal."*
+2. *"Moving is stressful, but Sandra made it so much easier! We were struggling to finish packing as our move date got closer, and she saved the day. She organized and packed the rest of our home in just a few hours. I wish I'd had her help from day one!"* ⭐⭐⭐⭐⭐
+3. *"Your work and community speak for themselves. I am very impressed."* — Husband, after bedroom overhaul
+4. *(Client, after PMDD support session)* — Sandra describes: "Making her feel seen because I got her… like really got her." Client sent a message of deep gratitude immediately after.
+5. More testimonials and before/after photos to be added by Sandra.
+
+### Her actual services (broader than originally listed — update the services section)
+- **Home Organizing** — closets, kitchens, pantries, offices, whole homes (largest: 2,400 sq ft)
+- **Decluttering** — judgment-free, sustainable systems, dollar-store solutions that actually work
+- **Caregiving & Senior Support** — companionship, chores, errands, friendship for seniors in residences
+- **Life Coaching & Mental Load Support** — especially for neurodivergent women, ADHD, PMDD
+- **Errands & Assistance** — groceries, donations drop-off, plant care, last-minute tasks
+- **Moving Support** — packing/unpacking, eleventh-hour saves, new home setup (kitchen first!)
+- **Nesting Support** — for moms-to-be: nursery setup, house prep, "you direct, I execute"
+- **PMDD / Neurodivergent Support** — recurring monthly support sessions for women who need help during hard windows
+- **Last-Minute & Emergency Resets** — her specialty: 18-ft Christmas tree removal, basement cleared for surprise guests in a week, guest room reset for last-minute visitors
+
+### Her audience (more specific than originally described)
+Primary: overwhelmed moms, neurodivergent women (ADHD, PMDD), moms-to-be, mompreneurs
+Secondary: families with aging parents / seniors needing companionship and support
+Geographic: Georgetown ON, Halton Hills, has gone as far as Toronto
+
+### Her key differentiators (work these into copy throughout)
+1. **Judgment-free, always** — her #1 brand value, repeated constantly
+2. **More valuable than therapy** — clients say this unprompted; she's in the trenches solving problems in real-time
+3. **Affordable by design** — she explicitly prices below professional organizer rates; uses dollar-store solutions
+4. **Village mentality** — she built this business to be the village that moms have lost; accessible, not luxury
+5. **Nothing phases her** — last-minute chaos, impossible timelines, emotional sessions — she thrives
+6. **Neurodivergent-affirming** — she "gets" ND brains in a way that others don't; this is a real differentiator
+7. **Works while you're at work** — the surprise reveal for the overwhelmed mom coming home is a signature moment
+8. **Sarcasm & warmth in equal measure** — she named herself "Supermom" knowing she's against the perfection myth; she's funny and self-aware
+
+### Still needed from Sandra
 - Her professional headshot / personal photo
-- Real before/after job photos (with client permission)
-- Real client testimonials (3–5, genuine quotes)
-- Her personal bio in her own words
-- Her actual phone number and email
-- Specific service pricing context (if she wants to show it)
-
-For now, use clearly-labeled placeholders that match the layout exactly.
+- Before/after job photos (with client permission) — she has them, just needs to share
+- Her actual phone number and email for the contact section
+- Pricing context (hourly rate vs flat, whether she wants to publish it)
+- Any specific testimonials she wants highlighted
 
 ---
 

@@ -165,12 +165,15 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
     setBookErr('');
     try {
       const hours = duration / 60;
+      // Ensure time is formatted as HH:mm:00 for DB consistency
+      const cleanTime = time.length === 5 ? `${time}:00` : time;
+      
       await createJob({
         client_id: clientId,
         service_id: serviceId,
         service_name: selectedService?.name || null,
         scheduled_date: date,
-        scheduled_time: time,
+        scheduled_time: cleanTime,
         scheduling_type: 'Hard Date',
         pricing_type: selectedService?.pricing_type || 'Flat',
         estimated_hours: hours,

@@ -1,18 +1,4 @@
 {
-  "hooks": {
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ./scripts/auto-save.sh 2>/dev/null || true",
-            "timeout": 30,
-            "statusMessage": "Auto-saving..."
-          }
-        ]
-      }
-    ]
-  },
   "permissions": {
     "allow": [
       "Bash(bash ./scripts/auto-save.sh *)",
@@ -41,7 +27,23 @@
       "Bash(npx tsc *)",
       "Bash(node -e ' *)",
       "Bash(node scripts/dedup-data.mjs)",
-      "Bash(node scripts/inspect_data.mjs)"
+      "Bash(node scripts/inspect_data.mjs)",
+      "Bash(node *)",
+      "Bash(awk 'NR>=524 && NR<=530' \"C:/Users/jlund/Documents/Projects/supermom v2.0/website-mockup.html\")"
+    ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ./scripts/auto-save.sh 2>/dev/null || true",
+            "timeout": 30,
+            "statusMessage": "Auto-saving..."
+          }
+        ]
+      }
     ]
   }
 }

@@ -1,6 +1,21 @@
 {
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ./scripts/auto-save.sh 2>/dev/null || true",
+            "timeout": 30,
+            "statusMessage": "Auto-saving..."
+          }
+        ]
+      }
+    ]
+  },
   "permissions": {
     "allow": [
+      "Bash(bash ./scripts/auto-save.sh *)",
       "Bash(npm install *)",
       "Bash(npx vite *)",
       "Bash(mkdir -p /tmp/design)",

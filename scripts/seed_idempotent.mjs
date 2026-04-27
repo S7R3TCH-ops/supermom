@@ -80,6 +80,48 @@ const NEW_CLIENTS = [
       personal: 'Travels a lot. Needs the place "sanitized" every 2 weeks.',
       vip: true, recurrence: 'biweekly',
     },
+  },
+  {
+    first_name: 'Steve', last_name: 'Rogers',
+    phone: '6475550011', email: 'steve.r@example.com',
+    street: '569 Leaman Place', city: 'Georgetown', province: 'ON',
+    status: 'active', tags: ['Regular'],
+    notes: 'Very polite, helps with the heavy lifting. Place is always spotless anyway.',
+    ai_context: {
+      prefs: 'Uses traditional soap. No fancy scents. Likes everything in right angles.',
+      access: 'He will always be home to greet you. Very punctual.',
+      comms: 'Face-to-face only. Doesn\'t quite "get" the smartphone yet.',
+      personal: 'Loves 40s music. Has a very old shield in the umbrella stand (don\'t touch).',
+      vip: false, recurrence: 'weekly',
+    },
+  },
+  {
+    first_name: 'Stephen', last_name: 'Strange',
+    phone: '6475550012', email: 'dr.strange@example.com',
+    street: '177A Bleecker St', city: 'Georgetown', province: 'ON',
+    status: 'active', tags: ['VIP', 'Special'],
+    notes: 'Do NOT touch the floating cloak. Watch for shifting floors.',
+    ai_context: {
+      prefs: 'Only use distilled water on the artifacts. Specific incense needed for the library.',
+      access: 'The door will appear when you knock three times. Usually.',
+      comms: 'Messages appear in tea leaves or occasionally via raven.',
+      personal: 'Very protective of his library. Former surgeon, very precise.',
+      vip: true, recurrence: 'monthly',
+    },
+  },
+  {
+    first_name: 'Scott', last_name: 'Lang',
+    phone: '6475550013', email: 'scott.l@example.com',
+    street: '3412 Milgrom Ave', city: 'Georgetown', province: 'ON',
+    status: 'active', tags: ['Biweekly'],
+    notes: 'Small apartment, but somehow has a giant ant in the backyard.',
+    ai_context: {
+      prefs: 'Check for tiny people before stepping anywhere. Loves Baskin Robbins.',
+      access: 'Key is hidden inside a toy taco.',
+      comms: 'Calls often, very chatty. Tells long stories.',
+      personal: 'Has a daughter named Cassie. Just trying to be a good dad.',
+      vip: false, recurrence: 'biweekly',
+    },
   }
 ];
 
@@ -136,15 +178,19 @@ const NEW_JOBS = [
   // --- PAST DUE & UNPAID (ADHD Focus) ---
   { email: 'tony.s@example.com', svc: 'Deep Clean', days: -2, time: '09:00', status: 'Completed', pay: '', duration: 5.5, notes: 'The lab is finally organized.' },
   { email: 'logan.h@example.com', svc: 'Regular',    days: -5, time: '14:00', status: 'Completed', pay: '', duration: 2.0, notes: 'Cleaned the cigar lounge.' },
+  { email: 'steve.r@example.com', svc: 'Regular',    days: -3, time: '08:00', status: 'Completed', pay: '', duration: 2.0, notes: 'Polished the floors to a mirror finish.' },
   
   // --- TODAY'S SCHEDULE ---
   { email: 'nat.r@example.com', svc: 'Regular',    days: 0,  time: '08:30', status: 'Scheduled', pay: '', notes: 'Sanitize all surfaces.' },
   { email: 'wanda.m@example.com', svc: 'Quick Tidy', days: 0,  time: '12:00', status: 'Scheduled', pay: '', notes: 'Match the vintage aesthetic.' },
   { email: 'tony.s@example.com', svc: 'Regular',    days: 0,  time: '15:30', status: 'Scheduled', pay: '', notes: 'Check the server room dusting.' },
+  { email: 'scott.l@example.com', svc: 'Quick Tidy', days: 0,  time: '17:00', status: 'Scheduled', pay: '', notes: 'Clean the kitchen after "science experiment".' },
 
   // --- FUTURE ---
   { email: 'nat.r@example.com', svc: 'Regular',    days: 14, time: '08:30', status: 'Scheduled', pay: '', notes: 'Bi-weekly sanitize.' },
   { email: 'logan.h@example.com', svc: 'Deep Clean', days: 25, time: '10:00', status: 'Scheduled', pay: '', notes: 'Full estate overhaul.' },
+  { email: 'dr.strange@example.com', svc: 'Deep Clean', days: 5, time: '09:00', status: 'Scheduled', pay: '', notes: 'Library organization and artifact dusting.' },
+  { email: 'steve.r@example.com', svc: 'Regular',    days: 4, time: '08:00', status: 'Scheduled', pay: '', notes: 'Weekly maintenance.' },
 ];
 
 async function seedJobs(businessId, clientMap, serviceMap) {

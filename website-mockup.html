@@ -1,10 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-CA">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Supermom for Hire — Georgetown's Home & Life Operations Expert</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400;1,9..144,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -16,12 +17,14 @@
   --pink-section:   #FDE8F0;
   --pink-border:    #F5C8DA;
   --pink-label:     #FF78B0;
+  --pink-before:    #F2E4EB;
   --plum-dark:      #1C0D14;
   --plum-mid:       #2E1020;
   --plum-soft:      #3A1828;
   --ink:            #1E0D15;
   --ink-mid:        #5E3248;
   --ink-muted:      #9D6078;
+  --color-star:     #D4A017;
   --grad-pink:      linear-gradient(110deg, #FF4D96 0%, #E91E6A 45%, #B01550 100%);
   --grad-hero:      linear-gradient(145deg, #1C0D14 0%, #2E1020 100%);
   --grad-action:    linear-gradient(135deg, #FF5A9D, #E91E6A);
@@ -45,12 +48,41 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* ── FOCUS & A11Y ──────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--pink);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+:focus:not(:focus-visible) { outline: none; }
+
+.skip-link {
+  position: absolute;
+  top: -100px; left: 0;
+  background: var(--pink); color: white;
+  font-family: var(--font-ui); font-size: 14px; font-weight: 700;
+  padding: 12px 20px; border-radius: 0 0 8px 0;
+  z-index: 200; transition: top .2s;
+  text-decoration: none;
+}
+.skip-link:focus { top: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* ── NAV ───────────────────────────────────────────── */
 nav {
   position: sticky; top: 0; z-index: 100;
   background: rgba(255,248,251,.92);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
+  will-change: backdrop-filter;
   border-bottom: 1.5px solid var(--pink-border);
   padding: 0 40px;
   display: flex; align-items: center; justify-content: space-between;
@@ -61,6 +93,7 @@ nav {
   border-radius: 10px;
   padding: 7px 18px;
   display: flex; align-items: center;
+  flex-shrink: 0;
 }
 .nav-logo img { height: 28px; }
 .nav-links {
@@ -71,6 +104,8 @@ nav {
   color: var(--ink-mid); text-decoration: none;
   letter-spacing: 0.1px;
   transition: color .2s;
+  padding: 8px 0;
+  display: inline-block;
 }
 .nav-links a:hover { color: var(--pink); }
 .nav-cta {
@@ -78,12 +113,26 @@ nav {
   color: white; font-family: var(--font-ui);
   font-size: 13px; font-weight: 700;
   border: none; border-radius: var(--r-pill);
-  padding: 10px 24px; cursor: pointer;
+  padding: 12px 24px; cursor: pointer;
+  min-height: 44px;
   box-shadow: var(--shadow-pink);
   transition: opacity .2s, transform .2s;
-  text-decoration: none; display: inline-block;
+  text-decoration: none; display: inline-flex; align-items: center;
+  will-change: transform;
+  flex-shrink: 0;
 }
 .nav-cta:hover { opacity: .88; transform: translateY(-1px); }
+
+.nav-menu-toggle {
+  display: none;
+  background: none; border: none; cursor: pointer;
+  color: var(--ink-mid);
+  min-width: 44px; min-height: 44px;
+  align-items: center; justify-content: center;
+  border-radius: 8px;
+  transition: background .15s;
+}
+.nav-menu-toggle:hover { background: var(--pink-tint); }
 
 /* ── HERO ──────────────────────────────────────────── */
 .hero {
@@ -121,7 +170,7 @@ nav {
 }
 .hero h1 {
   font-family: var(--font-display);
-  font-size: clamp(38px, 5vw, 56px);
+  font-size: clamp(36px, 5vw, 56px);
   font-weight: 500; line-height: 1.12;
   letter-spacing: -1.5px; color: white;
   margin-bottom: 22px;
@@ -130,7 +179,7 @@ nav {
   font-style: italic; color: var(--pink-label);
 }
 .hero-sub {
-  font-size: 16px; font-weight: 400; color: rgba(255,255,255,.7);
+  font-size: 16px; font-weight: 400; color: rgba(255,255,255,.72);
   line-height: 1.7; margin-bottom: 36px; max-width: 420px;
 }
 .hero-actions {
@@ -140,8 +189,10 @@ nav {
   background: var(--grad-action); color: white;
   font-family: var(--font-ui); font-size: 14px; font-weight: 700;
   border: none; border-radius: var(--r-pill); padding: 14px 32px;
+  min-height: 44px;
   cursor: pointer; box-shadow: 0 8px 28px rgba(233,30,106,.35);
-  text-decoration: none; display: inline-block;
+  text-decoration: none; display: inline-flex; align-items: center;
+  will-change: transform;
   transition: transform .2s, box-shadow .2s;
 }
 .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 36px rgba(233,30,106,.45); }
@@ -150,7 +201,9 @@ nav {
   font-size: 13.5px; font-weight: 600; text-decoration: none;
   border: 1.5px solid rgba(255,255,255,.2);
   border-radius: var(--r-pill); padding: 13px 28px;
-  display: inline-block; transition: border-color .2s, color .2s;
+  min-height: 44px;
+  display: inline-flex; align-items: center;
+  transition: border-color .2s, color .2s;
 }
 .btn-ghost:hover { border-color: rgba(255,255,255,.5); color: white; }
 .hero-visual {
@@ -161,7 +214,6 @@ nav {
   background: rgba(255,255,255,.06);
   border: 1px solid rgba(255,255,255,.1);
   border-radius: var(--r-card); padding: 20px 24px;
-  backdrop-filter: blur(8px);
 }
 .hero-stat-card:first-child {
   background: rgba(233,30,106,.12);
@@ -180,6 +232,16 @@ nav {
 .stat-sub {
   font-size: 12px; color: rgba(255,255,255,.55); margin-top: 4px;
 }
+.hero-quote-text {
+  font-family: var(--font-display);
+  font-size: 15px; font-weight: 400; font-style: italic;
+  color: rgba(255,255,255,.88); line-height: 1.55;
+  margin-bottom: 12px;
+}
+.hero-quote-author {
+  font-size: 11px; font-weight: 600;
+  color: var(--pink-label); letter-spacing: 0.3px;
+}
 .service-chips {
   display: flex; flex-wrap: wrap; gap: 8px; padding: 16px;
   background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);
@@ -189,7 +251,7 @@ nav {
   background: rgba(233,30,106,.2);
   border: 1px solid rgba(233,30,106,.3);
   border-radius: 100px; padding: 5px 14px;
-  font-size: 12px; font-weight: 600; color: #FFB0CC;
+  font-size: 12px; font-weight: 600; color: var(--pink-label);
 }
 
 /* ── SECTION WRAPPER ───────────────────────────────── */
@@ -232,7 +294,7 @@ nav {
   border: 1.5px solid var(--pink-border);
   border-radius: var(--r-card); padding: 28px 24px;
   transition: transform .2s, box-shadow .2s, border-color .2s;
-  cursor: default;
+  will-change: transform;
 }
 .service-card:hover {
   transform: translateY(-3px);
@@ -243,8 +305,9 @@ nav {
   width: 44px; height: 44px; border-radius: 12px;
   background: var(--grad-action);
   display: flex; align-items: center; justify-content: center;
-  font-size: 20px; margin-bottom: 16px;
+  margin-bottom: 16px;
   box-shadow: 0 4px 14px rgba(233,30,106,.25);
+  flex-shrink: 0;
 }
 .service-card h3 {
   font-family: var(--font-display);
@@ -278,8 +341,9 @@ nav {
   border-radius: var(--r-card); padding: 28px;
 }
 .testimonial-stars {
-  color: #FFD700; font-size: 14px; margin-bottom: 14px; letter-spacing: 2px;
+  display: flex; gap: 3px; margin-bottom: 14px;
 }
+.testimonial-stars svg { color: var(--color-star); }
 .testimonial-quote {
   font-family: var(--font-display);
   font-size: 17px; font-weight: 400; font-style: italic;
@@ -320,12 +384,12 @@ nav {
   position: relative;
 }
 .ba-img {
-  height: 180px; 
+  height: 180px;
   display: flex; align-items: center; justify-content: center;
   font-size: 13px; font-weight: 600;
 }
 .ba-before {
-  background: #f5e8ee;
+  background: var(--pink-before);
   color: var(--ink-muted);
 }
 .ba-after {
@@ -345,10 +409,10 @@ nav {
   font-size: 9px; font-weight: 700; letter-spacing: 0.8px;
   text-transform: uppercase; padding: 5px;
 }
-.ba-label.before { color: var(--ink-muted); background: #f5e8ee; }
+.ba-label.before { color: var(--ink-muted); background: var(--pink-before); }
 .ba-label.after  { color: var(--pink-mid); background: var(--pink-tint); }
 .ba-info { padding: 16px; }
-.ba-info h4 {
+.ba-info h3 {
   font-family: var(--font-display);
   font-size: 15px; font-weight: 500; color: var(--ink);
   margin-bottom: 4px;
@@ -374,7 +438,7 @@ nav {
 }
 .about-photo-inner {
   width: 100%; height: 100%;
-  background: linear-gradient(145deg, #2E1020, #1C0D14);
+  background: linear-gradient(145deg, var(--plum-mid), var(--plum-dark));
   display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 12px;
 }
@@ -410,12 +474,15 @@ nav {
   background: white; border: 1.5px solid var(--pink-border);
   border-radius: var(--r-pill); padding: 7px 18px;
   font-size: 12.5px; font-weight: 600; color: var(--ink-mid);
+  display: inline-flex; align-items: center; gap: 6px;
 }
+.about-pill svg { color: var(--pink); flex-shrink: 0; }
 
 /* ── CONTACT ───────────────────────────────────────── */
 .contact-bg {
   background: var(--grad-hero);
   border-top: 3px solid var(--pink);
+  border-bottom: 3px solid var(--pink);
   position: relative; overflow: hidden;
 }
 .contact-bg::before {
@@ -448,7 +515,7 @@ nav {
   background: rgba(255,255,255,.05);
   border: 1px solid rgba(255,255,255,.1);
   border-radius: 20px; padding: 36px;
-  backdrop-filter: blur(8px);
+  text-align: left;
 }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
 .form-field { margin-bottom: 0; }
@@ -462,14 +529,16 @@ nav {
   width: 100%; background: rgba(255,255,255,.07);
   border: 1px solid rgba(255,255,255,.15); border-radius: 10px;
   padding: 12px 16px; color: white; font-family: var(--font-ui);
-  font-size: 14px; outline: none;
+  font-size: 14px;
   transition: border-color .2s;
 }
 .form-field input::placeholder, .form-field textarea::placeholder {
   color: rgba(255,255,255,.3);
 }
 .form-field input:focus, .form-field textarea:focus, .form-field select:focus {
+  outline: none;
   border-color: rgba(233,30,106,.6);
+  box-shadow: 0 0 0 3px rgba(233,30,106,.15);
 }
 .form-field textarea { resize: vertical; min-height: 100px; }
 .form-field select option { background: var(--plum-dark); }
@@ -478,17 +547,20 @@ nav {
   background: var(--grad-action); color: white;
   font-family: var(--font-ui); font-size: 15px; font-weight: 700;
   border: none; border-radius: var(--r-pill); padding: 16px;
+  min-height: 48px;
   cursor: pointer; box-shadow: 0 8px 28px rgba(233,30,106,.35);
+  will-change: transform;
   transition: transform .2s, box-shadow .2s;
 }
 .form-submit:hover { transform: translateY(-2px); box-shadow: 0 12px 36px rgba(233,30,106,.45); }
 .contact-alts {
   display: flex; justify-content: center; gap: 28px;
-  margin-top: 28px;
+  margin-top: 28px; flex-wrap: wrap;
 }
 .contact-alt-link {
   font-size: 13px; font-weight: 600; color: rgba(255,255,255,.55);
-  text-decoration: none; display: flex; align-items: center; gap: 6px;
+  text-decoration: none; display: inline-flex; align-items: center; gap: 6px;
+  min-height: 44px;
   transition: color .2s;
 }
 .contact-alt-link:hover { color: var(--pink-label); }
@@ -498,7 +570,7 @@ footer {
   background: var(--plum-dark);
   padding: 32px 40px;
   display: flex; align-items: center; justify-content: space-between;
-  border-top: 1.5px solid rgba(255,255,255,.06);
+  border-top: 2px solid rgba(233,30,106,.2);
 }
 .footer-logo {
   background: var(--grad-pink);
@@ -516,16 +588,114 @@ footer {
   text-decoration: none; transition: color .2s;
 }
 .footer-links a:hover { color: var(--pink-label); }
+
+/* ── RESPONSIVE — TABLET ───────────────────────────── */
+@media (min-width: 768px) and (max-width: 1023px) {
+  nav { padding: 0 24px; }
+  .section { padding: 70px 24px; }
+  .section-full { padding: 70px 24px; }
+  .hero { padding: 80px 24px 70px; gap: 40px; }
+  .testimonials-grid { grid-template-columns: 1fr; gap: 16px; }
+  .ba-grid { grid-template-columns: repeat(2, 1fr); }
+  .about-grid { grid-template-columns: 1fr 1.4fr; gap: 40px; }
+  footer { padding: 28px 24px; }
+}
+
+/* ── RESPONSIVE — MOBILE ───────────────────────────── */
+@media (max-width: 767px) {
+  nav {
+    padding: 0 20px;
+    height: auto;
+    flex-wrap: wrap;
+    padding-top: 12px;
+    padding-bottom: 12px;
+    gap: 0;
+    position: relative;
+  }
+  .nav-menu-toggle {
+    display: inline-flex;
+  }
+  .nav-links {
+    display: none;
+    flex-direction: column;
+    gap: 0;
+    width: 100%;
+    padding: 8px 0 4px;
+    border-top: 1px solid var(--pink-border);
+    margin-top: 10px;
+  }
+  .nav-links.open {
+    display: flex;
+  }
+  .nav-links a {
+    padding: 12px 0;
+    font-size: 15px;
+    border-bottom: 1px solid var(--pink-tint);
+  }
+  .nav-links a:last-child { border-bottom: none; }
+  .nav-cta {
+    font-size: 12px;
+    padding: 10px 18px;
+  }
+
+  .hero {
+    grid-template-columns: 1fr;
+    padding: 56px 20px 48px;
+    gap: 36px;
+  }
+  .hero h1 { font-size: clamp(32px, 8vw, 42px); }
+  .hero-sub { max-width: 100%; }
+  .hero-actions { gap: 12px; }
+  .btn-primary { padding: 14px 28px; }
+  .btn-ghost { padding: 13px 22px; }
+
+  .section { padding: 60px 20px; }
+  .section-full { padding: 60px 20px; }
+
+  .services-grid { grid-template-columns: 1fr; }
+  .testimonials-grid { grid-template-columns: 1fr; }
+  .ba-grid { grid-template-columns: 1fr; }
+
+  .about-grid {
+    grid-template-columns: 1fr;
+    gap: 36px;
+  }
+  .about-photo {
+    max-width: 300px;
+    margin: 0 auto;
+  }
+
+  .form-row { grid-template-columns: 1fr; }
+  .contact-form { padding: 24px 20px; }
+  .contact-alts { flex-direction: column; align-items: center; gap: 12px; }
+
+  footer {
+    flex-direction: column;
+    gap: 16px;
+    text-align: center;
+    padding: 28px 20px;
+  }
+  .footer-links { justify-content: center; }
+}
 </style>
 </head>
 <body>
 
+<a href="#main-content" class="skip-link">Skip to main content</a>
+
 <!-- ── NAV ── -->
-<nav>
+<nav aria-label="Main navigation">
   <div class="nav-logo">
     <img src="/branding/logo-final.png" alt="Supermom for Hire">
   </div>
-  <ul class="nav-links">
+  <button class="nav-menu-toggle" aria-expanded="false" aria-controls="nav-links" aria-label="Open menu">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+      <line x1="3" y1="6" x2="21" y2="6"/>
+      <line x1="3" y1="12" x2="21" y2="12"/>
+      <line x1="3" y1="18" x2="21" y2="18"/>
+    </svg>
+  </button>
+  <ul class="nav-links" id="nav-links" role="list">
     <li><a href="#services">Services</a></li>
     <li><a href="#work">Our Work</a></li>
     <li><a href="#about">About Sandra</a></li>
@@ -533,6 +703,8 @@ footer {
   </ul>
   <a href="#contact" class="nav-cta">Book a Consultation</a>
 </nav>
+
+<main id="main-content">
 
 <!-- ── HERO ── -->
 <section class="hero">
@@ -549,12 +721,12 @@ footer {
     <div class="hero-stat-card">
       <div class="stat-label">✦ Currently Serving</div>
       <div class="stat-value">Georgetown</div>
-      <div class="stat-sub">Halton Hills & surrounding area</div>
+      <div class="stat-sub">Halton Hills &amp; surrounding area</div>
     </div>
     <div class="hero-stat-card">
-      <div class="stat-label">✦ Average Rating</div>
-      <div class="stat-value">★★★★★</div>
-      <div class="stat-sub">From clients across Georgetown</div>
+      <div class="stat-label">✦ What clients say</div>
+      <p class="hero-quote-text">"She has this calm, no-pressure energy that made the whole thing feel easy."</p>
+      <div class="hero-quote-author">Michelle T. &middot; Georgetown</div>
     </div>
     <div class="service-chips">
       <span class="chip">Organizing</span>
@@ -575,28 +747,38 @@ footer {
     <p class="section-sub">From clearing out the garage that's haunted you for years to helping an aging parent feel safe and cared for — no task is too big or too personal.</p>
     <div class="services-grid">
       <div class="service-card">
-        <div class="service-icon">🗂️</div>
+        <div class="service-icon" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="5" rx="1"/><rect x="3" y="11" width="18" height="5" rx="1"/><rect x="3" y="19" width="10" height="2" rx="1"/></svg>
+        </div>
         <h3>Home Organizing</h3>
         <p>Closets, kitchens, offices, storage rooms. We create systems that actually stick.</p>
       </div>
       <div class="service-card">
-        <div class="service-icon">📦</div>
+        <div class="service-icon" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+        </div>
         <h3>Decluttering</h3>
         <p>Decision fatigue is real. I guide you through the whole process — judgment-free.</p>
       </div>
       <div class="service-card">
-        <div class="service-icon">🤝</div>
+        <div class="service-icon" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        </div>
         <h3>Caregiving</h3>
         <p>Compassionate support for elderly parents, family members, or those recovering from illness.</p>
       </div>
       <div class="service-card">
-        <div class="service-icon">🧭</div>
+        <div class="service-icon" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+        </div>
         <h3>Life Coaching</h3>
         <p>Get unstuck. Whether it's routines, goals, or priorities — I help you find your footing.</p>
       </div>
       <div class="service-card">
-        <div class="service-icon">🚗</div>
-        <h3>Errands & Assist</h3>
+        <div class="service-icon" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>
+        </div>
+        <h3>Errands &amp; Assist</h3>
         <p>Groceries, appointments, returns, pickups. Your list done, without you lifting a finger.</p>
       </div>
     </div>
@@ -610,19 +792,37 @@ footer {
     <h2 class="testimonials-title">What Georgetown is saying</h2>
     <div class="testimonials-grid">
       <div class="testimonial-card">
-        <div class="testimonial-stars">★★★★★</div>
+        <div class="testimonial-stars" aria-label="5 out of 5 stars">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        </div>
         <p class="testimonial-quote">"Sandra transformed our spare room from a dumping ground into something we actually use. She has this calm, no-pressure energy that made the whole thing feel easy."</p>
         <div class="testimonial-author">Michelle T.</div>
         <div class="testimonial-location">Georgetown, ON</div>
       </div>
       <div class="testimonial-card">
-        <div class="testimonial-stars">★★★★★</div>
+        <div class="testimonial-stars" aria-label="5 out of 5 stars">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        </div>
         <p class="testimonial-quote">"I hired Sandra to help with my mom's care after her hip surgery. She was patient, kind, and treated her like family. Couldn't have gotten through it without her."</p>
         <div class="testimonial-author">David R.</div>
         <div class="testimonial-location">Halton Hills, ON</div>
       </div>
       <div class="testimonial-card">
-        <div class="testimonial-stars">★★★★★</div>
+        <div class="testimonial-stars" aria-label="5 out of 5 stars">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        </div>
         <p class="testimonial-quote">"Running a household alone with three kids is chaos. Sandra comes twice a month and I swear she has superpowers. Our whole house feels different when she leaves."</p>
         <div class="testimonial-author">Karen M.</div>
         <div class="testimonial-location">Georgetown, ON</div>
@@ -635,52 +835,52 @@ footer {
 <div id="work">
   <div class="section">
     <div class="section-label">✦ The Work</div>
-    <h2 class="section-title">Before & After</h2>
+    <h2 class="section-title">Before &amp; After</h2>
     <p class="section-sub">Real results from real Georgetown homes. Photos shared with client permission.</p>
     <div class="ba-grid">
       <div class="ba-card">
         <div class="ba-images">
           <div class="ba-img ba-before">Before</div>
           <div class="ba-img ba-after">After</div>
-          <div class="ba-divider"></div>
+          <div class="ba-divider" aria-hidden="true"></div>
         </div>
-        <div class="ba-label-strip">
+        <div class="ba-label-strip" aria-hidden="true">
           <span class="ba-label before">Before</span>
           <span class="ba-label after">After</span>
         </div>
         <div class="ba-info">
-          <h4>Kitchen Pantry</h4>
-          <p>3 hours · Georgetown home · Full declutter & organize</p>
+          <h3>Kitchen Pantry</h3>
+          <p>3 hours · Georgetown home · Full declutter &amp; organize</p>
         </div>
       </div>
       <div class="ba-card">
         <div class="ba-images">
           <div class="ba-img ba-before">Before</div>
           <div class="ba-img ba-after">After</div>
-          <div class="ba-divider"></div>
+          <div class="ba-divider" aria-hidden="true"></div>
         </div>
-        <div class="ba-label-strip">
+        <div class="ba-label-strip" aria-hidden="true">
           <span class="ba-label before">Before</span>
           <span class="ba-label after">After</span>
         </div>
         <div class="ba-info">
-          <h4>Master Bedroom Closet</h4>
-          <p>4 hours · Full wardrobe edit & system install</p>
+          <h3>Master Bedroom Closet</h3>
+          <p>4 hours · Full wardrobe edit &amp; system install</p>
         </div>
       </div>
       <div class="ba-card">
         <div class="ba-images">
           <div class="ba-img ba-before">Before</div>
           <div class="ba-img ba-after">After</div>
-          <div class="ba-divider"></div>
+          <div class="ba-divider" aria-hidden="true"></div>
         </div>
-        <div class="ba-label-strip">
+        <div class="ba-label-strip" aria-hidden="true">
           <span class="ba-label before">Before</span>
           <span class="ba-label after">After</span>
         </div>
         <div class="ba-info">
-          <h4>Home Office</h4>
-          <p>2.5 hours · Desk organization & filing system</p>
+          <h3>Home Office</h3>
+          <p>2.5 hours · Desk organization &amp; filing system</p>
         </div>
       </div>
     </div>
@@ -693,12 +893,12 @@ footer {
     <div class="about-grid">
       <div class="about-photo">
         <div class="about-photo-inner">
-          <div class="photo-placeholder-icon">🦸‍♀️</div>
+          <div class="photo-placeholder-icon" aria-hidden="true">🦸‍♀️</div>
           <div class="photo-placeholder-text">Sandra's photo goes here</div>
         </div>
         <div class="about-badge">
           <div class="about-badge-val">Georgetown</div>
-          <div class="about-badge-label">Local & trusted</div>
+          <div class="about-badge-label">Local &amp; trusted</div>
         </div>
       </div>
       <div class="about-body">
@@ -708,10 +908,22 @@ footer {
         <p>Based right here in Georgetown, I've spent years building a reputation on trust, reliability, and genuine care. Every home I work in gets treated like my own — with respect, discretion, and a little bit of joy mixed in.</p>
         <p><strong>No judgment, no shortcuts, no upsells.</strong> Just honest, expert help when you need it most.</p>
         <div class="about-values">
-          <span class="about-pill">📍 Georgetown-based</span>
-          <span class="about-pill">🤝 Fully insured</span>
-          <span class="about-pill">⭐ 5-star rated</span>
-          <span class="about-pill">🔒 Discreet & trusted</span>
+          <span class="about-pill">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            Georgetown-based
+          </span>
+          <span class="about-pill">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+            Fully insured
+          </span>
+          <span class="about-pill">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+            5-star rated
+          </span>
+          <span class="about-pill">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            Discreet &amp; trusted
+          </span>
         </div>
       </div>
     </div>
@@ -724,41 +936,49 @@ footer {
     <div class="contact-eyebrow">✦ Let's Talk</div>
     <h2 class="contact-title">Ready to get your life back?</h2>
     <p class="contact-sub">Drop me a message and I'll get back to you within 24 hours. No pressure, no commitment — just a friendly conversation about what you need.</p>
-    <div class="contact-form">
+    <form class="contact-form" novalidate>
       <div class="form-row">
         <div class="form-field">
-          <label>Your Name</label>
-          <input type="text" placeholder="Jane Smith">
+          <label for="contact-name">Your Name</label>
+          <input type="text" id="contact-name" name="name" placeholder="Jane Smith" autocomplete="name">
         </div>
         <div class="form-field">
-          <label>Phone or Email</label>
-          <input type="text" placeholder="Best way to reach you">
+          <label for="contact-reach">Phone or Email</label>
+          <input type="text" id="contact-reach" name="contact" placeholder="Best way to reach you" autocomplete="email">
         </div>
       </div>
       <div class="form-field full" style="margin-bottom: 14px;">
-        <label>What can I help with?</label>
-        <select>
+        <label for="contact-service">What can I help with?</label>
+        <select id="contact-service" name="service">
           <option value="" disabled selected>Choose a service...</option>
           <option>Home Organizing</option>
           <option>Decluttering</option>
           <option>Caregiving / Senior Support</option>
           <option>Life Coaching</option>
-          <option>Errands & Assistance</option>
+          <option>Errands &amp; Assistance</option>
           <option>Not sure — let's chat</option>
         </select>
       </div>
       <div class="form-field full">
-        <label>Tell me more (optional)</label>
-        <textarea placeholder="A little context goes a long way — what's the situation?"></textarea>
+        <label for="contact-message">Tell me more (optional)</label>
+        <textarea id="contact-message" name="message" placeholder="A little context goes a long way — what's the situation?"></textarea>
       </div>
-      <button class="form-submit">Send Message 🦸‍♀️</button>
-    </div>
+      <button type="submit" class="form-submit">Send Message</button>
+    </form>
     <div class="contact-alts">
-      <a href="tel:+15191234567" class="contact-alt-link">📱 Prefer to call or text?</a>
-      <a href="mailto:hello@supermomforhire.ca" class="contact-alt-link">✉️ Email directly</a>
+      <a href="tel:+15191234567" class="contact-alt-link">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.27h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 9a16 16 0 0 0 6.07 6.07l1.06-.98a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        Prefer to call or text?
+      </a>
+      <a href="mailto:hello@supermomforhire.ca" class="contact-alt-link">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        Email directly
+      </a>
     </div>
   </div>
 </div>
+
+</main>
 
 <!-- ── FOOTER ── -->
 <footer>
@@ -766,13 +986,33 @@ footer {
     <img src="/branding/logo-final.png" alt="Supermom for Hire">
   </div>
   <div class="footer-copy">© 2026 Supermom for Hire · Georgetown, Ontario</div>
-  <div class="footer-links">
+  <nav class="footer-links" aria-label="Footer navigation">
     <a href="#services">Services</a>
     <a href="#work">Work</a>
     <a href="#about">About</a>
     <a href="#contact">Contact</a>
-  </div>
+  </nav>
 </footer>
+
+<script>
+(function() {
+  var toggle = document.querySelector('.nav-menu-toggle');
+  var menu = document.getElementById('nav-links');
+  if (!toggle || !menu) return;
+  toggle.addEventListener('click', function() {
+    var open = menu.classList.toggle('open');
+    toggle.setAttribute('aria-expanded', open);
+    toggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+  });
+  menu.querySelectorAll('a').forEach(function(link) {
+    link.addEventListener('click', function() {
+      menu.classList.remove('open');
+      toggle.setAttribute('aria-expanded', 'false');
+      toggle.setAttribute('aria-label', 'Open menu');
+    });
+  });
+})();
+</script>
 
 </body>
 </html>

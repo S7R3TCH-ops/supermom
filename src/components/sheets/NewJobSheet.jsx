@@ -6,8 +6,9 @@ import NewClientSheet from './NewClientSheet';
 import { fetchClients } from '../../data/clientsRepo';
 import { fetchActiveJobs, createJob, findConflicts, fetchJobsByClientId, composeTorontoISO } from '../../data/jobsRepo';
 import { toDisplayClient } from '../../data/selectors';
-import { notifyDataChanged, useBusiness } from '../../data/useData';
-import { SERVICES, RECURRENCE } from '../../data/services';
+import { notifyDataChanged, useBusiness, useServices } from '../../data/useData';
+import { useToast } from '../../context/ToastContext';
+import { RECURRENCE } from '../../data/services';
 import { calculateEstimatedDuration, fetchSmartDurationEstimate } from '../../data/ai';
 
 function todayISODate() {
@@ -39,11 +40,13 @@ function fmtDuration(min) {
 
 export default function NewJobSheet({ prefillClientId, onClose }) {
   const { T, mode, privacyOn } = useAppTheme();
+  const toast = useToast();
+  const { services, loading: servicesLoading } = useServices();
   const sheetRef = useRef(null);
   useFocusTrap(sheetRef, true, onClose);
   const [step, setStep] = useState(1);
 
-  // Fetch clients + jobs on mount (for the picker + conflict detection).
+  // Fetch clients + jobs on mount
   const [clientRows, setClientRows] = useState([]);
   const [jobRows, setJobRows] = useState([]);
   const [clientJobs, setClientJobs] = useState([]);
@@ -77,53 +80,54 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
   );
   const getDisplayClient = id => clientsDisplay.find(c => c.id === id) || null;
 
-  // For the selected client, we want the "full" display model with history for the AI estimator
   const selectedClient = useMemo(() => {
     if (!clientId) return null;
     const row = clientRows.find(r => r.id === clientId);
     if (!row) return null;
     return toDisplayClient(row, clientJobs);
   }, [clientId, clientRows, clientJobs]);
-  const prefillClient = prefillClientId ? getDisplayClient(prefillClientId) : null;
-
-  const seededService = useMemo(() => {
-    if (!prefillClient) return null;
-    const s = SERVICES.find(x => x.label.toLowerCase() === (prefillClient.service || '').toLowerCase());
-    return s ? s.key : null;
-  }, [prefillClient]);
 
   const { business } = useBusiness();
-  const [serviceKey, setServiceKey] = useState(seededService);
+  const [serviceId, setServiceId] = useState(null);
   const [date, setDate] = useState(todayISODate());
   const [time, setTime] = useState('10:00');
-  const service = SERVICES.find(s => s.key === serviceKey) || null;
-  const [duration, setDuration] = useState(service?.defaultDuration || 120);
-  const [recurrence, setRecurrence] = useState(prefillClient?.recurrence || null);
+  
+  const selectedService = useMemo(() => 
+    services.find(s => s.id === serviceId) || null
+  , [services, serviceId]);
+
+  const [duration, setDuration] = useState(120);
+  const [durationTouched, setDurationTouched] = useState(false);
+  const [recurrence, setRecurrence] = useState(null);
   const [confirmText, setConfirmText] = useState(true);
   const [busy, setBusy] = useState(false);
   const [bookErr, setBookErr] = useState('');
 
-  const [durationTouched, setDurationTouched] = useState(false);
   const [aiDuration, setAiDuration] = useState(null);
   const [aiEstimateLoading, setAiEstimateLoading] = useState(false);
   const [aiEstimateReason, setAiEstimateReason] = useState('');
 
-  const onPickService = async (key) => {
-    setServiceKey(key);
-    const svc = SERVICES.find(s => s.key === key);
+  // Auto-select recurrence from client usual if available
+  useEffect(() => {
+    if (selectedClient?.recurrence) setRecurrence(selectedClient.recurrence);
+  }, [selectedClient]);
+
+  const onPickService = async (id) => {
+    setServiceId(id);
+    const svc = services.find(s => s.id === id);
     if (!svc) return;
 
-    // 1. Local deterministic estimate (fast fallback)
-    const localEstimate = calculateEstimatedDuration(selectedClient, key, SERVICES);
-    setAiDuration(localEstimate !== svc.defaultDuration ? localEstimate : null);
-    if (!durationTouched) setDuration(localEstimate);
+    // 1. Local deterministic estimate
+    const localEstimate = calculateEstimatedDuration(selectedClient, svc.name, services);
+    setAiDuration(localEstimate !== Number(svc.default_duration) ? localEstimate : null);
+    if (!durationTouched) setDuration(localEstimate || Number(svc.default_duration) || 120);
 
-    // 2. Fetch AI smart estimate if we have a client selected
+    // 2. Fetch AI smart estimate
     if (selectedClient?.id) {
       setAiEstimateLoading(true);
       setAiEstimateReason('');
       try {
-        const smart = await fetchSmartDurationEstimate(selectedClient.id, svc.label, business);
+        const smart = await fetchSmartDurationEstimate(selectedClient.id, svc.name, business);
         if (smart && smart.duration_minutes) {
           setAiDuration(smart.duration_minutes);
           setAiEstimateReason(smart.reasoning);
@@ -140,7 +144,7 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
   };
 
   const canNext1 = !!clientId;
-  const canNext2 = !!serviceKey && !!date && !!time;
+  const canNext2 = !!serviceId && !!date && !!time;
 
   const scheduledISO = composeTorontoISO(date, time);
   const conflicts = useMemo(() => {
@@ -148,12 +152,12 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
     return findConflicts(jobRows, scheduledISO, duration, 60).filter(j => j.client_id !== clientId);
   }, [scheduledISO, duration, clientId, jobRows]);
 
-  const price = service ? service.rate : 0;
+  const price = selectedService ? Number(selectedService.default_price) : 0;
   const priceStr = `$${price}`;
 
   async function handleBook() {
     if (!clientId) { setBookErr('Please select a client'); return; }
-    if (!serviceKey) { setBookErr('Please select a service'); return; }
+    if (!serviceId) { setBookErr('Please select a service'); return; }
     if (!date || !time) { setBookErr('Please pick a date and time'); return; }
     if (!duration || duration <= 0) { setBookErr('Duration must be at least 1 minute'); return; }
 
@@ -163,11 +167,12 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
       const hours = duration / 60;
       await createJob({
         client_id: clientId,
-        service_name: service?.label || null,
+        service_id: serviceId,
+        service_name: selectedService?.name || null,
         scheduled_date: date,
         scheduled_time: time,
         scheduling_type: 'Hard Date',
-        pricing_type: 'Flat',
+        pricing_type: selectedService?.pricing_type || 'Flat',
         estimated_hours: hours,
         flat_rate: price,
         subtotal: price,
@@ -178,9 +183,12 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
         ai_context: { recurrence_rule: recurrence },
       });
       notifyDataChanged();
+      toast.success('Job booked!');
       onClose();
     } catch (e) {
-      setBookErr(e.message || String(e));
+      const msg = e.message || String(e);
+      setBookErr(msg);
+      toast.error(msg);
       setBusy(false);
     }
   }
@@ -260,7 +268,8 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
           {step === 2 && (
             <Step2What
               T={T} mode={mode} client={selectedClient}
-              serviceKey={serviceKey} onPickService={onPickService}
+              services={services} loading={servicesLoading}
+              serviceId={serviceId} onPickService={onPickService}
               date={date} setDate={setDate} time={time} setTime={setTime}
               duration={duration} setDuration={d => { setDurationTouched(true); setDuration(d); }}
               recurrence={recurrence} setRecurrence={setRecurrence}
@@ -272,11 +281,18 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
           {step === 3 && (
             <Step3Review
               T={T} mode={mode} privacyOn={privacyOn}
-              client={selectedClient} service={service}
-              date={date} time={time} duration={duration} recurrence={recurrence}
-              priceStr={priceStr} conflicts={conflicts}
+              client={selectedClient}
+              service={selectedService}
+              date={date}
+              time={time}
+              duration={duration}
+              recurrence={recurrence}
+              priceStr={priceStr}
+              conflicts={conflicts}
               clientLookup={getDisplayClient}
-              confirmText={confirmText} setConfirmText={setConfirmText}
+              confirmText={confirmText}
+              setConfirmText={setConfirmText}
+              onFixTime={() => setStep(2)}
             />
           )}
 
@@ -445,46 +461,61 @@ function Step1Who({ T, mode, clients, selectedId, onSelect, onAddNew }) {
 
 /* ============= STEP 2 ============= */
 function Step2What({
-  T, mode, client, serviceKey, onPickService,
+  T, mode, client, services, loading, serviceId, onPickService,
   date, setDate, time, setTime, duration, setDuration,
   recurrence, setRecurrence, aiDuration,
   aiEstimateLoading, aiEstimateReason
 }) {
-  const usualKey = client && client.service ? (
-    SERVICES.find(s => s.label.toLowerCase() === client.service.toLowerCase())?.key
+  const usualService = client && client.service ? (
+    services.find(s => s.name.toLowerCase() === client.service.toLowerCase())
   ) : null;
   const inputBg = mode === 'dark' ? 'rgba(255,255,255,0.05)' : '#fff';
 
   return (
     <>
       <SectionLabel>Service</SectionLabel>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 7, marginBottom: 14 }}>
-        {SERVICES.filter(s => s.key !== 'custom').map(s => {
-          const on = s.key === serviceKey;
-          const usual = s.key === usualKey;
-          return (
-            <button key={s.key} onClick={() => onPickService(s.key)} style={{
-              background: on ? (mode === 'dark' ? 'rgba(233,30,106,0.14)' : '#FFF0F7') : T.card,
-              border: `1.5px solid ${on ? '#E91E6A' : T.cardBorder}`,
-              borderRadius: 12, padding: '10px 11px',
-              display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 3,
-              cursor: 'pointer', position: 'relative', minHeight: 64,
-            }}>
-              {usual && (
-                <span style={{
-                  position: 'absolute', top: 6, right: 6,
-                  background: '#FCD34D', borderRadius: 4, padding: '1px 5px',
-                  fontFamily: T.font, fontSize: 7.5, fontWeight: 700, color: '#78350F',
-                  letterSpacing: '0.3px', textTransform: 'uppercase',
-                }}>★ Usual</span>
-              )}
-              <div style={{ fontSize: 15 }}>{s.emoji}</div>
-              <div style={{ fontFamily: T.serif, fontSize: 13, fontWeight: 500, color: T.ink, letterSpacing: '-0.2px' }}>{s.label}</div>
-              <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, fontVariantNumeric: 'tabular-nums' }}>${s.rate} · {fmtDuration(s.defaultDuration)}</div>
-            </button>
-          );
-        })}
-      </div>
+      {loading ? (
+        <div style={{ padding: '20px 0', textAlign: 'center', color: T.inkMuted }}>Loading catalog...</div>
+      ) : services.length === 0 ? (
+        <div style={{ 
+          padding: '24px 16px', textAlign: 'center', border: `2px dashed ${T.cardBorder}`, 
+          borderRadius: 16, color: T.inkMuted, fontSize: 13, marginBottom: 14 
+        }}>
+          No services found in your catalog.<br/>
+          <span style={{ fontSize: 11, marginTop: 8, display: 'block', color: T.pink, fontWeight: 600 }}>
+            Head to Admin &gt; Service Catalog to add them!
+          </span>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 7, marginBottom: 14 }}>
+          {services.map(s => {
+            const on = s.id === serviceId;
+            const usual = s.id === usualService?.id;
+            return (
+              <button key={s.id} onClick={() => onPickService(s.id)} style={{
+                background: on ? (mode === 'dark' ? 'rgba(233,30,106,0.14)' : '#FFF0F7') : T.card,
+                border: `1.5px solid ${on ? '#E91E6A' : T.cardBorder}`,
+                borderRadius: 12, padding: '10px 11px',
+                display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 3,
+                cursor: 'pointer', position: 'relative', minHeight: 64,
+              }}>
+                {usual && (
+                  <span style={{
+                    position: 'absolute', top: 6, right: 6,
+                    background: '#FCD34D', borderRadius: 4, padding: '1px 5px',
+                    fontFamily: T.font, fontSize: 7.5, fontWeight: 700, color: '#78350F',
+                    letterSpacing: '0.3px', textTransform: 'uppercase',
+                  }}>★ Usual</span>
+                )}
+                <div style={{ fontFamily: T.serif, fontSize: 13, fontWeight: 500, color: T.ink, letterSpacing: '-0.2px' }}>{s.name}</div>
+                <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, fontVariantNumeric: 'tabular-nums' }}>
+                  ${s.default_price} {s.pricing_type === 'Hourly' ? '/hr' : ''} · {fmtDuration(Number(s.default_duration || 120))}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       <SectionLabel>When</SectionLabel>
       <div style={{ display: 'flex', gap: 7, marginBottom: 14 }}>
@@ -611,7 +642,7 @@ function Step3Review({
         <div style={{ position: 'relative' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
             <div>
-              <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#FF78B0', marginBottom: 3 }}>{service?.label || 'Service'}</div>
+              <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#FF78B0', marginBottom: 3 }}>{service?.name || 'Service'}</div>
               <div style={{ fontFamily: T.serif, fontSize: 20, fontWeight: 500, color: 'white', letterSpacing: '-0.4px' }}>{client?.name || 'New client'}</div>
             </div>
             <div style={{ textAlign: 'right' }}>
@@ -641,8 +672,19 @@ function Step3Review({
         }}>
           <span style={{ fontSize: 15 }}>⚠</span>
           <div style={{ flex: 1 }}>
-            <div style={{ fontFamily: T.font, fontSize: 11.5, fontWeight: 700, color: '#F59E0B', marginBottom: 2 }}>
-              {conflicts.length === 1 ? 'Tight gap detected' : `${conflicts.length} overlapping jobs`}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+              <div style={{ fontFamily: T.font, fontSize: 11.5, fontWeight: 700, color: '#F59E0B' }}>
+                {conflicts.length === 1 ? 'Tight gap detected' : `${conflicts.length} overlapping jobs`}
+              </div>
+              <button 
+                onClick={() => onFixTime?.()}
+                style={{ 
+                  background: '#F59E0B', color: 'white', border: 'none', borderRadius: 6, 
+                  padding: '2px 8px', fontSize: 10, fontWeight: 800, cursor: 'pointer' 
+                }}
+              >
+                FIX
+              </button>
             </div>
             <div style={{ fontFamily: T.font, fontSize: 10.5, color: T.inkSub, lineHeight: 1.4 }}>
               {conflicts.slice(0, 2).map(c => {

@@ -7,7 +7,7 @@ import { useBusiness } from '../../data/useData';
 export default function LogoBar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { T, mode, privacyOn, togglePrivacy } = useAppTheme();
+  const { T, mode, toggleMode, privacyOn, togglePrivacy } = useAppTheme();
   const { user } = useAuth();
   const { business } = useBusiness();
   const { isSuperAdmin } = useViewpoint();
@@ -28,15 +28,19 @@ export default function LogoBar() {
   return (
     <div style={{
       background: 'linear-gradient(110deg,#FF4D96 0%,#E91E6A 45%,#B01550 100%)',
-      padding: '6px 14px 7px',
+      padding: '10px 14px',
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      flexShrink: 0, minHeight: 46,
+      flexShrink: 0, minHeight: 64,
     }}>
       {isTopLevel ? (
         <img
           src="/branding/logo-final.png"
           alt="Supermom for Hire"
-          style={{ height: 30, objectFit: 'contain', objectPosition: 'left center' }}
+          style={{ 
+            height: 56, 
+            width: 'auto',
+            filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.2))',
+          }}
         />
       ) : (
         <button onClick={() => navigate(-1)} style={{ 
@@ -50,6 +54,28 @@ export default function LogoBar() {
       )}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+        <button
+          role="switch"
+          aria-checked={mode === 'dark'}
+          aria-label="Toggle Theme"
+          onClick={toggleMode}
+          title="Toggle Light/Dark Mode"
+          style={{
+            width: 38, height: 22, borderRadius: 11, 
+            border: '1px solid rgba(255,255,255,0.28)',
+            background: mode === 'dark' ? 'rgba(0,0,0,0.35)' : 'rgba(255,255,255,0.15)',
+            position: 'relative', transition: 'background 0.2s', cursor: 'pointer',
+            padding: 0, flexShrink: 0, outline: 'none'
+          }}
+        >
+          <span style={{
+            position: 'absolute', top: 1, left: mode === 'dark' ? 17 : 1,
+            width: 18, height: 18, borderRadius: '50%', background: 'white',
+            transition: 'left 0.2s cubic-bezier(0.4, 0.0, 0.2, 1)', 
+            boxShadow: '0 1px 4px rgba(0,0,0,0.3)', display: 'block'
+          }} />
+        </button>
+
         <button
           onClick={togglePrivacy}
           aria-label={privacyOn ? 'Privacy mode on — tap to show info' : 'Privacy mode off — tap to hide info'}

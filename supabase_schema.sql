@@ -31,6 +31,12 @@ CREATE TABLE public.businesses (
   hst_rate numeric DEFAULT 0.13,
   tax_enabled boolean DEFAULT false,
   logo_url text,
+  ai_profile jsonb DEFAULT '{
+    "style": "professional",
+    "verbosity": "balanced",
+    "reminders": ["pets", "keys", "vip"],
+    "learning_notes": ""
+  }'::jsonb,
   created_at timestamp with time zone DEFAULT now(),
   deleted_at timestamp with time zone,
   CONSTRAINT businesses_pkey PRIMARY KEY (id)
@@ -244,12 +250,25 @@ CREATE TABLE public.payments (
   CONSTRAINT payments_job_id_fkey FOREIGN KEY (job_id) REFERENCES public.jobs(id),
   CONSTRAINT payments_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.clients(id)
 );
+CREATE TABLE public.integrations (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  business_id uuid NOT NULL,
+  service_name text NOT NULL,
+  refresh_token text NOT NULL,
+  calendar_id text DEFAULT 'primary'::text,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT integrations_pkey PRIMARY KEY (id),
+  CONSTRAINT integrations_business_id_fkey FOREIGN KEY (business_id) REFERENCES public.businesses(id) ON DELETE CASCADE,
+  CONSTRAINT integrations_business_id_service_name_key UNIQUE (business_id, service_name)
+);
+
 CREATE TABLE public.services (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   business_id uuid NOT NULL,
   name text NOT NULL,
   pricing_type text DEFAULT 'Hourly'::text CHECK (pricing_type = ANY (ARRAY['Hourly'::text, 'Flat'::text])),
   default_price numeric DEFAULT 0,
+  default_duration numeric DEFAULT 120,
   description text,
   active boolean DEFAULT true,
   sort_order integer DEFAULT 0,

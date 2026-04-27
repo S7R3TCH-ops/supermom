@@ -1,32 +1,39 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAppTheme } from '../context/AppThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useBusiness, useClients, useJobs } from '../data/useData';
+import { useToast } from '../context/ToastContext';
 import SectionLabel from '../components/ui/SectionLabel';
 import { useViewpoint } from '../context/ViewpointContext';
+import ServiceCatalogSheet from '../components/sheets/ServiceCatalogSheet';
 
 export default function Admin() {
   const { T, mode } = useAppTheme();
+  const toast = useToast();
   const { profile, signOut } = useAuth();
   const { business, loading: bizLoading, update: updateBiz } = useBusiness();
   const { clients, loading: clientsLoading } = useClients();
   const { jobs, loading: jobsLoading } = useJobs();
-  const { isSuperAdmin, allBusinesses, switchTo, viewingAsId, reset } = useViewpoint();
+  const { isSuperAdmin, allBusinesses, switchTo, viewingAsId, reset, refresh } = useViewpoint();
   const navigate = useNavigate();
 
   const [isSaving, setIsSaving] = useState(false);
+  const [pendingStyle, setPendingStyle] = useState(null);
   const [selectedBizId, setSelectedBizId] = useState('');
+  const [showServices, setShowServices] = useState(false);
 
   const handleStyleChange = async (style) => {
     if (!business) return;
     setIsSaving(true);
+    setPendingStyle(style);
     try {
       const newProfile = { ...(business?.ai_profile || {}), style };
       await updateBiz({ ai_profile: newProfile });
     } catch (err) {
       console.error('Failed to update AI style:', err);
+      setPendingStyle(null);
     } finally {
       setIsSaving(false);
     }
@@ -41,7 +48,55 @@ export default function Admin() {
     .filter(j => j.raw.job_status === 'Completed')
     .reduce((sum, j) => sum + Number(j.raw.total_amount || 0), 0);
 
-  const aiStyle = business?.ai_profile?.style || 'professional';
+  const aiStyle = pendingStyle || business?.ai_profile?.style || 'professional';
+
+  // Clear pending style when business data actually updates to match
+  useEffect(() => {
+    if (pendingStyle && business?.ai_profile?.style === pendingStyle) {
+      setPendingStyle(null);
+    }
+  }, [pendingStyle, business?.ai_profile?.style]);
+
+  const [testResult, setTestResult] = useState('');
+  const [isTesting, setIsTesting] = useState(false);
+
+  const handleTestPersona = async () => {
+    setIsTesting(true);
+    setTestResult('');
+    
+    // Local fallback messages to ensure UI works even if API/network is down
+    const fallbacks = {
+      professional: "The spreadsheet of your life is balanced. Let's execute.",
+      coach: "Breathe in the confidence, breathe out the chaos. You're a rockstar!",
+      casual: "Alright, let's get this bread. Or at least get this organizing done so we can nap later."
+    };
+
+    try {
+      const res = await fetch('/api/ai/test-persona', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          style: aiStyle, 
+          ownerName: business?.owner_name || profile?.first_name
+        })
+      });
+      
+      if (!res.ok) throw new Error(`Status ${res.status}`);
+      
+      const data = await res.json();
+      if (data.message) {
+        setTestResult(data.message);
+        toast.info('Persona test ready.');
+      } else {
+        throw new Error('No message in response');
+      }
+    } catch (e) {
+      console.warn('API Test Persona failed, using local fallback:', e);
+      setTestResult(fallbacks[aiStyle] || fallbacks.professional);
+    } finally {
+      setIsTesting(false);
+    }
+  };
 
   const [pwForm, setPwForm] = useState({ pw: '', pw2: '' });
   const [showPw, setShowPw] = useState(false);
@@ -49,6 +104,47 @@ export default function Admin() {
   const [savingPw, setSavingPw] = useState(false);
   const [pwSaved, setPwSaved] = useState(false);
   const [pwError, setPwError] = useState(null);
+
+  const [provForm, setProvForm] = useState({ biz: '', owner: '', email: '', pw: '' });
+  const [isProv, setIsProv] = useState(false);
+  const [provMsg, setProvMsg] = useState('');
+
+  const handleProvision = async () => {
+    setIsProv(true); setProvMsg('');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('/api/admin/provision', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`
+        },
+        body: JSON.stringify({ businessName: provForm.biz, ownerName: provForm.owner, email: provForm.email, password: provForm.pw })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      toast.success('Business provisioned!');
+      setProvMsg('Successfully provisioned! ✓');
+      setProvForm({ biz: '', owner: '', email: '', pw: '' });
+    } catch (e) {
+      toast.error(e.message);
+      setProvMsg(`Error: ${e.message}`);
+    } finally {
+      setIsProv(false);
+    }
+  };
+
+  const handleSoftDeleteBiz = async (id, name) => {
+    if (!window.confirm(`Are you sure you want to soft delete business "${name}"?`)) return;
+    try {
+      const { error } = await supabase.from('businesses').update({ deleted_at: new Date().toISOString() }).eq('id', id);
+      if (error) throw error;
+      toast.success(`"${name}" removed.`);
+      refresh();
+    } catch(e) {
+      toast.error(e.message);
+    }
+  };
 
   const handleUpdatePassword = async () => {
     if (!pwForm.pw || pwForm.pw.length < 8) {
@@ -64,11 +160,14 @@ export default function Admin() {
     try {
       const { error } = await supabase.auth.updateUser({ password: pwForm.pw });
       if (error) throw error;
+      toast.success('Password updated.');
       setPwSaved(true);
       setPwForm({ pw: '', pw2: '' });
       setTimeout(() => setPwSaved(false), 3000);
     } catch (err) {
-      setPwError(err.message || 'Failed to update password.');
+      const msg = err.message || 'Failed to update password.';
+      toast.error(msg);
+      setPwError(msg);
     } finally {
       setSavingPw(false);
     }
@@ -172,6 +271,40 @@ export default function Admin() {
                 </button>
               )}
             </div>
+
+            <SectionLabel>Super Admin: Provisioning</SectionLabel>
+            <div style={{ background: '#1a0a0a', border: '1.5px solid #7f1d1d', borderRadius: 16, padding: '14px', marginBottom: 20 }}>
+              <div style={{ fontSize: 11, color: '#fca5a5', marginBottom: 12, fontWeight: 600 }}>Create a new business and owner account.</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <input placeholder="Business Name" value={provForm.biz} onChange={e => setProvForm(p => ({...p, biz: e.target.value}))} style={{ padding: '10px', borderRadius: 12, background: '#2d0f0f', border: '1px solid #7f1d1d', color: 'white', fontSize: 13, outline: 'none' }} />
+                <input placeholder="Owner Full Name" value={provForm.owner} onChange={e => setProvForm(p => ({...p, owner: e.target.value}))} style={{ padding: '10px', borderRadius: 12, background: '#2d0f0f', border: '1px solid #7f1d1d', color: 'white', fontSize: 13, outline: 'none' }} />
+                <input placeholder="Owner Email" value={provForm.email} onChange={e => setProvForm(p => ({...p, email: e.target.value}))} style={{ padding: '10px', borderRadius: 12, background: '#2d0f0f', border: '1px solid #7f1d1d', color: 'white', fontSize: 13, outline: 'none' }} />
+                <div style={{ position: 'relative' }}>
+                  <input type={showPw ? "text" : "password"} placeholder="Temp Password" value={provForm.pw} onChange={e => setProvForm(p => ({...p, pw: e.target.value}))} style={{ width: '100%', padding: '10px', paddingRight: 36, borderRadius: 12, background: '#2d0f0f', border: '1px solid #7f1d1d', color: 'white', fontSize: 13, outline: 'none' }} />
+                  <ToggleBtn show={showPw} onToggle={() => setShowPw(!showPw)} />
+                </div>
+                <button onClick={handleProvision} disabled={isProv || !provForm.biz || !provForm.email} style={{ padding: '12px', borderRadius: 12, background: '#ef4444', color: 'white', border: 'none', fontWeight: 700, fontSize: 13, cursor: isProv ? 'default' : 'pointer', opacity: (isProv || !provForm.biz || !provForm.email) ? 0.5 : 1 }}>
+                  {isProv ? 'Provisioning…' : 'Create Business & Owner'}
+                </button>
+                {provMsg && <div style={{ color: '#fca5a5', fontSize: 11, padding: '4px 8px', textAlign: 'center' }}>{provMsg}</div>}
+              </div>
+            </div>
+
+            <SectionLabel>Super Admin: Data Management</SectionLabel>
+            <div style={{ background: '#1a0a0a', border: '1.5px solid #7f1d1d', borderRadius: 16, padding: '14px', marginBottom: 20 }}>
+              <div style={{ fontSize: 11, color: '#fca5a5', marginBottom: 12, fontWeight: 600 }}>Soft-delete businesses (immediately hides them from UI).</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {allBusinesses.filter(b => !b.deleted_at).map(b => (
+                  <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '10px 12px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ color: 'white', fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.name}</div>
+                      <div style={{ color: '#f87171', fontSize: 10 }}>{b.owner_name || 'No Owner'}</div>
+                    </div>
+                    <button onClick={() => handleSoftDeleteBiz(b.id, b.name)} style={{ background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', padding: '5px 10px', borderRadius: 8, fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>DELETE</button>
+                  </div>
+                ))}
+              </div>
+            </div>
           </>
         )}
 
@@ -186,9 +319,13 @@ export default function Admin() {
           background: T.card, border: `1.5px solid ${T.cardBorder}`,
           borderRadius: 16, padding: '14px', marginBottom: 20,
         }}>
-          {!business ? (
+          {!business && isSuperAdmin ? (
             <div style={{ fontFamily: T.font, fontSize: 13, color: T.inkMuted, textAlign: 'center', padding: '10px 0' }}>
-              Select a business viewpoint above to configure AI preferences.
+              Select a business viewpoint above to configure AI assistant preferences.
+            </div>
+          ) : !business ? (
+             <div style={{ fontFamily: T.font, fontSize: 13, color: T.inkMuted, textAlign: 'center', padding: '10px 0' }}>
+              Loading AI preferences...
             </div>
           ) : (
             <>
@@ -206,19 +343,48 @@ export default function Admin() {
                     key={s.id}
                     onClick={() => !isSaving && handleStyleChange(s.id)}
                     style={{
-                      padding: '10px 12px', borderRadius: 12, cursor: 'pointer',
+                      padding: '10px 12px', borderRadius: 12, cursor: isSaving ? 'default' : 'pointer',
                       background: aiStyle === s.id ? T.pinkTint : 'rgba(255,255,255,0.03)',
                       border: `1.5px solid ${aiStyle === s.id ? T.pink : T.cardBorder}`,
-                      transition: 'all 0.2s'
+                      transition: 'all 0.2s',
+                      opacity: isSaving && aiStyle !== s.id ? 0.5 : 1
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontFamily: T.font, fontSize: 13, fontWeight: 700, color: aiStyle === s.id ? T.pink : T.ink }}>{s.label}</span>
-                      {aiStyle === s.id && <span style={{ color: T.pink, fontSize: 12 }}>✓</span>}
+                      <span style={{ fontFamily: T.font, fontSize: 13, fontWeight: 700, color: aiStyle === s.id ? T.pink : T.ink }}>
+                        {s.label}
+                        {isSaving && aiStyle === s.id && ' (Saving...)'}
+                      </span>
+                      {aiStyle === s.id && !isSaving && <span style={{ color: T.pink, fontSize: 12 }}>✓</span>}
                     </div>
                     <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, marginTop: 2 }}>{s.desc}</div>
                   </div>
                 ))}
+
+                <div style={{ marginTop: 16 }}>
+                  <button 
+                    onClick={handleTestPersona}
+                    disabled={isTesting}
+                    style={{
+                      width: '100%', padding: '10px', borderRadius: 12,
+                      background: 'transparent', border: `1px solid ${T.pink}`, color: T.pink,
+                      fontSize: 12, fontWeight: 700, cursor: isTesting ? 'default' : 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {isTesting ? 'Testing Persona…' : 'Test Selected Persona'}
+                  </button>
+                  {testResult && (
+                    <div style={{ 
+                      marginTop: 12, padding: '12px', borderRadius: 12, 
+                      background: mode === 'dark' ? 'rgba(255,255,255,0.05)' : '#FFF0F7', 
+                      fontStyle: 'italic', fontSize: 13, color: T.ink, 
+                      borderLeft: `3px solid ${T.pink}`, lineHeight: 1.4
+                    }}>
+                      "{testResult}"
+                    </div>
+                  )}
+                </div>
               </div>
             </>
           )}
@@ -229,7 +395,7 @@ export default function Admin() {
           <ToolRow T={T} icon="⚙" label="Business Settings" sub="Profile, rates, Google Calendar" onClick={() => navigate('/settings')} />
           <ToolRow T={T} icon="📊" label="Detailed Reports" sub="Coming soon" />
           <ToolRow T={T} icon="👥" label="Staff Management" sub="Coming soon" />
-          <ToolRow T={T} icon="🗂" label="Service Catalog" sub="Coming soon" />
+          <ToolRow T={T} icon="🗂" label="Service Catalog" sub="Manage defaults, rates, durations" onClick={() => setShowServices(true)} />
         </div>
 
         <SectionLabel>Security</SectionLabel>
@@ -317,6 +483,11 @@ export default function Admin() {
           </button>
         </div>
       </div>
+
+      <ServiceCatalogSheet
+        isOpen={showServices}
+        onClose={() => setShowServices(false)}
+      />
     </div>
   );
 }

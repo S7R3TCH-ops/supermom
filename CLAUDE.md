@@ -1,6 +1,7 @@
 # Supermom for Hire · CLAUDE.md
 
 > Read this file at the start of every session. Read `DESIGN.md` before touching any UI code.
+> **Living document rule**: After completing any meaningful task — building a feature, adding/removing a script, changing architecture, cleaning up files — update this file immediately to reflect the current state. Remove stale entries. Add new ones. Keep it accurate.
 
 ---
 
@@ -34,12 +35,16 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 ## Common Scripts
 
+> **First time or after a clean:** `node_modules/` is gitignored. Run `npm install` before `npm run dev` if the folder is missing.
+
 | Script | Purpose |
 |---|---|
+| `npm install` | Restore dependencies (run after cloning or cleaning) |
 | `npm run dev` | Start local development server |
 | `node scripts/reset-platform.mjs` | Wipes all client data, preserves Super Admin (Joel) |
 | `node scripts/provision-sandra.mjs`| Re-creates Sandra's business and owner account fresh |
 | `node scripts/inspect.mjs` | Summary of current DB tables and users |
+| `node scripts/dedup-data.mjs` | Merge duplicate clients/jobs/services in local DB |
 
 ---
 
@@ -55,10 +60,13 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 | Table | Purpose |
 |---|---|
-| `businesses` | One row per operator's business (Sandra → "Supermom for Hire") |
-| `users` | Links `auth.users.id` → `business_id`, with role (`owner`/`admin`/`worker`) |
-| `clients` | `business_id`-scoped, `ai_context` jsonb, `tags` array |
-| `jobs` | `scheduled_date` + `scheduled_time`, `pricing_type` (Hourly/Flat), `total_amount`, `job_status`, `payment_status` |
+| `businesses` | One row per operator's business (Sandra → "Supermom for Hire"); includes `ai_profile` for persona settings. |
+| `users` | Links `auth.users.id` → `business_id`, with role (`owner`/`admin`/`worker`). |
+| `clients` | `business_id`-scoped, `ai_context` jsonb, `tags` array. |
+| `jobs` | `scheduled_date` + `scheduled_time`, `pricing_type` (Hourly/Flat), `total_amount`, `job_status`, `payment_status`. |
+| `services` | Service catalog with `default_price` and `default_duration`. |
+| `integrations`| OAuth tokens and settings for external services (e.g. Google Calendar). |
+| `storage.job-assets` | Private bucket for job-related photos and voice notes. |
 
 ### Repo / data layer rules
 - **Multi-tenancy**: Every `select`, `insert`, `update`, and `delete` must include `.eq('business_id', businessId)`.

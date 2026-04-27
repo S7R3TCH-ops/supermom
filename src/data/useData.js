@@ -197,7 +197,9 @@ export function useBusiness() {
   return { business, loading, error, refresh, update };
 }
 
+import { getCurrentBusinessId } from './currentBusiness';
 import { fetchInvoices } from './invoicesRepo';
+import { supabase } from '../lib/supabase';
 
 export function useInvoices() {
   const [invoices, setInvoices] = useState([]);
@@ -205,9 +207,8 @@ export function useInvoices() {
   const [error, setError] = useState(null);
 
   const refresh = useCallback(async () => {
-    setLoading(true);
-    setError(null);
     try {
+      setLoading(true);
       const data = await fetchInvoices();
       setInvoices(data);
     } catch (e) {
@@ -221,4 +222,38 @@ export function useInvoices() {
   useChangeListener(refresh);
 
   return { invoices, loading, error, refresh };
+}
+
+export function useServices() {
+  const [services, setServices] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const refresh = useCallback(async () => {
+    try {
+      setLoading(true);
+      const bid = await getCurrentBusinessId().catch(() => null);
+      let query = supabase
+        .from('services')
+        .select('*')
+        .eq('active', true);
+      
+      if (bid) {
+        query = query.eq('business_id', bid);
+      }
+      
+      const { data, error: err } = await query.order('sort_order', { ascending: true });
+      if (err) throw err;
+      setServices(data || []);
+    } catch (e) {
+      setError(e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { refresh(); }, [refresh]);
+  useChangeListener(refresh);
+
+  return { services, loading, error, refresh };
 }

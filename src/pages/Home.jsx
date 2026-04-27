@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useState, useCallback } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { useAppTheme } from '../context/AppThemeContext';
 import AmtCell from '../components/ui/AmtCell';
 import SectionLabel from '../components/ui/SectionLabel';
@@ -12,7 +12,7 @@ import { useAuth } from '../context/AuthContext';
 import { updateDailyRoutes } from '../lib/maps';
 import { useGeofence } from '../context/GeofenceContext';
 import { generateCommandBrief, generatePrepNote, speakBrief, stopSpeaking } from '../data/ai';
-import { getRandomEmptyMessage } from '../lib/greetings';
+import { getPersistentDailyMessage, getTimeBasedGreeting } from '../lib/greetings';
 
 const NOW = () => new Date();
 const DOW_SHORT = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
@@ -22,11 +22,7 @@ function sameDay(a, b) {
     && a.getMonth() === b.getMonth()
     && a.getDate() === b.getDate();
 }
-function startOfWeek(d) {
-  const x = new Date(d); x.setHours(0, 0, 0, 0);
-  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
-  return x;
-}
+
 function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
 
 function fmtTime12(d) {
@@ -34,6 +30,12 @@ function fmtTime12(d) {
   const hh = ((h + 11) % 12) + 1;
   const ap = h < 12 ? 'AM' : 'PM';
   return { time: m === 0 ? `${hh}:00` : `${hh}:${m.toString().padStart(2,'0')}`, period: ap };
+}
+
+function fmtTimeRange(start, end) {
+  const s = fmtTime12(start);
+  const e = fmtTime12(end);
+  return `${s.time} – ${e.time} ${e.period}`;
 }
 
 function dateBrief(d) {
@@ -64,36 +66,114 @@ function LiveTimer({ startTime, T }) {
   );
 }
 
-function getGreeting(name) {
-  const hour = new Date().getHours();
-  let g = 'Good morning';
-  if (hour >= 12 && hour < 17) g = 'Good afternoon';
-  else if (hour >= 17) g = 'Good evening';
-  return <>{g},<br />{name}.</>;
-}
+const EmptyState = ({ persona, allDone, T }) => {
+  const msg = allDone 
+    ? {
+        casual: "All missions accomplished! Your cape is in the wash. Time for a glass of wine? 🍷",
+        coach: "You crushed it today! Take a moment to breathe and celebrate your wins. 🌟",
+        professional: "Daily objectives secured. Systems transitioning to standby. Excellent work. ✅"
+      }
+    : {
+        casual: "The world is safe for now! Tactical nap? I won't tell. ☕",
+        coach: "A clear board is a clear mind. What's one thing you'll do for YOU today? ✨",
+        professional: "Zero pending operations. Strategic window open for administrative refinement. 📊"
+      };
+  
+  return (
+    <div style={{ padding: '32px 20px', textAlign: 'center', background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 16, marginBottom: 12 }}>
+      <div style={{ fontFamily: T.serif, fontSize: 16, color: T.ink, lineHeight: 1.5 }}>
+        {msg[persona] || msg.professional}
+      </div>
+    </div>
+  );
+};
 
 export default function Home() {
-  const { T, mode, privacyOn } = useAppTheme();
-  const { jobs: allJobs, loading, error } = useJobs();
-  const { clients, loading: clientsLoading } = useClients();
-  const { openJob } = useJobDetailSheet();
-  const { openPostJob } = usePostJobSheet();
-  const { open: openNewClient } = useNewClientSheet();
-  const { open: openDetail } = useFinanceDetailSheet();
-  const { profile } = useAuth();
+  const [runtimeError, setRuntimeError] = useState(null);
+  
+  useEffect(() => {
+    const handleError = (e) => {
+      setRuntimeError(e.message || "Unknown Runtime Error");
+    };
+    window.addEventListener('error', handleError);
+    return () => window.removeEventListener('error', handleError);
+  }, []);
+
+  if (runtimeError) {
+    return (
+      <div style={{ padding: 24, color: '#E91E6A', background: '#06020E', height: '100svh' }}>
+        <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 12 }}>✦ Critical Error</div>
+        <div style={{ fontSize: 13, fontFamily: 'monospace', opacity: 0.8 }}>{runtimeError}</div>
+      </div>
+    );
+  }
+
+  const themeCtx = useAppTheme();
+  const jobsCtx = useJobs();
+  const clientsCtx = useClients();
+  const detailSheet = useJobDetailSheet();
+  const postJobSheet = usePostJobSheet();
+  const newClientSheet = useNewClientSheet();
+  const financeSheet = useFinanceDetailSheet();
+  const authCtx = useAuth();
   const { handleClockOut } = useGeofence();
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const { business } = useBusiness();
-  const today = NOW();
+  const bizCtx = useBusiness();
+
+  // Safety check for context
+  if (!themeCtx || !jobsCtx || !authCtx) {
+    return <div style={{ padding: 20, color: 'white' }}>Initializing context...</div>;
+  }
+
+  const { T, mode, privacyOn } = themeCtx;
+  const { jobs: allJobs, loading, error } = jobsCtx;
+  const { clients, loading: clientsLoading } = clientsCtx;
+  const { profile } = authCtx;
+  const { business } = bizCtx;
+  
+  // Use a stable reference for "today"
+  const [today] = useState(() => new Date());
   const [selectedDate, setSelectedDate] = useState(today);
-  const [missionDismissed, setMissionDismissed] = useState(() => localStorage.getItem('sm_mission_dismissed') === 'true');
-  const emptyMessage = useMemo(() => getRandomEmptyMessage(), [today.toDateString()]);
+  const [missionDismissed, setMissionDismissed] = useState(() => {
+    try {
+      return localStorage.getItem('sm_mission_dismissed') === 'true';
+    } catch (e) {
+      return false;
+    }
+  });
+  
+  const persona = business?.ai_profile?.style || 'professional';
+  
+  const briefingMsg = useMemo(() => {
+    try {
+      return getPersistentDailyMessage('briefing', persona);
+    } catch (e) {
+      console.error("Briefing Error:", e);
+      return "Ready for the day.";
+    }
+  }, [persona]);
 
-  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(startOfWeek(today), i));
+  const scheduleMsg = useMemo(() => {
+    try {
+      return getPersistentDailyMessage('schedule', persona);
+    } catch (e) {
+      console.error("Schedule Error:", e);
+      return "Schedule clear.";
+    }
+  }, [persona]);
 
-  const firstName = profile?.first_name || business?.owner_name?.split(' ')[0] || 'there';
+  const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(today, i)), [today]);
+
+  const firstName = useMemo(() => {
+    try {
+      if (business?.owner_name) return business.owner_name.split(' ')[0];
+      if (profile?.first_name) return profile.first_name;
+    } catch (e) {}
+    return 'there';
+  }, [business, profile]);
 
   const todayJobs = useMemo(() => {
+    if (!allJobs) return [];
     return allJobs
       .map(j => {
         const start = new Date(j.scheduled_at);
@@ -104,7 +184,18 @@ export default function Home() {
       .sort((a, b) => a.start - b.start);
   }, [allJobs, today]);
 
+  const allDone = todayJobs.length > 0 && !todayJobs.some(j => j.status === 'Scheduled' || j.payment_status !== 'Paid');
+
+  const timeBasedGreeting = useMemo(() => {
+    try {
+      return getTimeBasedGreeting(firstName, persona, !allDone);
+    } catch (e) {
+      return `Hello, ${firstName}!`;
+    }
+  }, [firstName, persona, allDone]);
+
   const filteredSelectedJobs = useMemo(() => {
+    if (!allJobs) return [];
     return allJobs
       .map(j => {
         const start = new Date(j.scheduled_at);
@@ -116,38 +207,43 @@ export default function Home() {
   }, [allJobs, selectedDate]);
 
   const overdueJobs = useMemo(() => {
+    if (!allJobs) return [];
     return allJobs
       .filter(j => j.status === 'Completed' && j.payment_status !== 'Paid' && Number(j.total) > 0)
       .map(j => ({ ...j, start: new Date(j.scheduled_at) }))
       .filter(j => (today - j.start) / 86400000 >= 1);
   }, [allJobs, today]);
 
-  // Next up should be the first job that is NOT completed AND NOT paid, or the current active job
   const activeJob = todayJobs.find(j => j.status === 'Scheduled' && j.ai_context?.clock_in_time != null);
-  const next = todayJobs.find(j => j.status === 'Scheduled' && j.payment_status !== 'Paid' && j.end >= today);
+  const next = todayJobs.find(j => j.status === 'Scheduled' && j.payment_status !== 'Paid' && j.start >= today);
   
-  // A mission is only "done" if it's Completed AND Paid. 
-  // We are "All Done" only when no jobs for today are Scheduled OR Unpaid.
-  const allDone = todayJobs.length > 0 && !todayJobs.some(j => j.status === 'Scheduled' || j.payment_status !== 'Paid');
-
   const revenueToday = todayJobs.reduce((s, j) => s + Number(j.total || 0), 0);
 
-  const filteredSelectedJobsWithConflicts = useMemo(() => {
-    return filteredSelectedJobs.map((j, i) => {
-      const conflict = (i < filteredSelectedJobs.length - 1)
-        && Math.round((filteredSelectedJobs[i + 1].start - j.end) / 60000) < 60;
-      return { ...j, conflict };
-    });
-  }, [filteredSelectedJobs]);
-
-  const heroJobId = activeJob?.id || next?.id;
   const isSelectedToday = sameDay(selectedDate, today);
 
-  // If showing Today: hero + later
-  // If showing other day: all as later
-  const laterJobs = isSelectedToday 
-    ? filteredSelectedJobsWithConflicts.filter(j => j.id !== heroJobId && (j.status === 'Scheduled' || j.payment_status !== 'Paid'))
-    : filteredSelectedJobsWithConflicts;
+  const categorizedJobs = useMemo(() => {
+    const now = new Date();
+    const incomplete = [];
+    const upcoming = [];
+    const done = [];
+
+    filteredSelectedJobs.forEach(j => {
+      if (j.id === activeJob?.id) return; 
+
+      const isCompleted = j.status === 'Completed';
+      const isPast = j.end < now;
+
+      if (isCompleted) {
+        done.push(j);
+      } else if (isSelectedToday && isPast) {
+        incomplete.push(j);
+      } else {
+        upcoming.push(j);
+      }
+    });
+
+    return { incomplete, upcoming, done };
+  }, [filteredSelectedJobs, activeJob, isSelectedToday]);
 
   const commandBrief = useMemo(() => next ? generateCommandBrief(next, business) : null, [next, business]);
 
@@ -166,8 +262,6 @@ export default function Home() {
     return () => stopSpeaking();
   }, []);
 
-  // Tight-gap detection: any consecutive pair where free time (gap minus known drive) < 15 min,
-  // or gap < 60 min when drive time is unknown.
   const tightGap = useMemo(() => {
     for (let i = 0; i < todayJobs.length - 1; i++) {
       const a = todayJobs[i], b = todayJobs[i + 1];
@@ -184,11 +278,15 @@ export default function Home() {
     if (!loading && todayJobs.length > 0) {
       const needsUpdate = todayJobs.some(j => !j.ai_context?.drive_to);
       if (needsUpdate) {
-        // Pass raw rows to updateDailyRoutes to ensure we have IDs for patching
         updateDailyRoutes(todayJobs.map(j => j.raw));
       }
     }
   }, [todayJobs, loading]);
+
+  const openJob = detailSheet.openJob;
+  const openPostJob = postJobSheet.openPostJob;
+  const openNewClient = newClientSheet.open;
+  const openDetail = financeSheet.open;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: T.bg, color: T.ink }}>
@@ -196,20 +294,20 @@ export default function Home() {
 
         {/* HERO */}
         <div style={{ background: T.hero, borderBottom: '3px solid #E91E6A', padding: '13px 15px 15px', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px)', backgroundSize: '20px 20px', pointerEvents: 'none' }} />
           <div style={{ position: 'absolute', top: -50, right: -30, width: 150, height: 150, borderRadius: '50%', background: `radial-gradient(circle,${T.pinkGlow} 0%,transparent 70%)`, pointerEvents: 'none' }} />
-          <div style={{ position: 'absolute', bottom: -30, left: -15, width: 100, height: 100, borderRadius: '50%', background: 'radial-gradient(circle,rgba(120,60,200,0.1) 0%,transparent 70%)', pointerEvents: 'none' }} />
-
+          
           <div style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '1.1px', textTransform: 'uppercase', color: T.pinkLabel, marginBottom: 5 }}>
             ✦ Command Brief · {dateBrief(today)}
           </div>
           <div style={{ fontFamily: T.serif, fontSize: 22, fontWeight: 500, letterSpacing: '-0.5px', color: 'white', lineHeight: 1.15, marginBottom: 4 }}>
-            {getGreeting(firstName)}
+            {timeBasedGreeting}
           </div>
           <div style={{ fontFamily: T.font, fontSize: 11.5, color: 'rgba(255,255,255,0.6)', lineHeight: 1.5, marginBottom: 12 }}>
             {todayJobs.length === 0
-              ? emptyMessage
+              ? briefingMsg
               : allDone 
-                ? emptyMessage
+                ? briefingMsg
                 : <>{todayJobs.length} {todayJobs.length === 1 ? 'house' : 'houses'} today{tightGap ? <> · <span style={{ color: T.pinkLabel }}>1 flag needs you</span></> : ''}</>
             }
           </div>
@@ -234,7 +332,6 @@ export default function Home() {
                 <div style={{ fontFamily: T.font, fontSize: 11, fontWeight: 700, color: '#FCD34D', marginBottom: 1 }}>Tight gap today</div>
                 <div style={{ fontFamily: T.font, fontSize: 10.5, color: 'rgba(255,255,255,0.55)', lineHeight: 1.4 }}>
                   {tightGap.a.client_name} → {tightGap.b.client_name} = {tightGap.gapMin} min gap
-                  {tightGap.driveMin > 0 && ` (incl. ~${tightGap.driveMin} min drive)`}
                 </div>
               </div>
             </div>
@@ -242,10 +339,7 @@ export default function Home() {
         </div>
 
         <div style={{ padding: '12px 13px 0' }}>
-          {loading && (
-            <div style={{ padding: '12px 0', color: T.inkMuted, fontFamily: T.font, fontSize: 12 }}>Loading…</div>
-          )}
-
+          {loading && <div style={{ padding: '12px 0', color: T.inkMuted, fontFamily: T.font, fontSize: 12 }}>Loading…</div>}
           {error && (
             <div style={{ margin: '4px 0 10px', padding: '10px 12px', borderRadius: 10, background: T.redBg, border: `1px solid ${T.redBorder}`, fontFamily: T.font, fontSize: 12, color: T.ink }}>
               {error.message || 'Could not load today\'s jobs.'}
@@ -253,313 +347,199 @@ export default function Home() {
           )}
 
           {!loading && !error && !clientsLoading && clients.length === 0 && !missionDismissed && (
-            <div style={{ 
-              background: 'linear-gradient(135deg, #1A0B2E 0%, #0D0517 100%)', 
-              border: '2px solid #E91E6A', borderRadius: 16, padding: '24px 20px', 
-              textAlign: 'center', marginBottom: 16, position: 'relative', overflow: 'hidden',
-              boxShadow: '0 10px 30px rgba(233,30,106,0.25)'
-            }}>
-              <div style={{ position: 'absolute', top: -40, right: -20, width: 140, height: 140, borderRadius: '50%', background: 'radial-gradient(circle,rgba(233,30,106,0.25) 0%,transparent 70%)', pointerEvents: 'none' }} />
-              
-              <button 
-                onClick={() => {
-                  setMissionDismissed(true);
-                  localStorage.setItem('sm_mission_dismissed', 'true');
-                }}
-                style={{
-                  position: 'absolute', top: 12, right: 12, background: 'none', border: 'none',
-                  color: 'rgba(255,255,255,0.3)', cursor: 'pointer', padding: 4
-                }}
-              >
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                </svg>
-              </button>
-
-              <div style={{ width: 56, height: 56, borderRadius: 18, background: 'var(--grad-action)', margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 20px rgba(233,30,106,0.4)', border: '2px solid rgba(255,255,255,0.2)' }}>
-                <span style={{ fontSize: 28 }}>✦</span>
-              </div>
-              <div style={{ fontFamily: T.font, fontSize: 10, fontWeight: 700, letterSpacing: '1.2px', textTransform: 'uppercase', color: '#FF78B0', marginBottom: 6 }}>Mission #1</div>
-              <div style={{ fontFamily: T.serif, fontSize: 20, fontWeight: 500, color: 'white', marginBottom: 10, letterSpacing: '-0.3px' }}>Initialize your first VIP</div>
-              <div style={{ fontFamily: T.font, fontSize: 12, color: 'rgba(255,255,255,0.6)', lineHeight: 1.5, marginBottom: 20, maxWidth: 260, margin: '0 auto 20px' }}>
-                Your Executive Assistant is ready to learn. Add a client to see your first aligned Prep Note.
-              </div>
-              <button 
-                onClick={() => openNewClient()}
-                style={{ 
-                  background: 'var(--grad-pink)', color: 'white', border: 'none', borderRadius: 12, 
-                  padding: '12px 24px', fontFamily: T.font, fontSize: 13, fontWeight: 700,
-                  boxShadow: '0 4px 15px rgba(233,30,106,0.4)', cursor: 'pointer'
-                }}
-              >
-                Add first client
-              </button>
+            <div style={{ background: 'linear-gradient(135deg, #1A0B2E 0%, #0D0517 100%)', border: '2px solid #E91E6A', borderRadius: 16, padding: '24px 20px', textAlign: 'center', marginBottom: 16, position: 'relative', overflow: 'hidden' }}>
+              <button onClick={() => { setMissionDismissed(true); localStorage.setItem('sm_mission_dismissed', 'true'); }} style={{ position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', cursor: 'pointer' }}>×</button>
+              <div style={{ fontFamily: T.serif, fontSize: 20, color: 'white', marginBottom: 10 }}>Initialize your first VIP</div>
+              <button onClick={() => openNewClient()} style={{ background: 'var(--grad-pink)', color: 'white', border: 'none', borderRadius: 12, padding: '12px 24px', fontFamily: T.font, fontSize: 13, fontWeight: 700 }}>Add first client</button>
             </div>
           )}
 
-          {/* 7-day week strip */}
           <SectionLabel>This Week</SectionLabel>
           <div style={{ background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 13, padding: '10px 12px', marginBottom: 12 }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 3 }}>
               {weekDays.map((d, i) => {
                 const isSelected = sameDay(d, selectedDate);
                 const isActuallyToday = sameDay(d, today);
-                const dayJobs = allJobs.filter(j => j.status !== 'Cancelled' && sameDay(new Date(j.scheduled_at), d));
-                const dots = Math.min(dayJobs.length, 3);
-                
+                const dayJobsCount = (allJobs || []).filter(j => j.status !== 'Cancelled' && sameDay(new Date(j.scheduled_at), d)).length;
                 return (
-                  <div 
-                    key={i} 
-                    onClick={() => setSelectedDate(d)}
-                    style={{ 
-                      textAlign: 'center', padding: '5px 2px 6px', borderRadius: 8, 
-                      background: isSelected ? (mode === 'dark' ? '#1A0B2E' : T.pinkTint) : 'transparent',
-                      border: `1.5px solid ${isSelected ? T.pink : 'transparent'}`,
-                      cursor: 'pointer',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    <div style={{ fontFamily: T.font, fontSize: 7.5, fontWeight: 700, letterSpacing: '0.3px', textTransform: 'uppercase', color: isActuallyToday ? T.pink : (isSelected ? T.ink : T.inkMuted) }}>{DOW_SHORT[i]}</div>
-                    <div style={{ fontFamily: T.serif, fontSize: 13, fontWeight: 500, color: isSelected ? T.pink : T.ink, marginTop: 2, lineHeight: 1.2 }}>{d.getDate()}</div>
-                    <div style={{ display: 'flex', gap: 2, justifyContent: 'center', marginTop: 3, minHeight: 5 }}>
-                      {Array.from({ length: dots }).map((_, k) => (
-                        <span key={k} style={{ width: 4, height: 4, borderRadius: '50%', background: isActuallyToday ? T.pink : (isSelected ? T.pink : '#E91E6A'), display: 'block', opacity: isSelected || isActuallyToday ? 1 : 0.4 }} />
-                      ))}
-                    </div>
+                  <div key={i} onClick={() => setSelectedDate(d)} style={{ textAlign: 'center', padding: '5px 2px 6px', borderRadius: 8, background: isSelected ? (mode === 'dark' ? '#1A0B2E' : T.pinkTint) : 'transparent', border: `1.5px solid ${isSelected ? T.pink : 'transparent'}`, cursor: 'pointer' }}>
+                    <div style={{ fontFamily: T.font, fontSize: 7.5, fontWeight: 700, color: isActuallyToday ? T.pink : (isSelected ? T.ink : T.inkMuted) }}>{DOW_SHORT[i]}</div>
+                    <div style={{ fontFamily: T.serif, fontSize: 13, fontWeight: 500, color: isSelected ? T.pink : T.ink }}>{d.getDate()}</div>
+                    {dayJobsCount > 0 && <div style={{ display: 'flex', gap: 2, justifyContent: 'center', marginTop: 3 }}><span style={{ width: 4, height: 4, borderRadius: '50%', background: T.pink }} /></div>}
                   </div>
                 );
               })}
             </div>
-            {!isSelectedToday && (
-              <button 
-                onClick={() => setSelectedDate(today)}
-                style={{
-                  width: '100%', marginTop: 8, background: 'none', border: 'none',
-                  color: T.pink, fontFamily: T.font, fontSize: 10, fontWeight: 700,
-                  textTransform: 'uppercase', cursor: 'pointer', letterSpacing: '0.5px'
-                }}
-              >
-                Snap back to today ↺
-              </button>
-            )}
           </div>
-
-          {!loading && !error && isSelectedToday && todayJobs.length === 0 && (
-            <div style={{ background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 12, padding: '18px 16px', textAlign: 'center', marginBottom: 12 }}>
-              <div style={{ fontFamily: T.serif, fontSize: 16, color: T.ink, marginBottom: 4 }}>{emptyMessage}</div>
-              <div style={{ fontFamily: T.font, fontSize: 12, color: T.inkMuted }}>Tap the pink + button to book a job.</div>
-            </div>
-          )}
 
           {activeJob && isSelectedToday && (
             <>
               <SectionLabel>Active Job · {activeJob.client_name}</SectionLabel>
-              <div style={{ 
-                background: 'linear-gradient(135deg, #1A0B2E 0%, #0D0517 100%)', 
-                border: '1.5px solid rgba(233,30,106,0.5)', 
-                borderRadius: 14, padding: '16px 18px', position: 'relative', overflow: 'hidden', marginBottom: 12 
-              }}>
-                <div style={{ position: 'absolute', top: -30, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'radial-gradient(circle,rgba(233,30,106,0.15) 0%,transparent 70%)', pointerEvents: 'none' }} />
-                
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                  <div>
-                    <div style={{ fontFamily: T.font, fontSize: 10, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#FF78B0' }}>{activeJob.service_name}</div>
-                    <div style={{ fontFamily: T.serif, fontSize: 20, fontWeight: 500, color: 'white', marginTop: 2 }}>{activeJob.client_name}</div>
-                  </div>
-                  <div style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 6, padding: '3px 8px', color: '#4ADE80', fontFamily: T.font, fontSize: 9, fontWeight: 700 }}>WORKING</div>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+              <div style={{ background: 'linear-gradient(135deg, #1A0B2E 0%, #0D0517 100%)', border: '1.5px solid rgba(233,30,106,0.5)', borderRadius: 14, padding: '16px 18px', marginBottom: 12 }}>
+                <div style={{ fontFamily: T.serif, fontSize: 20, color: 'white' }}>{activeJob.client_name}</div>
+                <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 12 }}>
                   <LiveTimer startTime={activeJob.ai_context.clock_in_time} T={T} />
-                  <button 
-                    onClick={async (e) => { e.stopPropagation(); await handleClockOut(activeJob.id); openPostJob(activeJob.id); }}
-                    style={{ 
-                      background: '#E91E6A', color: 'white', border: 'none', borderRadius: 10, 
-                      padding: '10px 20px', fontFamily: T.font, fontSize: 13, fontWeight: 700,
-                      boxShadow: '0 4px 12px rgba(233,30,106,0.3)', cursor: 'pointer'
-                    }}
-                  >
-                    Done
-                  </button>
-                </div>
-
-                <div style={{ fontFamily: T.font, fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,0.4)', marginTop: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span className="sm-pulse" style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#4ADE80' }} />
-                  Auto-started on arrival
+                  <button onClick={async (e) => { e.stopPropagation(); await handleClockOut(activeJob.id); openPostJob(activeJob.id); }} style={{ background: '#E91E6A', color: 'white', border: 'none', borderRadius: 10, padding: '10px 20px', fontWeight: 700 }}>Done</button>
                 </div>
               </div>
             </>
-          )}
-
-          {!activeJob && allDone && isSelectedToday && (
-            <div style={{ background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 14, padding: '24px 16px', textAlign: 'center', marginBottom: 12 }}>
-              <div style={{ fontSize: 32, marginBottom: 12 }}>🦸‍♀️</div>
-              <div style={{ fontFamily: T.serif, fontSize: 18, color: T.ink, marginBottom: 4 }}>All done for today!</div>
-              <div style={{ fontFamily: T.font, fontSize: 12, color: T.inkMuted }}>{emptyMessage}</div>
-            </div>
           )}
 
           {!activeJob && next && isSelectedToday && (
             <>
               <SectionLabel>Opening Act · {next.client_name}</SectionLabel>
-
-              <div onClick={() => openJob(next.id)} style={{ background: T.hero, border: '1.5px solid rgba(233,30,106,0.32)', borderRadius: 14, padding: '11px 12px 12px', position: 'relative', overflow: 'hidden', marginBottom: 10, cursor: 'pointer' }}>
-                <div style={{ position: 'absolute', top: -20, right: -15, width: 80, height: 80, borderRadius: '50%', background: `radial-gradient(circle,${T.pinkGlow} 0%,transparent 70%)`, pointerEvents: 'none' }} />
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-                  <div>
-                    <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.6px', textTransform: 'uppercase', color: T.pinkLabel }}>{next.service_name}</div>
-                    <div style={{ fontFamily: T.serif, fontSize: 18, fontWeight: 500, letterSpacing: '-0.3px', color: 'white', marginTop: 2 }}>{next.client_name}</div>
-                  </div>
-                  <span style={{ background: '#E91E6A', color: 'white', borderRadius: 5, padding: '2px 7px', fontFamily: T.font, fontSize: 8.5, fontWeight: 700 }}>NEXT UP</span>
-                </div>
-                <div style={{ fontFamily: T.font, fontSize: 11, color: 'rgba(255,255,255,0.55)', marginBottom: 9 }}>
-                  {fmtTime12(next.start).time} – {fmtTime12(next.end).time} {fmtTime12(next.end).period}
-                </div>
-
-                {commandBrief && (
-                  <div style={{ 
-                    background: 'rgba(255,255,255,0.06)', 
-                    border: '1px solid rgba(255,255,255,0.1)', 
-                    borderRadius: 12, padding: '12px', marginBottom: 12,
-                    position: 'relative', overflow: 'hidden'
-                  }}>
-                    <div style={{ 
-                      position: 'absolute', top: -20, right: -20, width: 60, height: 60, 
-                      borderRadius: '50%', background: 'radial-gradient(circle,rgba(233,30,106,0.1) 0%,transparent 70%)', 
-                      pointerEvents: 'none' 
-                    }} />
-                    
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                      <div style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: T.pinkLabel }}>
-                        ✦ Command Brief
+              <div onClick={() => openJob(next.id)} style={{ background: T.hero, border: '1.5px solid rgba(233,30,106,0.32)', borderRadius: 14, padding: '12px', marginBottom: 10, cursor: 'pointer', position: 'relative', overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.02) 1px, transparent 1px)', backgroundSize: '15px 15px', pointerEvents: 'none' }} />
+                <div style={{ position: 'relative' }}>
+                  <div style={{ fontFamily: T.serif, fontSize: 18, color: 'white' }}>{next.client_name}</div>
+                  <div style={{ fontFamily: T.font, fontSize: 11, color: 'rgba(255,255,255,0.55)', margin: '4px 0 12px' }}>{fmtTime12(next.start).time} – {fmtTime12(next.end).time} {fmtTime12(next.end).period}</div>
+                  {commandBrief && (
+                    <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 12, padding: '12px', marginBottom: 12 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                        <div style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 700, color: T.pinkLabel }}>✦ Command Brief</div>
+                        <button onClick={handleToggleSpeak} style={{ background: isSpeaking ? '#E91E6A' : 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 20, padding: '4px 10px', color: 'white', fontSize: 9 }}>{isSpeaking ? 'STOP' : 'LISTEN'}</button>
                       </div>
-                      <button 
-                        onClick={handleToggleSpeak}
-                        style={{ 
-                          background: isSpeaking ? '#E91E6A' : 'rgba(255,255,255,0.1)', 
-                          border: 'none', borderRadius: 20, padding: '4px 10px',
-                          display: 'flex', alignItems: 'center', gap: 6,
-                          cursor: 'pointer', transition: 'all 0.2s'
-                        }}
-                      >
-                        <span style={{ fontSize: 10 }}>{isSpeaking ? '⏹' : '▶'}</span>
-                        <span style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, color: 'white' }}>
-                          {isSpeaking ? 'STOP' : 'LISTEN'}
-                        </span>
-                      </button>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       {commandBrief.bullets.map((b, i) => (
-                        <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                          <span style={{ fontSize: 12 }}>{b.icon}</span>
-                          <span style={{ fontFamily: T.font, fontSize: 11, color: 'rgba(255,255,255,0.8)', lineHeight: 1.4 }}>{b.text}</span>
-                        </div>
+                        <div key={i} style={{ display: 'flex', gap: 8, fontSize: 11, color: 'rgba(255,255,255,0.8)', marginBottom: 4 }}><span>{b.icon}</span><span>{b.text}</span></div>
                       ))}
                     </div>
-                  </div>
-                )}
-
-                <CapeUpButton job={next} name={firstName} />
-
-                <div style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 600, color: T.pinkLabel, marginTop: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <span className="sm-pulse" style={{ display: 'inline-block', width: 5, height: 5, borderRadius: '50%', background: T.pinkLabel }} />
-                  📍 Auto-timer ON · Starts when you arrive
+                  )}
+                  <CapeUpButton job={next} name={firstName} />
                 </div>
               </div>
             </>
           )}
 
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <SectionLabel>
-              {isSelectedToday ? 'Later Today' : `Schedule: ${selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
-            </SectionLabel>
-            {!isSelectedToday && filteredSelectedJobs.length > 0 && (
-              <span style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, color: T.inkMuted, marginRight: 13, textTransform: 'uppercase' }}>
-                {filteredSelectedJobs.length} {filteredSelectedJobs.length === 1 ? 'job' : 'jobs'}
-              </span>
+          <div style={{ marginTop: 12 }}>
+            {categorizedJobs.incomplete.length > 0 && (
+              <>
+                {categorizedJobs.incomplete.length > 3 && <SectionLabel color="#F59E0B">✦ Incomplete Missions · Needs Update</SectionLabel>}
+                {categorizedJobs.incomplete.map(j => <JobCard key={j.id} j={j} T={T} mode={mode} openJob={openJob} variant="incomplete" today={today} />)}
+              </>
+            )}
+
+            {categorizedJobs.upcoming.length > 0 && (
+              <>
+                {(categorizedJobs.upcoming.length > 3 || !isSelectedToday) && <SectionLabel>{isSelectedToday ? 'Upcoming Missions' : `Schedule: ${dateBrief(selectedDate)}`}</SectionLabel>}
+                {categorizedJobs.upcoming.map(j => <JobCard key={j.id} j={j} T={T} mode={mode} openJob={openJob} next={next} today={today} />)}
+              </>
+            )}
+
+            {isSelectedToday && categorizedJobs.upcoming.length === 0 && categorizedJobs.incomplete.length === 0 && !activeJob && (
+              <EmptyState persona={persona} allDone={allDone} T={T} />
+            )}
+
+            {isSelectedToday && categorizedJobs.done.length > 0 && (
+              <>
+                {categorizedJobs.done.length > 3 && <SectionLabel>Missions Accomplished · Today</SectionLabel>}
+                {categorizedJobs.done.map(j => <JobCard key={j.id} j={j} T={T} mode={mode} openJob={openJob} variant="done" today={today} />)}
+              </>
             )}
           </div>
 
-          {laterJobs.length === 0 ? (
-             isSelectedToday && !allDone && todayJobs.length > 0 ? (
-              <div style={{ padding: '12px 0', color: T.inkMuted, fontFamily: T.font, fontSize: 12, textAlign: 'center' }}>
-                No more jobs for today.
-              </div>
-             ) : (
-              <div style={{ background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 12, padding: '24px 16px', textAlign: 'center', marginBottom: 12 }}>
-                <div style={{ fontFamily: T.serif, fontSize: 14, color: T.inkMuted }}>
-                  {isSelectedToday ? emptyMessage : 'No missions found for this day.'}
-                </div>
-              </div>
-             )
-          ) : (
-            <>
-              {laterJobs.map((j) => {
-                const conflict = j.conflict;
-                const isNext = next && j.id === next.id;
-                const isUnpaid = j.status === 'Completed' && j.payment_status !== 'Paid';
-                const border = isUnpaid ? 'rgba(233,30,106,0.5)' : conflict ? 'rgba(245,158,11,0.35)' : isNext ? 'rgba(233,30,106,0.38)' : T.cardBorder;
-                const bg = isUnpaid ? (mode === 'dark' ? 'rgba(233,30,106,0.08)' : '#FFF0F7') : conflict ? (mode === 'dark' ? 'rgba(245,158,11,0.05)' : '#FFFBEB') : T.card;
-                const t = fmtTime12(j.start);
-                const e = fmtTime12(j.end);
-                const amt = `$${Number(j.total || 0).toFixed(0)}`;
-                const prepNote = generatePrepNote(j);
-
-                return (
-                  <div key={j.id} onClick={() => openJob(j.id)} style={{ background: bg, border: `1px solid ${border}`, borderRadius: 12, padding: '9px 11px', marginBottom: 7, cursor: 'pointer' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: prepNote ? 7 : 0 }}>
-                      <div style={{ width: 44, height: 46, borderRadius: 10, flexShrink: 0, background: conflict ? (mode === 'dark' ? 'rgba(245,158,11,0.12)' : '#FEF3C7') : T.pinkTint, border: `1px solid ${conflict ? 'rgba(245,158,11,0.22)' : T.cardBorder}`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                        <div style={{ fontFamily: T.serif, fontSize: 13.5, fontWeight: 500, color: conflict ? '#F59E0B' : T.pink, lineHeight: 1 }}>{t.time}</div>
-                        <div style={{ fontFamily: T.font, fontSize: 7.5, fontWeight: 700, color: T.inkMuted, letterSpacing: '0.3px', marginTop: 2 }}>–{e.time}</div>
-                        <div style={{ fontFamily: T.font, fontSize: 7, fontWeight: 700, color: T.inkMuted, letterSpacing: '0.2px' }}>{e.period}</div>
-                      </div>
-
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontFamily: T.serif, fontSize: 13, fontWeight: 500, letterSpacing: '-0.2px', color: T.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{j.client_name}</div>
-                        <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, marginTop: 1 }}>{j.service_name}</div>
-                      </div>
-
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
-                        {isUnpaid && <span style={{ background: '#FFE0EC', borderRadius: 4, padding: '2px 6px', fontFamily: T.font, fontSize: 8, fontWeight: 700, color: '#9B0D3A' }}>UNPAID</span>}
-                        {conflict && <span style={{ background: '#FEF3C7', borderRadius: 4, padding: '2px 6px', fontFamily: T.font, fontSize: 8, fontWeight: 700, color: '#78350F', whiteSpace: 'nowrap' }}>⚠ GAP</span>}
-                        {isNext && <span style={{ background: '#E91E6A', borderRadius: 4, padding: '2px 6px', fontFamily: T.font, fontSize: 8, fontWeight: 700, color: 'white' }}>UP NEXT</span>}
-                        <AmtCell amount={amt} size={13} />
-                      </div>
-                    </div>
-
-                    {prepNote && (
-                      <div style={{ borderTop: `1px dashed ${mode === 'dark' ? 'rgba(255,255,255,0.07)' : '#FFE8F2'}`, paddingTop: 6, display: 'flex', alignItems: 'flex-start', gap: 5 }}>
-                        <span style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', color: conflict ? '#F59E0B' : T.pinkLabel, flexShrink: 0, marginTop: 1 }}>✦ PREP NOTE</span>
-                        <span style={{ fontFamily: T.font, fontSize: 10.5, color: T.inkSub, lineHeight: 1.45, whiteSpace: 'pre-wrap' }}>{prepNote}</span>
-                      </div>
-                    )}
-                  </div>
-                );
-
-              })}
-            </>
-          )}
-
           {overdueJobs.length > 0 && isSelectedToday && (
-            <div style={{ background: T.redBg, border: `1px solid ${T.redBorder}`, borderRadius: 10, padding: '8px 11px', display: 'flex', alignItems: 'center', gap: 9, marginBottom: 9, marginTop: 4 }}>
+            <div onClick={() => openDetail("Unpaid Jobs", overdueJobs, 'jobs')} style={{ background: T.redBg, border: `1px solid ${T.redBorder}`, borderRadius: 10, padding: '8px 11px', display: 'flex', alignItems: 'center', gap: 9, marginTop: 4, cursor: 'pointer' }}>
               <span style={{ fontSize: 13 }}>💰</span>
               <div style={{ flex: 1 }}>
-                <div style={{ fontFamily: T.font, fontSize: 11, fontWeight: 700, color: mode === 'dark' ? '#FCA5A5' : '#B91C1C' }}>
-                  {overdueJobs.length} unpaid completed job{overdueJobs.length === 1 ? '' : 's'}
-                </div>
-                <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted }}>
-                  {overdueJobs.slice(0, 2).map(j => j.client_name).join(', ')}{overdueJobs.length > 2 ? '…' : ''}
-                </div>
+                <div style={{ fontFamily: T.font, fontSize: 11, fontWeight: 700, color: mode === 'dark' ? '#FCA5A5' : '#B91C1C' }}>{overdueJobs.length} unpaid completed jobs</div>
+                <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted }}>{overdueJobs.slice(0, 2).map(j => j.client_name).join(', ')}</div>
               </div>
-              <AmtCell
-                amount={`$${overdueJobs.reduce((s, j) => s + Number(j.total || 0), 0).toFixed(0)}`}
-                size={12}
-              />
+              <AmtCell amount={`$${overdueJobs.reduce((s, j) => s + Number(j.total || 0), 0).toFixed(0)}`} size={12} />
             </div>
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function JobCard({ j, T, mode, openJob, next, variant, today }) {
+  const isNext = next && j.id === next.id;
+  const isCompleted = j.status === 'Completed';
+  const isPaid = j.payment_status === 'Paid';
+  const isIncomplete = variant === 'incomplete';
+  const isToday = sameDay(j.start, today);
+  
+  const needsDuration = isCompleted && !j.actual_duration;
+
+  let border = T.cardBorder, bg = T.card, accentColor = T.pink, label = null;
+
+  if (isIncomplete) {
+    border = '#F59E0B'; // Deep Amber
+    bg = mode === 'dark' ? 'rgba(245,158,11,0.1)' : '#FFFBEB';
+    accentColor = '#D97706';
+    label = { text: 'PAST DUE', color: '#F59E0B' };
+  } else if (isCompleted && !isPaid) {
+    border = mode === 'dark' ? '#FBBF24' : '#F59E0B'; // Gold/Amber
+    bg = mode === 'dark' ? 'rgba(251,191,36,0.08)' : '#FEFDF0';
+    accentColor = '#B45309';
+    label = { text: 'UNPAID', color: '#F59E0B' };
+  } else if (isCompleted && isPaid) {
+    border = mode === 'dark' ? 'rgba(34,197,94,0.3)' : '#22C55E';
+    bg = mode === 'dark' ? 'rgba(34,197,94,0.05)' : '#F0FFF4';
+    accentColor = '#22C55E';
+    label = { text: 'PAID ✓', color: '#22C55E' };
+  } else if (isNext) {
+    border = 'rgba(233,30,106,0.38)';
+    accentColor = '#E91E6A';
+    label = { text: 'UP NEXT', color: '#E91E6A' };
+  }
+
+  const prepNote = generatePrepNote(j);
+  const startTime = fmtTime12(j.start);
+  const endTime = fmtTime12(j.end);
+
+  return (
+    <div onClick={() => openJob(j.id)} style={{ 
+      background: bg, 
+      border: `1.5px solid ${border}`, 
+      borderLeft: `5px solid ${accentColor}`,
+      borderRadius: 12, 
+      padding: '10px 12px', 
+      marginBottom: 8, 
+      cursor: 'pointer', 
+      transition: 'transform 0.1s',
+      boxShadow: !isPaid && isCompleted ? '0 2px 8px rgba(245,158,11,0.15)' : 'none'
+    }}>
+      <div style={{ display: 'flex', gap: 12 }}>
+        {/* TIME/DATE STAND-OUT BLOCK */}
+        <div style={{ width: 56, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: isIncomplete ? 'rgba(245,158,11,0.2)' : isCompleted ? (isPaid ? 'rgba(34,197,94,0.1)' : 'rgba(251,191,36,0.15)') : T.pinkTint, border: `1px solid ${border}`, borderRadius: 10, padding: '4px 0' }}>
+          {!isToday && (
+            <div style={{ fontFamily: T.font, fontSize: 8, fontWeight: 800, color: accentColor, textTransform: 'uppercase', marginBottom: 2 }}>{dateBrief(j.start).split(',')[0]}</div>
+          )}
+          <div style={{ fontFamily: T.serif, fontSize: 13.5, fontWeight: 700, color: accentColor, lineHeight: 1 }}>{startTime.time}</div>
+          <div style={{ fontFamily: T.font, fontSize: 7.5, fontWeight: 700, color: T.inkMuted, margin: '2px 0' }}>to</div>
+          <div style={{ fontFamily: T.serif, fontSize: 13.5, fontWeight: 700, color: accentColor, lineHeight: 1 }}>{endTime.time}</div>
+          <div style={{ fontFamily: T.font, fontSize: 7, fontWeight: 800, color: T.inkMuted, marginTop: 2 }}>{endTime.period}</div>
+        </div>
+
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 600, color: T.ink, marginBottom: 1 }}>{j.client_name}</div>
+          <div style={{ fontFamily: T.font, fontSize: 10.5, color: T.inkSub, fontWeight: 500 }}>{j.service_name}</div>
+          
+          {needsDuration && (
+            <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 800, color: '#D97706', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span>⚠</span> MANUAL HOURS NEEDED
+            </div>
+          )}
+          
+          {!isToday && (
+             <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, marginTop: 4 }}>{dateBrief(j.start)}</div>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'space-between', gap: 4 }}>
+          {label && <span style={{ background: label.color, borderRadius: 4, padding: '2px 6px', fontSize: 8.5, fontWeight: 900, color: 'white' }}>{label.text}</span>}
+          <AmtCell amount={`$${Number(j.total || 0).toFixed(0)}`} size={14} />
+        </div>
+      </div>
+      
+      {prepNote && !isCompleted && (
+        <div style={{ borderTop: `1px dashed ${T.cardBorder}`, paddingTop: 8, marginTop: 8, display: 'flex', gap: 6 }}>
+          <span style={{ fontSize: 9, fontWeight: 800, color: accentColor, flexShrink: 0 }}>✦ PREP</span>
+          <span style={{ fontSize: 10.5, color: T.inkMuted, lineHeight: 1.4 }}>{prepNote}</span>
+        </div>
+      )}
     </div>
   );
 }

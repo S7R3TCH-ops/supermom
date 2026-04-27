@@ -30,6 +30,7 @@ export default async function handler(req, res) {
   }
 
   try {
+    console.log(`[prep-note] Generating briefing for client ${clientId}`);
     // 1. Fetch Client Details
     const { data: client, error: clientErr } = await supabase
       .from('clients')
@@ -37,14 +38,18 @@ export default async function handler(req, res) {
       .eq('id', clientId)
       .single();
 
-    if (clientErr || !client) {
+    if (clientErr) {
+      console.error(`[prep-note] DB Error (client):`, clientErr);
+      throw new Error(`Client fetch failed: ${clientErr.message}`);
+    }
+    if (!client) {
       throw new Error('Client not found');
     }
 
     // 2. Fetch last 5 COMPLETED jobs
     const { data: jobs, error: jobsErr } = await supabase
       .from('jobs')
-      .select('scheduled_date, service_name, job_notes')
+      .select('scheduled_date, scheduled_time, service_name, job_notes')
       .eq('client_id', clientId)
       .eq('job_status', 'Completed')
       .is('deleted_at', null)
@@ -53,7 +58,8 @@ export default async function handler(req, res) {
       .limit(5);
 
     if (jobsErr) {
-      throw new Error('Failed to fetch jobs');
+      console.error(`[prep-note] DB Error (jobs):`, jobsErr);
+      throw new Error(`Jobs fetch failed: ${jobsErr.message}`);
     }
 
     // 3. Construct Prompt

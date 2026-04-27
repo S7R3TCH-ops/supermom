@@ -25,14 +25,14 @@ At the end of every productive session, or upon major milestone completion, Gemi
 
 ## Technical Context
 - **Timezone**: `America/Toronto` (Always).
-- **Target Viewport**: 390px (iPhone) / `100svh`.
+- **Target Viewport**: Dynamic (Mobile) / Centered (Desktop) / `100svh`.
 - **App status**: **Live on Supabase** — all 5 pages (Home, Calendar, Clients, Client Profile, Finance) read real data. Login is active. Mock data is gone.
 - **Supabase project**: `lskzzsjmmtsosfneuovt`
 - **Schema source of truth**: `supabase_schema.sql` at repo root.
 
 ---
 
-## Current State (as of April 26, 2026 — updated post Platform Reset)
+## Current State (as of April 27, 2026 — updated post UX & Stability Hardening)
 
 | Feature | Status |
 |---|---|
@@ -43,7 +43,7 @@ At the end of every productive session, or upon major milestone completion, Gemi
 | Finance — mark-paid | ✅ Live |
 | New Job sheet | ✅ Live (Strict validation) |
 | **Job Detail sheet** | ✅ **Live** — Hardened EditMode; null-safety added |
-| **AI Prep Notes** | ✅ **Live** — Robust API error handling + dynamic context |
+| **AI Prep Notes** | ✅ **Live** — Fixed 404/JSON local dev errors |
 | **AI Duration Estimator** | ✅ **Live** — Step 2 prediction; fixed prompt syntax |
 | **Post-job / Payment sheet** | ✅ **Live** — UNPAID badge, Cash/e-Transfer toggle, editable amount, AI thank-you teaser |
 | **Edit Client / AI context** | ✅ **Live** — Inline edit on Profile "What I know" card; Notes + Prefs/Access/Comms/Personal buckets |
@@ -76,33 +76,73 @@ At the end of every productive session, or upon major milestone completion, Gemi
 | **Finance Drilldown** | ✅ **Live** — Tappable stats with detail sheet; actionable history |
 | **Interactive Home** | ✅ **Live** — Interactive 7-day strip; Dynamic EA empty-state messages |
 | **Contextual Nav** | ✅ **Live** — Route-aware Back button in LogoBar |
-| **Theme Toggle** | ✅ **Live** — Moved to Settings; premium switch UI |
+| **Theme Toggle** | ✅ **Live** — Moved to LogoBar; premium pill switch UI |
 | **Test Isolation** | ✅ **Live** — Dedicated `tester@supermom.io` environment |
 | **Specialized Services** | ✅ **Live** — Declutter, Organize, Assist roster for Sandra |
+| **ADHD Focus UI** | ✅ **Live** — High-contrast Amber highlighting for Unpaid completed jobs |
+| **AI Persona Picker** | ✅ **Live** — Fixed missing DB column; verified persistence |
 
-## Phase 14 UI/UX Polish & Dynamic Intelligence (Gemini CLI session, April 26, 2026)
+## Phase 15/16 Updates (Gemini CLI session, April 27, 2026)
 
-Key enhancements for "Premium 2026" feel and intuitive navigation:
+Key enhancements for scale and Super Admin control:
 
 | # | Change | Detail | File |
 |---|---|---|---|
-| AO | Actionable Schedule | 7-day row on Home is now interactive; filters "Later Today" list | `Home.jsx` |
-| AP | Dynamic EA Voice | Randomized quirky messages for empty/completed states | `Home.jsx`, `greetings.js` |
-| AQ | Contextual Back | LogoBar now shows a "Back" button on non-top-level routes | `LogoBar.jsx` |
-| AR | Theme Toggle Move | Removed from LogoBar; new sliding switch in Settings > Appearance | `LogoBar.jsx`, `Settings.jsx` |
-| AS | UI Polish Pass | Active BottomNav glow, standardized sheet handles, editorial typography | `BottomNav.jsx`, `SectionLabel.jsx`, `JobDetailSheet.jsx` |
-| AT | Admin Sign Out | Direct Sign Out button added to Admin page for better accessibility | `Admin.jsx` |
-| AU | Critical Bug Fixes | Fixed signOut ReferenceError and stringified 'null' UUID database crash | `Admin.jsx`, `currentBusiness.js`, `NewJobSheet.jsx`, `useData.js` |
-| AV | Dark Mode Access | Increased contrast for muted labels/handles (WCAG compliance) | `tokens.js`, `SectionLabel.jsx`, `sheets/*.jsx` |
-| AW | Test Isolation | Decoupled E2E tests from personal accounts via `tester@supermom.io` | `auth.setup.ts`, `happy-path.spec.ts` |
-| AX | Viewpoint Identity | Home greeting and 7-day strip now respect active Viewpoint | `Home.jsx` |
-| AY | Roster Refresh | Sandra's business updated with "Supermom" specialized services | `seed.mjs` |
+| AZ | Creative Greetings | Time-aware motivating greetings for Home screen | `Home.jsx`, `greetings.js` |
+| BA | AI Persona Tester | ✅ **Fixed** — Applied missing `ai_profile` column to database | `Admin.jsx`, `api/ai/test-persona.js` |
+| BB | Admin Provisioning | UI + Backend for Super Admins to create new business/owner accounts | `Admin.jsx`, `api/admin/provision.js` |
+| BC | Mandatory Password Reset | Force new users to change password on first login | `OnboardingWalkthrough.jsx` |
+| BD | Soft Delete (Admin) | Super Admin tool to safely hide businesses/users from UI | `Admin.jsx` |
+| BE | Premium Theme Toggle | Sleek pill-shaped switch in global LogoBar; accessible on every page | `LogoBar.jsx` |
+| BF | Responsive Shell | Removed fixed widths; app now fills 100% of phone, centered on desktop | `App.jsx`, `index.css` |
+| BG | Robust Viewpoint Switching | Fixed UI crashes when switching views via null-safety and syntax fixes | `Home.jsx`, `useData.js` |
+| BH | Varied Empty States | Prevented repetitive messaging in briefing vs schedule lists | `Home.jsx`, `greetings.js` |
+| BI | ADHD High-Contrast | Amber/Yellow highlighting for unpaid completed jobs | `Home.jsx`, `Calendar.jsx` |
+| BJ | Deep Realistic Seed | Script for full platform reset and high-quality mock data population | `full-reset-and-seed.mjs` |
+| BK | Recent Activity Filtering | Finance Activity only shows past/today jobs; clicking opens full detail sheet | `Finance.jsx` |
+| BL | Home Page Persistency | Today's jobs (completed/paid) stay on home screen; sort by time | `Home.jsx` |
+| BM | Back to the Future Warning | Funny warning when marking future jobs as complete or paid | `JobDetailSheet.jsx`, `PostJobSheet.jsx` |
+| BN | Enhanced Nudge Personalization | Nudges use client's personal AI context and handle missing names better | `Finance.jsx`, `NudgeDraftSheet.jsx` |
+| BO | AI Prep Note Resilience | Added robust logging and error handling to prep-note API | `api/ai/prep-note.js` |
+| BP | Deep Realistic Seed v2 | Expanded seed script with more clients and complex job histories | `seed_realistic.mjs` |
+| BQ | Persona-Aware Briefing | ✅ **Fixed** — Refined comments for organizing focus; no cleaning refs | `greetings.js`, `Home.jsx` |
+| BR | High-Visibility Cards | ✅ **Live** — Vertical time blocks (Start-End) + auto date context | `Home.jsx` |
+| BS | Default Light Theme | ✅ **Live** — Default set to 'warm'; preference persists via localStorage | `AppTheme.jsx` |
+| BS | Robust Page Stability | ✅ **Live** — Deterministic greetings + error catching layers | `Home.jsx`, `greetings.js` |
+| BT | Home Section Logic | Precise categorization of today's jobs into Active, Incomplete (Past Due), Upcoming, and Done sections | `Home.jsx` |
+| BU | Past Due Highlighting | Amber styling and "PAST DUE" badges for jobs that ended but weren't marked complete | `Home.jsx` |
+| BV | Persistent Done Jobs | Completed missions now stay on the home page under a dedicated "Accomplished" label | `Home.jsx` |
+| BW | Mission Wrap-up Flow | Marking a job complete now opens a comprehensive wrap-up sheet for duration and intel logging | `JobDetailSheet.jsx`, `PostJobSheet.jsx` |
+| BX | Duration & Intel Logging | Added manual hours/mins entry and After-Job Intel notes to the post-job flow | `PostJobSheet.jsx`, `jobsRepo.js` |
+| BY | Refined Status UI | Distinct color schemes and badges for PAST DUE (Amber), UNPAID (Yellow), and PAID (Green) | `Home.jsx` |
+| BZ | Manual Hours Prompt | UI now explicitly flags completed jobs missing actual duration data | `Home.jsx`, `PostJobSheet.jsx` |
+| CA | Service Catalog Management | ✅ **Live** — Full CRUD (Add/Edit/Delete) management with high-contrast inputs | `Admin.jsx`, `ServiceCatalogSheet.jsx` |
+| CB | Dynamic Timing Display | All job cards now show both start and estimated end times based on service defaults | `Home.jsx`, `Calendar.jsx` |
+| CC | Manual Duration Tracking | System tracks missing actual durations and flags them on Home/Calendar for update | `Home.jsx`, `Calendar.jsx`, `PostJobSheet.jsx` |
+| CD | AI Learning Engine | RecordPayment now recalculates service averages and updates catalog automatically | `jobsRepo.js` |
+| CE | Database Schema Sync | ✅ **Complete** — Synchronized `businesses`, `services`, and `integrations` tables; created `job-assets` storage bucket | `supabase/migrations/` |
+| CF | Phone UX Polish | ✅ **Live** — Full-screen filling (100dvh), 56px hero logo, and fixed conflict navigation | `index.css`, `App.jsx`, `LogoBar.jsx`, `Calendar.jsx` |
+| CG | Business Realignment | ✅ **Live** — AI persona and greetings updated to Organizing & Assistance themes | `greetings.js`, `ai.js`, `Admin.jsx` |
 
 (Updated by Gemini CLI)
 
-## Next priorities (as of April 26, 2026)
-1. **Empty state icon illustrations** — Add visual interest to empty schedule/finance states.
-2. **Typography standardization** — Review all `SectionLabel` usages for consistency.
-3. **Configure Supabase redirect URL allowlist** — add `http://localhost:5173/**` and `https://supermom-v2.vercel.app/**`.
-4. **Self-serve client booking** — Start Phase 2 discovery.
+## Phase 17 UI/UX Personality & Logic Polish (Gemini CLI session, April 27, 2026)
 
+Key enhancements for "Supermom Spirit" and essential bug fixes:
+
+| # | Change | Detail | File |
+|---|---|---|---|
+| CH | Dynamic Personality | Randomized motivating closers (e.g., "Go get 'em!") in greetings | `greetings.js` |
+| CI | Smart Grouping | "3-Job Rule": hide section headers if 3 or fewer jobs in a category | `Home.jsx` |
+| CJ | Aesthetic Pop | Thicker left accents (5px), emerald green for Paid, amber glow for Unpaid | `Home.jsx` |
+| CK | Spirited Empty States | Persona-aware EmptyState component with encouraging messages and icons | `Home.jsx` |
+| CL | Hero Backgrounds | Subtle geometric patterns added to Hero and "Opening Act" sections | `Home.jsx` |
+| CM | Service List Fix | ✅ **Fixed** — useServices now correctly filters by current business_id | `useData.js` |
+
+(Updated by Gemini CLI)
+
+## Next priorities (as of April 27, 2026)
+1. **Configure Supabase redirect URL allowlist** — add `http://localhost:5173/**` and `https://supermom-v2.vercel.app/**`.
+2. **Typography standardization** — Review all `SectionLabel` usages for consistency.
+3. **Empty state illustrations** — Upgrade text-based empty states to use rich icon/svg illustrations.
+4. **Self-serve client booking** — Start Phase 2 discovery.

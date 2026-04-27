@@ -18,7 +18,9 @@ export default function NudgeDraftSheet({ isOpen, onClose, clientsWithUnpaid }) 
   useEffect(() => {
     if (selectedClient) {
       const amt = selectedClient.unpaidTotal;
-      const text = `Hi ${selectedClient.name.split(' ')[0]}, just a quick reminder about the $${amt} for our recent job. Hope you're having a great week! - Sandra`;
+      const firstName = selectedClient.name === 'Unknown' ? 'there' : selectedClient.name.split(' ')[0];
+      const personalNote = selectedClient.personal ? ` Hope everything is going well with ${selectedClient.personal.toLowerCase()}!` : " Hope you're having a great week!";
+      const text = `Hi ${firstName}, just a quick reminder about the $${amt} for our recent job.${personalNote} - Sandra`;
       setDraft(text);
     }
   }, [selectedClient]);

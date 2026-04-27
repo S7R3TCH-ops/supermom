@@ -28,7 +28,19 @@ function fmtTime(d) {
   const h = d.getHours(), m = d.getMinutes();
   const hh = ((h + 11) % 12) + 1;
   const ap = h < 12 ? 'AM' : 'PM';
-  return m === 0 ? `${hh} ${ap}` : `${hh}:${m.toString().padStart(2,'0')} ${ap}`;
+  return m === 0 ? `${hh}:00 ${ap}` : `${hh}:${m.toString().padStart(2,'0')} ${ap}`;
+}
+
+function fmtTimeRange(start, end) {
+  const s = fmtTime(start);
+  const e = fmtTime(end);
+  // Remove period from start if same as end to save space
+  const sParts = s.split(' ');
+  const eParts = e.split(' ');
+  if (sParts[1] === eParts[1]) {
+    return `${sParts[0]} – ${e}`;
+  }
+  return `${s} – ${e}`;
 }
 function fmtDateHead(d) {
   const opts = { weekday: 'long', month: 'short', day: 'numeric' };
@@ -45,12 +57,16 @@ function enrichDisplayJobs(displayJobs, clientLookup) {
       const start = new Date(j.scheduled_at);
       const end = new Date(start.getTime() + (j.duration_est || 0) * 60000);
       const paid = j.payment_status === 'Paid';
-      const color = paid ? '#22C55E' : '#E91E6A';
+      const isUnpaidCompleted = j.status === 'Completed' && !paid;
+      
+      // High-glance coloring: Amber for Unpaid, Green for Paid, Pink for Scheduled
+      const color = isUnpaidCompleted ? '#F59E0B' : paid ? '#22C55E' : '#E91E6A';
+      
       return {
         ...j,
         client: c ? { name: c.name, init: c.init, color: c.color, address: c.address } : null,
         service: { label: j.service_name || '—' },
-        start, end, color, paid,
+        start, end, color, paid, isUnpaidCompleted
       };
     })
     .filter(j => !Number.isNaN(j.start.getTime()))
@@ -189,7 +205,12 @@ export default function Calendar() {
           <span style={{ fontFamily: T.font, fontSize: 10.5, fontWeight: 600, color: '#B45309', flex: 1 }}>
             Schedule conflict on {selectedDay.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
           </span>
-          <button style={{ background: '#1A0A12', color: 'white', border: 'none', borderRadius: 6, padding: '4px 9px', fontFamily: T.font, fontSize: 9.5, fontWeight: 700, cursor: 'pointer' }}>Fix</button>
+          <button 
+            onClick={() => conflicts[0] && openJob(conflicts[0].a.id)}
+            style={{ background: '#1A0A12', color: 'white', border: 'none', borderRadius: 6, padding: '4px 9px', fontFamily: T.font, fontSize: 9.5, fontWeight: 700, cursor: 'pointer' }}
+          >
+            Fix
+          </button>
         </div>
       )}
 
@@ -249,17 +270,22 @@ function DayView({ T, mode, privacyOn, selectedDay, todayJobs, nextUpcoming, onJ
           const endDec   = j.end.getHours()   + j.end.getMinutes() / 60;
           const top = (startDec - startH) * slotH + 2;
           const h   = (endDec - startDec) * slotH - 4;
-          const bg = j.paid
-            ? (mode === 'dark' ? 'rgba(34,197,94,0.1)'  : '#F0FFF5')
-            : (mode === 'dark' ? 'rgba(233,30,106,0.12)' : '#FFF0F7');
+          const bg = j.isUnpaidCompleted
+            ? (mode === 'dark' ? 'rgba(245,158,11,0.15)' : '#FEF3C7')
+            : j.paid
+              ? (mode === 'dark' ? 'rgba(34,197,94,0.1)'  : '#F0FFF5')
+              : (mode === 'dark' ? 'rgba(233,30,106,0.12)' : '#FFF0F7');
           return (
             <div key={j.id} onClick={() => onJobPress(j.id)} style={{ position: 'absolute', top, left: 43, right: 0, height: h, background: bg, border: `1.5px solid ${j.color}35`, borderLeft: `3px solid ${j.color}`, borderRadius: 9, padding: '6px 9px', overflow: 'hidden', cursor: 'pointer' }}>
               <div style={{ fontFamily: T.serif, fontSize: 12, fontWeight: 500, color: j.color, letterSpacing: '-0.2px' }}>{j.service?.label}</div>
               <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkSub, marginTop: 1 }}>{j.client?.name}</div>
               {h > 55 && (
                 <div style={{ fontFamily: T.font, fontSize: 9, color: T.inkMuted, marginTop: 2 }}>
-                  {fmtTime(j.start)} – {fmtTime(j.end)}
+                  {fmtTimeRange(j.start, j.end)}
                 </div>
+              )}
+              {j.status === 'Completed' && !j.actual_duration && (
+                <div style={{ fontFamily: T.font, fontSize: 8, fontWeight: 700, color: '#B45309', marginTop: 1 }}>⚠ MANUAL HOURS NEEDED</div>
               )}
               {h > 80 && j.notes && (
                 <div style={{ fontFamily: T.font, fontSize: 9, color: T.inkMuted, marginTop: 3, lineHeight: 1.35, fontStyle: 'italic' }}>
@@ -472,17 +498,32 @@ function AgendaView({ T, mode, privacyOn, allJobs, nextUpcoming, onJobPress, fir
 
 function AgendaCard({ T, mode, privacyOn, job, isNext, conflict, onPress }) {
   const paid = job.paid;
-  const border = conflict ? '#F59E0B' : (isNext ? '#E91E6A' : (paid ? '#86EFAC' : T.cardBorder));
-  const bg = paid
-    ? (mode === 'dark' ? 'rgba(34,197,94,0.08)' : '#F0FFF5')
-    : (isNext
-        ? (mode === 'dark' ? 'rgba(233,30,106,0.1)' : '#FFF0F7')
-        : T.card);
+  const isUnpaidCompleted = job.isUnpaidCompleted;
+  
+  const border = conflict 
+    ? '#F59E0B' 
+    : isUnpaidCompleted 
+      ? '#F59E0B' 
+      : (isNext ? '#E91E6A' : (paid ? '#86EFAC' : T.cardBorder));
+  
+  const bg = isUnpaidCompleted
+    ? (mode === 'dark' ? 'rgba(245,158,11,0.1)' : '#FEF3C7')
+    : paid
+      ? (mode === 'dark' ? 'rgba(34,197,94,0.08)' : '#F0FFF5')
+      : (isNext
+          ? (mode === 'dark' ? 'rgba(233,30,106,0.1)' : '#FFF0F7')
+          : T.card);
 
   const badges = [];
   if (isNext) badges.push({ text: 'NEXT UP', bg: '#E91E6A', fg: 'white' });
   if (paid)   badges.push({ text: 'PAID ✓', bg: '#DCFCE7', fg: '#14532D' });
+  else if (isUnpaidCompleted) badges.push({ text: 'UNPAID', bg: '#F59E0B', fg: 'white' });
   else        badges.push({ text: 'UNPAID', bg: '#FFE0EC', fg: '#9B0D3A' });
+  
+  if (job.status === 'Completed' && !job.actual_duration) {
+    badges.push({ text: '⚠ HOURS NEEDED', bg: '#FEF3C7', fg: '#B45309' });
+  }
+
   if (job.recurrence_rule) {
     const rMap = {
       weekly:   { text: '↻ WEEKLY',   bg: '#F5F3FF', fg: '#5B21B6' },
@@ -518,7 +559,7 @@ function AgendaCard({ T, mode, privacyOn, job, isNext, conflict, onPress }) {
             {job.service?.label} · {job.client?.name}
           </div>
           <div style={{ fontFamily: T.font, fontSize: 10.5, fontWeight: 500, color: T.inkSub, marginTop: 2 }}>
-            {fmtTime(job.start)} – {fmtTime(job.end)} · {job.client?.address?.split(',')[0]}
+            {fmtTimeRange(job.start, job.end)} · {job.client?.address?.split(',')[0]}
           </div>
         </div>
         <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 500, color: T.ink, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>

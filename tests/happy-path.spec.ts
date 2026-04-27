@@ -21,8 +21,8 @@ test.describe('Supermom Happy Path', () => {
     const dialog = page.getByRole('dialog', { name: 'Book new job' });
     await expect(dialog).toBeVisible();
 
-    // Click Chen
-    await dialog.getByText('Chen', { exact: true }).click({ force: true });
+    // Click Sarah
+    await dialog.getByText('Sarah', { exact: true }).first().click({ force: true });
     await page.waitForTimeout(1500);
     
     // Click Next
@@ -42,14 +42,14 @@ test.describe('Supermom Happy Path', () => {
     await page.waitForTimeout(3000);
 
     // 3. Verify job appears on Home
-    await expect(page.getByText(/Chen Family/i).first()).toBeVisible();
+    await expect(page.getByText(/Sarah Connor/i).first()).toBeVisible();
 
     // 4. Complete the job
-    console.log('Clicking job card for Chen Family...');
+    console.log('Clicking job card for Sarah Connor...');
     
-    // Find the text "Chen Family" and click its parent card
-    const chenCard = page.locator('div').filter({ hasText: /Chen Family/i }).last();
-    await chenCard.click({ force: true });
+    // Find the text "Sarah Connor" and click its parent card
+    const sarahCard = page.locator('div').filter({ hasText: /Sarah Connor/i }).last();
+    await sarahCard.click({ force: true });
     
     await page.waitForTimeout(2000);
     
@@ -75,5 +75,16 @@ test.describe('Supermom Happy Path', () => {
     // 7. Verify we are on the invoice page
     await expect(newPage).toHaveURL(/\/i\/.*/);
     await expect(newPage.getByText('TOTAL', { exact: true })).toBeVisible();
+  });
+
+  test('service list is populated in edit mode', async ({ page }) => {
+    await page.goto('/');
+    // Click the first job card client name to open details
+    await page.locator('div[onClick]').filter({ hasText: 'Client' }).first().click(); 
+    await page.click('text=Edit Job');
+    // Check if select options are populated
+    const options = await page.locator('select >> option').allTextContents();
+    // options[0] is usually "— select —", so we expect more than 1
+    expect(options.length).toBeGreaterThan(1); 
   });
 });

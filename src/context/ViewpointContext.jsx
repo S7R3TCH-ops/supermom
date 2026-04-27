@@ -52,12 +52,16 @@ export function ViewpointProvider({ children }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  useEffect(() => {
+  const refresh = () => {
     if (isSuperAdmin) {
-      supabase.from('businesses').select('id, name, owner_name').order('name').then(({ data }) => {
+      supabase.from('businesses').select('id, name, owner_name, deleted_at').order('name').then(({ data }) => {
         setAllBusinesses(data || []);
       });
     }
+  };
+
+  useEffect(() => {
+    refresh();
   }, [isSuperAdmin]);
 
   const switchTo = (bizId, ownerName) => {
@@ -86,7 +90,8 @@ export function ViewpointProvider({ children }) {
       viewingAsName, 
       switchTo, 
       reset,
-      allBusinesses
+      allBusinesses,
+      refresh
     }}>
       {children}
     </ViewpointContext.Provider>

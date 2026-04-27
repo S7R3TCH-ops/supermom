@@ -55,28 +55,34 @@ html, body, #root {
   margin: 0;
   padding: 0;
   height: 100%;
+  width: 100%;
 }
 
 body {
   background: #06020E;
   color: #FFFFFF;
+  overscroll-behavior: none; /* Prevents pull-to-refresh bounce for a more app-like feel */
 }
 
 #root {
   display: flex;
   flex-direction: column;
-  min-height: 100svh;
+  height: 100%;
   width: 100%;
-  max-width: 100%;
   margin: 0 auto;
   position: relative;
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
-/* On tablets/desktop: cap at 430px and center like a phone app */
-@media (min-width: 480px) {
+/* On tablets/desktop: center like a phone app */
+@media (min-width: 768px) {
   #root {
     max-width: 430px;
+    height: 95vh;
+    margin: 2.5vh auto;
+    border-radius: 40px;
+    border: 8px solid #1A0A2E;
+    box-shadow: 0 0 100px rgba(0,0,0,0.5);
   }
 }
 

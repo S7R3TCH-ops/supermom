@@ -3,21 +3,14 @@ import { useAppTheme } from '../../context/AppThemeContext';
 import SectionLabel from '../ui/SectionLabel';
 import { fetchJobById, recordPayment } from '../../data/jobsRepo';
 import { notifyDataChanged } from '../../data/useData';
+import { useToast } from '../../context/ToastContext';
 import ThankYouDraftSheet from './ThankYouDraftSheet';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { supabase } from '../../lib/supabase';
 
-function fmtDuration(hours) {
-  if (!hours) return null;
-  const h = Math.floor(hours);
-  const m = Math.round((hours - h) * 60);
-  if (h === 0) return `${m}m`;
-  if (m === 0) return `${h}h`;
-  return `${h}h ${m}m`;
-}
-
 export default function PostJobSheet({ jobId, onClose }) {
   const { T, mode } = useAppTheme();
+  const toast = useToast();
   const sheetRef = useRef(null);
   useFocusTrap(sheetRef, true, onClose);
   const [job, setJob] = useState(null);
@@ -25,6 +18,10 @@ export default function PostJobSheet({ jobId, onClose }) {
   const [fetchErr, setFetchErr] = useState(null);
   const [method, setMethod] = useState('Cash');
   const [amount, setAmount] = useState('');
+  const [actualH, setActualH] = useState('');
+  const [actualM, setActualM] = useState('');
+  const [jobNotes, setJobNotes] = useState('');
+  const [isPaidToggle, setIsPaidToggle] = useState(true);
   const [busy, setBusy] = useState(false);
   const [mutErr, setMutErr] = useState(null);
   const [done, setDone] = useState(false);
@@ -38,7 +35,15 @@ export default function PostJobSheet({ jobId, onClose }) {
       .then(j => {
         setJob(j);
         setAmount(String(j?.total_amount ?? j?.flat_rate ?? 0));
-        // Check for existing invoice
+        setJobNotes(j?.job_notes || '');
+        if (j?.actual_duration) {
+          setActualH(Math.floor(j.actual_duration).toString());
+          setActualM(Math.round((j.actual_duration % 1) * 60).toString());
+        } else if (j?.estimated_hours) {
+          setActualH(Math.floor(j.estimated_hours).toString());
+          setActualM(Math.round((j.estimated_hours % 1) * 60).toString());
+        }
+        
         supabase
           .from('invoice_jobs')
           .select('invoice_id')
@@ -53,13 +58,32 @@ export default function PostJobSheet({ jobId, onClose }) {
   }, [jobId]);
 
   async function handleLogPayment() {
+    const jobDate = new Date(job.scheduled_date + 'T00:00:00');
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    
+    if (jobDate > today) {
+      if (!window.confirm("Roads? Where we're going, we don't need roads... but we do need the right date! Mark this future job as complete/paid anyway?")) {
+        return;
+      }
+    }
+
+    const h = parseFloat(actualH) || 0;
+    const m = parseFloat(actualM) || 0;
+    const totalDuration = h + (m / 60);
+
+    if (totalDuration <= 0) {
+      if (!window.confirm("You haven't entered any hours for this job. Log it with 0 hours?")) {
+        return;
+      }
+    }
+
     setBusy(true);
     setMutErr(null);
     try {
-      const amt = parseFloat(amount) || 0;
-      await recordPayment(jobId, amt, method);
+      const amt = isPaidToggle ? (parseFloat(amount) || 0) : 0;
+      await recordPayment(jobId, amt, method, null, totalDuration, jobNotes);
       
-      // Fetch the newly generated invoiceId
       const { data } = await supabase
         .from('invoice_jobs')
         .select('invoice_id')
@@ -68,18 +92,19 @@ export default function PostJobSheet({ jobId, onClose }) {
       if (data) setInvoiceId(data.invoice_id);
 
       notifyDataChanged();
+      toast.success('Payment recorded!');
       setDone(true);
-      setTimeout(onClose, 2500); // Give them a bit more time to see the invoice link if they want
+      setTimeout(onClose, 2500);
     } catch (e) {
-      setMutErr(e.message || String(e));
+      const msg = e.message || String(e);
+      toast.error(msg);
+      setMutErr(msg);
       setBusy(false);
     }
   }
 
-  const isPaid = job?.payment_status === 'Paid';
+  const isPaidRecord = job?.payment_status === 'Paid';
   const totalAmt = parseFloat(job?.total_amount ?? job?.flat_rate ?? 0);
-  const actualDuration = job?.actual_duration || job?.estimated_hours;
-  const parsedAmount = parseFloat(amount) || 0;
 
   return (
     <div ref={sheetRef} role="dialog" aria-modal="true" aria-label="Complete job" style={{
@@ -99,17 +124,15 @@ export default function PostJobSheet({ jobId, onClose }) {
         background: T.bg, color: T.ink,
         borderRadius: '24px 24px 0 0',
         boxShadow: '0 -10px 40px rgba(0,0,0,0.38)',
-        maxHeight: '88vh', display: 'flex', flexDirection: 'column',
+        maxHeight: '92vh', display: 'flex', flexDirection: 'column',
         animation: 'pjSlide 260ms cubic-bezier(0.2,0.8,0.2,1)',
         border: `1px solid ${T.cardBorder}`, borderBottom: 'none',
       }}>
 
-        {/* Handle */}
         <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 8 }}>
           <div style={{ width: 40, height: 4, background: '#FFD6E8', borderRadius: 4, opacity: mode === 'dark' ? 0.6 : 1 }} />
         </div>
 
-        {/* Dark hero */}
         <div style={{
           background: 'linear-gradient(145deg,#1A0A12 0%,#2C0B1A 100%)',
           borderBottom: '3px solid #E91E6A',
@@ -117,13 +140,9 @@ export default function PostJobSheet({ jobId, onClose }) {
           position: 'relative', overflow: 'hidden',
         }}>
           <div style={{ position: 'absolute', top: -50, right: -30, width: 150, height: 150, borderRadius: '50%', background: 'radial-gradient(circle,rgba(233,30,106,0.22) 0%,transparent 65%)', pointerEvents: 'none' }} />
-
           <div style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '1.1px', textTransform: 'uppercase', color: '#FF78B0', marginBottom: 6 }}>
-            ✦ Job Complete
+            ✦ MISSION WRAP-UP
           </div>
-
-          {loading && <div style={{ fontFamily: T.font, fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>Loading…</div>}
-          {fetchErr && <div style={{ fontFamily: T.font, fontSize: 12, color: '#F87171' }}>{fetchErr}</div>}
 
           {!loading && !fetchErr && job && (
             <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -134,192 +153,92 @@ export default function PostJobSheet({ jobId, onClose }) {
                 <div style={{ fontFamily: T.serif, fontSize: 20, fontWeight: 500, color: 'white', letterSpacing: '-0.4px' }}>
                   {job.client_name}
                 </div>
-                {actualDuration && (
-                  <div style={{ fontFamily: T.font, fontSize: 10.5, color: 'rgba(255,255,255,0.45)', marginTop: 3 }}>
-                    {fmtDuration(actualDuration)} on site
-                  </div>
-                )}
               </div>
               <div style={{ textAlign: 'right' }}>
-                {!isPaid ? (
-                  <span style={{
-                    display: 'inline-block', marginBottom: 6,
-                    background: '#FFE0EC', color: '#9B0D3A',
-                    borderRadius: 5, padding: '2px 7px',
-                    fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.4px', textTransform: 'uppercase',
-                  }}>UNPAID</span>
-                ) : (
-                  <span style={{
-                    display: 'inline-block', marginBottom: 6,
-                    background: 'rgba(34,197,94,0.2)', color: '#4ADE80',
-                    borderRadius: 5, padding: '2px 7px',
-                    fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.4px', textTransform: 'uppercase',
-                  }}>PAID ✓</span>
-                )}
                 <div style={{ fontFamily: T.serif, fontSize: 28, fontWeight: 500, color: 'white', letterSpacing: '-1px', fontVariantNumeric: 'tabular-nums' }}>
                   ${totalAmt.toFixed(0)}
                 </div>
+                <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', marginTop: 2 }}>
+                   {isPaidRecord ? 'RECORDED ✓' : 'WRAP-UP'}
+                </div>
               </div>
             </div>
           )}
         </div>
 
-        {/* Scrollable body */}
-        <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '4px 18px 14px' }}>
-
-          {!loading && !fetchErr && job && !isPaid && (
-            <>
-              <SectionLabel>Payment method</SectionLabel>
-              <div style={{
-                display: 'flex',
-                background: mode === 'dark' ? 'rgba(255,255,255,0.04)' : '#FFF0F7',
-                borderRadius: 10, padding: 3, marginBottom: 14,
-              }}>
-                {['Cash', 'e-Transfer'].map(m => {
-                  const on = method === m;
-                  return (
-                    <button key={m} onClick={() => setMethod(m)} style={{
-                      flex: 1, padding: '9px 0', borderRadius: 8, border: 'none',
-                      background: on ? '#E91E6A' : 'transparent',
-                      fontFamily: T.font, fontSize: 12, fontWeight: 600,
-                      color: on ? 'white' : T.inkSub, cursor: 'pointer',
-                    }}>{m}</button>
-                  );
-                })}
-              </div>
-
-              <SectionLabel>Amount</SectionLabel>
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                background: T.card, border: `1.5px solid ${T.cardBorder}`,
-                borderRadius: 12, padding: '10px 14px', marginBottom: 14,
-              }}>
-                <span style={{ fontFamily: T.serif, fontSize: 20, fontWeight: 500, color: T.inkSub }}>$</span>
-                <input
-                  type="number"
-                  value={amount}
-                  onChange={e => setAmount(e.target.value)}
-                  step="1"
-                  min="0"
-                  style={{
-                    flex: 1, background: 'transparent', border: 'none', outline: 'none',
-                    fontFamily: T.serif, fontSize: 22, fontWeight: 500, color: T.ink,
-                    fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.5px',
-                  }}
-                />
-              </div>
-
-              {mutErr && (
-                <div style={{ padding: '8px 12px', borderRadius: 8, background: '#FEE2E2', border: '1px solid #FECACA', fontFamily: T.font, fontSize: 11.5, color: '#991B1B', marginBottom: 12 }}>
-                  {mutErr}
-                </div>
-              )}
-            </>
-          )}
-
-          {!loading && !fetchErr && job && isPaid && (
-            <div style={{ padding: '20px 0', textAlign: 'center', color: T.inkMuted, fontFamily: T.font, fontSize: 13 }}>
-              Payment already recorded ✓
+        <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '10px 18px 20px' }}>
+          
+          <SectionLabel>Actual Duration</SectionLabel>
+          <div style={{ display: 'flex', gap: 10, marginBottom: 18 }}>
+            <div style={{ flex: 1, background: T.card, border: `1.5px solid ${actualH ? T.pink : T.cardBorder}`, borderRadius: 12, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <input type="number" placeholder="0" value={actualH} onChange={e => setActualH(e.target.value)} style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', fontFamily: T.serif, fontSize: 20, color: T.ink, textAlign: 'center' }} />
+              <span style={{ fontSize: 11, fontWeight: 700, color: T.inkMuted }}>HRS</span>
             </div>
-          )}
-
-          {done && (
-            <div style={{ padding: '12px 0', textAlign: 'center', fontFamily: T.serif, fontSize: 15, color: '#22C55E' }}>
-              Payment logged ✓
+            <div style={{ flex: 1, background: T.card, border: `1.5px solid ${actualM ? T.pink : T.cardBorder}`, borderRadius: 12, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <input type="number" placeholder="0" value={actualM} onChange={e => setActualM(e.target.value)} style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', fontFamily: T.serif, fontSize: 20, color: T.ink, textAlign: 'center' }} />
+              <span style={{ fontSize: 11, fontWeight: 700, color: T.inkMuted }}>MINS</span>
             </div>
-          )}
-
-          {/* Invoice Generated Card */}
-          {invoiceId && (
-            <div style={{
-              marginTop: 14, background: 'white', borderRadius: 16, border: '1.5px solid var(--pink-border)', padding: '14px 16px',
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between'
-            }}>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink)' }}>Invoice Generated</div>
-                <div style={{ fontSize: 11, color: 'var(--ink-muted)', marginTop: 2 }}>Formal record filed in Finance</div>
-              </div>
-              <button 
-                onClick={() => window.open(`/i/${invoiceId}`, '_blank')}
-                style={{ 
-                  background: 'var(--pink-tint)', color: 'var(--pink)', border: 'none', 
-                  padding: '7px 14px', borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: 'pointer' 
-                }}
-              >
-                VIEW
-              </button>
-            </div>
-          )}
-
-          {/* AI thank-you draft */}
-          {!loading && !fetchErr && job && (
-            <button
-              onClick={() => setShowThankYou(true)}
-              style={{
-                width: '100%', marginTop: 8, cursor: 'pointer',
-                background: 'linear-gradient(145deg,#1A0A12 0%,#2C0B1A 100%)',
-                border: '1px solid rgba(233,30,106,0.28)',
-                borderRadius: 16, padding: '13px 14px',
-                display: 'flex', alignItems: 'center', gap: 12,
-                position: 'relative', overflow: 'hidden', textAlign: 'left',
-              }}
-            >
-              <div style={{ position: 'absolute', top: -30, right: -20, width: 90, height: 90, borderRadius: '50%', background: 'radial-gradient(circle,rgba(233,30,106,0.22) 0%,transparent 70%)', pointerEvents: 'none' }} />
-              <div style={{ width: 28, height: 28, borderRadius: 9, flexShrink: 0, background: 'linear-gradient(135deg,#FF5A9D,#E91E6A)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ fontSize: 14, color: 'white' }}>✦</span>
-              </div>
-              <div style={{ flex: 1, position: 'relative' }}>
-                <div style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '1.1px', textTransform: 'uppercase', color: '#FF78B0', marginBottom: 2 }}>✦ AI Draft</div>
-                <div style={{ fontFamily: T.font, fontSize: 12, color: 'rgba(255,255,255,0.75)', lineHeight: 1.4 }}>
-                  Draft a thank-you text for {job.client_name}
-                </div>
-              </div>
-              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style={{ flexShrink: 0 }}>
-                <path d="M3 1l4 4-4 4" stroke="rgba(255,255,255,0.4)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-          )}
-        </div>
-
-        {/* Footer */}
-        {!loading && !fetchErr && job && (
-          <div style={{
-            padding: '10px 18px 18px',
-            borderTop: `1px solid ${T.cardBorder}`,
-            display: 'flex', gap: 10, background: T.bg,
-          }}>
-            <button onClick={onClose} style={{
-              flex: 1, background: 'transparent',
-              border: `1.5px solid ${T.cardBorder}`, color: T.inkSub,
-              borderRadius: 12, padding: '12px 0',
-              fontFamily: T.font, fontSize: 13, fontWeight: 600, cursor: 'pointer',
-            }}>Close</button>
-
-            {!isPaid && (
-              <button
-                onClick={handleLogPayment}
-                disabled={busy || done || parsedAmount <= 0}
-                style={{
-                  flex: 2,
-                  background: busy || done || parsedAmount <= 0 ? (mode === 'dark' ? 'rgba(233,30,106,0.28)' : '#F9C5DB') : '#E91E6A',
-                  color: 'white', border: 'none', borderRadius: 12, padding: '12px 0',
-                  fontFamily: T.font, fontSize: 13, fontWeight: 700,
-                  cursor: busy || done || parsedAmount <= 0 ? 'default' : 'pointer',
-                  boxShadow: busy || done || parsedAmount <= 0 ? 'none' : '0 4px 12px rgba(233,30,106,0.3)',
-                }}
-              >
-                {busy ? 'Recording…' : done ? 'Logged ✓' : `Log Payment · $${parsedAmount.toFixed(0)}`}
-              </button>
-            )}
           </div>
-        )}
-      </div>
 
-      <ThankYouDraftSheet
-        isOpen={showThankYou}
-        onClose={() => setShowThankYou(false)}
-        jobId={jobId}
-      />
+          <SectionLabel>After-Job Intel (Updates System)</SectionLabel>
+          <textarea
+            placeholder="Any specific notes for this job? (e.g. key location, client mood, issues found)"
+            value={jobNotes}
+            onChange={e => setJobNotes(e.target.value)}
+            style={{ width: '100%', minHeight: 80, padding: '12px', borderRadius: 14, background: T.card, border: `1.5px solid ${T.cardBorder}`, color: T.ink, fontFamily: T.font, fontSize: 13, resize: 'none', outline: 'none', marginBottom: 18 }}
+          />
+
+          <SectionLabel>Payment Status</SectionLabel>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+            <button 
+              onClick={() => setIsPaidToggle(true)}
+              style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: `1.5px solid ${isPaidToggle ? '#22C55E' : T.cardBorder}`, background: isPaidToggle ? 'rgba(34,197,94,0.1)' : 'transparent', color: isPaidToggle ? '#22C55E' : T.inkMuted, fontFamily: T.font, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+            >
+              Paid now ✓
+            </button>
+            <button 
+              onClick={() => setIsPaidToggle(false)}
+              style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: `1.5px solid ${!isPaidToggle ? '#F59E0B' : T.cardBorder}`, background: !isPaidToggle ? 'rgba(245,158,11,0.1)' : 'transparent', color: !isPaidToggle ? '#D97706' : T.inkMuted, fontFamily: T.font, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+            >
+              Not paid yet
+            </button>
+          </div>
+
+          {isPaidToggle && (
+            <div style={{ animation: 'pjFade 200ms ease' }}>
+              <SectionLabel>Payment Method & Amount</SectionLabel>
+              <div style={{ display: 'flex', background: mode === 'dark' ? 'rgba(255,255,255,0.04)' : '#FFF0F7', borderRadius: 10, padding: 3, marginBottom: 10 }}>
+                {['Cash', 'e-Transfer'].map(m => (
+                  <button key={m} onClick={() => setMethod(m)} style={{ flex: 1, padding: '9px 0', borderRadius: 8, border: 'none', background: method === m ? '#E91E6A' : 'transparent', fontFamily: T.font, fontSize: 12, fontWeight: 600, color: method === m ? 'white' : T.inkSub, cursor: 'pointer' }}>{m}</button>
+                ))}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 12, padding: '10px 14px', marginBottom: 18 }}>
+                <span style={{ fontFamily: T.serif, fontSize: 20, fontWeight: 500, color: T.inkSub }}>$</span>
+                <input type="number" value={amount} onChange={e => setAmount(e.target.value)} style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontFamily: T.serif, fontSize: 22, fontWeight: 500, color: T.ink }} />
+              </div>
+            </div>
+          )}
+
+          {invoiceId && (
+            <div style={{ background: mode === 'dark' ? 'rgba(233,30,106,0.05)' : '#FFF0F7', borderRadius: 16, border: `1px solid ${T.pink}40`, padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: T.ink }}>Invoice Ready</div>
+              <button onClick={() => window.open(`/i/${invoiceId}`, '_blank')} style={{ background: T.pink, color: 'white', border: 'none', padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>VIEW</button>
+            </div>
+          )}
+
+          <button onClick={() => setShowThankYou(true)} style={{ width: '100%', cursor: 'pointer', background: 'linear-gradient(135deg,#FF5A9D,#E91E6A)', border: 'none', borderRadius: 16, padding: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, color: 'white', fontWeight: 700, fontSize: 13, boxShadow: '0 4px 15px rgba(233,30,106,0.3)' }}>
+            <span style={{ fontSize: 16 }}>✦</span> AI Thank-you Message
+          </button>
+        </div>
+
+        <div style={{ padding: '10px 18px 18px', borderTop: `1px solid ${T.cardBorder}`, display: 'flex', gap: 10, background: T.bg }}>
+          <button onClick={onClose} style={{ flex: 1, background: 'transparent', border: `1.5px solid ${T.cardBorder}`, color: T.inkSub, borderRadius: 12, padding: '12px 0', fontFamily: T.font, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Later</button>
+          <button onClick={handleLogPayment} disabled={busy || done} style={{ flex: 2, background: busy || done ? T.pinkTint : '#E91E6A', color: 'white', border: 'none', borderRadius: 12, padding: '12px 0', fontFamily: T.font, fontSize: 13, fontWeight: 700, cursor: busy || done ? 'default' : 'pointer', boxShadow: '0 4px 12px rgba(233,30,106,0.3)' }}>
+            {busy ? 'Saving…' : done ? 'Success ✓' : isPaidToggle ? 'Save & Log Paid' : 'Save & Close'}
+          </button>
+        </div>
+      </div>
+      <ThankYouDraftSheet isOpen={showThankYou} onClose={() => setShowThankYou(false)} jobId={jobId} />
     </div>
   );
 }

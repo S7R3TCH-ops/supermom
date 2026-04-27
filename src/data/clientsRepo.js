@@ -35,8 +35,43 @@ export async function fetchClientById(id) {
   return data;
 }
 
+export async function fetchClientByContact({ email, first_name, last_name, phone }) {
+  const businessId = await getCurrentBusinessId();
+  if (!businessId) return null;
+
+  let query = supabase
+    .from('clients')
+    .select(SELECT_FULL)
+    .eq('business_id', businessId)
+    .is('deleted_at', null);
+
+  if (email) {
+    const { data: byEmail } = await query.eq('email', email).maybeSingle();
+    if (byEmail) return byEmail;
+  }
+
+  const { data: byNamePhone } = await supabase
+    .from('clients')
+    .select(SELECT_FULL)
+    .eq('business_id', businessId)
+    .eq('first_name', first_name)
+    .eq('last_name', last_name || null)
+    .eq('phone', phone || null)
+    .is('deleted_at', null)
+    .maybeSingle();
+
+  return byNamePhone;
+}
+
 export async function createClient(payload) {
   const businessId = await getCurrentBusinessId();
+  
+  // Pre-check for duplicates
+  const existing = await fetchClientByContact(payload);
+  if (existing) {
+    throw new Error(`A client with this ${existing.email === payload.email ? 'email' : 'name/phone'} already exists.`);
+  }
+
   const { data, error } = await supabase
     .from('clients')
     .insert({ ...payload, business_id: businessId })
@@ -80,8 +115,8 @@ export async function simulateAILearning(id, clientName) {
         payment_method_preference: "e-Transfer",
         preferred_time_of_day: "Morning",
         preferred_day_of_week: "Tuesday",
-        behavioral_flags: ["Picky about pet hair", "Values quiet while working", "Gate code usually 1234"],
-        synthesis_note: `After 10 sessions, I've learned that ${clientName.split(' ')[0]} prefers the back entrance and always checks the baseboards. This client is very appreciative of detailed invoices and prefers being messaged 15 mins before arrival.`
+        behavioral_flags: ["Prefers label maker", "Values logical flow", "Gate code usually 1234"],
+        synthesis_note: `After 10 sessions, I've learned that ${clientName.split(' ')[0]} prefers the back entrance and always double checks the pantry labels. This client is very appreciative of detailed system walkthroughs and prefers being messaged 15 mins before arrival.`
       }
     }
   };

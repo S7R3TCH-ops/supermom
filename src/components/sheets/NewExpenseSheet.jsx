@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { createExpense } from '../../data/expensesRepo';
 import { notifyDataChanged } from '../../data/useData';
+import { useToast } from '../../context/ToastContext';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 const CATEGORIES = [
@@ -19,6 +20,7 @@ function todayISO() {
 
 export default function NewExpenseSheet({ isOpen, onClose }) {
   const { T, mode } = useAppTheme();
+  const toast = useToast();
   const sheetRef = useRef(null);
   useFocusTrap(sheetRef, isOpen, onClose);
   const [category, setCategory] = useState('Supplies');
@@ -49,10 +51,13 @@ export default function NewExpenseSheet({ isOpen, onClose }) {
     try {
       await createExpense({ category, amount: amt, expense_date: date, notes: notes || null });
       notifyDataChanged();
+      toast.success('Expense logged.');
       reset();
       onClose();
     } catch (e) {
-      setSaveErr(e.message || 'Could not save expense.');
+      const msg = e.message || 'Could not save expense.';
+      setSaveErr(msg);
+      toast.error(msg);
     } finally {
       setSaving(false);
     }

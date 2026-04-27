@@ -258,41 +258,71 @@ export async function softDeleteJob(id, seriesAction = 'this') {
   return decorateJob(data[0]);
 }
 
-export async function recordPayment(jobId, amount, method = 'Cash', notes = null) {
+export async function recordPayment(jobId, amount, method = 'Cash', notes = null, duration = null, jobNotes = null) {
   const businessId = await getCurrentBusinessId();
 
-  // 1. Get job info (we need client_id and total_amount)
+  // 1. Get job info (we need client_id, total_amount, and service_id for learning)
   const { data: job, error: getErr } = await supabase
     .from('jobs')
-    .select('client_id, business_id, total_amount')
+    .select('client_id, business_id, total_amount, service_id')
     .eq('id', jobId)
     .single();
   if (getErr) throw getErr;
 
-  // 2. Insert into payments
-  const { error: payErr } = await supabase
-    .from('payments')
-    .insert({
-      business_id: businessId,
-      job_id: jobId,
-      client_id: job.client_id,
-      amount: amount,
-      payment_method: method,
-      payment_date: new Date().toISOString().split('T')[0],
-      notes: notes,
-    });
-  if (payErr) throw payErr;
+  // 2. Insert into payments if amount > 0
+  if (amount > 0) {
+    const { error: payErr } = await supabase
+      .from('payments')
+      .insert({
+        business_id: businessId,
+        job_id: jobId,
+        client_id: job.client_id,
+        amount: amount,
+        payment_method: method,
+        payment_date: new Date().toISOString().split('T')[0],
+        notes: notes,
+      });
+    if (payErr) throw payErr;
+  }
 
-  // 3. Update job status
-  const status = amount >= (job.total_amount || 0) ? 'Paid' : 'Partial';
+  // 3. Update job status, duration, and notes
+  const status = amount >= (job.total_amount || 0) && amount > 0 ? 'Paid' : 'Unpaid';
 
   const updated = await updateJob(jobId, {
     payment_status: status,
     job_status: 'Completed',
-    payment_method: method,
+    payment_method: amount > 0 ? method : null,
+    actual_duration: duration,
+    job_notes: jobNotes
   });
 
-  // Automatically generate invoice
+  // 4. AUTO-LEARNING: Update service default duration based on moving average
+  if (duration > 0 && job.service_id) {
+    try {
+      const { data: pastJobs } = await supabase
+        .from('jobs')
+        .select('actual_duration')
+        .eq('service_id', job.service_id)
+        .eq('job_status', 'Completed')
+        .not('actual_duration', 'is', null);
+
+      if (pastJobs && pastJobs.length > 0) {
+        const totalHours = pastJobs.reduce((sum, j) => sum + Number(j.actual_duration), 0);
+        const avgMinutes = Math.round((totalHours / pastJobs.length) * 60);
+        
+        await supabase
+          .from('services')
+          .update({ default_duration: avgMinutes })
+          .eq('id', job.service_id);
+          
+        console.log(`[AI learning] Updated ${job.service_id} default duration to ${avgMinutes}m based on ${pastJobs.length} jobs.`);
+      }
+    } catch (learnErr) {
+      console.warn('AI Learning Error (non-critical):', learnErr);
+    }
+  }
+
+  // Automatically generate invoice if completed
   try {
     await generateInvoiceForJob(jobId);
   } catch (invErr) {

@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import { getCurrentBusinessId } from '../data/currentBusiness';
 import { useBusiness } from '../data/useData';
+import { useToast } from '../context/ToastContext';
 import { useAppTheme } from '../context/AppThemeContext';
 import SectionLabel from '../components/ui/SectionLabel';
 import { uploadAsset, getSignedUrl } from '../lib/storage';
@@ -38,6 +39,7 @@ const FIELDS = [
 
 export default function Settings() {
   const { T, mode, toggleMode } = useAppTheme();
+  const toast = useToast();
   const { user, signOut } = useAuth();
   const { business, update } = useBusiness();
   const [searchParams] = useSearchParams();
@@ -139,9 +141,12 @@ export default function Settings() {
         ai_profile,
       });
       setSaved(true);
+      toast.success('Settings saved.');
       setTimeout(() => setSaved(false), 2500);
     } catch (err) {
-      setError(err.message || 'Could not save changes.');
+      const msg = err.message || 'Could not save changes.';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
@@ -162,10 +167,13 @@ export default function Settings() {
       const { error } = await supabase.auth.updateUser({ password: pwForm.pw });
       if (error) throw error;
       setPwSaved(true);
+      toast.success('Password updated.');
       setPwForm({ pw: '', pw2: '' });
       setTimeout(() => setPwSaved(false), 3000);
     } catch (err) {
-      setPwError(err.message || 'Failed to update password.');
+      const msg = err.message || 'Failed to update password.';
+      setPwError(msg);
+      toast.error(msg);
     } finally {
       setSavingPw(false);
     }
@@ -235,38 +243,6 @@ export default function Settings() {
       </div>
 
       <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '16px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-
-        <SectionLabel>Appearance</SectionLabel>
-        <div style={{
-          background: T.card, border: `1.5px solid ${T.cardBorder}`,
-          borderRadius: 16, padding: '14px', marginBottom: 8,
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between'
-        }}>
-          <div>
-            <div style={{ fontFamily: T.font, fontSize: 13, fontWeight: 700, color: T.ink }}>Dark Mode</div>
-            <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, marginTop: 2 }}>Easier on the eyes at night.</div>
-          </div>
-          <button 
-            role="switch"
-            aria-checked={mode === 'dark'}
-            aria-label="Toggle Dark Mode"
-            onClick={toggleMode}
-            style={{
-              width: 44, height: 26, borderRadius: 13, border: 'none', cursor: 'pointer',
-              background: mode === 'dark' ? T.pink : T.cardBorder,
-              position: 'relative', transition: 'background 0.2s', flexShrink: 0,
-            }}
-          >
-            <span style={{
-              position: 'absolute', top: 3, left: mode === 'dark' ? 21 : 3,
-              width: 20, height: 20, borderRadius: '50%', background: 'white',
-              transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10
-            }}>
-              {mode === 'dark' ? '🌙' : '☀️'}
-            </span>
-          </button>
-        </div>
 
         <SectionLabel>Personal Profile</SectionLabel>
         {/* Owner Profile */}

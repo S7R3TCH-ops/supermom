@@ -3,9 +3,11 @@ import { useAppTheme } from '../../context/AppThemeContext';
 import { createClient } from '../../data/clientsRepo';
 import { RECURRENCE } from '../../data/services';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { useToast } from '../../context/ToastContext';
 
 export default function NewClientSheet({ onClose, onCreated }) {
   const { T, mode } = useAppTheme();
+  const toast = useToast();
   const sheetRef = useRef(null);
   useFocusTrap(sheetRef, true, onClose);
   const [first, setFirst] = useState('');
@@ -46,10 +48,13 @@ export default function NewClientSheet({ onClose, onCreated }) {
         notes: notes.trim() || null,
         ai_context: { vip, recurrence },
       });
+      toast.success(`${first.trim()} added!`);
       if (onCreated) onCreated(created);
       onClose();
     } catch (e2) {
-      setErr(e2.message || String(e2));
+      const msg = e2.message || String(e2);
+      setErr(msg);
+      toast.error(msg);
       setBusy(false);
     }
   }

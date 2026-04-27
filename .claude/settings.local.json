@@ -24,7 +24,9 @@
       "Bash(git push *)",
       "Bash(xargs grep *)",
       "Bash(npx tsc *)",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "Bash(node scripts/dedup-data.mjs)",
+      "Bash(node scripts/inspect_data.mjs)"
     ]
   }
 }

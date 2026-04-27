@@ -96,7 +96,7 @@ export async function fetchDeepPrepNote(clientId, businessProfile) {
   if (!clientId) throw new Error('clientId is required for fetchDeepPrepNote');
 
   try {
-    const response = await fetch('/api/ai/prep-notes', {
+    const response = await fetch('/api/ai/prep-note', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -190,22 +190,15 @@ export async function fetchSmartDurationEstimate(clientId, serviceName, business
  * 2. Average duration for this service (client-specific)
  * 3. Default duration for the service type
  */
-export function calculateEstimatedDuration(clientRaw, serviceKey, allServices) {
-  const service = allServices.find(s => s.key === serviceKey);
+export function calculateEstimatedDuration(clientRaw, serviceName, allServices) {
+  const service = allServices.find(s => s.name === serviceName);
   if (!service) return 120;
 
-  // clientRaw.history is likely filtered/decorated, we might want to check the raw jobs
-  // but for now let's assume we pass in the history we have.
-  // Actually, let's look for jobs in clientRaw.history that match the service label.
   const history = clientRaw?.history || [];
-  const matchingJobs = history.filter(h => h.service === service.label);
+  const matchingJobs = history.filter(h => h.service === serviceName);
 
   if (matchingJobs.length > 0) {
-    // Return the most recent matching job's duration
-    // history is already sorted desc by date in toDisplayClient
     const lastJob = matchingJobs[0];
-    
-    // Parse duration string like "2h 30m" back to minutes
     if (lastJob.duration && lastJob.duration !== '—') {
       const hMatch = lastJob.duration.match(/(\d+)h/);
       const mMatch = lastJob.duration.match(/(\d+)m/);
@@ -216,5 +209,5 @@ export function calculateEstimatedDuration(clientRaw, serviceKey, allServices) {
     }
   }
 
-  return service.defaultDuration || 120;
+  return Number(service.default_duration || service.defaultDuration || 120);
 }

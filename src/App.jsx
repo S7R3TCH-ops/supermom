@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { supabase } from './lib/supabase';
 import { AppThemeProvider } from './context/AppTheme';
 import { useAppTheme } from './context/AppThemeContext';
+import { ToastProvider } from './context/ToastContext';
 import { AuthProvider } from './context/Auth';
 import { useAuth } from './context/AuthContext';
 import { ViewpointProvider, useViewpoint } from './context/ViewpointContext';
@@ -59,7 +60,7 @@ function AuthedShell() {
   return (
     <div style={{
       display: 'flex', flexDirection: 'column',
-      height: '100svh', width: '100%',
+      height: '100dvh', width: '100%',
       background: T.bg, color: T.ink, overflow: 'hidden',
     }}>
       <ViewpointBanner />
@@ -89,7 +90,7 @@ function LoginShell() {
   return (
     <div style={{
       display: 'flex', flexDirection: 'column',
-      height: '100svh', width: '100%',
+      height: '100dvh', width: '100%',
       background: T.bg, color: T.ink, overflow: 'hidden',
     }}>
       <LogoBar />
@@ -158,7 +159,7 @@ function SetNewPasswordShell() {
   return (
     <div style={{
       display: 'flex', flexDirection: 'column',
-      height: '100svh', width: '100%',
+      height: '100dvh', width: '100%',
       background: T.bg, color: T.ink, overflow: 'hidden',
     }}>
       <LogoBar />
@@ -239,7 +240,7 @@ function Gate() {
   if (loading) {
     return (
       <div style={{
-        height: '100svh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        height: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center',
         background: T.bg, color: T.inkSub, font: `14px/1 ${T.font}`,
       }}>Loading…</div>
     );
@@ -266,6 +267,7 @@ function Gate() {
 export default function App() {
   return (
     <AppThemeProvider>
+      <ToastProvider>
       <BrowserRouter>
         <AuthProvider>
           <ViewpointProvider>
@@ -278,6 +280,7 @@ export default function App() {
           </ViewpointProvider>
         </AuthProvider>
       </BrowserRouter>
+      </ToastProvider>
     </AppThemeProvider>
   );
 }

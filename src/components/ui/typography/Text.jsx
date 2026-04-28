@@ -1,20 +1,23 @@
 import { useAppTheme } from '../../../context/AppThemeContext';
 
-export default function Text({ children, variant = 'primary', style, ...props }) {
+export const Text = ({ children, variant = 'primary', component: Component = 'div', style, ...props }) => {
   const { T } = useAppTheme();
   let color = T.ink;
   if (variant === 'secondary') color = T.inkSub;
   if (variant === 'muted') color = T.inkMuted;
   return (
-    <div style={{
+    <Component style={{
       fontFamily: T.font,
       color,
       fontSize: 14,
       fontWeight: 400,
       lineHeight: 1.5,
+      margin: 0,
       ...style
     }} {...props}>
       {children}
-    </div>
+    </Component>
   );
-}
+};
+
+export default Text;

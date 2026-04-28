@@ -1,16 +1,19 @@
 import { useAppTheme } from '../../../context/AppThemeContext';
 
-export default function Title({ children, style, ...props }) {
+export function Title({ children, component: Component = 'h1', style, ...props }) {
   const { T } = useAppTheme();
   return (
-    <div style={{
+    <Component style={{
       fontFamily: T.serif,
       color: T.ink,
       fontSize: 28,
       fontWeight: 600,
+      margin: 0, // Reset default margin for semantic tags
       ...style
     }} {...props}>
       {children}
-    </div>
+    </Component>
   );
 }
+
+export default Title;

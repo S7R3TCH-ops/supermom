@@ -22,9 +22,9 @@ const CONTENT = {
       "Schedule empty. Proceeding with standby protocol."
     ],
     greeting: [
-      "Good morning, Supermom. Operational readiness is at 100%.",
-      "Good afternoon. Efficiency remains high across all sectors.",
-      "Good evening. Mission review complete. Systems powering down."
+      "Good morning, {name}. Operational readiness is at 100%.",
+      "Good afternoon, {name}. Efficiency remains high across all sectors.",
+      "Good evening, {name}. Mission review complete. Systems powering down."
     ]
   },
   coach: {
@@ -43,16 +43,16 @@ const CONTENT = {
       "The schedule is clear because you're a manifestation master. Enjoy it!"
     ],
     greeting: [
-      "Rise and shine, superstar! The world needs your magic today.",
-      "You're halfway there and looking amazing! Keep that momentum going.",
-      "Winding down... You've earned a glass of wine (and a very long bath)."
+      "Rise and shine, {name}! The world needs your magic today.",
+      "You're halfway there and looking amazing, {name}! Keep that momentum going.",
+      "Winding down... You've earned a glass of wine, {name} (and a very long bath)."
     ]
   },
   casual: {
     briefing: [
-      "Sup! Let's do the thing. Coffee first, then world domination.",
+      "Sup, {name}! Let's do the thing. Coffee first, then world domination.",
       "Alright, let's get this bread. Or at least get this organizing done.",
-      "Nice outfit. Ready to make some spaces look actually logical?",
+      "Nice outfit, {name}. Ready to make some spaces look actually logical?",
       "The junk drawers are gossiping about you. Go show them who's boss.",
       "I checked the weather: 100% chance of you being a complete badass."
     ],
@@ -64,9 +64,9 @@ const CONTENT = {
       "All done! High five yourself, then go do something fun."
     ],
     greeting: [
-      "Hey there! Ready to head out and do some great work today?",
-      "Halfway through! You're doing the thing. Keep it up.",
-      "Mission accomplished. Go put your feet up, you legend."
+      "Hey {name}! Ready to head out and do some great work today?",
+      "Halfway through! You're doing the thing, {name}. Keep it up.",
+      "Mission accomplished, {name}. Go put your feet up, you legend."
     ]
   }
 };
@@ -122,8 +122,9 @@ export function getTimeBasedGreeting(name, persona = 'professional', hasJobsLeft
   if (hour >= 12 && hour < 17) type = 'greeting_afternoon';
   else if (hour >= 17) type = 'greeting_evening';
   
-  const msg = getPersistentDailyMessage(type, persona);
-  const first = name?.split(' ')[0] || 'there';
+  const rawMsg = getPersistentDailyMessage(type, persona);
+  const first = name?.split(' ')[0] || 'Supermom';
+  const msg = rawMsg.replace(/{name}/g, first);
   
   if (!hasJobsLeft) return msg;
 

@@ -20,11 +20,11 @@ export function generateCommandBrief(job, businessProfile = null) {
 
   // Stylistic openers
   if (style === 'coach') {
-    speechText = `You've got this! Next up is a visit with ${clientName}. `;
+    speechText = `You've got this! Your next session is with ${clientName}. `;
   } else if (style === 'casual') {
-    speechText = `Alright, heading over to ${clientName} next. `;
+    speechText = `Alright, heading over to assist ${clientName} next. `;
   } else {
-    speechText = `Next up is ${clientName}. `;
+    speechText = `Next objective: ${clientName}. `;
   }
 
   // 1. High-priority flags

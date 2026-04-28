@@ -81,6 +81,7 @@ At the end of every productive session, or upon major milestone completion, Gemi
 | **Specialized Services** | ✅ **Live** — Declutter, Organize, Assist roster for Sandra |
 | **ADHD Focus UI** | ✅ **Live** — High-contrast Amber highlighting for Unpaid completed jobs |
 | **AI Persona Picker** | ✅ **Live** — Fixed missing DB column; verified persistence |
+| **Typography Suite** | ✅ **Live** — Suite of atomic, theme-aware components (Title, Subheading, SectionLabel, Text, Caption) |
 
 ## Phase 15/16 Updates (Gemini CLI session, April 27, 2026)
 
@@ -162,8 +163,23 @@ Key refinements for user engagement and schedule safety:
 
 (Updated by Gemini CLI)
 
+## Phase 21 Typography Standardization (Gemini CLI session, April 27, 2026)
+
+Key refinements for design system maturity and future-proofing:
+
+| # | Change | Detail | File |
+|---|---|---|---|
+| DG | Typography Suite | ✅ **Live** — Created `Title`, `Subheading`, `SectionLabel`, `Text`, `Caption` in `src/components/ui/typography/` | `src/components/ui/typography/` |
+| DH | Semantic HTML | Typography components support `component` prop (h1, h2, etc.) for better SEO/Accessibility | `src/components/ui/typography/` |
+| DI | Centralized Exports | Added `index.js` for clean named imports | `src/components/ui/typography/index.js` |
+| DJ | Home Modernization | Fully migrated `Home.jsx` to use semantic typography components | `Home.jsx` |
+| DK | Profile Modernization | Fully migrated `ClientProfile.jsx` to use semantic typography components | `ClientProfile.jsx` |
+| DL | Legacy Cleanup | Deleted legacy `src/components/ui/SectionLabel.jsx` and updated all 10+ dependencies | `src/pages/*`, `src/components/sheets/*` |
+
+(Updated by Gemini CLI)
+
 ## Next priorities (as of April 27, 2026)
 1. **Configure Supabase redirect URL allowlist** — add `http://localhost:5173/**` and `https://supermom-v2.vercel.app/**`.
-2. **Typography standardization** — Review all `SectionLabel` usages for consistency.
+2. **Typography Migration (Batch 2)** — Migrate remaining pages (`Calendar`, `Clients`, `Finance`, `Settings`) to new typography components.
 3. **Empty state illustrations** — Upgrade text-based empty states to use rich icon/svg illustrations.
 4. **Self-serve client booking** — Start Phase 2 discovery.

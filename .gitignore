@@ -34,3 +34,5 @@ docs/
 /playwright-report/
 /test-results/
 /playwright/.auth/
+\
+.worktrees/\

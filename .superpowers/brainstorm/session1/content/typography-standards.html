@@ -1,0 +1,88 @@
+<h2>Production Standards: Typography & TS</h2>
+<p class="subtitle">Pick the direction that best fits your vision for Supermom's future.</p>
+
+<div class="options">
+  <div class="option" data-choice="hybrid" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>The "Modern Hybrid" (Recommended)</h3>
+      <p>Upgrade to <strong>Tailwind v4</strong> and add <strong>TypeScript</strong> for new UI components.</p>
+      <div class="pros-cons" style="margin-top: 12px; font-size: 0.9em;">
+        <div class="pros">
+          <ul>
+            <li>No breakage of existing JSX</li>
+            <li>Zero-runtime CSS performance</li>
+            <li>Strict typing for new UI primitives</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="total" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Total Type-Safety</h3>
+      <p>Convert <strong>all existing files</strong> to TypeScript and migrate to Tailwind v4.</p>
+      <div class="pros-cons" style="margin-top: 12px; font-size: 0.9em;">
+        <div class="pros">
+          <ul>
+            <li>Industry-standard strictness</li>
+            <li>Eliminates "undefined" crashes</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <ul>
+            <li>Higher risk of migration bugs</li>
+            <li>Requires full testing cycle</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="css" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>CSS-First Logic</h3>
+      <p>Tailwind v4 upgrade + CSS Variables. <strong>No TypeScript</strong> for now.</p>
+      <div class="pros-cons" style="margin-top: 12px; font-size: 0.9em;">
+        <div class="pros">
+          <ul>
+            <li>Fastest implementation</li>
+            <li>Stays in your comfort zone (JSX)</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <ul>
+            <li>Easier for bugs to hide in data</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Code Preview: Standardized Typography</h3>
+  <div class="split">
+    <div class="mockup">
+      <div class="mockup-header">Before (Current JSX)</div>
+      <div class="mockup-body">
+        <pre style="font-size: 0.8em;"><code>&lt;SectionLabel&gt;Recent Activity&lt;/SectionLabel&gt;
+// Custom style object inside component
+// No type hints for colors or fonts</code></pre>
+      </div>
+    </div>
+    <div class="mockup">
+      <div class="mockup-header">After (Standard TSX)</div>
+      <div class="mockup-body">
+        <pre style="font-size: 0.8em; color: #E91E6A;"><code>&lt;Heading level={2} variant="accent"&gt;
+  Recent Activity
+&lt;/Heading&gt;
+// Strictly typed: variants "accent" | "muted"
+// Integrated with Tailwind v4 engine</code></pre>
+      </div>
+    </div>
+  </div>
+</div>

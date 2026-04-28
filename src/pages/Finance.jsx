@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useAppTheme } from '../context/AppThemeContext';
-import SectionLabel from '../components/ui/SectionLabel';
+import { SectionLabel } from '../components/ui/typography';
 import { useJobs, useExpenses, notifyDataChanged, useClients, useInvoices } from '../data/useData';
 import { useToast } from '../context/ToastContext';
 import { updateJob, recordPayment } from '../data/jobsRepo';

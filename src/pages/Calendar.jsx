@@ -558,7 +558,8 @@ function AgendaCard({ T, mode, privacyOn, job, isNext, conflict, onPress }) {
           <div style={{ fontFamily: T.serif, fontSize: 14, fontWeight: 500, letterSpacing: '-0.2px', color: T.ink }}>
             {job.service?.label} · {job.client?.name}
           </div>
-          <div style={{ fontFamily: T.font, fontSize: 10.5, fontWeight: 500, color: T.inkSub, marginTop: 2 }}>
+          <div style={{ fontFamily: T.font, fontSize: 10.5, fontWeight: 500, color: T.inkSub, marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
             {fmtTimeRange(job.start, job.end)} · {job.client?.address?.split(',')[0]}
           </div>
         </div>

@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { notifyDataChanged, useBusiness } from '../../data/useData';
 import { useToast } from '../../context/ToastContext';
 import { getCurrentBusinessId } from '../../data/currentBusiness';
-import SectionLabel from '../ui/SectionLabel';
+import { SectionLabel } from '../ui/typography';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 export default function ServiceCatalogSheet({ isOpen, onClose }) {
@@ -77,6 +77,7 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
       const bid = await getCurrentBusinessId();
       if (!bid) throw new Error('No business ID found');
 
+      // 1. Process Soft Deletions (active = false)
       if (deletedIds.length > 0) {
         const { error: delErr } = await supabase
           .from('services')
@@ -86,41 +87,37 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
         if (delErr) throw delErr;
       }
 
-      for (const s of formServices) {
-        if (s.isNew) {
-          if (!s.name.trim()) continue; // Skip empty new ones
-          const { error: err } = await supabase
-            .from('services')
-            .insert({
-              business_id: bid,
-              name: s.name,
-              pricing_type: s.pricing_type,
-              default_price: parseFloat(s.default_price) || 0,
-              default_duration: parseFloat(s.default_duration) || 120,
-              active: s.active,
-              sort_order: formServices.indexOf(s)
-            });
-          if (err) throw err;
-        } else {
-          const { error: err } = await supabase
-            .from('services')
-            .update({
-              name: s.name,
-              pricing_type: s.pricing_type,
-              default_price: parseFloat(s.default_price) || 0,
-              default_duration: parseFloat(s.default_duration) || 120,
-              active: s.active,
-              sort_order: formServices.indexOf(s)
-            })
-            .eq('id', s.id);
-          if (err) throw err;
-        }
+      // 2. Prepare items for Upsert
+      const upserts = formServices
+        .filter(s => s.name.trim()) // Ignore empty names
+        .map((s, idx) => {
+          const item = {
+            business_id: bid,
+            name: s.name,
+            pricing_type: s.pricing_type,
+            default_price: parseFloat(s.default_price) || 0,
+            default_duration: parseFloat(s.default_duration) || 120,
+            active: s.active,
+            sort_order: idx
+          };
+          // Only include ID if it's an existing record
+          if (s.id && !s.isNew) item.id = s.id;
+          return item;
+        });
+
+      if (upserts.length > 0) {
+        const { error: upsertErr } = await supabase
+          .from('services')
+          .upsert(upserts, { onConflict: 'id' });
+        if (upsertErr) throw upsertErr;
       }
+
       setDeletedIds([]);
       notifyDataChanged();
-      toast.success('Service catalog saved.');
+      toast.success('Service catalog updated.');
       onClose();
     } catch (e) {
+      console.error('[ServiceCatalog] Save error:', e);
       const msg = e.message || String(e);
       setError(msg);
       toast.error(msg);

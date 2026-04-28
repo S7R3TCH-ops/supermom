@@ -1,7 +1,7 @@
 import { useMemo, useEffect, useState } from 'react';
 import { useAppTheme } from '../context/AppThemeContext';
 import AmtCell from '../components/ui/AmtCell';
-import SectionLabel from '../components/ui/SectionLabel';
+import { SectionLabel } from '../components/ui/typography';
 import CapeUpButton from '../components/ui/CapeUpButton';
 import { useJobs, useBusiness, useClients } from '../data/useData';
 import { useJobDetailSheet } from '../context/JobDetailSheetContext';
@@ -226,6 +226,8 @@ export default function Home() {
   const next = todayJobs.find(j => j.status === 'Scheduled' && j.payment_status !== 'Paid' && j.start >= today);
   
   const revenueToday = todayJobs.reduce((s, j) => s + Number(j.total || 0), 0);
+  const completedJobsCount = todayJobs.filter(j => j.status === 'Completed').length;
+  const progressPercent = todayJobs.length > 0 ? (completedJobsCount / todayJobs.length) * 100 : 0;
 
   const isSelectedToday = sameDay(selectedDate, today);
 
@@ -309,17 +311,36 @@ export default function Home() {
       <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', paddingBottom: 8 }}>
 
         {/* HERO */}
-        <div style={{ background: T.hero, borderBottom: '3px solid #E91E6A', padding: '13px 15px 15px', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px)', backgroundSize: '20px 20px', pointerEvents: 'none' }} />
-          <div style={{ position: 'absolute', top: -50, right: -30, width: 150, height: 150, borderRadius: '50%', background: `radial-gradient(circle,${T.pinkGlow} 0%,transparent 70%)`, pointerEvents: 'none' }} />
+        <div style={{ background: T.hero, borderBottom: '3px solid #E91E6A', padding: '13px 15px 18px', position: 'relative', overflow: 'hidden' }}>
+          {/* Decorative Pattern Overlay */}
+          <div style={{ position: 'absolute', inset: 0, opacity: 0.04, pointerEvents: 'none' }}>
+            <svg width="100%" height="100%">
+              <pattern id="hero-dots" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
+                <circle cx="2" cy="2" r="1" fill="white" />
+              </pattern>
+              <rect width="100%" height="100%" fill="url(#hero-dots)" />
+            </svg>
+          </div>
+          <div style={{ position: 'absolute', top: -50, right: -30, width: 200, height: 200, borderRadius: '50%', background: `radial-gradient(circle,${T.pinkGlow} 0%,transparent 70%)`, pointerEvents: 'none' }} />
           
-          <div style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '1.1px', textTransform: 'uppercase', color: T.pinkLabel, marginBottom: 5 }}>
-            ✦ Command Brief · {dateBrief(today)}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative' }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '1.1px', textTransform: 'uppercase', color: T.pinkLabel, marginBottom: 5 }}>
+                ✦ Command Brief · {dateBrief(today)}
+              </div>
+              <div style={{ fontFamily: T.serif, fontSize: 22, fontWeight: 500, letterSpacing: '-0.5px', color: 'white', lineHeight: 1.15, marginBottom: 4 }}>
+                {timeBasedGreeting}
+              </div>
+            </div>
+            {todayJobs.length > 0 && (
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontFamily: T.font, fontSize: 14, fontWeight: 800, color: 'white' }}>{Math.round(progressPercent)}%</div>
+                <div style={{ fontFamily: T.font, fontSize: 8, fontWeight: 700, color: T.pinkLabel, textTransform: 'uppercase' }}>Done</div>
+              </div>
+            )}
           </div>
-          <div style={{ fontFamily: T.serif, fontSize: 22, fontWeight: 500, letterSpacing: '-0.5px', color: 'white', lineHeight: 1.15, marginBottom: 4 }}>
-            {timeBasedGreeting}
-          </div>
-          <div style={{ fontFamily: T.font, fontSize: 11.5, color: 'rgba(255,255,255,0.6)', lineHeight: 1.5, marginBottom: 12 }}>
+
+          <div style={{ fontFamily: T.font, fontSize: 11.5, color: 'rgba(255,255,255,0.6)', lineHeight: 1.5, marginBottom: 14, position: 'relative' }}>
             {todayJobs.length === 0
               ? briefingMsg
               : allDone 
@@ -328,7 +349,14 @@ export default function Home() {
             }
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: tightGap ? 12 : 0 }}>
+          {/* Mission Progress Bar */}
+          {todayJobs.length > 0 && (
+            <div style={{ position: 'relative', height: 4, background: 'rgba(255,255,255,0.1)', borderRadius: 2, marginBottom: 18, overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${progressPercent}%`, background: T.pink, borderRadius: 2, transition: 'width 0.5s ease' }} />
+            </div>
+          )}
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: tightGap ? 12 : 0, position: 'relative' }}>
             {[
               { n: String(todayJobs.length), l: 'Jobs', onClick: () => openDetail("Today's Schedule", todayJobs, 'jobs') },
               { n: privacyOn ? '•••' : `$${revenueToday.toFixed(0)}`, l: 'Today', onClick: () => openDetail("Today's Revenue", todayJobs, 'jobs') },
@@ -342,7 +370,7 @@ export default function Home() {
           </div>
 
           {tightGap && (
-            <div style={{ background: 'rgba(245,158,11,0.11)', border: '1px solid rgba(245,158,11,0.28)', borderRadius: 10, padding: '9px 11px', display: 'flex', alignItems: 'center', gap: 9 }}>
+            <div style={{ background: 'rgba(245,158,11,0.11)', border: '1px solid rgba(245,158,11,0.28)', borderRadius: 10, padding: '9px 11px', display: 'flex', alignItems: 'center', gap: 9, position: 'relative', marginTop: 12 }}>
               <span style={{ fontSize: 14 }}>⚠</span>
               <div style={{ flex: 1 }}>
                 <div style={{ fontFamily: T.font, fontSize: 11, fontWeight: 700, color: '#FCD34D', marginBottom: 1 }}>Tight gap today</div>
@@ -390,9 +418,12 @@ export default function Home() {
 
           {activeJob && isSelectedToday && (
             <>
-              <SectionLabel>Active Job · {activeJob.client_name}</SectionLabel>
+              <SectionLabel>Active Mission · {activeJob.client_name}</SectionLabel>
               <div style={{ background: 'linear-gradient(135deg, #1A0B2E 0%, #0D0517 100%)', border: '1.5px solid rgba(233,30,106,0.5)', borderRadius: 14, padding: '16px 18px', marginBottom: 12 }}>
-                <div style={{ fontFamily: T.serif, fontSize: 20, color: 'white' }}>{activeJob.client_name}</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
+                  <div style={{ fontFamily: T.serif, fontSize: 20, color: 'white' }}>{activeJob.client_name}</div>
+                  <div style={{ fontFamily: T.font, fontSize: 10, color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>Scheduled: {fmtTime12(activeJob.start).time} – {fmtTime12(activeJob.end).time}</div>
+                </div>
                 <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 12 }}>
                   <LiveTimer startTime={activeJob.ai_context.clock_in_time} T={T} />
                   <button onClick={async (e) => { e.stopPropagation(); await handleClockOut(activeJob.id); openPostJob(activeJob.id); }} style={{ background: '#E91E6A', color: 'white', border: 'none', borderRadius: 10, padding: '10px 20px', fontWeight: 700 }}>Done</button>
@@ -408,7 +439,18 @@ export default function Home() {
                 <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.02) 1px, transparent 1px)', backgroundSize: '15px 15px', pointerEvents: 'none' }} />
                 <div style={{ position: 'relative' }}>
                   <div style={{ fontFamily: T.serif, fontSize: 18, color: 'white' }}>{next.client_name}</div>
-                  <div style={{ fontFamily: T.font, fontSize: 11, color: 'rgba(255,255,255,0.55)', margin: '4px 0 12px' }}>{fmtTime12(next.start).time} – {fmtTime12(next.end).time} {fmtTime12(next.end).period}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '4px 0 12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                      <span style={{ fontFamily: T.font, fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>{fmtTime12(next.start).time} – {fmtTime12(next.end).time} {fmtTime12(next.end).period}</span>
+                    </div>
+                    {!isToday && (
+                      <>
+                        <div style={{ width: 3, height: 3, borderRadius: '50%', background: 'rgba(255,255,255,0.3)' }} />
+                        <span style={{ fontFamily: T.font, fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>{dateBrief(next.start)}</span>
+                      </>
+                    )}
+                  </div>
                   {commandBrief && (
                     <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 12, padding: '12px', marginBottom: 12 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
@@ -463,6 +505,23 @@ export default function Home() {
               <AmtCell amount={`$${overdueJobs.reduce((s, j) => s + Number(j.total || 0), 0).toFixed(0)}`} size={12} />
             </div>
           )}
+
+          {/* Motivation Footer Card */}
+          <div style={{
+            marginTop: 32, padding: '20px 16px', borderRadius: 16,
+            background: mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(233,30,106,0.04)',
+            border: `1px dashed ${T.cardBorder}`, textAlign: 'center',
+            position: 'relative', overflow: 'hidden'
+          }}>
+            <div style={{ position: 'absolute', top: -20, left: -20, width: 60, height: 60, borderRadius: '50%', background: `radial-gradient(circle, ${T.pinkGlow} 0%, transparent 70%)`, opacity: 0.5 }} />
+            <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 800, color: T.pink, letterSpacing: '1px', textTransform: 'uppercase', marginBottom: 8 }}>✦ Power Up</div>
+            <div style={{ fontFamily: T.serif, fontSize: 15, color: T.ink, lineHeight: 1.5, fontStyle: 'italic' }}>
+              {allDone 
+                ? "You've earned this rest. Recharge for the next adventure!"
+                : "One house at a time. You've got the magic touch!"
+              }
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -515,18 +574,24 @@ function JobCard({ j, T, mode, openJob, next, variant, today }) {
       marginBottom: 8, 
       cursor: 'pointer', 
       transition: 'transform 0.1s',
-      boxShadow: !isPaid && isCompleted ? '0 2px 8px rgba(245,158,11,0.15)' : 'none'
+      boxShadow: !isPaid && isCompleted ? '0 2px 8px rgba(245,158,11,0.15)' : 'none',
+      position: 'relative', overflow: 'hidden'
     }}>
-      <div style={{ display: 'flex', gap: 12 }}>
+      {/* Subtle geometric pattern for completed cards */}
+      {isCompleted && (
+        <div style={{ position: 'absolute', top: -10, right: -10, width: 60, height: 60, borderRadius: '50%', background: `radial-gradient(circle, ${accentColor}10 0%, transparent 70%)`, pointerEvents: 'none' }} />
+      )}
+
+      <div style={{ display: 'flex', gap: 12, position: 'relative' }}>
         {/* TIME/DATE STAND-OUT BLOCK */}
-        <div style={{ width: 56, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: isIncomplete ? 'rgba(245,158,11,0.2)' : isCompleted ? (isPaid ? 'rgba(34,197,94,0.1)' : 'rgba(251,191,36,0.15)') : T.pinkTint, border: `1px solid ${border}`, borderRadius: 10, padding: '4px 0' }}>
-          {!isToday && (
-            <div style={{ fontFamily: T.font, fontSize: 8, fontWeight: 800, color: accentColor, textTransform: 'uppercase', marginBottom: 2 }}>{dateBrief(j.start).split(',')[0]}</div>
-          )}
-          <div style={{ fontFamily: T.serif, fontSize: 13.5, fontWeight: 700, color: accentColor, lineHeight: 1 }}>{startTime.time}</div>
-          <div style={{ fontFamily: T.font, fontSize: 7.5, fontWeight: 700, color: T.inkMuted, margin: '2px 0' }}>to</div>
-          <div style={{ fontFamily: T.serif, fontSize: 13.5, fontWeight: 700, color: accentColor, lineHeight: 1 }}>{endTime.time}</div>
-          <div style={{ fontFamily: T.font, fontSize: 7, fontWeight: 800, color: T.inkMuted, marginTop: 2 }}>{endTime.period}</div>
+        <div style={{ width: 64, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: isIncomplete ? 'rgba(245,158,11,0.2)' : isCompleted ? (isPaid ? 'rgba(34,197,94,0.1)' : 'rgba(251,191,36,0.15)') : T.pinkTint, border: `1px solid ${border}`, borderRadius: 10, padding: '4px 0' }}>
+          <div style={{ textAlign: 'center', marginBottom: 2 }}>
+            <div style={{ fontFamily: T.font, fontSize: 8, fontWeight: 900, color: accentColor, textTransform: 'uppercase', lineHeight: 1 }}>{isToday ? 'TODAY' : dateBrief(j.start).split(',')[0]}</div>
+            <div style={{ fontFamily: T.serif, fontSize: 13, fontWeight: 700, color: accentColor }}>{j.start.getDate()}</div>
+          </div>
+          <div style={{ height: 1, width: 20, background: `${accentColor}40`, margin: '2px 0' }} />
+          <div style={{ fontFamily: T.serif, fontSize: 13, fontWeight: 700, color: accentColor, lineHeight: 1.1 }}>{startTime.time}</div>
+          <div style={{ fontFamily: T.font, fontSize: 7, fontWeight: 800, color: T.inkMuted, textTransform: 'uppercase', marginTop: 1 }}>{startTime.period}</div>
         </div>
 
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -539,9 +604,11 @@ function JobCard({ j, T, mode, openJob, next, variant, today }) {
             </div>
           )}
           
-          {!isToday && (
-             <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, marginTop: 4 }}>{dateBrief(j.start)}</div>
-          )}
+          <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            Ends {endTime.time} {endTime.period}
+            {!isToday && <> · {dateBrief(j.start)}</>}
+          </div>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'space-between', gap: 4 }}>

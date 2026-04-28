@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/calendar", "destination": "/index.html" },
+    { "source": "/clients", "destination": "/index.html" },
+    { "source": "/clients/:id", "destination": "/index.html" },
+    { "source": "/finance", "destination": "/index.html" },
+    { "source": "/settings", "destination": "/index.html" },
+    { "source": "/admin", "destination": "/index.html" },
+    { "source": "/i/:id", "destination": "/index.html" }
+  ]
+}

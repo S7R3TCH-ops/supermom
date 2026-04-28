@@ -122,6 +122,28 @@ const NEW_CLIENTS = [
       personal: 'Has a daughter named Cassie. Just trying to be a good dad.',
       vip: false, recurrence: 'biweekly',
     },
+  },
+  {
+    first_name: 'Sarah', last_name: 'Connor',
+    phone: '6475550001', email: 'sarah.c@example.com',
+    street: '742 Evergreen Terrace', city: 'Georgetown', province: 'ON',
+    status: 'active', tags: ['VIP', 'Weekly'],
+    notes: 'Privacy conscious.',
+    ai_context: {
+      prefs: 'Vinegar/water only.', access: 'Code 1984.', comms: 'Texts only.',
+      personal: 'Son John. Privacy conscious.', vip: true, recurrence: 'weekly',
+    },
+  },
+  {
+    first_name: 'Bruce', last_name: 'Wayne',
+    phone: '6475550002', email: 'bruce.w@example.com',
+    street: '1007 Mountain Drive', city: 'Georgetown', province: 'ON',
+    status: 'active', tags: ['VIP', 'Monthly'],
+    notes: 'Large estate.',
+    ai_context: {
+      prefs: 'Wood oil in pantry.', access: 'Side gate.', comms: 'Assistant Alfred.',
+      personal: 'Away on business often.', vip: true, recurrence: 'monthly',
+    },
   }
 ];
 
@@ -184,7 +206,7 @@ const NEW_JOBS = [
   { email: 'nat.r@example.com', svc: 'Regular',    days: 0,  time: '08:30', status: 'Scheduled', pay: '', notes: 'Sanitize all surfaces.' },
   { email: 'wanda.m@example.com', svc: 'Quick Tidy', days: 0,  time: '12:00', status: 'Scheduled', pay: '', notes: 'Match the vintage aesthetic.' },
   { email: 'tony.s@example.com', svc: 'Regular',    days: 0,  time: '15:30', status: 'Scheduled', pay: '', notes: 'Check the server room dusting.' },
-  { email: 'scott.l@example.com', svc: 'Quick Tidy', days: 0,  time: '17:00', status: 'Scheduled', pay: '', notes: 'Clean the kitchen after "science experiment".' },
+  { email: 'scott.l@example.com', svc: 'Quick Tidy', days: 0,  time: '18:30', status: 'Scheduled', pay: '', notes: 'Clean the kitchen after "science experiment".' },
 
   // --- FUTURE ---
   { email: 'nat.r@example.com', svc: 'Regular',    days: 14, time: '08:30', status: 'Scheduled', pay: '', notes: 'Bi-weekly sanitize.' },

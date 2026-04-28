@@ -4,7 +4,7 @@ import { useAppTheme } from '../context/AppThemeContext';
 import { useJobDetailSheet } from '../context/JobDetailSheetContext';
 import { useNewJobSheet } from '../context/NewJobSheetContext';
 import AmtCell from '../components/ui/AmtCell';
-import SectionLabel from '../components/ui/SectionLabel';
+import { SectionLabel } from '../components/ui/typography';
 import { useClient, notifyDataChanged } from '../data/useData';
 import { updateClient, simulateAILearning } from '../data/clientsRepo';
 
@@ -405,19 +405,22 @@ export default function ClientProfile() {
               <div key={i} onClick={() => openJob(j.id)} style={{
                 background: T.card, border: `1.5px solid ${T.cardBorder}`,
                 borderRadius: 13, padding: '10px 12px',
-                display: 'flex', alignItems: 'center', gap: 10,
+                display: 'flex', alignItems: 'center', gap: 12,
                 cursor: 'pointer',
               }}>
                 <div style={{
-                  width: 42, flexShrink: 0, textAlign: 'center',
-                  fontFamily: T.serif, color: T.pink,
+                  width: 50, flexShrink: 0, textAlign: 'center',
+                  background: T.pinkTint, borderRadius: 10, padding: '6px 0', border: `1px solid ${T.pinkBorder}`,
                 }}>
-                  <div style={{ fontSize: 14, fontWeight: 500, letterSpacing: '-0.2px' }}>{j.date.split(' ')[1]}</div>
-                  <div style={{ fontSize: 8.5, fontWeight: 700, color: T.inkMuted, letterSpacing: '0.5px', textTransform: 'uppercase', marginTop: 1 }}>{j.date.split(' ')[0]}</div>
+                  <div style={{ fontFamily: T.font, fontSize: 8, fontWeight: 900, color: T.pink, textTransform: 'uppercase', lineHeight: 1 }}>{j.date.split(' ')[0]}</div>
+                  <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 700, color: T.pink, marginTop: 1 }}>{j.date.split(' ')[1]}</div>
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: T.serif, fontSize: 13.5, fontWeight: 500, color: T.ink, letterSpacing: '-0.2px' }}>{j.service}</div>
-                  <div style={{ fontFamily: T.font, fontSize: 10.5, color: T.inkMuted, marginTop: 1 }}>{j.time}</div>
+                  <div style={{ fontFamily: T.serif, fontSize: 14, fontWeight: 500, color: T.ink, letterSpacing: '-0.2px' }}>{j.service}</div>
+                  <div style={{ fontFamily: T.font, fontSize: 11, color: T.inkSub, fontWeight: 600, marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    {j.time}
+                  </div>
                 </div>
                 <AmtCell amount={j.amt} size={14} />
               </div>
@@ -441,21 +444,21 @@ export default function ClientProfile() {
               <div key={i} onClick={() => openJob(h.id)} style={{
                 background: T.card, border: `1.5px solid ${T.cardBorder}`,
                 borderRadius: 13, padding: '10px 12px',
-                display: 'flex', alignItems: 'center', gap: 10,
+                display: 'flex', alignItems: 'center', gap: 12,
                 cursor: 'pointer'
               }}>
                 <div style={{
-                  width: 42, flexShrink: 0, textAlign: 'center',
-                  fontFamily: T.serif, color: T.inkSub,
+                  width: 50, flexShrink: 0, textAlign: 'center',
+                  background: T.cardBorder, borderRadius: 10, padding: '6px 0',
                 }}>
-                  <div style={{ fontSize: 14, fontWeight: 500, letterSpacing: '-0.2px' }}>{h.date.split(' ')[1]}</div>
-                  <div style={{ fontSize: 8.5, fontWeight: 700, color: T.inkMuted, letterSpacing: '0.5px', textTransform: 'uppercase', marginTop: 1 }}>{h.date.split(' ')[0]}</div>
+                  <div style={{ fontFamily: T.font, fontSize: 8, fontWeight: 900, color: T.inkSub, textTransform: 'uppercase', lineHeight: 1 }}>{h.date.split(' ')[0]}</div>
+                  <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 700, color: T.inkSub, marginTop: 1 }}>{h.date.split(' ')[1]}</div>
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: T.serif, fontSize: 13, fontWeight: 500, color: T.ink, letterSpacing: '-0.2px' }}>{h.service}</div>
-                  <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, marginTop: 1 }}>{h.duration}</div>
+                  <div style={{ fontFamily: T.serif, fontSize: 13.5, fontWeight: 500, color: T.ink, letterSpacing: '-0.2px' }}>{h.service}</div>
+                  <div style={{ fontFamily: T.font, fontSize: 10.5, color: T.inkMuted, marginTop: 2 }}>{h.duration}</div>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
                   <AmtCell amount={privacyOn ? '•••' : h.amt} size={13} color={h.status === 'paid' ? T.ink : '#E91E6A'} />
                   <span style={{
                     background: h.status === 'paid' ? '#DCFCE7' : '#FFE0EC',

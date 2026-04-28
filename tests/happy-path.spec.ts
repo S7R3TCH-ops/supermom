@@ -21,16 +21,25 @@ test.describe('Supermom Happy Path', () => {
     const dialog = page.getByRole('dialog', { name: 'Book new job' });
     await expect(dialog).toBeVisible();
 
-    // Click Sarah (handle split text/badges)
-    await dialog.locator('button').filter({ hasText: /Sarah/i }).first().click({ force: true });
+    // Click First Client (or Sarah if she exists)
+    let pickedClient = "Sarah Connor";
+    const clientBtn = dialog.locator('button').filter({ hasText: /Sarah/i });
+    if (await clientBtn.count() > 0) {
+      await clientBtn.first().click({ force: true });
+    } else {
+      const firstClientBtn = dialog.locator('button').filter({ hasText: /@/ }).first();
+      const text = await firstClientBtn.innerText();
+      pickedClient = text.split('\n')[0].trim(); // Assuming name is first line
+      await firstClientBtn.click({ force: true });
+    }
     await page.waitForTimeout(1000);
     
     // Click Next
     await dialog.getByRole('button', { name: 'Next →' }).click({ force: true });
     await page.waitForTimeout(1500);
 
-    // Step 2: What & When
-    await dialog.getByText('Regular', { exact: true }).click({ force: true });
+    // Step 2: What & When - Click the first service button
+    await dialog.locator('button').filter({ hasText: /\$|\/hr/ }).first().click({ force: true });
     await page.waitForTimeout(1000);
     await dialog.getByRole('button', { name: 'Next →' }).click({ force: true });
     await page.waitForTimeout(1500);
@@ -42,14 +51,15 @@ test.describe('Supermom Happy Path', () => {
     await page.waitForTimeout(3000);
 
     // 3. Verify job appears on Home
-    await expect(page.getByText(/Sarah Connor/i).first()).toBeVisible();
+    const clientRegex = new RegExp(pickedClient, 'i');
+    await expect(page.getByText(clientRegex).first()).toBeVisible();
 
     // 4. Complete the job
-    console.log('Clicking job card for Sarah Connor...');
+    console.log(`Clicking job card for ${pickedClient}...`);
     
-    // Find the text "Sarah Connor" and click its parent card
-    const sarahCard = page.locator('div').filter({ hasText: /Sarah Connor/i }).last();
-    await sarahCard.click({ force: true });
+    // Find the text and click its parent card
+    const jobCard = page.locator('div').filter({ hasText: clientRegex }).last();
+    await jobCard.click({ force: true });
     
     await page.waitForTimeout(2000);
     

@@ -138,6 +138,27 @@ Key enhancements for "Supermom Spirit" and essential bug fixes:
 | CK | Spirited Empty States | Persona-aware EmptyState component with encouraging messages and icons | `Home.jsx` |
 | CL | Hero Backgrounds | Subtle geometric patterns added to Hero and "Opening Act" sections | `Home.jsx` |
 | CM | Service List Fix | ✅ **Fixed** — useServices now correctly filters by current business_id | `useData.js` |
+| CN | Data Integrity | ✅ **Smart Fix** — Standardized time/date formats from UI to DB | `NewJobSheet.jsx`, `jobsRepo.js` |
+| CO | AI Resilience | ✅ **Live** — Robust mock fallbacks for all AI features (no key needed) | `api/ai/*.js` |
+| CP | Catalog Stability | ✅ **Fixed** — Service catalog CRUD enabled via RLS + optimized Save | `ServiceCatalogSheet.jsx`, `supabase/migrations/` |
+| CQ | Duplicate Prevention | ✅ **Live** — Database-level unique constraints and idempotent seeding | `clientsRepo.js`, `seed_idempotent.mjs` |
+| CR | Routing Stability | ✅ **Fixed** — Explicit `vercel.json` rewrites prevent 404s on browser refresh | `vercel.json` |
+| CS | Unified Dev Flow | ✅ **Live** — `npm start` (via `vercel dev`) enables local API + routing parity | `package.json` |
+| DA | High-Visibility Date/Time | ✅ **Live** — Dedicated banner date/time rows and redesign of home job cards | `JobDetailSheet.jsx`, `Home.jsx`, `ClientProfile.jsx` |
+
+(Updated by Gemini CLI)
+
+## Phase 19/20 Home Page Love & Conflict Hardening (Gemini CLI session, April 27, 2026)
+
+Key refinements for user engagement and schedule safety:
+
+| # | Change | Detail | File |
+|---|---|---|---|
+| DB | Home Page 'Love' | Added Daily Mission Progress bar, Motivation footer, and visual patterns | `Home.jsx` |
+| DC | Conflict Hardening | Real-time amber warning during booking when overlaps are detected | `NewJobSheet.jsx` |
+| DD | Seeder Fix | Resolved overlapping job times in the idempotent seed script | `seed_idempotent.mjs` |
+| DE | Hero Aesthetics | Geometric SVG patterns and refined gradients for a premium feel | `Home.jsx` |
+| DF | Date Persistence | Dates now show on all job cards (including Today/Unpaid) for quick orientation | `Home.jsx` |
 
 (Updated by Gemini CLI)
 

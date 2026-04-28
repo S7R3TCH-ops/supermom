@@ -283,7 +283,20 @@ function ReadMode({
             <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
           </button>
         </div>
-        <div style={{ fontFamily: T.serif, fontSize: 22, fontWeight: 500, color: 'white', marginBottom: 8 }}>{job.client_name || 'Unknown'}</div>
+        <div style={{ fontFamily: T.serif, fontSize: 22, fontWeight: 500, color: 'white', marginBottom: 6 }}>{job.client_name || 'Unknown'}</div>
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, opacity: 0.9 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+            <span style={{ fontFamily: T.font, fontSize: 11, fontWeight: 700, color: 'white' }}>{fmtDate(job.scheduled_date)}</span>
+          </div>
+          <div style={{ width: 4, height: 4, borderRadius: '50%', background: 'rgba(255,255,255,0.4)' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            <span style={{ fontFamily: T.font, fontSize: 11, fontWeight: 700, color: 'white' }}>{timeRange}</span>
+          </div>
+        </div>
+
         <div style={{ display: 'flex', gap: 6 }}>
           <Pill bg={statusC.bg} border={statusC.border} color={statusC.color} T={T}>{job.job_status}</Pill>
           <Pill bg={payC.bg} border={payC.border} color={payC.color} T={T}>{payKey || 'Unpaid'}</Pill>

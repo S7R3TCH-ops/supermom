@@ -15,19 +15,34 @@ export default async function handler(req, res) {
     console.error('Missing Supabase environment variables');
     return res.status(500).json({ error: 'Database configuration missing' });
   }
-  if (!anthropicKey) {
-    console.error('Missing Anthropic API key');
-    return res.status(500).json({ error: 'AI configuration missing' });
-  }
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
-  const anthropic = new Anthropic({ apiKey: anthropicKey });
-
   const { jobId, type = 'thank-you', businessProfile } = req.body;
 
   if (!jobId) {
     return res.status(400).json({ error: 'Missing jobId' });
   }
+
+  // --- MOCK FALLBACK MODE ---
+  if (!anthropicKey) {
+    console.warn('[thank-you-draft] No ANTHROPIC_API_KEY found. Using local fallback.');
+    try {
+      const { data: job } = await supabase.from('jobs').select('service_name, total_amount, client_id').eq('id', jobId).single();
+      const { data: client } = await supabase.from('clients').select('first_name, phone, email').eq('id', job.client_id).single();
+      const name = client?.first_name || 'there';
+      const amount = Number(job?.total_amount || 0).toFixed(0);
+      
+      const draft = type === 'receipt' 
+        ? `Hi ${name}, thanks again for today! I've received your payment of $${amount} for the ${job?.service_name}. See you next time! - ${businessProfile?.owner_name || 'Sandra'}`
+        : `Hi ${name}, just wanted to say thanks for having me over for the ${job?.service_name} today! Hope you're loving the results. - ${businessProfile?.owner_name || 'Sandra'}`;
+      
+      return res.status(200).json({ draft, phone: client?.phone || '', email: client?.email || '', clientFirstName: name, isMock: true });
+    } catch (e) {
+      return res.status(200).json({ draft: "Thanks for the job today!", isMock: true });
+    }
+  }
+
+  const anthropic = new Anthropic({ apiKey: anthropicKey });
 
   try {
     const { data: job, error: jobErr } = await supabase

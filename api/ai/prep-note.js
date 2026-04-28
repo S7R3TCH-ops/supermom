@@ -15,19 +15,35 @@ export default async function handler(req, res) {
     console.error('Missing Supabase environment variables');
     return res.status(500).json({ error: 'Database configuration missing' });
   }
-  if (!anthropicKey) {
-    console.error('Missing Anthropic API key');
-    return res.status(500).json({ error: 'AI configuration missing' });
-  }
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
-  const anthropic = new Anthropic({ apiKey: anthropicKey });
-
   const { clientId, businessProfile } = req.body;
 
   if (!clientId) {
     return res.status(400).json({ error: 'Missing clientId' });
   }
+
+  // --- MOCK FALLBACK MODE ---
+  // If no API key, we generate a high-quality simulated briefing so the UI doesn't break.
+  if (!anthropicKey) {
+    console.warn('[prep-note] No ANTHROPIC_API_KEY found. Using simulated briefing fallback.');
+    try {
+      const { data: client } = await supabase.from('clients').select('first_name, notes, ai_context').eq('id', clientId).single();
+      const { data: jobs } = await supabase.from('jobs').select('service_name, scheduled_date').eq('client_id', clientId).eq('job_status', 'Completed').limit(3);
+      
+      const name = client?.first_name || 'Client';
+      const lastJob = jobs?.[0];
+      const prefs = client?.ai_context?.prefs || client?.notes || 'no special requests';
+      
+      const summary = `[Simulated] ${name} usually prefers a ${client?.ai_context?.style || 'professional'} approach. ${lastJob ? `Last time you handled a ${lastJob.service_name} for them on ${lastJob.scheduled_date}.` : 'This is a relatively new client relationship.'} Keep an eye out for their preference regarding ${prefs.toLowerCase().slice(0, 50)}...`;
+      
+      return res.status(200).json({ summary, isMock: true });
+    } catch (e) {
+      return res.status(200).json({ summary: "Ready to help with your next session. Remember to check the client's specific preferences in their profile.", isMock: true });
+    }
+  }
+
+  const anthropic = new Anthropic({ apiKey: anthropicKey });
 
   try {
     console.log(`[prep-note] Generating briefing for client ${clientId}`);

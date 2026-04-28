@@ -6,7 +6,7 @@ import { getCurrentBusinessId } from '../data/currentBusiness';
 import { useBusiness } from '../data/useData';
 import { useToast } from '../context/ToastContext';
 import { useAppTheme } from '../context/AppThemeContext';
-import SectionLabel from '../components/ui/SectionLabel';
+import { SectionLabel } from '../components/ui/typography';
 import { uploadAsset, getSignedUrl } from '../lib/storage';
 
 const SUPER_ADMIN_EMAIL = 'jlundie@gmail.com';

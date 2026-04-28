@@ -5,7 +5,7 @@ import { useAppTheme } from '../context/AppThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useBusiness, useClients, useJobs } from '../data/useData';
 import { useToast } from '../context/ToastContext';
-import SectionLabel from '../components/ui/SectionLabel';
+import { SectionLabel } from '../components/ui/typography';
 import { useViewpoint } from '../context/ViewpointContext';
 import ServiceCatalogSheet from '../components/sheets/ServiceCatalogSheet';
 
@@ -18,6 +18,13 @@ export default function Admin() {
   const { jobs, loading: jobsLoading } = useJobs();
   const { isSuperAdmin, allBusinesses, switchTo, viewingAsId, reset, refresh } = useViewpoint();
   const navigate = useNavigate();
+
+  // SECURITY: Redirect non-superadmins back to home
+  useEffect(() => {
+    if (!bizLoading && !isSuperAdmin) {
+      navigate('/');
+    }
+  }, [bizLoading, isSuperAdmin, navigate]);
 
   const [isSaving, setIsSaving] = useState(false);
   const [pendingStyle, setPendingStyle] = useState(null);

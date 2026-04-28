@@ -1,0 +1,57 @@
+<h2>Design: Standardizing Supermom v2.0</h2>
+<p class="subtitle">Architecture for the Hybrid TypeScript + Tailwind v4 Upgrade</p>
+
+<div class="section">
+  <h3>1. Core Styling Engine: Tailwind v4</h3>
+  <p>We will replace the current CSS variables and Tailwind v3 setup with <strong>Tailwind v4</strong>. This version is built on Lightning CSS, meaning the styling is processed instantly with zero runtime cost.</p>
+  <div class="cards">
+    <div class="card">
+      <div class="card-body">
+        <h4>CSS-First Config</h4>
+        <p>Theme tokens (colors, fonts, radii) move from <code>tailwind.config.js</code> to standard CSS variables in <code>index.css</code>. This is the new production standard.</p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-body">
+        <h4>Runtime-Free</h4>
+        <p>Removes the need for heavy JS-based theme calculation, speeding up first-paint on mobile devices.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>2. Typographic Standard Components</h3>
+  <p>Instead of scattered styles, we'll implement a strictly typed component library in <code>src/components/ui</code> using <strong>TypeScript (.tsx)</strong>.</p>
+  <div class="mockup">
+    <div class="mockup-header">Proposed Components</div>
+    <div class="mockup-body">
+      <ul style="font-size: 0.9em; line-height: 1.6;">
+        <li><strong>&lt;Text /&gt;</strong>: The base primitive. Handles body, caption, and metadata styles.</li>
+        <li><strong>&lt;Heading /&gt;</strong>: Handles Display, H1, H2, and H3 levels using <em>Fraunces</em>.</li>
+        <li><strong>&lt;Label /&gt;</strong>: Replaces <em>SectionLabel</em> with standardized uppercase tracking and weight.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>3. Migration Strategy</h3>
+  <div class="pros-cons">
+    <div class="pros">
+      <h4>New Standard</h4>
+      <ul>
+        <li>All new components in <code>.tsx</code></li>
+        <li>Strict prop definitions</li>
+        <li>Tailwind v4 utility classes</li>
+      </ul>
+    </div>
+    <div class="cons" style="background: #FFF0F7; border-color: #FFD6E8;">
+      <h4>Interoperability</h4>
+      <ul>
+        <li>Existing <code>.jsx</code> files import these TSX components seamlessly</li>
+        <li>Incremental migration: we only convert existing files when we touch them for features</li>
+      </ul>
+    </div>
+  </div>
+</div>

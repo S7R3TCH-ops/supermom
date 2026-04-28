@@ -289,7 +289,10 @@ export async function recordPayment(jobId, amount, method = 'Cash', notes = null
   }
 
   // 3. Update job status, duration, and notes
-  const status = amount >= (job.total_amount || 0) && amount > 0 ? 'Paid' : 'Unpaid';
+  const total = Number(job.total_amount || 0);
+  const status = amount >= total && amount > 0 
+    ? 'Paid' 
+    : (amount > 0 ? 'Partial' : '');
 
   const updated = await updateJob(jobId, {
     payment_status: status,

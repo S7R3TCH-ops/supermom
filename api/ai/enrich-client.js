@@ -33,12 +33,15 @@ export default async function handler(req, res) {
     console.error('Missing Supabase environment variables');
     return res.status(500).json({ error: 'Database configuration missing' });
   }
-  if (!anthropicKey) {
-    console.error('Missing Anthropic API key');
-    return res.status(500).json({ error: 'AI configuration missing' });
-  }
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+  // --- MOCK FALLBACK MODE ---
+  if (!anthropicKey) {
+    console.warn('[enrich-client] No ANTHROPIC_API_KEY found. Skipping background synthesis.');
+    return res.status(200).json({ ok: true, skipped: 'no_api_key' });
+  }
+
   const anthropic = new Anthropic({ apiKey: anthropicKey });
 
   const { clientId } = req.body;

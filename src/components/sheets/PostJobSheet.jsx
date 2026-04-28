@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useAppTheme } from '../../context/AppThemeContext';
-import SectionLabel from '../ui/SectionLabel';
+import { SectionLabel } from '../ui/typography';
 import { fetchJobById, recordPayment } from '../../data/jobsRepo';
 import { notifyDataChanged } from '../../data/useData';
 import { useToast } from '../../context/ToastContext';

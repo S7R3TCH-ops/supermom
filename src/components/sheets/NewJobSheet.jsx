@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
-import SectionLabel from '../ui/SectionLabel';
+import { SectionLabel } from '../ui/typography';
 import NewClientSheet from './NewClientSheet';
 import { fetchClients } from '../../data/clientsRepo';
 import { fetchActiveJobs, createJob, findConflicts, fetchJobsByClientId, composeTorontoISO } from '../../data/jobsRepo';
@@ -271,14 +271,16 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
           {step === 2 && (
             <Step2What
               T={T} mode={mode} client={selectedClient}
-              services={services} loading={servicesLoading}
+              services={services} loading={loadingServices}
               serviceId={serviceId} onPickService={onPickService}
-              date={date} setDate={setDate} time={time} setTime={setTime}
-              duration={duration} setDuration={d => { setDurationTouched(true); setDuration(d); }}
+              date={date} setDate={setDate}
+              time={time} setTime={setTime}
+              duration={duration} setDuration={(d) => { setDuration(d); setDurationTouched(true); }}
               recurrence={recurrence} setRecurrence={setRecurrence}
               aiDuration={aiDuration}
               aiEstimateLoading={aiEstimateLoading}
               aiEstimateReason={aiEstimateReason}
+              conflicts={conflicts}
             />
           )}
           {step === 3 && (
@@ -467,7 +469,8 @@ function Step2What({
   T, mode, client, services, loading, serviceId, onPickService,
   date, setDate, time, setTime, duration, setDuration,
   recurrence, setRecurrence, aiDuration,
-  aiEstimateLoading, aiEstimateReason
+  aiEstimateLoading, aiEstimateReason,
+  conflicts = []
 }) {
   const usualService = client && client.service ? (
     services.find(s => s.name.toLowerCase() === client.service.toLowerCase())
@@ -476,6 +479,23 @@ function Step2What({
 
   return (
     <>
+      {conflicts.length > 0 && (
+        <div style={{
+          background: 'rgba(245,158,11,0.12)', border: '1.5px solid #F59E0B',
+          borderRadius: 14, padding: '12px 14px', marginBottom: 16,
+          display: 'flex', gap: 12, alignItems: 'center',
+          boxShadow: '0 4px 12px rgba(245,158,11,0.15)'
+        }}>
+          <span style={{ fontSize: 20 }}>⚠</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontFamily: T.font, fontSize: 12, fontWeight: 800, color: '#D97706', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Schedule Conflict</div>
+            <div style={{ fontFamily: T.font, fontSize: 11, color: T.inkSub, marginTop: 2, lineHeight: 1.4 }}>
+              You're already booked with <b>{conflicts[0].client_name}</b> around this time.
+            </div>
+          </div>
+        </div>
+      )}
+
       <SectionLabel>Service</SectionLabel>
       {loading ? (
         <div style={{ padding: '20px 0', textAlign: 'center', color: T.inkMuted }}>Loading catalog...</div>

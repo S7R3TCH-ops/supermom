@@ -15,12 +15,31 @@ export default async function handler(req, res) {
     console.error('Missing Supabase environment variables');
     return res.status(500).json({ error: 'Database configuration missing' });
   }
-  if (!anthropicKey) {
-    console.error('Missing Anthropic API key');
-    return res.status(500).json({ error: 'AI configuration missing' });
-  }
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+  // --- MOCK FALLBACK MODE ---
+  if (!anthropicKey) {
+    console.warn('[estimate-duration] No ANTHROPIC_API_KEY found. Using local fallback.');
+    const { clientId, serviceName } = req.body;
+    try {
+      const { data: jobs } = await supabase.from('jobs').select('actual_duration').eq('client_id', clientId).eq('service_name', serviceName).eq('job_status', 'Completed').not('actual_duration', 'is', null).limit(3);
+      
+      let estimate = 120;
+      let reason = 'Based on default service duration.';
+
+      if (jobs?.length > 0) {
+        const avg = jobs.reduce((s, j) => s + Number(j.actual_duration), 0) / jobs.length;
+        estimate = Math.round(avg * 60);
+        reason = `Based on average of last ${jobs.length} similar jobs.`;
+      }
+      
+      return res.status(200).json({ estimate, reason, isMock: true });
+    } catch (e) {
+      return res.status(200).json({ estimate: 120, reason: 'Fallback default.', isMock: true });
+    }
+  }
+
   const anthropic = new Anthropic({ apiKey: anthropicKey });
 
   const { clientId, serviceName, businessProfile } = req.body;

@@ -1,6 +1,6 @@
 import { useAppTheme } from '../../../context/AppThemeContext';
 
-export const Caption = ({ children, component: Component = 'div', style, ...props }) => {
+export const Caption = ({ children, style, component: Component = 'div', ...props }) => {
   const { T } = useAppTheme();
   return (
     <Component style={{

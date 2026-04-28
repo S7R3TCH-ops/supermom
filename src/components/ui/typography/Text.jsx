@@ -1,6 +1,6 @@
 import { useAppTheme } from '../../../context/AppThemeContext';
 
-export const Text = ({ children, variant = 'primary', component: Component = 'div', style, ...props }) => {
+export const Text = ({ children, variant = 'primary', style, component: Component = 'div', ...props }) => {
   const { T } = useAppTheme();
   let color = T.ink;
   if (variant === 'secondary') color = T.inkSub;

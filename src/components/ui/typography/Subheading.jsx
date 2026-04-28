@@ -1,16 +1,19 @@
 import { useAppTheme } from '../../../context/AppThemeContext';
 
-export default function Subheading({ children, style, ...props }) {
+export const Subheading = ({ children, component: Component = 'h2', style, ...props }) => {
   const { T } = useAppTheme();
   return (
-    <div style={{
+    <Component style={{
       fontFamily: T.serif,
       color: T.ink,
       fontSize: 20,
       fontWeight: 600,
+      margin: 0,
       ...style
     }} {...props}>
       {children}
-    </div>
+    </Component>
   );
-}
+};
+
+export default Subheading;

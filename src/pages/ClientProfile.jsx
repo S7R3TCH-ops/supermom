@@ -4,7 +4,7 @@ import { useAppTheme } from '../context/AppThemeContext';
 import { useJobDetailSheet } from '../context/JobDetailSheetContext';
 import { useNewJobSheet } from '../context/NewJobSheetContext';
 import AmtCell from '../components/ui/AmtCell';
-import { SectionLabel } from '../components/ui/typography';
+import { Title, Subheading, Text, Caption, SectionLabel } from '../components/ui/typography';
 import { useClient, notifyDataChanged } from '../data/useData';
 import { updateClient, simulateAILearning } from '../data/clientsRepo';
 
@@ -148,44 +148,46 @@ export default function ClientProfile() {
             border: '2px solid rgba(255,255,255,0.15)',
             boxShadow: '0 6px 16px rgba(233,30,106,0.4)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontFamily: T.serif, fontSize: 24, fontWeight: 500, color: 'white',
-          }}>{client.init}</div>
+          }}>
+            <Title style={{ fontSize: 24, fontWeight: 500, color: 'white', margin: 0 }}>{client.init}</Title>
+          </div>
 
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{
-              fontFamily: T.serif, fontSize: 22, fontWeight: 500, letterSpacing: '-0.4px',
-              color: 'white', marginBottom: 5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            }}>{client.name}</div>
+            <Title 
+              style={{ color: 'white', marginBottom: 5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+            >
+              {client.name}
+            </Title>
             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
               {client.vip && (
                 <span style={{
                   background: '#FCD34D', borderRadius: 5, padding: '2px 7px',
-                  fontFamily: T.font, fontSize: 9, fontWeight: 700, color: '#78350F',
-                  letterSpacing: '0.4px', textTransform: 'uppercase',
-                }}>VIP ★</span>
+                }}>
+                  <SectionLabel style={{ fontSize: 9, color: '#78350F', marginBottom: 0 }}>VIP ★</SectionLabel>
+                </span>
               )}
               {recurrenceLabel && (
                 <span style={{
                   background: 'rgba(255,255,255,0.13)', border: '1px solid rgba(255,255,255,0.15)',
                   borderRadius: 5, padding: '2px 7px',
-                  fontFamily: T.font, fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.85)',
-                  letterSpacing: '0.4px', textTransform: 'uppercase',
-                }}>↻ {recurrenceLabel}</span>
+                }}>
+                  <SectionLabel style={{ fontSize: 9, color: 'rgba(255,255,255,0.85)', marginBottom: 0 }}>↻ {recurrenceLabel}</SectionLabel>
+                </span>
               )}
               {client.tags.includes('Lead') && (
                 <span style={{
                   background: 'rgba(139,92,246,0.22)', border: '1px solid rgba(139,92,246,0.4)',
                   borderRadius: 5, padding: '2px 7px',
-                  fontFamily: T.font, fontSize: 9, fontWeight: 700, color: '#D8B4FE',
-                  letterSpacing: '0.4px', textTransform: 'uppercase',
-                }}>Lead</span>
+                }}>
+                  <SectionLabel style={{ fontSize: 9, color: '#D8B4FE', marginBottom: 0 }}>Lead</SectionLabel>
+                </span>
               )}
               {client.tags.includes('⚠ Overdue') && (
                 <span style={{
                   background: '#FEF3C7', borderRadius: 5, padding: '2px 7px',
-                  fontFamily: T.font, fontSize: 9, fontWeight: 700, color: '#78350F',
-                  letterSpacing: '0.4px', textTransform: 'uppercase',
-                }}>⚠ Overdue</span>
+                }}>
+                  <SectionLabel style={{ fontSize: 9, color: '#78350F', marginBottom: 0 }}>⚠ Overdue</SectionLabel>
+                </span>
               )}
             </div>
           </div>
@@ -202,8 +204,8 @@ export default function ClientProfile() {
               background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: 11, padding: '9px 6px', textAlign: 'center',
             }}>
-              <div style={{ fontFamily: T.serif, fontSize: 16, fontWeight: 500, color: 'white', letterSpacing: '-0.3px', fontVariantNumeric: 'tabular-nums' }}>{s.n}</div>
-              <div style={{ fontFamily: T.font, fontSize: 8, fontWeight: 600, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.4px', textTransform: 'uppercase', marginTop: 2 }}>{s.l}</div>
+              <Subheading style={{ fontSize: 16, fontWeight: 500, color: 'white', letterSpacing: '-0.3px', fontVariantNumeric: 'tabular-nums', margin: 0 }}>{s.n}</Subheading>
+              <Caption style={{ fontSize: 8, fontWeight: 600, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.4px', textTransform: 'uppercase', marginTop: 2 }}>{s.l}</Caption>
             </div>
           ))}
         </div>
@@ -239,10 +241,10 @@ export default function ClientProfile() {
             background: 'radial-gradient(circle,rgba(233,30,106,0.12) 0%,transparent 70%)', pointerEvents: 'none',
           }} />
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, position: 'relative' }}>
-            <div style={{
-              fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '1.1px',
+            <Caption style={{
+              fontSize: 9.5, fontWeight: 700, letterSpacing: '1.1px',
               textTransform: 'uppercase', color: '#FF78B0',
-            }}>✦ What I know</div>
+            }}>✦ What I know</Caption>
             {!isEditingAi && (
               <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                 {!client.aiContext.learned && (
@@ -294,11 +296,11 @@ export default function ClientProfile() {
               { k: 'Personal', f: 'personal', v: client.aiContext.personal },
             ].map(row => (
               <div key={row.k} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                <span style={{
-                  fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.5px',
+                <Caption style={{
+                  fontSize: 9, fontWeight: 700, letterSpacing: '0.5px',
                   textTransform: 'uppercase', color: T.inkMuted,
                   flexShrink: 0, width: 58, marginTop: isEditingAi ? 6 : 2,
-                }}>{row.k}</span>
+                }}>{row.k}</Caption>
                 {isEditingAi ? (
                   <textarea
                     value={aiDraft[row.f]}
@@ -311,10 +313,10 @@ export default function ClientProfile() {
                     }}
                   />
                 ) : (
-                  <span style={{
-                    fontFamily: T.font, fontSize: 11.5, color: T.inkSub, lineHeight: 1.45, flex: 1,
+                  <Text style={{
+                    fontSize: 11.5, color: T.inkSub, lineHeight: 1.45, flex: 1,
                     minHeight: row.v ? 0 : 16,
-                  }}>{row.v || <span style={{ color: T.inkMuted, fontStyle: 'italic', fontSize: 10 }}>None</span>}</span>
+                  }}>{row.v || <span style={{ color: T.inkMuted, fontStyle: 'italic', fontSize: 10 }}>None</span>}</Text>
                 )}
               </div>
             ))}
@@ -326,13 +328,13 @@ export default function ClientProfile() {
               borderTop: `1px dashed ${T.cardBorder}`,
               position: 'relative'
             }}>
-              <div style={{
-                fontFamily: T.font, fontSize: 8.5, fontWeight: 700, letterSpacing: '1px',
+              <Caption style={{
+                fontSize: 8.5, fontWeight: 700, letterSpacing: '1px',
                 textTransform: 'uppercase', color: T.pink, marginBottom: 8,
                 display: 'flex', alignItems: 'center', gap: 6
               }}>
                 <span style={{ fontSize: 10 }}>✦</span> AI Learned Intelligence
-              </div>
+              </Caption>
               <div style={{
                 fontFamily: T.font, fontSize: 11.5, color: T.ink, lineHeight: 1.5,
                 background: T.pinkTint, borderRadius: 10, padding: '10px 12px',

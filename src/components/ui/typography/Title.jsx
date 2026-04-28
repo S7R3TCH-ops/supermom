@@ -1,6 +1,6 @@
 import { useAppTheme } from '../../../context/AppThemeContext';
 
-export function Title({ children, component: Component = 'h1', style, ...props }) {
+export const Title = ({ children, style, component: Component = 'h1', ...props }) => {
   const { T } = useAppTheme();
   return (
     <Component style={{
@@ -8,12 +8,12 @@ export function Title({ children, component: Component = 'h1', style, ...props }
       color: T.ink,
       fontSize: 28,
       fontWeight: 600,
-      margin: 0, // Reset default margin for semantic tags
+      margin: 0,
       ...style
     }} {...props}>
       {children}
     </Component>
   );
-}
+};
 
 export default Title;

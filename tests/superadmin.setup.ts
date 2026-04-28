@@ -1,15 +1,15 @@
 import { test as setup, expect } from '@playwright/test';
 
-const authFile = 'playwright/.auth/user.json';
+const authFile = 'playwright/.auth/superadmin.json';
 
-setup('authenticate', async ({ page }) => {
+setup('authenticate as superadmin', async ({ page }) => {
   // 1. Navigate to home (redirects to login)
   await page.goto('/');
 
   // 2. Fill login form
-  const email = process.env.ADMIN_EMAIL || 'sandra@supermom.io';
-  const password = process.env.ADMIN_PASSWORD || 'TempPass2026!';
-
+  const email = process.env.SUPERADMIN_EMAIL || 'jlundie@gmail.com';
+  const password = process.env.SUPERADMIN_PASSWORD || 'TempPass2026!';
+  
   await page.getByLabel('EMAIL').fill(email);
   await page.getByLabel('PASSWORD').fill(password);
   await page.getByRole('button', { name: 'Sign in' }).click();
@@ -18,7 +18,7 @@ setup('authenticate', async ({ page }) => {
   const errorAlert = page.getByRole('alert');
   if (await errorAlert.isVisible({ timeout: 5000 }).catch(() => false)) {
     const msg = await errorAlert.innerText();
-    throw new Error(`Login failed for ${email}: ${msg}`);
+    throw new Error(`Login failed for Super Admin ${email}: ${msg}`);
   }
 
   await expect(page).not.toHaveURL(/.*login.*/, { timeout: 10000 });

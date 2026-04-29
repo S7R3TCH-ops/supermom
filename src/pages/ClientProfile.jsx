@@ -105,16 +105,16 @@ export default function ClientProfile() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: T.bg, color: T.ink }}>
-      {/* Dark plum hero */}
+      {/* Hero */}
       <div style={{
-        background: T.hero, borderBottom: '3px solid #E91E6A',
+        background: T.hero, borderBottom: mode === 'dark' ? '3px solid #E91E6A' : 'none',
         padding: '12px 14px 16px', position: 'relative', overflow: 'hidden', flexShrink: 0,
       }}>
         {/* Radial glow */}
         <div style={{
           position: 'absolute', top: -60, right: -40, width: 180, height: 180,
           borderRadius: '50%',
-          background: 'radial-gradient(circle,rgba(233,30,106,0.22) 0%,transparent 65%)',
+          background: `radial-gradient(circle,${T.pinkGlow} 0%,transparent 65%)`,
           pointerEvents: 'none',
         }} />
 
@@ -123,19 +123,20 @@ export default function ClientProfile() {
           <button
             onClick={() => navigate(-1)}
             style={{
-              background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)',
+              background: mode === 'dark' ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.4)', 
+              border: `1px solid ${mode === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.05)'}`,
               borderRadius: 9, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center',
               cursor: 'pointer', padding: 0,
             }}
             aria-label="Back"
           >
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <path d="M9 2L4 7l5 5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M9 2L4 7l5 5" stroke={mode === 'dark' ? 'white' : T.ink} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
           <div style={{
             fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '1.1px',
-            textTransform: 'uppercase', color: '#FF78B0',
+            textTransform: 'uppercase', color: mode === 'dark' ? '#FF78B0' : T.pink,
           }}>✦ Client Profile</div>
           <div style={{ width: 30 }} />
         </div>
@@ -154,7 +155,7 @@ export default function ClientProfile() {
 
           <div style={{ flex: 1, minWidth: 0 }}>
             <Title 
-              style={{ color: 'white', marginBottom: 5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+              style={{ color: mode === 'dark' ? 'white' : T.ink, marginBottom: 5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
             >
               {client.name}
             </Title>
@@ -168,10 +169,11 @@ export default function ClientProfile() {
               )}
               {recurrenceLabel && (
                 <span style={{
-                  background: 'rgba(255,255,255,0.13)', border: '1px solid rgba(255,255,255,0.15)',
+                  background: mode === 'dark' ? 'rgba(255,255,255,0.13)' : 'rgba(233,30,106,0.1)', 
+                  border: `1px solid ${mode === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(233,30,106,0.2)'}`,
                   borderRadius: 5, padding: '2px 7px',
                 }}>
-                  <SectionLabel style={{ fontSize: 9, color: 'rgba(255,255,255,0.85)', marginBottom: 0 }}>↻ {recurrenceLabel}</SectionLabel>
+                  <SectionLabel style={{ fontSize: 9, color: mode === 'dark' ? 'rgba(255,255,255,0.85)' : T.pink, marginBottom: 0 }}>↻ {recurrenceLabel}</SectionLabel>
                 </span>
               )}
               {client.tags.includes('Lead') && (
@@ -179,7 +181,7 @@ export default function ClientProfile() {
                   background: 'rgba(139,92,246,0.22)', border: '1px solid rgba(139,92,246,0.4)',
                   borderRadius: 5, padding: '2px 7px',
                 }}>
-                  <SectionLabel style={{ fontSize: 9, color: '#D8B4FE', marginBottom: 0 }}>Lead</SectionLabel>
+                  <SectionLabel style={{ fontSize: 9, color: mode === 'dark' ? '#D8B4FE' : '#6D28D9', marginBottom: 0 }}>Lead</SectionLabel>
                 </span>
               )}
               {client.tags.includes('⚠ Overdue') && (
@@ -201,11 +203,12 @@ export default function ClientProfile() {
             { n: client.stats.lastVisit, l: 'Last visit' },
           ].map(s => (
             <div key={s.l} style={{
-              background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)',
+              background: mode === 'dark' ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.4)', 
+              border: `1px solid ${mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'}`,
               borderRadius: 11, padding: '9px 6px', textAlign: 'center',
             }}>
-              <Subheading style={{ fontSize: 16, fontWeight: 500, color: 'white', letterSpacing: '-0.3px', fontVariantNumeric: 'tabular-nums', margin: 0 }}>{s.n}</Subheading>
-              <Caption style={{ fontSize: 8, fontWeight: 600, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.4px', textTransform: 'uppercase', marginTop: 2 }}>{s.l}</Caption>
+              <Subheading style={{ fontSize: 16, fontWeight: 500, color: mode === 'dark' ? 'white' : T.ink, letterSpacing: '-0.3px', fontVariantNumeric: 'tabular-nums', margin: 0 }}>{s.n}</Subheading>
+              <Caption style={{ fontSize: 8, fontWeight: 600, color: mode === 'dark' ? 'rgba(255,255,255,0.4)' : T.inkMuted, letterSpacing: '0.4px', textTransform: 'uppercase', marginTop: 2 }}>{s.l}</Caption>
             </div>
           ))}
         </div>
@@ -220,9 +223,12 @@ export default function ClientProfile() {
               cursor: 'pointer', letterSpacing: '0.2px',
             }}>Book Job</button>
           <button style={{
-            flex: 1, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)',
+            flex: 1, 
+            background: mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(233,30,106,0.08)', 
+            border: `1px solid ${mode === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(233,30,106,0.2)'}`,
             borderRadius: 12, padding: '11px 0',
-            fontFamily: T.font, fontSize: 13, fontWeight: 600, color: 'white', cursor: 'pointer',
+            fontFamily: T.font, fontSize: 13, fontWeight: 600, 
+            color: mode === 'dark' ? 'white' : T.pink, cursor: 'pointer',
           }}>Message</button>
         </div>
       </div>

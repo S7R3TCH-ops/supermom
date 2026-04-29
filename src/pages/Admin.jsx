@@ -207,23 +207,28 @@ export default function Admin() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: T.bg, color: T.ink }}>
-      <div style={{
-        background: T.hero, borderBottom: '3px solid #E91E6A',
-        padding: '12px 14px 16px', position: 'relative', overflow: 'hidden', flexShrink: 0,
+      {/* Hero */}
+      <div style={{ 
+        background: T.hero, 
+        borderBottom: mode === 'dark' ? '3px solid #E91E6A' : 'none', 
+        padding: '13px 15px 15px', 
+        position: 'relative', 
+        overflow: 'hidden' 
       }}>
         <div style={{
           position: 'absolute', top: -60, right: -40, width: 180, height: 180,
           borderRadius: '50%',
-          background: 'radial-gradient(circle,rgba(233,30,106,0.22) 0%,transparent 65%)',
+          background: `radial-gradient(circle,${T.pinkGlow} 0%,transparent 65%)`,
           pointerEvents: 'none',
         }} />
 
         <div style={{
           fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '1.1px',
-          textTransform: 'uppercase', color: '#FF78B0', marginBottom: 10,
+          textTransform: 'uppercase', color: mode === 'dark' ? '#FF78B0' : T.pink, marginBottom: 10,
+          position: 'relative'
         }}>✦ Business Admin</div>
-        
-        <h2 style={{ fontFamily: T.serif, fontSize: 24, margin: 0, color: 'white' }}>
+
+        <h2 style={{ fontFamily: T.serif, fontSize: 24, margin: 0, color: mode === 'dark' ? 'white' : T.ink, position: 'relative' }}>
           {business?.name || profile?.business_name || 'Business Dashboard'}
         </h2>
       </div>

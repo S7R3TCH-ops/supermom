@@ -190,6 +190,12 @@ Key refinements for the brand's visual identity:
 |---|---|---|---|
 | DM | Modular Theme System | ✅ **Live** — Refactored tokens into swappable palettes; locked in dark mode | `src/lib/tokens.js` |
 | DN | Vibrant Papaya Release | ✅ **Live** — Updated design tokens and released v0.2.4 | `src/lib/tokens.js`, `package.json` |
+| DO | Theme Contrast Fixes | ✅ **Live** — Updated hardcoded white text on light buttons/headers across all sheets and pages to be theme-aware | `ClientProfile.jsx`, `Calendar.jsx`, `Settings.jsx`, `Admin.jsx`, `JobDetailSheet.jsx`, etc. |
+| DP | Rose Cream Background | ✅ **Live** — Deepened the pink hue of the light mode background to #FFF0F3 | `src/lib/tokens.js` |
+| DQ | Seamless Gradient | ✅ **Live** — Flipped the LogoBar gradient to flow dark-to-light pink, blending perfectly into the new hero gradient | `LogoBar.jsx`, `tokens.js` |
+| DR | Maximized Logo | ✅ **Live** — Scaled the top nav Supermom logo to 90px height using negative margins | `LogoBar.jsx` |
+| DS | UI Cleanup | ✅ **Live** — Removed the "Power Up" motivation footer from the Home page | `Home.jsx` |
+| DT | Command Brief Gradient | ✅ **Live** — Seamless top-to-bottom transition from LogoBar banner | `src/lib/tokens.js` |
 
 (Updated by Gemini CLI)
 

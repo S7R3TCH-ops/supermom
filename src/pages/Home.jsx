@@ -42,7 +42,7 @@ function dateBrief(d) {
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
-function LiveTimer({ startTime, T }) {
+function LiveTimer({ startTime, T, mode }) {
   const [elapsed, setElapsed] = useState('');
 
   useEffect(() => {
@@ -60,7 +60,7 @@ function LiveTimer({ startTime, T }) {
   }, [startTime]);
 
   return (
-    <Title style={{ fontSize: 32, color: 'white', letterSpacing: '-0.5px', fontVariantNumeric: 'tabular-nums' }}>
+    <Title style={{ fontSize: 32, color: mode === 'dark' ? 'white' : T.ink, letterSpacing: '-0.5px', fontVariantNumeric: 'tabular-nums' }}>
       {elapsed}
     </Title>
   );
@@ -311,7 +311,13 @@ export default function Home() {
       <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', paddingBottom: 8 }}>
 
         {/* HERO */}
-        <div style={{ background: T.hero, borderBottom: '3px solid #E91E6A', padding: '13px 15px 18px', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ 
+          background: T.hero, 
+          borderBottom: mode === 'dark' ? '3px solid #E91E6A' : 'none', 
+          padding: '13px 15px 18px', 
+          position: 'relative', 
+          overflow: 'hidden' 
+        }}>
           {/* Decorative Pattern Overlay */}
           <div style={{ position: 'absolute', inset: 0, opacity: mode === 'dark' ? 0.04 : 0.1, pointerEvents: 'none' }}>
             <svg width="100%" height="100%">
@@ -374,7 +380,7 @@ export default function Home() {
               <span style={{ fontSize: 14 }}>⚠</span>
               <div style={{ flex: 1 }}>
                 <Text style={{ fontSize: 11, fontWeight: 700, color: '#FCD34D', marginBottom: 1 }}>Tight gap today</Text>
-                <Caption style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.55)', lineHeight: 1.4 }}>
+                <Caption style={{ fontSize: 10.5, color: mode === 'dark' ? 'rgba(255,255,255,0.55)' : T.inkSub, lineHeight: 1.4 }}>
                   {tightGap.a.client_name} → {tightGap.b.client_name} = {tightGap.gapMin} min gap
                 </Caption>
               </div>
@@ -505,23 +511,6 @@ export default function Home() {
               <AmtCell amount={`$${overdueJobs.reduce((s, j) => s + Number(j.total || 0), 0).toFixed(0)}`} size={12} />
             </div>
           )}
-
-          {/* Motivation Footer Card */}
-          <div style={{
-            marginTop: 32, padding: '20px 16px', borderRadius: 16,
-            background: mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(233,30,106,0.04)',
-            border: `1px dashed ${T.cardBorder}`, textAlign: 'center',
-            position: 'relative', overflow: 'hidden'
-          }}>
-            <div style={{ position: 'absolute', top: -20, left: -20, width: 60, height: 60, borderRadius: '50%', background: `radial-gradient(circle, ${T.pinkGlow} 0%, transparent 70%)`, opacity: 0.5 }} />
-            <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 800, color: T.pink, letterSpacing: '1px', textTransform: 'uppercase', marginBottom: 8 }}>✦ Power Up</div>
-            <div style={{ fontFamily: T.serif, fontSize: 15, color: T.ink, lineHeight: 1.5, fontStyle: 'italic' }}>
-              {allDone 
-                ? "You've earned this rest. Recharge for the next adventure!"
-                : "One house at a time. You've got the magic touch!"
-              }
-            </div>
-          </div>
         </div>
       </div>
     </div>

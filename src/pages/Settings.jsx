@@ -235,11 +235,18 @@ export default function Settings() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: T.bg ?? 'var(--pink-pale)', color: T.ink ?? 'var(--ink)' }}>
       {/* Hero */}
-      <div style={{ background: T.hero ?? 'var(--grad-hero)', borderBottom: '3px solid #E91E6A', padding: '13px 15px 15px' }}>
-        <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '1.1px', textTransform: 'uppercase', color: 'var(--pink-label)', marginBottom: 4 }}>
+      <div style={{ 
+        background: T.hero ?? 'var(--grad-hero)', 
+        borderBottom: mode === 'dark' ? '3px solid #E91E6A' : 'none', 
+        padding: '13px 15px 15px',
+        position: 'relative',
+        overflow: 'hidden'
+      }}>
+        <div style={{ position: 'absolute', top: -50, right: -30, width: 150, height: 150, borderRadius: '50%', background: `radial-gradient(circle,${T.pinkGlow} 0%,transparent 70%)`, pointerEvents: 'none' }} />
+        <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '1.1px', textTransform: 'uppercase', color: mode === 'dark' ? T.pinkLabel : T.pink, marginBottom: 4, position: 'relative' }}>
           ✦ Preferences
         </div>
-        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, margin: 0, color: 'white', fontWeight: 500 }}>Settings</h2>
+        <h2 style={{ fontFamily: T.serif, fontSize: 24, margin: 0, color: mode === 'dark' ? 'white' : T.ink, fontWeight: 500, position: 'relative' }}>Settings</h2>
       </div>
 
       <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '16px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>

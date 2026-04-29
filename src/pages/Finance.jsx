@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useAppTheme } from '../context/AppThemeContext';
-import { SectionLabel } from '../components/ui/typography';
+import { SectionLabel, Title, Subheading, Text, Caption } from '../components/ui/typography';
 import { useJobs, useExpenses, notifyDataChanged, useClients, useInvoices } from '../data/useData';
 import { useToast } from '../context/ToastContext';
 import { updateJob, recordPayment } from '../data/jobsRepo';
@@ -8,6 +8,7 @@ import { useFinanceDetailSheet } from '../context/FinanceDetailSheetContext';
 import { useJobDetailSheet } from '../context/JobDetailSheetContext';
 import NudgeDraftSheet from '../components/sheets/NudgeDraftSheet';
 import NewExpenseSheet from '../components/sheets/NewExpenseSheet';
+import AmtCell from '../components/ui/AmtCell';
 
 const periods = ['Week', 'Month', 'Year', 'All'];
 const DOW = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
@@ -104,7 +105,7 @@ export default function Finance() {
 
   const filtered = useMemo(() => {
     const start = periodStart(period, now);
-    return allJobs
+    return (allJobs || [])
       .map(j => ({ ...j, _date: new Date(j.scheduled_at) }))
       .filter(j => !Number.isNaN(j._date.getTime()) && j._date >= start);
   }, [allJobs, period]);
@@ -114,10 +115,10 @@ export default function Finance() {
     .reduce((s, j) => s + Number(j.total || 0), 0);
   const collectedJobs = filtered.filter(j => j.payment_status === 'Paid');
 
-  const outstanding = allJobs
+  const outstanding = (allJobs || [])
     .filter(j => j.status === 'Completed' && j.payment_status !== 'Paid')
     .reduce((s, j) => s + Number(j.total || 0), 0);
-  const outstandingJobs = allJobs.filter(j => j.status === 'Completed' && j.payment_status !== 'Paid');
+  const outstandingJobs = (allJobs || []).filter(j => j.status === 'Completed' && j.payment_status !== 'Paid');
   const outstandingCount = outstandingJobs.length;
   const periodTotal = filtered
     .filter(j => j.status !== 'Cancelled')
@@ -125,7 +126,7 @@ export default function Finance() {
 
   const clientsWithUnpaid = useMemo(() => {
     const map = new Map();
-    allJobs
+    (allJobs || [])
       .filter(j => j.status === 'Completed' && j.payment_status !== 'Paid' && j.client_id)
       .forEach(j => {
         const c = map.get(j.client_id) || { id: j.client_id, unpaidTotal: 0 };
@@ -151,17 +152,17 @@ export default function Finance() {
   const hourlyAvg = hoursWorked > 0 ? collected / hoursWorked : 0;
 
   const expPeriodStart = periodStart(period, now);
-  const periodExpList = allExpenses.filter(e => !e.deleted_at && new Date(e.expense_date) >= expPeriodStart);
+  const periodExpList = (allExpenses || []).filter(e => !e.deleted_at && new Date(e.expense_date) >= expPeriodStart);
   const periodExpenses = periodExpList.reduce((s, e) => s + Number(e.amount || 0), 0);
 
   const ytdStart = new Date(now.getFullYear(), 0, 1);
-  const ytdIncome = allJobs
+  const ytdIncome = (allJobs || [])
     .filter(j => j.payment_status === 'Paid' && new Date(j.scheduled_at) >= ytdStart)
     .reduce((s, j) => s + Number(j.total || 0), 0);
-  const ytdExpenses = allExpenses
+  const ytdExpenses = (allExpenses || [])
     .filter(e => !e.deleted_at && new Date(e.expense_date) >= ytdStart)
     .reduce((s, e) => s + Number(e.amount || 0), 0);
-  const ytdMileage = allJobs
+  const ytdMileage = (allJobs || [])
     .filter(j => j.ai_context?.mileage_km && new Date(j.scheduled_at) >= ytdStart)
     .reduce((s, j) => s + Number(j.ai_context.mileage_km || 0), 0);
 
@@ -182,7 +183,7 @@ export default function Finance() {
   const todayStart = new Date(now); todayStart.setHours(0,0,0,0);
   const last7 = Array.from({ length: 7 }, (_, i) => {
     const d = addDays(todayStart, -6 + i);
-    const dayTotal = allJobs
+    const dayTotal = (allJobs || [])
       .filter(j => {
         const jd = new Date(j.scheduled_at);
         return jd.getFullYear() === d.getFullYear() && jd.getMonth() === d.getMonth() && jd.getDate() === d.getDate() && j.status !== 'Cancelled';
@@ -196,7 +197,7 @@ export default function Finance() {
   const { openJob } = useJobDetailSheet();
 
   const transactions = useMemo(() => {
-    const jobTx = allJobs
+    const jobTx = (allJobs || [])
       .map(j => ({ ...j, _date: new Date(j.scheduled_at) }))
       .filter(j => !Number.isNaN(j._date.getTime()) && j._date <= now) // Only past or today
       .map(j => {
@@ -217,7 +218,7 @@ export default function Finance() {
         };
       });
 
-    const expTx = allExpenses
+    const expTx = (allExpenses || [])
       .filter(e => !e.deleted_at)
       .map(e => ({
         id: `exp-${e.id}`,
@@ -235,17 +236,106 @@ export default function Finance() {
       .slice(0, 10);
   }, [allJobs, allExpenses, T.inkMuted, now]);
 
+  if (loading && (!allJobs || allJobs.length === 0)) {
+    return <div style={{ padding: 20, background: T.bg, color: T.inkMuted }}>Loading finances…</div>;
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: T.bg, color: T.ink }}>
-      {/* ... previous content ... */}
+      {/* Hero */}
+      <div style={{ 
+        background: T.hero, 
+        borderBottom: mode === 'dark' ? '3px solid #E91E6A' : 'none', 
+        padding: '16px 14px 20px', 
+        position: 'relative', 
+        overflow: 'hidden', 
+        flexShrink: 0 
+      }}>
+        <div style={{ position: 'absolute', top: -50, right: -30, width: 180, height: 180, borderRadius: '50%', background: `radial-gradient(circle,${T.pinkGlow} 0%,transparent 70%)`, pointerEvents: 'none' }} />
+        <div style={{ position: 'relative' }}>
+          <div style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '1.1px', textTransform: 'uppercase', color: mode === 'dark' ? '#FF78B0' : T.pink, marginBottom: 5 }}>✦ Finance Command</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+            <div>
+              <div style={{ fontFamily: T.serif, fontSize: 13, color: mode === 'dark' ? 'rgba(255,255,255,0.5)' : T.inkSub, marginBottom: 2 }}>{period} Revenue</div>
+              <div style={{ fontFamily: T.serif, fontSize: 32, fontWeight: 500, color: mode === 'dark' ? 'white' : T.ink, letterSpacing: '-1px' }}>
+                {privacyOn ? '•••' : `$${periodTotal.toLocaleString()}`}
+              </div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.28)', borderRadius: 20, padding: '3px 8px', marginBottom: 6 }}>
+                <span style={{ fontSize: 9, fontWeight: 800, color: '#4ADE80' }}>+12%</span>
+              </div>
+              <div style={{ fontFamily: T.font, fontSize: 10, fontWeight: 600, color: mode === 'dark' ? 'rgba(255,255,255,0.38)' : T.inkMuted, textTransform: 'uppercase', letterSpacing: '0.4px' }}>vs Last {period}</div>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 3, background: mode === 'dark' ? '#1C1C1E' : 'rgba(255,255,255,0.4)', border: `1px solid ${mode === 'dark' ? 'transparent' : 'rgba(0,0,0,0.05)'}`, borderRadius: 12, padding: 3, marginTop: 18, position: 'relative' }}>
+          {periods.map(v => (
+            <button
+              key={v}
+              onClick={() => setPeriod(v)}
+              style={{
+                flex: 1, padding: '7px 0', border: 'none', borderRadius: 9,
+                fontFamily: T.font, fontSize: 11, fontWeight: 600,
+                background: period === v ? T.pink : 'transparent',
+                color: period === v ? 'white' : (mode === 'dark' ? 'rgba(255,255,255,0.4)' : T.inkMuted),
+                cursor: 'pointer', transition: 'all 0.1s',
+              }}
+            >{v}</button>
+          ))}
+        </div>
+      </div>
+
       <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '11px 13px 8px' }}>
-        {/* ... loading/error/stats ... */}
-        
+        {/* Stats Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+          <div onClick={() => openDetail(`${period} Collected`, collectedJobs, 'jobs')} style={{ background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 14, padding: 12, cursor: 'pointer' }}>
+            <div style={{ fontFamily: T.font, fontSize: 8.5, fontWeight: 800, color: '#22C55E', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>✓ Collected</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+              <AmtCell amount={`$${collected.toFixed(0)}`} size={20} color="#22C55E" />
+              <Caption>{collectedJobs.length} jobs</Caption>
+            </div>
+          </div>
+          <div onClick={() => openDetail("Outstanding Invoices", outstandingJobs, 'jobs')} style={{ background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 14, padding: 12, cursor: 'pointer', position: 'relative', overflow: 'hidden' }}>
+            <div style={{ fontFamily: T.font, fontSize: 8.5, fontWeight: 800, color: T.pink, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>⚠ Outstanding</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+              <AmtCell amount={`$${outstanding.toFixed(0)}`} size={20} color={T.pink} />
+              <Caption>{outstandingCount} jobs</Caption>
+            </div>
+            {outstanding > 0 && <div style={{ position: 'absolute', top: 12, right: 12, fontSize: 10 }}>📣</div>}
+          </div>
+          <div onClick={() => setShowNewExpense(true)} style={{ background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 14, padding: 12, cursor: 'pointer' }}>
+            <div style={{ fontFamily: T.font, fontSize: 8.5, fontWeight: 800, color: '#F59E0B', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>🧾 Expenses</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+              <AmtCell amount={`$${periodExpenses.toFixed(0)}`} size={20} color="#F59E0B" />
+              <Caption>{periodExpList.length} items</Caption>
+            </div>
+          </div>
+          <div style={{ background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 14, padding: 12 }}>
+            <div style={{ fontFamily: T.font, fontSize: 8.5, fontWeight: 800, color: T.inkMuted, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>⏱ Hourly Avg</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+              <AmtCell amount={`$${hourlyAvg.toFixed(0)}`} size={20} color={T.ink} />
+              <Caption>{hoursWorked.toFixed(1)}h</Caption>
+            </div>
+          </div>
+        </div>
+
+        {outstandingCount > 0 && (
+          <button onClick={() => setShowNudges(true)} style={{
+            width: '100%', padding: '12px', background: 'rgba(233,30,106,0.1)', border: `1px solid ${T.pink}`,
+            borderRadius: 12, color: T.pink, fontFamily: T.font, fontSize: 12, fontWeight: 700,
+            marginBottom: 16, cursor: 'pointer'
+          }}>
+            Nudge {clientsWithUnpaid.length} clients for payment
+          </button>
+        )}
+
         <SectionLabel>Recent Activity</SectionLabel>
 
         {transactions.length === 0 && (
           <div style={{ padding: '16px 0', textAlign: 'center', color: T.inkMuted, fontFamily: T.font, fontSize: 12 }}>
-            No jobs yet. Book one to see activity here.
+            No activity in this period.
           </div>
         )}
 
@@ -373,7 +463,7 @@ export default function Finance() {
             Export CSV ↓
           </button>
         </div>
-      </div>  {/* end sm-scroll */}
+      </div>
 
       <NudgeDraftSheet
         isOpen={showNudges}

@@ -275,25 +275,37 @@ function ReadMode({
 
   return (
     <>
-      <div style={{ background: T.hero, borderBottom: '3px solid #E91E6A', padding: '10px 14px 12px', position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', top: -40, right: -20, width: 140, height: 140, borderRadius: '50%', background: 'radial-gradient(circle,rgba(233,30,106,0.22) 0%,transparent 70%)', pointerEvents: 'none' }} />
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-          <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', color: '#FF78B0' }}>{job.service_name || 'Job'}</div>
-          <button onClick={onClose} style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ 
+        background: T.hero, 
+        borderBottom: mode === 'dark' ? '3px solid #E91E6A' : 'none', 
+        padding: '10px 14px 12px', 
+        position: 'relative', 
+        overflow: 'hidden' 
+      }}>
+        <div style={{ position: 'absolute', top: -40, right: -20, width: 140, height: 140, borderRadius: '50%', background: `radial-gradient(circle,${T.pinkGlow} 0%,transparent 70%)`, pointerEvents: 'none' }} />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4, position: 'relative' }}>
+          <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', color: mode === 'dark' ? '#FF78B0' : T.pink }}>{job.service_name || 'Job'}</div>
+          <button onClick={onClose} style={{ 
+            width: 28, height: 28, borderRadius: 8, 
+            background: mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)', 
+            border: `1px solid ${mode === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.05)'}`, 
+            color: mode === 'dark' ? 'rgba(255,255,255,0.7)' : T.inkMuted, 
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' 
+          }}>
             <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
           </button>
         </div>
-        <div style={{ fontFamily: T.serif, fontSize: 22, fontWeight: 500, color: 'white', marginBottom: 6 }}>{job.client_name || 'Unknown'}</div>
+        <div style={{ fontFamily: T.serif, fontSize: 22, fontWeight: 500, color: mode === 'dark' ? 'white' : T.ink, marginBottom: 6, position: 'relative' }}>{job.client_name || 'Unknown'}</div>
         
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, opacity: 0.9 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, opacity: 0.9, position: 'relative' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-            <span style={{ fontFamily: T.font, fontSize: 11, fontWeight: 700, color: 'white' }}>{fmtDate(job.scheduled_date)}</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={mode === 'dark' ? 'white' : T.ink} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+            <span style={{ fontFamily: T.font, fontSize: 11, fontWeight: 700, color: mode === 'dark' ? 'white' : T.ink }}>{fmtDate(job.scheduled_date)}</span>
           </div>
-          <div style={{ width: 4, height: 4, borderRadius: '50%', background: 'rgba(255,255,255,0.4)' }} />
+          <div style={{ width: 4, height: 4, borderRadius: '50%', background: mode === 'dark' ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.1)' }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-            <span style={{ fontFamily: T.font, fontSize: 11, fontWeight: 700, color: 'white' }}>{timeRange}</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={mode === 'dark' ? 'white' : T.ink} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            <span style={{ fontFamily: T.font, fontSize: 11, fontWeight: 700, color: mode === 'dark' ? 'white' : T.ink }}>{timeRange}</span>
           </div>
         </div>
 
@@ -400,16 +412,130 @@ function Pill({ bg, border, color, children, T }) { return <span style={{ paddin
 function Btn({ onClick, disabled, bg, border, color, children, T, style: extra }) { return <button onClick={onClick} disabled={disabled} style={{ padding: '11px 14px', borderRadius: 12, background: bg, border: border || 'none', color, fontFamily: T.font, fontSize: 13, fontWeight: 600, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.6 : 1, width: '100%', ...extra }}>{children}</button>; }
 function Field({ T, label, children, last }) { return <div style={{ marginBottom: last ? 0 : 14 }}><div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: T.inkMuted, marginBottom: 5 }}>{label}</div>{children}</div>; }
 function iStyle(T) { return { background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 8, padding: '9px 11px', color: T.ink, fontSize: 13, outline: 'none', width: '100%', boxSizing: 'border-box' }; }
-function SeriesPicker({ show, onChoice, onCancel, busy, T }) { if (!show) return null; return <div style={{ background: T.hero, borderRadius: 16, padding: '14px', border: '1.5px solid rgba(233,30,106,0.35)' }}><div style={{ fontSize: 16, color: 'white', marginBottom: 12 }}>Apply changes to...</div><div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}><SeriesBtn onClick={() => onChoice('this')} disabled={busy} T={T}>Just this visit</SeriesBtn><SeriesBtn onClick={() => onChoice('future')} disabled={busy} T={T}>This and future</SeriesBtn><SeriesBtn onClick={() => onChoice('all')} disabled={busy} T={T}>All in series</SeriesBtn></div></div>; }
-function SeriesBtn({ onClick, disabled, children }) { return <button onClick={onClick} disabled={disabled} style={{ width: '100%', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, padding: '10px', color: 'white', fontSize: 12.5, fontWeight: 600 }}>{children}</button>; }
-function PrepNoteCard({ job, T, business, onDeepPrep }) {
+function SeriesPicker({ show, onChoice, onCancel, busy, T, mode }) { 
+  if (!show) return null; 
+  return (
+    <div style={{ 
+      background: T.hero, 
+      borderRadius: 16, 
+      padding: '14px', 
+      border: `1.5px solid ${mode === 'dark' ? 'rgba(233,30,106,0.35)' : 'rgba(233,30,106,0.15)'}` 
+    }}>
+      <div style={{ fontSize: 16, color: mode === 'dark' ? 'white' : T.ink, marginBottom: 12 }}>Apply changes to...</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+        <SeriesBtn onClick={() => onChoice('this')} disabled={busy} T={T} mode={mode}>Just this visit</SeriesBtn>
+        <SeriesBtn onClick={() => onChoice('future')} disabled={busy} T={T} mode={mode}>This and future</SeriesBtn>
+        <SeriesBtn onClick={() => onChoice('all')} disabled={busy} T={T} mode={mode}>All in series</SeriesBtn>
+      </div>
+    </div>
+  ); 
+}
+
+function SeriesBtn({ onClick, disabled, children, T, mode }) { 
+  return (
+    <button 
+      onClick={onClick} 
+      disabled={disabled} 
+      style={{ 
+        width: '100%', 
+        background: mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.4)', 
+        border: `1px solid ${mode === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.05)'}`, 
+        borderRadius: 10, 
+        padding: '10px', 
+        color: mode === 'dark' ? 'white' : T.ink, 
+        fontSize: 12.5, 
+        fontWeight: 600,
+        cursor: disabled ? 'default' : 'pointer'
+      }}
+    >
+      {children}
+    </button>
+  ); 
+}
+
+function PrepNoteCard({ job, T, business, onDeepPrep, mode }) {
   const brief = generateCommandBrief(job, business);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  useEffect(() => { return () => stopSpeaking(); }, []);
+  
+  useEffect(() => { 
+    return () => stopSpeaking(); 
+  }, []);
+  
   if (!brief) return null;
-  const handleToggleSpeak = (e) => { e.stopPropagation(); if (isSpeaking) { stopSpeaking(); setIsSpeaking(false); } else { setIsSpeaking(true); speakBrief(brief.speechText, () => setIsSpeaking(false)); } };
-  return <div style={{ background: T.hero, borderRadius: 16, padding: '13px 15px', marginBottom: 10, position: 'relative', overflow: 'hidden' }}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}><div style={{ fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', color: '#FF78B0' }}>✦ Command Brief</div><button onClick={handleToggleSpeak} style={{ background: isSpeaking ? '#E91E6A' : 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 20, padding: '4px 10px', color: 'white', fontSize: 9 }}>{isSpeaking ? 'STOP' : 'LISTEN'}</button></div><div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>{brief.bullets.map((b, i) => <div key={i} style={{ display: 'flex', gap: 10 }}><span style={{ fontSize: 14 }}>{b.icon}</span><span style={{ fontSize: 12, color: 'rgba(255,255,255,0.9)', lineHeight: 1.5 }}>{b.text}</span></div>)}</div><div style={{ marginTop: 12, textAlign: 'center' }}><button onClick={(e) => { e.stopPropagation(); onDeepPrep?.(); }} style={{ background: 'none', border: 'none', color: '#FFB2D1', fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', cursor: 'pointer' }}>✦ Full History</button></div></div>;
+  
+  const handleToggleSpeak = (e) => { 
+    e.stopPropagation(); 
+    if (isSpeaking) { 
+      stopSpeaking(); 
+      setIsSpeaking(false); 
+    } else { 
+      setIsSpeaking(true); 
+      speakBrief(brief.speechText, () => setIsSpeaking(false)); 
+    } 
+  };
+  
+  return (
+    <div style={{ 
+      background: T.hero, 
+      borderRadius: 16, 
+      padding: '13px 15px', 
+      marginBottom: 10, 
+      position: 'relative', 
+      overflow: 'hidden',
+      border: mode === 'dark' ? 'none' : `1px solid ${T.cardBorder}`
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+        <div style={{ fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', color: mode === 'dark' ? '#FF78B0' : T.pink }}>
+          ✦ Command Brief
+        </div>
+        <button 
+          onClick={handleToggleSpeak} 
+          style={{ 
+            background: isSpeaking ? '#E91E6A' : (mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'), 
+            border: 'none', 
+            borderRadius: 20, 
+            padding: '4px 10px', 
+            color: isSpeaking ? 'white' : (mode === 'dark' ? 'white' : T.ink), 
+            fontSize: 9,
+            fontWeight: 700,
+            cursor: 'pointer'
+          }}
+        >
+          {isSpeaking ? 'STOP' : 'LISTEN'}
+        </button>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {brief.bullets.map((b, i) => (
+          <div key={i} style={{ display: 'flex', gap: 10 }}>
+            <span style={{ fontSize: 14 }}>{b.icon}</span>
+            <span style={{ 
+              fontSize: 12, 
+              color: mode === 'dark' ? 'rgba(255,255,255,0.9)' : T.ink, 
+              lineHeight: 1.5 
+            }}>{b.text}</span>
+          </div>
+        ))}
+      </div>
+      <div style={{ marginTop: 12, textAlign: 'center' }}>
+        <button 
+          onClick={(e) => { e.stopPropagation(); onDeepPrep?.(); }} 
+          style={{ 
+            background: 'none', 
+            border: 'none', 
+            color: mode === 'dark' ? '#FFB2D1' : T.pink, 
+            fontSize: 10.5, 
+            fontWeight: 700, 
+            textTransform: 'uppercase', 
+            cursor: 'pointer' 
+          }}
+        >
+          ✦ Full History
+        </button>
+      </div>
+    </div>
+  );
 }
+
 function MediaCard({ job, T, mode, onUpdate }) {
   const [photoUrls, setPhotoUrls] = useState([]);
   const [voiceUrl, setVoiceUrl] = useState(null);

@@ -669,23 +669,23 @@ function Step3Review({
         <div style={{ position: 'relative' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
             <div>
-              <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#FF78B0', marginBottom: 3 }}>{service?.name || 'Service'}</div>
-              <div style={{ fontFamily: T.serif, fontSize: 20, fontWeight: 500, color: 'white', letterSpacing: '-0.4px' }}>{client?.name || 'New client'}</div>
+              <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: mode === 'dark' ? '#FF78B0' : T.pink, marginBottom: 3 }}>{service?.name || 'Service'}</div>
+              <div style={{ fontFamily: T.serif, fontSize: 20, fontWeight: 500, color: mode === 'dark' ? 'white' : T.ink, letterSpacing: '-0.4px' }}>{client?.name || 'New client'}</div>
             </div>
             <div style={{ textAlign: 'right' }}>
               {privacyOn ? (
-                <span style={{ fontFamily: T.font, fontSize: 18, fontWeight: 700, color: 'rgba(255,255,255,0.55)', letterSpacing: '3px' }}>•••</span>
+                <span style={{ fontFamily: T.font, fontSize: 18, fontWeight: 700, color: mode === 'dark' ? 'rgba(255,255,255,0.55)' : T.inkMuted, letterSpacing: '3px' }}>•••</span>
               ) : (
-                <span style={{ fontFamily: T.serif, fontSize: 22, fontWeight: 500, color: 'white', letterSpacing: '-0.5px', fontVariantNumeric: 'tabular-nums' }}>{priceStr}</span>
+                <span style={{ fontFamily: T.serif, fontSize: 22, fontWeight: 500, color: mode === 'dark' ? 'white' : T.ink, letterSpacing: '-0.5px', fontVariantNumeric: 'tabular-nums' }}>{priceStr}</span>
               )}
             </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-            <InfoTile T={T} label="When"     value={dateLabel} sub={timeRange} />
-            <InfoTile T={T} label="Duration" value={fmtDuration(duration)} sub="estimated" />
-            <InfoTile T={T} label="Repeats"  value={recurrence ? recurrence : 'One-time'} sub={recurrence ? '↻ auto-books' : 'single visit'} />
-            <InfoTile T={T} label="Address"  value={client?.address ? client.address.split(',')[0] : '—'} sub={client?.address ? (client.address.split(',')[1] || '').trim() : ''} />
+            <InfoTile T={T} mode={mode} label="When"     value={dateLabel} sub={timeRange} />
+            <InfoTile T={T} mode={mode} label="Duration" value={fmtDuration(duration)} sub="estimated" />
+            <InfoTile T={T} mode={mode} label="Repeats"  value={recurrence ? recurrence : 'One-time'} sub={recurrence ? '↻ auto-books' : 'single visit'} />
+            <InfoTile T={T} mode={mode} label="Address"  value={client?.address ? client.address.split(',')[0] : '—'} sub={client?.address ? (client.address.split(',')[1] || '').trim() : ''} />
           </div>
         </div>
       </div>
@@ -740,15 +740,16 @@ function Step3Review({
   );
 }
 
-function InfoTile({ T, label, value, sub }) {
+function InfoTile({ T, mode, label, value, sub }) {
   return (
     <div style={{
-      background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.09)',
+      background: mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.4)', 
+      border: `1px solid ${mode === 'dark' ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.05)'}`,
       borderRadius: 10, padding: '7px 9px',
     }}>
-      <div style={{ fontFamily: T.font, fontSize: 8, fontWeight: 700, letterSpacing: '0.6px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.38)', marginBottom: 2 }}>{label}</div>
-      <div style={{ fontFamily: T.serif, fontSize: 13, fontWeight: 500, color: 'white', letterSpacing: '-0.2px' }}>{value}</div>
-      {sub && (<div style={{ fontFamily: T.font, fontSize: 9.5, color: 'rgba(255,255,255,0.48)', marginTop: 1 }}>{sub}</div>)}
+      <div style={{ fontFamily: T.font, fontSize: 8, fontWeight: 700, letterSpacing: '0.6px', textTransform: 'uppercase', color: mode === 'dark' ? 'rgba(255,255,255,0.38)' : T.inkMuted, marginBottom: 2 }}>{label}</div>
+      <div style={{ fontFamily: T.serif, fontSize: 13, fontWeight: 500, color: mode === 'dark' ? 'white' : T.ink, letterSpacing: '-0.2px' }}>{value}</div>
+      {sub && (<div style={{ fontFamily: T.font, fontSize: 9.5, color: mode === 'dark' ? 'rgba(255,255,255,0.48)' : T.inkSub, marginTop: 1 }}>{sub}</div>)}
     </div>
   );
 }

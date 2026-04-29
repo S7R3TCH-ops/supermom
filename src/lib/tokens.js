@@ -7,12 +7,12 @@
 
 const LIGHT_PALETTE = {
   name: 'Vibrant Papaya',
-  bg: '#FFF9F5',          // Airy Cream
+  bg: '#FFF0F3',          // Soft Rose Cream (Pinker hue)
   surface: '#FCF5EF',     // Soft Sand
   card: '#FFFFFF',
-  cardBorder: '#F5E6D3',  // Warm Beige Border
-  navBg: '#FFF9F5',
-  navBorder: '#F5E6D3',
+  cardBorder: '#FCE8EF',  // Soft Pink Border
+  navBg: '#FFF0F3',
+  navBorder: '#FCE8EF',
   pink: '#E91E6A',        // Punchy Pink
   pinkLight: '#FF94BC',
   pinkLabel: '#E91E6A',
@@ -22,7 +22,7 @@ const LIGHT_PALETTE = {
   amberBorder: 'rgba(245,158,11,0.4)',
   redBg: '#FFF1F1',
   redBorder: '#FCA5A540',
-  ink: '#4E342E',         // Warm Cocoa (Softer than Mahogany)
+  ink: '#4E342E',         // Warm Cocoa
   inkSub: '#795548',      // Soft Brown
   inkMuted: '#A1887F',    // Muted Clay
   secLabel: '#8D6E63',
@@ -60,7 +60,7 @@ export function smTokens(mode) {
     // Shared structural/style tokens that adapt to mode
     hero: isDark 
       ? 'linear-gradient(145deg,#1C1C1E 0%,#2C2C2E 100%)' 
-      : 'linear-gradient(145deg, #FFEFD5 0%, #FFE4B5 100%)', // Airy Golden Glow
+      : `linear-gradient(to bottom, ${p.pinkLight} 0%, ${p.bg} 100%)`, // Seamless transition from LogoBar
     font: "'Inter', system-ui, sans-serif",
     serif: "'Fraunces', Georgia, serif",
   };

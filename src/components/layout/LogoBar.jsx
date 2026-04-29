@@ -27,19 +27,23 @@ export default function LogoBar() {
 
   return (
     <div style={{
-      background: `linear-gradient(110deg, ${T.pinkLight} 0%, ${T.pink} 100%)`,
+      background: mode === 'dark' 
+        ? '#0A0A0A' 
+        : `linear-gradient(to bottom, ${T.pink} 0%, ${T.pinkLight} 100%)`,
       padding: '10px 18px 12px',
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       flexShrink: 0, minHeight: 64,
+      borderBottom: mode === 'dark' ? `1px solid ${T.navBorder}` : 'none'
     }}>
       {isTopLevel ? (
         <img
           src="/branding/logo-final.png"
           alt="Supermom for Hire"
           style={{ 
-            height: 56, 
+            height: 72, 
             width: 'auto',
             filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.2))',
+            margin: '-10px 0', // Pull up/down to exceed standard padding slightly if needed
           }}
         />
       ) : (

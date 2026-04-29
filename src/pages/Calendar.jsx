@@ -130,24 +130,31 @@ export default function Calendar() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: T.bg, color: T.ink }}>
       {/* Dark hero */}
-      <div style={{ background: T.hero, borderBottom: '3px solid #E91E6A', padding: '11px 13px 13px', position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
+      <div style={{ 
+        background: T.hero, 
+        borderBottom: mode === 'dark' ? '3px solid #E91E6A' : 'none', 
+        padding: '11px 13px 13px', 
+        position: 'relative', 
+        overflow: 'hidden', 
+        flexShrink: 0 
+      }}>
         <div style={{ position: 'absolute', top: -40, right: -20, width: 120, height: 120, borderRadius: '50%', background: `radial-gradient(circle,${T.pinkGlow} 0%,transparent 70%)`, pointerEvents: 'none' }} />
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <button 
               onClick={handlePrevWeek}
-              style={{ background: 'rgba(255,255,255,0.08)', border: 'none', borderRadius: 4, width: 22, height: 22, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+              style={{ background: mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.4)', border: 'none', borderRadius: 4, width: 22, height: 22, color: mode === 'dark' ? 'white' : T.ink, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
             >‹</button>
-            <div style={{ fontFamily: T.serif, fontSize: 17, fontWeight: 500, letterSpacing: '-0.4px', color: 'white' }}>{monthYear}</div>
+            <div style={{ fontFamily: T.serif, fontSize: 17, fontWeight: 500, letterSpacing: '-0.4px', color: mode === 'dark' ? 'white' : T.ink }}>{monthYear}</div>
             <button 
               onClick={handleNextWeek}
-              style={{ background: 'rgba(255,255,255,0.08)', border: 'none', borderRadius: 4, width: 22, height: 22, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+              style={{ background: mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.4)', border: 'none', borderRadius: 4, width: 22, height: 22, color: mode === 'dark' ? 'white' : T.ink, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
             >›</button>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <button 
               onClick={handleToday}
-              style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6, padding: '3px 7px', color: 'white', fontFamily: T.font, fontSize: 9, fontWeight: 700, cursor: 'pointer' }}
+              style={{ background: mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.4)', border: `1px solid ${mode === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.05)'}`, borderRadius: 6, padding: '3px 7px', color: mode === 'dark' ? 'white' : T.ink, fontFamily: T.font, fontSize: 9, fontWeight: 700, cursor: 'pointer' }}
             >TODAY</button>
             <div style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.28)', borderRadius: 20, padding: '3px 9px', display: 'flex', alignItems: 'center', gap: 4 }}>
               <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#22C55E' }} />
@@ -168,14 +175,14 @@ export default function Calendar() {
                 <div key={i}
                   onClick={() => handlePickDay(d)}
                   style={{ textAlign: 'center', padding: '4px 2px 5px', borderRadius: 8,
-                    background: isSelected ? '#E91E6A' : 'rgba(255,255,255,0.05)',
-                    border: isSelected ? 'none' : '1px solid rgba(255,255,255,0.07)',
+                    background: isSelected ? '#E91E6A' : (mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.3)'),
+                    border: isSelected ? 'none' : `1px solid ${mode === 'dark' ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)'}`,
                     cursor: 'pointer' }}>
-                  <div style={{ fontFamily: T.font, fontSize: 7.5, fontWeight: 700, letterSpacing: '0.3px', textTransform: 'uppercase', color: isSelected ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.38)' }}>{DOW[i]}</div>
-                  <div style={{ fontFamily: T.serif, fontSize: 13, fontWeight: 500, color: 'white', lineHeight: 1.2, marginTop: 2 }}>{d.getDate()}</div>
+                  <div style={{ fontFamily: T.font, fontSize: 7.5, fontWeight: 700, letterSpacing: '0.3px', textTransform: 'uppercase', color: isSelected ? 'rgba(255,255,255,0.8)' : (isToday ? T.pink : T.inkMuted) }}>{DOW[i]}</div>
+                  <div style={{ fontFamily: T.serif, fontSize: 13, fontWeight: 500, color: isSelected ? 'white' : (mode === 'dark' ? 'white' : T.ink), lineHeight: 1.2, marginTop: 2 }}>{d.getDate()}</div>
                   <div style={{ display: 'flex', gap: 2, justifyContent: 'center', marginTop: 2, minHeight: 3 }}>
                     {Array.from({ length: dots }).map((_, k) => (
-                      <span key={k} style={{ width: 3, height: 3, borderRadius: '50%', background: isSelected ? 'rgba(255,255,255,0.7)' : '#FF78B0', display: 'block' }} />
+                      <span key={k} style={{ width: 3, height: 3, borderRadius: '50%', background: isSelected ? 'rgba(255,255,255,0.7)' : T.pink, display: 'block' }} />
                     ))}
                   </div>
                 </div>
@@ -185,13 +192,13 @@ export default function Calendar() {
         )}
 
         {/* View toggle */}
-        <div style={{ display: 'flex', background: 'rgba(255,255,255,0.07)', borderRadius: 9, padding: 3 }}>
+        <div style={{ display: 'flex', background: mode === 'dark' ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.04)', borderRadius: 9, padding: 3 }}>
           {VIEWS.map(v => (
             <button key={v} onClick={() => setView(v)} aria-pressed={view === v} style={{
               flex: 1, padding: '6px 0', borderRadius: 7, textAlign: 'center',
               background: view === v ? '#E91E6A' : 'transparent',
               fontFamily: T.font, fontSize: 11, fontWeight: 600,
-              color: view === v ? 'white' : 'rgba(255,255,255,0.55)',
+              color: view === v ? 'white' : (mode === 'dark' ? 'rgba(255,255,255,0.55)' : T.inkMuted),
               cursor: 'pointer', border: 'none',
             }}>{v}</button>
           ))}

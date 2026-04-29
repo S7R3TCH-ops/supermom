@@ -36,21 +36,28 @@ export default function Clients() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: T.bg, color: T.ink }}>
-      {/* Dark hero */}
-      <div style={{ background: T.hero, borderBottom: '3px solid #E91E6A', padding: '12px 14px 14px', position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
-        <div style={{ position: 'absolute', top: -40, right: -20, width: 130, height: 130, borderRadius: '50%', background: 'radial-gradient(circle,rgba(233,30,106,0.2) 0%,transparent 70%)', pointerEvents: 'none' }} />
+      {/* Hero */}
+      <div style={{ 
+        background: T.hero, 
+        borderBottom: mode === 'dark' ? '3px solid #E91E6A' : 'none', 
+        padding: '12px 14px 14px', 
+        position: 'relative', 
+        overflow: 'hidden', 
+        flexShrink: 0 
+      }}>
+        <div style={{ position: 'absolute', top: -40, right: -20, width: 130, height: 130, borderRadius: '50%', background: `radial-gradient(circle,${T.pinkGlow} 0%,transparent 70%)`, pointerEvents: 'none' }} />
 
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
           <div>
-            <div style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '1.1px', textTransform: 'uppercase', color: '#FF78B0', marginBottom: 5 }}>✦ Client Roster</div>
-            <div style={{ fontFamily: T.serif, fontSize: 21, fontWeight: 500, letterSpacing: '-0.4px', color: 'white', marginBottom: 10 }}>Your people.</div>
+            <div style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '1.1px', textTransform: 'uppercase', color: mode === 'dark' ? '#FF78B0' : T.pink, marginBottom: 5 }}>✦ Client Roster</div>
+            <div style={{ fontFamily: T.serif, fontSize: 21, fontWeight: 500, letterSpacing: '-0.4px', color: mode === 'dark' ? 'white' : T.ink, marginBottom: 10 }}>Your people.</div>
           </div>
           <button
             onClick={() => open(() => refresh())}
             aria-label="Add client"
             style={{
               width: 36, height: 36, borderRadius: 12,
-              background: '#E91E6A', color: 'white', border: 'none',
+              background: T.pink, color: 'white', border: 'none',
               fontFamily: T.font, fontSize: 22, fontWeight: 400, lineHeight: 1,
               cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
               boxShadow: '0 4px 12px rgba(233,30,106,0.35)',
@@ -64,17 +71,25 @@ export default function Clients() {
             { n: privacyOn ? '•••' : `$${totalOwed.toFixed(0)}`, l: 'Outstanding' },
             { n: String(vipCount), l: 'VIP' },
           ].map(s => (
-            <div key={s.l} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 9, padding: '7px 5px', textAlign: 'center' }}>
-              <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 500, color: 'white', letterSpacing: '-0.3px' }}>{s.n}</div>
-              <div style={{ fontFamily: T.font, fontSize: 8, fontWeight: 600, color: 'rgba(255,255,255,0.38)', letterSpacing: '0.4px', textTransform: 'uppercase', marginTop: 2 }}>{s.l}</div>
+            <div key={s.l} style={{ 
+              background: mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.4)', 
+              border: `1px solid ${mode === 'dark' ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.05)'}`, 
+              borderRadius: 9, padding: '7px 5px', textAlign: 'center' 
+            }}>
+              <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 500, color: mode === 'dark' ? 'white' : T.ink, letterSpacing: '-0.3px' }}>{s.n}</div>
+              <div style={{ fontFamily: T.font, fontSize: 8, fontWeight: 600, color: mode === 'dark' ? 'rgba(255,255,255,0.38)' : T.inkMuted, letterSpacing: '0.4px', textTransform: 'uppercase', marginTop: 2 }}>{s.l}</div>
             </div>
           ))}
         </div>
 
-        <div style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ 
+          background: mode === 'dark' ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.5)', 
+          border: `1px solid ${mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'}`, 
+          borderRadius: 10, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8 
+        }}>
           <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-            <circle cx="5.5" cy="5.5" r="4.5" stroke="rgba(255,255,255,0.4)" strokeWidth="1.4" />
-            <path d="M9 9l3 3" stroke="rgba(255,255,255,0.4)" strokeWidth="1.4" strokeLinecap="round" />
+            <circle cx="5.5" cy="5.5" r="4.5" stroke={mode === 'dark' ? 'rgba(255,255,255,0.4)' : T.inkMuted} strokeWidth="1.4" />
+            <path d="M9 9l3 3" stroke={mode === 'dark' ? 'rgba(255,255,255,0.4)' : T.inkMuted} strokeWidth="1.4" strokeLinecap="round" />
           </svg>
           <input
             type="text"
@@ -83,7 +98,7 @@ export default function Clients() {
             onChange={e => setSearch(e.target.value)}
             style={{
               flex: 1, background: 'transparent', border: 'none',
-              fontFamily: T.font, fontSize: 11.5, color: 'white',
+              fontFamily: T.font, fontSize: 11.5, color: mode === 'dark' ? 'white' : T.ink,
               outline: 'none', padding: 0,
             }}
           />

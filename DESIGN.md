@@ -94,7 +94,7 @@
 | Dollar amount (card) | Fraunces | 22px | 500 | -0.5px | contextual |
 | Dollar amount (inline) | Fraunces | 13px | 500 | 0 | contextual |
 | Section title | Fraunces | 14px | 500 | -0.2px | `--ink` |
-| Section label | Inter | 10px | 700 | 0.7px | `--ink-mid`, UPPERCASE |
+| Section label | Fraunces | 10px | 600 | 0.7px | `--ink-mid`, UPPERCASE |
 | AI card label | Inter | 9.5px | 700 | 1.1px | `--pink-label`, UPPERCASE |
 | Badge / tag | Inter | 9px | 700 | 0.4px | contextual |
 | Body text | Inter | 12–13px | 500 | 0 | `--ink-mid` |
@@ -152,9 +152,9 @@
 
 ---
 
-### 1a. Theme Toggle (Settings only)
+### 1a. Theme Toggle (Logo Bar)
 
-**Rule:** To maintain a clean navigation experience, the light/dark mode toggle lives exclusively in **Settings > Appearance**. It uses a sliding switch UI with Sun/Moon icons. No theme toggles should appear in the top Logo Bar or Bottom Nav.
+**Rule:** The light/dark mode toggle lives in the top Logo Bar as a premium utility for quick atmosphere changes. It uses a sleek sliding switch UI. In Settings > Appearance, a secondary toggle or preview can also be provided.
 
 ---
 
@@ -254,13 +254,13 @@ Button anatomy inside AI card:
 - Secondary: `background: rgba(255,255,255,.1)`, `border: 1px solid rgba(255,255,255,.15)`, white text
 
 ---
-
 ### 5. Section Label
 
 ```css
 .section-label {
+  font-family: var(--font-display);   /* Fraunces */
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.7px;
   text-transform: uppercase;
   color: var(--ink-mid);    /* #4A4A4A */

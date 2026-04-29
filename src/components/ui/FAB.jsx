@@ -12,7 +12,7 @@ export default function FAB() {
       aria-label="Book new job"
       style={{
         position: 'absolute',
-        bottom: 14,
+        bottom: 56,
         right: 14,
         width: 52, height: 52,
         borderRadius: '50%',

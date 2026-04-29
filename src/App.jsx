@@ -20,6 +20,7 @@ import FAB from './components/ui/FAB';
 import { useRealtimeSync } from './data/useData';
 import { useEffect } from 'react';
 
+const PalettePreview = lazy(() => import('./pages/PalettePreview'));
 const Home = lazy(() => import('./pages/Home'));
 const Calendar = lazy(() => import('./pages/Calendar'));
 const Clients = lazy(() => import('./pages/Clients'));
@@ -274,6 +275,7 @@ export default function App() {
             <Suspense fallback={null}>
               <Routes>
                 <Route path="/i/:id" element={<InvoiceView />} />
+                <Route path="/preview" element={<PalettePreview />} />
                 <Route path="*" element={<Gate />} />
               </Routes>
             </Suspense>

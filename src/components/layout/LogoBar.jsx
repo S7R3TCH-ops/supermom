@@ -27,8 +27,8 @@ export default function LogoBar() {
 
   return (
     <div style={{
-      background: 'linear-gradient(110deg,#FF4D96 0%,#E91E6A 45%,#B01550 100%)',
-      padding: '10px 14px',
+      background: `linear-gradient(110deg, ${T.pinkLight} 0%, ${T.pink} 100%)`,
+      padding: '10px 18px 12px',
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       flexShrink: 0, minHeight: 64,
     }}>

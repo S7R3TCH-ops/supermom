@@ -1,12 +1,18 @@
 import { useAppTheme } from '../../../context/AppThemeContext';
 
-export const Caption = ({ children, style, component: Component = 'div', ...props }) => {
+export const Caption = ({ 
+  children, 
+  style, 
+  serif = false,
+  component: Component = 'div', 
+  ...props 
+}) => {
   const { T } = useAppTheme();
   return (
     <Component style={{
-      fontFamily: T.font,
+      fontFamily: serif ? T.serif : T.font,
       color: T.inkMuted,
-      fontSize: 11,
+      fontSize: 12,
       fontWeight: 500,
       margin: 0,
       ...style

@@ -4,6 +4,7 @@ export const SectionLabel = ({
   children, 
   color, 
   style, 
+  serif = true, 
   component: Component = 'div', 
   ...props 
 }) => {
@@ -11,10 +12,10 @@ export const SectionLabel = ({
   
   return (
     <Component style={{
-      fontFamily: T.font,
-      fontSize: 9,
-      fontWeight: 800,
-      letterSpacing: '1px',
+      fontFamily: serif ? T.serif : T.font,
+      fontSize: 10,
+      fontWeight: serif ? 700 : 800,
+      letterSpacing: serif ? '0.05em' : '1px',
       textTransform: 'uppercase',
       color: color || T.secLabel,
       margin: 0,

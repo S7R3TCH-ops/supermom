@@ -1,4 +1,23 @@
 import { Component, lazy, Suspense, useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { supabase } from './lib/supabase';
+import { AppThemeProvider } from './context/AppTheme';
+import { useAppTheme } from './context/AppThemeContext';
+import { ToastProvider } from './context/ToastContext';
+import { AuthProvider } from './context/Auth';
+import { useAuth } from './context/AuthContext';
+import { ViewpointProvider, useViewpoint } from './context/ViewpointContext';
+import { NewJobSheetProvider } from './context/NewJobSheet';
+import { NewClientSheetProvider } from './context/NewClientSheet';
+import { JobDetailSheetProvider } from './context/JobDetailSheet';
+import { FinanceDetailSheetProvider } from './context/FinanceDetailSheet';
+import { PostJobSheetProvider } from './context/PostJobSheet';
+import { GeofenceProvider } from './context/GeofenceContext';
+import LogoBar from './components/layout/LogoBar';
+import BottomNav from './components/layout/BottomNav';
+import OnboardingWalkthrough from './components/layout/OnboardingWalkthrough';
+import FAB from './components/ui/FAB';
+import { useRealtimeSync } from './data/useData';
 
 class ErrorBoundary extends Component {
   constructor(props) {

@@ -367,7 +367,7 @@ export default function Finance() {
 
           <button onClick={handleExport} style={{
             width: '100%', padding: '11px 0', borderRadius: 10, border: 'none',
-            background: '#1A0A12', color: 'white',
+            background: '#1C1C1E', color: 'white',
             fontFamily: T.font, fontSize: 12, fontWeight: 700, cursor: 'pointer', letterSpacing: '0.2px',
           }}>
             Export CSV ↓

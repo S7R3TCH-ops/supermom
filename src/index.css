@@ -12,14 +12,14 @@
   --pink-border:   #FFD6E8;
   --pink-label:    #FF78B0;
 
-  /* Plum */
-  --plum-dark:     #1A0A12;
-  --plum-mid:      #2C0B1A;
+  /* Charcoal (dark sections) */
+  --plum-dark:     #1C1C1E;
+  --plum-mid:      #2C2C2E;
 
   /* Ink */
-  --ink:           #1A0A12;
-  --ink-mid:       #5A3040;
-  --ink-muted:     #9B5A70;
+  --ink:           #1C1C1E;
+  --ink-mid:       #4A4A4A;
+  --ink-muted:     #8A8A8E;
 
   /* Status */
   --green:         #16A34A;
@@ -32,7 +32,7 @@
 
   /* Gradients */
   --grad-pink:   linear-gradient(110deg, #FF4D96 0%, #E91E6A 45%, #B01550 100%);
-  --grad-hero:   linear-gradient(145deg, #0E0520 0%, #1C0830 100%);
+  --grad-hero:   linear-gradient(145deg, #1C1C1E 0%, #2C2C2E 100%);
   --grad-action: linear-gradient(135deg, #FF5A9D, #E91E6A);
 
   /* Radius */
@@ -59,7 +59,7 @@ html, body, #root {
 }
 
 body {
-  background: #06020E;
+  background: #0A0A0A;
   color: #FFFFFF;
   overscroll-behavior: none; /* Prevents pull-to-refresh bounce for a more app-like feel */
 }
@@ -81,7 +81,7 @@ body {
     height: 95vh;
     margin: 2.5vh auto;
     border-radius: 40px;
-    border: 8px solid #1A0A2E;
+    border: 8px solid #2C2C2E;
     box-shadow: 0 0 100px rgba(0,0,0,0.5);
   }
 }

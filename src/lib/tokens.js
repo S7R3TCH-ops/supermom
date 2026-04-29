@@ -1,12 +1,12 @@
 export function smTokens(mode) {
   const dk = mode !== 'warm';
   return {
-    bg:          dk ? '#06020E' : '#FAF3F6',
-    surface:     dk ? '#110720' : '#F3E5EE',
-    card:        dk ? '#1A0A2E' : '#FFFFFF',
+    bg:          dk ? '#0A0A0A' : '#FAF3F6',
+    surface:     dk ? '#1C1C1E' : '#F3E5EE',
+    card:        dk ? '#2C2C2E' : '#FFFFFF',
     cardBorder:  dk ? 'rgba(233,30,106,0.2)' : '#FFD6E8',
-    hero:        'linear-gradient(145deg,#0E0520 0%,#1C0830 100%)',
-    navBg:       dk ? '#0E0520' : '#FFF5F9',
+    hero:        'linear-gradient(145deg,#1C1C1E 0%,#2C2C2E 100%)',
+    navBg:       dk ? '#0A0A0A' : '#FFF5F9',
     navBorder:   dk ? 'rgba(233,30,106,0.2)' : '#FFD6E8',
     pink:        '#E91E6A',
     pinkLight:   '#FF5A9D',
@@ -17,10 +17,10 @@ export function smTokens(mode) {
     amberBorder: dk ? 'rgba(245,158,11,0.28)' : 'rgba(245,158,11,0.4)',
     redBg:       dk ? 'rgba(220,38,38,0.08)' : '#FFF1F1',
     redBorder:   dk ? 'rgba(220,38,38,0.22)' : '#FCA5A540',
-    ink:         dk ? '#FFFFFF'                : '#1A0A12',
-    inkSub:      dk ? 'rgba(255,255,255,0.65)' : '#5A3040',
-    inkMuted:    dk ? 'rgba(255,255,255,0.55)' : '#9B5A70',
-    secLabel:    dk ? 'rgba(255,120,176,0.85)' : '#9B5A70',
+    ink:         dk ? '#FFFFFF'                : '#1C1C1E',
+    inkSub:      dk ? 'rgba(255,255,255,0.65)' : '#4A4A4A',
+    inkMuted:    dk ? 'rgba(255,255,255,0.55)' : '#8A8A8E',
+    secLabel:    dk ? 'rgba(255,120,176,0.85)' : '#8A8A8E',
     font:        "'Inter', system-ui, sans-serif",
     serif:       "'Fraunces', Georgia, serif",
   };

@@ -54,7 +54,7 @@ export default function PrepNoteSheet({ isOpen, onClose, clientId, businessProfi
         onClick={e => e.stopPropagation()}
         style={{
           background: 'var(--pink-pale)',
-          color: '#1A0A12',
+          color: '#1C1C1E',
           borderRadius: '24px 24px 0 0',
           boxShadow: '0 -10px 40px rgba(0,0,0,0.38)',
           maxHeight: '85svh',
@@ -97,7 +97,7 @@ export default function PrepNoteSheet({ isOpen, onClose, clientId, businessProfi
           {loading ? (
             <div style={{ 
               padding: '40px 0', textAlign: 'center', 
-              color: '#5A3040', fontFamily: T.font, fontSize: 15 
+              color: '#4A4A4A', fontFamily: T.font, fontSize: 15
             }}>
               <div className="sm-pulse" style={{ marginBottom: 12, fontSize: 24 }}>✦</div>
               <div className="sm-pulse">Generating your briefing...</div>
@@ -113,7 +113,7 @@ export default function PrepNoteSheet({ isOpen, onClose, clientId, businessProfi
           ) : (
             <div style={{ 
               fontFamily: T.font, fontSize: 16, lineHeight: 1.65, 
-              color: '#1A0A12', whiteSpace: 'pre-wrap' 
+              color: '#1C1C1E', whiteSpace: 'pre-wrap' 
             }}>
               {summary || 'No briefing available for this client yet.'}
             </div>

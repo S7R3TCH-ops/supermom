@@ -134,7 +134,7 @@ export default function PostJobSheet({ jobId, onClose }) {
         </div>
 
         <div style={{
-          background: 'linear-gradient(145deg,#1A0A12 0%,#2C0B1A 100%)',
+          background: 'linear-gradient(145deg,#1C1C1E 0%,#2C2C2E 100%)',
           borderBottom: '3px solid #E91E6A',
           padding: '12px 18px 16px',
           position: 'relative', overflow: 'hidden',

@@ -14,7 +14,7 @@ export default function FAB() {
         right: 14,
         width: 52, height: 52,
         borderRadius: '50%',
-        background: 'linear-gradient(135deg,#1A0A12 0%,#E91E6A 100%)',
+        background: 'linear-gradient(135deg,#1C1C1E 0%,#E91E6A 100%)',
         border: '2px solid white',
         boxShadow: '0 8px 22px rgba(233,30,106,0.45), 0 2px 6px rgba(0,0,0,0.25)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',

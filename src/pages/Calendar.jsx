@@ -207,7 +207,7 @@ export default function Calendar() {
           </span>
           <button 
             onClick={() => conflicts[0] && openJob(conflicts[0].a.id)}
-            style={{ background: '#1A0A12', color: 'white', border: 'none', borderRadius: 6, padding: '4px 9px', fontFamily: T.font, fontSize: 9.5, fontWeight: 700, cursor: 'pointer' }}
+            style={{ background: '#1C1C1E', color: 'white', border: 'none', borderRadius: 6, padding: '4px 9px', fontFamily: T.font, fontSize: 9.5, fontWeight: 700, cursor: 'pointer' }}
           >
             Fix
           </button>

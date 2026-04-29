@@ -344,7 +344,7 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
           {step === 3 && (
             <button onClick={handleBook} disabled={busy} style={{
               flex: 2,
-              background: 'linear-gradient(135deg,#1A0A12,#2C0B1A)',
+              background: 'linear-gradient(135deg,#1C1C1E,#2C2C2E)',
               border: '1.5px solid #E91E6A', color: 'white',
               borderRadius: 12, padding: '12px 0',
               fontFamily: T.serif, fontSize: 15, fontWeight: 500,

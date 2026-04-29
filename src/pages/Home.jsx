@@ -101,7 +101,7 @@ export default function Home() {
 
   if (runtimeError) {
     return (
-      <div style={{ padding: 24, color: '#E91E6A', background: '#06020E', height: '100svh' }}>
+      <div style={{ padding: 24, color: '#E91E6A', background: '#0A0A0A', height: '100svh' }}>
         <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 12 }}>✦ Critical Error</div>
         <div style={{ fontSize: 13, fontFamily: 'monospace', opacity: 0.8 }}>{runtimeError}</div>
       </div>

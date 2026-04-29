@@ -26,14 +26,14 @@
   --pink-border:   #FFD6E8;   /* ALL card borders, input borders */
   --pink-label:    #FF78B0;   /* labels/text on dark backgrounds */
 
-  /* Plum (dark sections) */
-  --plum-dark:     #1A0A12;   /* hero sections, dark headers, FAB bg */
-  --plum-mid:      #2C0B1A;   /* toggle backgrounds, hero gradient end */
+  /* Charcoal (dark sections) */
+  --plum-dark:     #1C1C1E;   /* hero sections, dark headers, FAB bg */
+  --plum-mid:      #2C2C2E;   /* toggle backgrounds, hero gradient end */
 
   /* Ink (text on light backgrounds) */
-  --ink:           #1A0A12;   /* primary text */
-  --ink-mid:       #5A3040;   /* secondary text, meta */
-  --ink-muted:     #9B5A70;   /* placeholders, tertiary */
+  --ink:           #1C1C1E;   /* primary text */
+  --ink-mid:       #4A4A4A;   /* secondary text, meta */
+  --ink-muted:     #8A8A8E;   /* placeholders, tertiary */
 
   /* Status */
   --green:         #16A34A;   /* paid, GCal synced, positive */
@@ -46,7 +46,7 @@
 
   /* Gradients — use ONLY these three */
   --grad-pink:   linear-gradient(110deg, #FF4D96 0%, #E91E6A 45%, #B01550 100%);
-  --grad-hero:   linear-gradient(145deg, #1A0A12 0%, #2C0B1A 100%);
+  --grad-hero:   linear-gradient(145deg, #1C1C1E 0%, #2C2C2E 100%);
   --grad-action: linear-gradient(135deg, #FF5A9D, #E91E6A);
 
   /* Border radius */
@@ -263,7 +263,7 @@ Button anatomy inside AI card:
   font-weight: 700;
   letter-spacing: 0.7px;
   text-transform: uppercase;
-  color: var(--ink-mid);    /* #5A3040 */
+  color: var(--ink-mid);    /* #4A4A4A */
   margin: 14px 0 7px;
 }
 .section-label:first-child { margin-top: 6px; }
@@ -305,7 +305,7 @@ Button anatomy inside AI card:
 ```css
 .view-toggle {
   display: flex;
-  background: var(--plum-mid);   /* #2C0B1A — always dark plum */
+  background: var(--plum-mid);   /* #2C2C2E — always dark charcoal */
   border-radius: 12px;
   padding: 3px;
   margin: 10px 14px 0;
@@ -341,7 +341,7 @@ Button anatomy inside AI card:
   width: 50px;
   height: 50px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #1A0A12, #E91E6A);
+  background: linear-gradient(135deg, #1C1C1E, #E91E6A);
   border: 2px solid white;
   box-shadow: var(--shadow-fab);
   display: flex;
@@ -638,7 +638,7 @@ Profile view (dark plum hero — differentiates from pink banner):
 - Never show a Start Timer button
 - Never hard-delete records (soft delete only, `is_deleted = true`)
 - Never use system timezone (`America/Toronto` always)
-- Never use purple gradients, Space Grotesk, or generic AI aesthetics
+- Never use purple gradients, purple-tinted blacks, Space Grotesk, or generic AI aesthetics
 
 ---
 

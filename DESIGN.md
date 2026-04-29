@@ -20,7 +20,7 @@
   /* Brand */
   --pink:          #FF70A6;   /* primary action, CTAs, active nav (Vibrant Papaya) */
   --pink-light:    #FF94BC;   /* gradient start, avatar backgrounds (Softer glow) */
-  --pink-mid:      #FF78B0;   /* hover states, destructive actions */
+  --pink-mid:      #B01550;   /* hover states, destructive actions */
   --pink-pale:     #FFF9F5;   /* app background, screen base (Warm Cream) */
   --pink-tint:     #FFF0F7;   /* selected state backgrounds */
   --pink-border:   #FFD6E8;   /* ALL card borders, input borders */
@@ -45,9 +45,9 @@
   --amber-text:    #78350F;   /* conflict text */
 
   /* Gradients — use ONLY these three */
-  --grad-pink:   linear-gradient(110deg, #FF4D96 0%, #E91E6A 45%, #B01550 100%);
+  --grad-pink:   linear-gradient(110deg, #FF70A6 0%, #E91E6A 45%, #B01550 100%);
   --grad-hero:   linear-gradient(145deg, #1C1C1E 0%, #2C2C2E 100%);
-  --grad-action: linear-gradient(135deg, #FF5A9D, #E91E6A);
+  --grad-action: linear-gradient(135deg, #FF94BC, #FF70A6);
 
   /* Border radius */
   --r-card:    16px;   /* cards, job rows, client rows */
@@ -642,4 +642,4 @@ Profile view (dark plum hero — differentiates from pink banner):
 
 ---
 
-*Design System v1.3 (Updated by Gemini CLI) · April 2026 · Supermom for Hire*
+*Design System v1.4 (Updated by Gemini CLI) · April 2026 · Supermom for Hire*

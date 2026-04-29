@@ -185,10 +185,11 @@ Key refinements for the brand's visual identity:
 | # | Change | Detail | File |
 |---|---|---|---|
 | DM | Vibrant Papaya Palette | ✅ **Live** — Updated design tokens with warmer backgrounds and vibrant pink accents | `src/lib/tokens.js` |
+| DN | Release Docs | ✅ **Live** — Updated DESIGN.md and package.json for Vibrant Papaya release (v0.2.3) | `DESIGN.md`, `package.json` |
 
 (Updated by Gemini CLI)
 
-## Next priorities (as of April 27, 2026)
+## Next priorities (as of April 28, 2026)
 1. **Configure Supabase redirect URL allowlist** — add `http://localhost:5173/**` and `https://supermom-v2.vercel.app/**`.
 2. **Typography Migration (Batch 2)** — Migrate remaining pages (`Calendar`, `Clients`, `Finance`, `Settings`) to new typography components.
 3. **Empty state illustrations** — Upgrade text-based empty states to use rich icon/svg illustrations.

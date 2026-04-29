@@ -265,7 +265,7 @@ function PhoneMockup({ optionKey }) {
 export default function PalettePreview() {
   return (
     <div style={{
-      minHeight: '100dvh',
+      position: 'fixed', inset: 0, overflow: 'auto', zIndex: 9999,
       background: '#FAF6F0',
       padding: '40px 20px 60px',
       fontFamily: FONT,

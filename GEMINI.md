@@ -186,8 +186,8 @@ Key refinements for the brand's visual identity:
 
 | # | Change | Detail | File |
 |---|---|---|---|
-| DM | Vibrant Papaya Palette | ✅ **Live** — Updated design tokens with warmer backgrounds and vibrant pink accents | `src/lib/tokens.js` |
-| DN | Release Docs | ✅ **Live** — Updated DESIGN.md and package.json for Vibrant Papaya release (v0.2.3) | `DESIGN.md`, `package.json` |
+| DM | Modular Theme System | ✅ **Live** — Refactored tokens into swappable palettes; locked in dark mode | `src/lib/tokens.js` |
+| DN | Vibrant Papaya Release | ✅ **Live** — Updated design tokens and released v0.2.4 | `src/lib/tokens.js`, `package.json` |
 
 (Updated by Gemini CLI)
 

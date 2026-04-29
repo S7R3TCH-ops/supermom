@@ -422,7 +422,7 @@ export default function Settings() {
         )}
 
         {error && (
-          <div aria-live="polite" style={{ padding: 10, background: '#FEE2E2', borderRadius: 8, fontSize: 12, color: '#991B1B', textAlign: 'center' }}>
+          <div aria-live="polite" style={{ padding: 10, background: '#FFF0F7', borderRadius: 8, fontSize: 12, color: '#B01550', textAlign: 'center' }}>
             Error: {error}
           </div>
         )}
@@ -472,7 +472,7 @@ export default function Settings() {
             </div>
 
             {pwError && (
-              <div style={{ fontSize: 11, color: '#ef4444', background: 'rgba(239,68,68,0.1)', padding: '6px 10px', borderRadius: 8 }}>
+              <div style={{ fontSize: 11, color: '#E91E6A', background: 'rgba(239,68,68,0.1)', padding: '6px 10px', borderRadius: 8 }}>
                 {pwError}
               </div>
             )}
@@ -497,19 +497,19 @@ export default function Settings() {
         {user?.email === SUPER_ADMIN_EMAIL && (
           <>
             <SectionLabel>System</SectionLabel>
-            <div style={{ background: '#1C1C1E', borderRadius: 16, border: '1.5px solid #7f1d1d', padding: 16 }}>
+            <div style={{ background: '#1C1C1E', borderRadius: 16, border: '1.5px solid #8B0E3F', padding: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-              <span style={{ fontSize: 14, fontWeight: 700, color: '#fca5a5' }}>Danger Zone</span>
-              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.8px', color: '#ef4444', background: 'rgba(239,68,68,0.15)', padding: '2px 7px', borderRadius: 'var(--r-badge)', border: '1px solid #7f1d1d' }}>SUPER ADMIN</span>
+              <span style={{ fontSize: 14, fontWeight: 700, color: '#FF78B0' }}>Danger Zone</span>
+              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.8px', color: '#E91E6A', background: 'rgba(239,68,68,0.15)', padding: '2px 7px', borderRadius: 'var(--r-badge)', border: '1px solid #8B0E3F' }}>SUPER ADMIN</span>
             </div>
-            <p style={{ fontSize: 12, color: '#f87171', margin: '0 0 14px', lineHeight: 1.5 }}>
+            <p style={{ fontSize: 12, color: '#FF5A9D', margin: '0 0 14px', lineHeight: 1.5 }}>
               Permanently deletes all jobs, clients, expenses, invoices, payments, and logs for this business. The business account and service catalog are wiped too. This cannot be undone.
             </p>
 
             {resetPhase === null && (
               <button
                 onClick={() => setResetPhase('confirm')}
-                style={{ width: '100%', padding: '11px', background: 'transparent', border: '1.5px solid #7f1d1d', borderRadius: 'var(--r-input)', color: '#f87171', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+                style={{ width: '100%', padding: '11px', background: 'transparent', border: '1.5px solid #8B0E3F', borderRadius: 'var(--r-input)', color: '#FF5A9D', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
               >
                 Delete All Data…
               </button>
@@ -517,18 +517,18 @@ export default function Settings() {
 
             {resetPhase === 'confirm' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <p style={{ fontSize: 12, fontWeight: 700, color: '#fca5a5', margin: 0, textAlign: 'center' }}>
+                <p style={{ fontSize: 12, fontWeight: 700, color: '#FF78B0', margin: 0, textAlign: 'center' }}>
                   Are you absolutely sure? There is no undo.
                 </p>
                 <button
                   onClick={handleDeleteAllData}
-                  style={{ width: '100%', padding: '11px', background: '#991b1b', border: 'none', borderRadius: 'var(--r-input)', color: 'white', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+                  style={{ width: '100%', padding: '11px', background: '#B01550', border: 'none', borderRadius: 'var(--r-input)', color: 'white', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
                 >
                   Yes, delete everything
                 </button>
                 <button
                   onClick={() => setResetPhase(null)}
-                  style={{ width: '100%', padding: '11px', background: 'transparent', border: '1px solid #7f1d1d', borderRadius: 'var(--r-input)', color: '#f87171', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                  style={{ width: '100%', padding: '11px', background: 'transparent', border: '1px solid #8B0E3F', borderRadius: 'var(--r-input)', color: '#FF5A9D', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
                 >
                   Cancel
                 </button>
@@ -536,7 +536,7 @@ export default function Settings() {
             )}
 
             {resetPhase === 'deleting' && (
-              <div style={{ textAlign: 'center', color: '#f87171', fontSize: 12, padding: '8px 0' }}>
+              <div style={{ textAlign: 'center', color: '#FF5A9D', fontSize: 12, padding: '8px 0' }}>
                 Deleting…
               </div>
             )}
@@ -548,7 +548,7 @@ export default function Settings() {
                 </div>
                 <button
                   onClick={() => setResetPhase(null)}
-                  style={{ width: '100%', padding: '11px', background: 'transparent', border: '1px solid #7f1d1d', borderRadius: 'var(--r-input)', color: '#f87171', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                  style={{ width: '100%', padding: '11px', background: 'transparent', border: '1px solid #8B0E3F', borderRadius: 'var(--r-input)', color: '#FF5A9D', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
                 >
                   Dismiss
                 </button>
@@ -557,12 +557,12 @@ export default function Settings() {
 
             {resetPhase === 'error' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <div style={{ color: '#fca5a5', fontSize: 12, wordBreak: 'break-word' }}>
+                <div style={{ color: '#FF78B0', fontSize: 12, wordBreak: 'break-word' }}>
                   Error: {resetError}
                 </div>
                 <button
                   onClick={() => setResetPhase(null)}
-                  style={{ width: '100%', padding: '11px', background: 'transparent', border: '1px solid #7f1d1d', borderRadius: 'var(--r-input)', color: '#f87171', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                  style={{ width: '100%', padding: '11px', background: 'transparent', border: '1px solid #8B0E3F', borderRadius: 'var(--r-input)', color: '#FF5A9D', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
                 >
                   Cancel
                   </button>

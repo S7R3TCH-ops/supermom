@@ -233,10 +233,10 @@ export default function Admin() {
           <>
             <SectionLabel>Super Admin: Viewpoint</SectionLabel>
             <div style={{
-              background: '#1C1C1E', border: '1.5px solid #7f1d1d',
+              background: '#1C1C1E', border: '1.5px solid #8B0E3F',
               borderRadius: 16, padding: '14px', marginBottom: 20,
             }}>
-              <div style={{ fontSize: 11, color: '#fca5a5', marginBottom: 12, fontWeight: 600 }}>
+              <div style={{ fontSize: 11, color: '#FF78B0', marginBottom: 12, fontWeight: 600 }}>
                 Switch your viewpoint to see what another business owner sees.
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
@@ -245,7 +245,7 @@ export default function Admin() {
                   onChange={e => setSelectedBizId(e.target.value)}
                   style={{
                     flex: 1, padding: '10px', borderRadius: 12, background: '#2C2C2E',
-                    border: '1px solid #7f1d1d', color: 'white', fontSize: 13, outline: 'none'
+                    border: '1px solid #8B0E3F', color: 'white', fontSize: 13, outline: 'none'
                   }}
                 >
                   <option value="">Select a business...</option>
@@ -257,7 +257,7 @@ export default function Admin() {
                   onClick={handleSwitch}
                   disabled={!selectedBizId}
                   style={{
-                    padding: '0 16px', borderRadius: 12, background: '#ef4444',
+                    padding: '0 16px', borderRadius: 12, background: '#E91E6A',
                     color: 'white', border: 'none', fontWeight: 700, fontSize: 12,
                     cursor: selectedBizId ? 'pointer' : 'default', opacity: selectedBizId ? 1 : 0.5
                   }}
@@ -270,8 +270,8 @@ export default function Admin() {
                   onClick={reset}
                   style={{
                     marginTop: 10, width: '100%', padding: '10px', borderRadius: 12,
-                    background: 'transparent', border: '1px solid #7f1d1d',
-                    color: '#f87171', fontWeight: 600, fontSize: 12, cursor: 'pointer'
+                    background: 'transparent', border: '1px solid #8B0E3F',
+                    color: '#FF5A9D', fontWeight: 600, fontSize: 12, cursor: 'pointer'
                   }}
                 >
                   Reset to My Real View
@@ -280,34 +280,34 @@ export default function Admin() {
             </div>
 
             <SectionLabel>Super Admin: Provisioning</SectionLabel>
-            <div style={{ background: '#1C1C1E', border: '1.5px solid #7f1d1d', borderRadius: 16, padding: '14px', marginBottom: 20 }}>
-              <div style={{ fontSize: 11, color: '#fca5a5', marginBottom: 12, fontWeight: 600 }}>Create a new business and owner account.</div>
+            <div style={{ background: '#1C1C1E', border: '1.5px solid #8B0E3F', borderRadius: 16, padding: '14px', marginBottom: 20 }}>
+              <div style={{ fontSize: 11, color: '#FF78B0', marginBottom: 12, fontWeight: 600 }}>Create a new business and owner account.</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <input placeholder="Business Name" value={provForm.biz} onChange={e => setProvForm(p => ({...p, biz: e.target.value}))} style={{ padding: '10px', borderRadius: 12, background: '#2C2C2E', border: '1px solid #7f1d1d', color: 'white', fontSize: 13, outline: 'none' }} />
-                <input placeholder="Owner Full Name" value={provForm.owner} onChange={e => setProvForm(p => ({...p, owner: e.target.value}))} style={{ padding: '10px', borderRadius: 12, background: '#2C2C2E', border: '1px solid #7f1d1d', color: 'white', fontSize: 13, outline: 'none' }} />
-                <input placeholder="Owner Email" value={provForm.email} onChange={e => setProvForm(p => ({...p, email: e.target.value}))} style={{ padding: '10px', borderRadius: 12, background: '#2C2C2E', border: '1px solid #7f1d1d', color: 'white', fontSize: 13, outline: 'none' }} />
+                <input placeholder="Business Name" value={provForm.biz} onChange={e => setProvForm(p => ({...p, biz: e.target.value}))} style={{ padding: '10px', borderRadius: 12, background: '#2C2C2E', border: '1px solid #8B0E3F', color: 'white', fontSize: 13, outline: 'none' }} />
+                <input placeholder="Owner Full Name" value={provForm.owner} onChange={e => setProvForm(p => ({...p, owner: e.target.value}))} style={{ padding: '10px', borderRadius: 12, background: '#2C2C2E', border: '1px solid #8B0E3F', color: 'white', fontSize: 13, outline: 'none' }} />
+                <input placeholder="Owner Email" value={provForm.email} onChange={e => setProvForm(p => ({...p, email: e.target.value}))} style={{ padding: '10px', borderRadius: 12, background: '#2C2C2E', border: '1px solid #8B0E3F', color: 'white', fontSize: 13, outline: 'none' }} />
                 <div style={{ position: 'relative' }}>
-                  <input type={showPw ? "text" : "password"} placeholder="Temp Password" value={provForm.pw} onChange={e => setProvForm(p => ({...p, pw: e.target.value}))} style={{ width: '100%', padding: '10px', paddingRight: 36, borderRadius: 12, background: '#2C2C2E', border: '1px solid #7f1d1d', color: 'white', fontSize: 13, outline: 'none' }} />
+                  <input type={showPw ? "text" : "password"} placeholder="Temp Password" value={provForm.pw} onChange={e => setProvForm(p => ({...p, pw: e.target.value}))} style={{ width: '100%', padding: '10px', paddingRight: 36, borderRadius: 12, background: '#2C2C2E', border: '1px solid #8B0E3F', color: 'white', fontSize: 13, outline: 'none' }} />
                   <ToggleBtn show={showPw} onToggle={() => setShowPw(!showPw)} />
                 </div>
-                <button onClick={handleProvision} disabled={isProv || !provForm.biz || !provForm.email} style={{ padding: '12px', borderRadius: 12, background: '#ef4444', color: 'white', border: 'none', fontWeight: 700, fontSize: 13, cursor: isProv ? 'default' : 'pointer', opacity: (isProv || !provForm.biz || !provForm.email) ? 0.5 : 1 }}>
+                <button onClick={handleProvision} disabled={isProv || !provForm.biz || !provForm.email} style={{ padding: '12px', borderRadius: 12, background: '#E91E6A', color: 'white', border: 'none', fontWeight: 700, fontSize: 13, cursor: isProv ? 'default' : 'pointer', opacity: (isProv || !provForm.biz || !provForm.email) ? 0.5 : 1 }}>
                   {isProv ? 'Provisioning…' : 'Create Business & Owner'}
                 </button>
-                {provMsg && <div style={{ color: '#fca5a5', fontSize: 11, padding: '4px 8px', textAlign: 'center' }}>{provMsg}</div>}
+                {provMsg && <div style={{ color: '#FF78B0', fontSize: 11, padding: '4px 8px', textAlign: 'center' }}>{provMsg}</div>}
               </div>
             </div>
 
             <SectionLabel>Super Admin: Data Management</SectionLabel>
-            <div style={{ background: '#1C1C1E', border: '1.5px solid #7f1d1d', borderRadius: 16, padding: '14px', marginBottom: 20 }}>
-              <div style={{ fontSize: 11, color: '#fca5a5', marginBottom: 12, fontWeight: 600 }}>Soft-delete businesses (immediately hides them from UI).</div>
+            <div style={{ background: '#1C1C1E', border: '1.5px solid #8B0E3F', borderRadius: 16, padding: '14px', marginBottom: 20 }}>
+              <div style={{ fontSize: 11, color: '#FF78B0', marginBottom: 12, fontWeight: 600 }}>Soft-delete businesses (immediately hides them from UI).</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {allBusinesses.filter(b => !b.deleted_at).map(b => (
                   <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '10px 12px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)' }}>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ color: 'white', fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.name}</div>
-                      <div style={{ color: '#f87171', fontSize: 10 }}>{b.owner_name || 'No Owner'}</div>
+                      <div style={{ color: '#FF5A9D', fontSize: 10 }}>{b.owner_name || 'No Owner'}</div>
                     </div>
-                    <button onClick={() => handleSoftDeleteBiz(b.id, b.name)} style={{ background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', padding: '5px 10px', borderRadius: 8, fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>DELETE</button>
+                    <button onClick={() => handleSoftDeleteBiz(b.id, b.name)} style={{ background: 'transparent', border: '1px solid #E91E6A', color: '#E91E6A', padding: '5px 10px', borderRadius: 8, fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>DELETE</button>
                   </div>
                 ))}
               </div>
@@ -456,7 +456,7 @@ export default function Admin() {
             </div>
 
             {pwError && (
-              <div style={{ fontSize: 11, color: '#ef4444', background: 'rgba(239,68,68,0.1)', padding: '8px', borderRadius: 8 }}>
+              <div style={{ fontSize: 11, color: '#E91E6A', background: 'rgba(239,68,68,0.1)', padding: '8px', borderRadius: 8 }}>
                 {pwError}
               </div>
             )}

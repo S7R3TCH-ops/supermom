@@ -497,7 +497,7 @@ export default function Settings() {
         {user?.email === SUPER_ADMIN_EMAIL && (
           <>
             <SectionLabel>System</SectionLabel>
-            <div style={{ background: '#1a0a0a', borderRadius: 16, border: '1.5px solid #7f1d1d', padding: 16 }}>
+            <div style={{ background: '#1C1C1E', borderRadius: 16, border: '1.5px solid #7f1d1d', padding: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
               <span style={{ fontSize: 14, fontWeight: 700, color: '#fca5a5' }}>Danger Zone</span>
               <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.8px', color: '#ef4444', background: 'rgba(239,68,68,0.15)', padding: '2px 7px', borderRadius: 'var(--r-badge)', border: '1px solid #7f1d1d' }}>SUPER ADMIN</span>

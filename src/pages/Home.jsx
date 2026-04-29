@@ -444,7 +444,7 @@ export default function Home() {
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                       <span style={{ fontFamily: T.font, fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>{fmtTime12(next.start).time} – {fmtTime12(next.end).time} {fmtTime12(next.end).period}</span>
                     </div>
-                    {!isToday && (
+                    {!sameDay(next.start, today) && (
                       <>
                         <div style={{ width: 3, height: 3, borderRadius: '50%', background: 'rgba(255,255,255,0.3)' }} />
                         <span style={{ fontFamily: T.font, fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>{dateBrief(next.start)}</span>

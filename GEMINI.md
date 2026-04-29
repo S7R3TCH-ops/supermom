@@ -82,6 +82,7 @@ At the end of every productive session, or upon major milestone completion, Gemi
 | **ADHD Focus UI** | ✅ **Live** — High-contrast Amber highlighting for Unpaid completed jobs |
 | **AI Persona Picker** | ✅ **Live** — Fixed missing DB column; verified persistence |
 | **Typography Suite** | ✅ **Live** — Suite of atomic, theme-aware components (Title, Subheading, SectionLabel, Text, Caption) |
+| **Design Compliance** | ✅ **Live** — 4-item nav consolidation; official Theme Toggle rule; Serif Section Labels |
 
 ## Phase 15/16 Updates (Gemini CLI session, April 27, 2026)
 
@@ -160,6 +161,7 @@ Key refinements for user engagement and schedule safety:
 | DD | Seeder Fix | Resolved overlapping job times in the idempotent seed script | `seed_idempotent.mjs` |
 | DE | Hero Aesthetics | Geometric SVG patterns and refined gradients for a premium feel | `Home.jsx` |
 | DF | Date Persistence | Dates now show on all job cards (including Today/Unpaid) for quick orientation | `Home.jsx` |
+| DG | Design Compliance | ✅ **Live** — 4-item nav consolidation; official Theme Toggle rule; Serif Section Labels | `BottomNav.jsx`, `DESIGN.md`, `FAB.jsx` |
 
 (Updated by Gemini CLI)
 

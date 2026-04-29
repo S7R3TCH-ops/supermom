@@ -18,10 +18,10 @@
 ```css
 :root {
   /* Brand */
-  --pink:          #E91E6A;   /* primary action, CTAs, active nav */
-  --pink-light:    #FF5A9D;   /* gradient start, avatar backgrounds */
-  --pink-mid:      #B01550;   /* hover states, destructive actions */
-  --pink-pale:     #FFF9FB;   /* app background, screen base */
+  --pink:          #FF70A6;   /* primary action, CTAs, active nav (Vibrant Papaya) */
+  --pink-light:    #FF94BC;   /* gradient start, avatar backgrounds (Softer glow) */
+  --pink-mid:      #FF78B0;   /* hover states, destructive actions */
+  --pink-pale:     #FFF9F5;   /* app background, screen base (Warm Cream) */
   --pink-tint:     #FFF0F7;   /* selected state backgrounds */
   --pink-border:   #FFD6E8;   /* ALL card borders, input borders */
   --pink-label:    #FF78B0;   /* labels/text on dark backgrounds */
@@ -642,4 +642,4 @@ Profile view (dark plum hero — differentiates from pink banner):
 
 ---
 
-*Design System v1.2 (Updated by Gemini CLI) · April 2026 · Supermom for Hire*
+*Design System v1.3 (Updated by Gemini CLI) · April 2026 · Supermom for Hire*

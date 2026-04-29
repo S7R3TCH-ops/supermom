@@ -313,10 +313,10 @@ export default function Home() {
         {/* HERO */}
         <div style={{ background: T.hero, borderBottom: '3px solid #E91E6A', padding: '13px 15px 18px', position: 'relative', overflow: 'hidden' }}>
           {/* Decorative Pattern Overlay */}
-          <div style={{ position: 'absolute', inset: 0, opacity: 0.04, pointerEvents: 'none' }}>
+          <div style={{ position: 'absolute', inset: 0, opacity: mode === 'dark' ? 0.04 : 0.1, pointerEvents: 'none' }}>
             <svg width="100%" height="100%">
               <pattern id="hero-dots" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
-                <circle cx="2" cy="2" r="1" fill="white" />
+                <circle cx="2" cy="2" r="1" fill={mode === 'dark' ? 'white' : T.pink} />
               </pattern>
               <rect width="100%" height="100%" fill="url(#hero-dots)" />
             </svg>
@@ -325,33 +325,33 @@ export default function Home() {
           
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative' }}>
             <div style={{ flex: 1 }}>
-              <Caption style={{ fontWeight: 700, letterSpacing: '1.1px', textTransform: 'uppercase', color: T.pinkLabel, marginBottom: 5 }}>
+              <Caption style={{ fontWeight: 700, letterSpacing: '1.1px', textTransform: 'uppercase', color: mode === 'dark' ? T.pinkLabel : T.pink, marginBottom: 5 }}>
                 ✦ Command Brief · {dateBrief(today)}
               </Caption>
-              <Title style={{ fontSize: 22, fontWeight: 500, letterSpacing: '-0.5px', color: 'white', lineHeight: 1.15, marginBottom: 4 }}>
+              <Title style={{ fontSize: 22, fontWeight: 500, letterSpacing: '-0.5px', color: mode === 'dark' ? 'white' : T.ink, lineHeight: 1.15, marginBottom: 4 }}>
                 {timeBasedGreeting}
               </Title>
             </div>
             {todayJobs.length > 0 && (
               <div style={{ textAlign: 'right' }}>
-                <Text style={{ fontSize: 14, fontWeight: 800, color: 'white' }}>{Math.round(progressPercent)}%</Text>
-                <Caption style={{ fontWeight: 700, color: T.pinkLabel, textTransform: 'uppercase' }}>Done</Caption>
+                <Text style={{ fontSize: 14, fontWeight: 800, color: mode === 'dark' ? 'white' : T.pink }}>{Math.round(progressPercent)}%</Text>
+                <Caption style={{ fontWeight: 700, color: mode === 'dark' ? T.pinkLabel : T.pink, textTransform: 'uppercase' }}>Done</Caption>
               </div>
             )}
           </div>
 
-          <Text style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.6)', lineHeight: 1.5, marginBottom: 14, position: 'relative' }}>
+          <Text style={{ fontSize: 11.5, color: mode === 'dark' ? 'rgba(255,255,255,0.6)' : T.inkSub, lineHeight: 1.5, marginBottom: 14, position: 'relative' }}>
             {todayJobs.length === 0
               ? briefingMsg
               : allDone 
                 ? briefingMsg
-                : <>{todayJobs.length} {todayJobs.length === 1 ? 'house' : 'houses'} today{tightGap ? <> · <span style={{ color: T.pinkLabel }}>1 flag needs you</span></> : ''}</>
+                : <>{todayJobs.length} {todayJobs.length === 1 ? 'house' : 'houses'} today{tightGap ? <> · <span style={{ color: T.pink }}>1 flag needs you</span></> : ''}</>
             }
           </Text>
 
           {/* Mission Progress Bar */}
           {todayJobs.length > 0 && (
-            <div style={{ position: 'relative', height: 4, background: 'rgba(255,255,255,0.1)', borderRadius: 2, marginBottom: 18, overflow: 'hidden' }}>
+            <div style={{ position: 'relative', height: 4, background: mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)', borderRadius: 2, marginBottom: 18, overflow: 'hidden' }}>
               <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${progressPercent}%`, background: T.pink, borderRadius: 2, transition: 'width 0.5s ease' }} />
             </div>
           )}
@@ -362,9 +362,9 @@ export default function Home() {
               { n: privacyOn ? '•••' : `$${revenueToday.toFixed(0)}`, l: 'Today', onClick: () => openDetail("Today's Revenue", todayJobs, 'jobs') },
               { n: next?.ai_context?.drive_to?.duration || '—', l: 'Drive' },
             ].map(s => (
-              <div key={s.l} onClick={s.onClick} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: '7px 6px', textAlign: 'center', cursor: s.onClick ? 'pointer' : 'default' }}>
-                <Subheading style={{ fontSize: 15, fontWeight: 500, color: 'white', letterSpacing: '-0.3px' }}>{s.n}</Subheading>
-                <Caption style={{ fontWeight: 600, color: 'rgba(255,255,255,0.38)', letterSpacing: '0.4px', textTransform: 'uppercase', marginTop: 2 }}>{s.l}</Caption>
+              <div key={s.l} onClick={s.onClick} style={{ background: mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.4)', border: `1px solid ${mode === 'dark' ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.05)'}`, borderRadius: 10, padding: '7px 6px', textAlign: 'center', cursor: s.onClick ? 'pointer' : 'default' }}>
+                <Subheading style={{ fontSize: 15, fontWeight: 500, color: mode === 'dark' ? 'white' : T.ink, letterSpacing: '-0.3px' }}>{s.n}</Subheading>
+                <Caption style={{ fontWeight: 600, color: mode === 'dark' ? 'rgba(255,255,255,0.38)' : T.inkMuted, letterSpacing: '0.4px', textTransform: 'uppercase', marginTop: 2 }}>{s.l}</Caption>
               </div>
             ))}
           </div>
@@ -391,10 +391,10 @@ export default function Home() {
           )}
 
           {!loading && !error && !clientsLoading && clients.length === 0 && !missionDismissed && (
-            <div style={{ background: 'linear-gradient(135deg, #1A0B2E 0%, #0D0517 100%)', border: '2px solid #E91E6A', borderRadius: 16, padding: '24px 20px', textAlign: 'center', marginBottom: 16, position: 'relative', overflow: 'hidden' }}>
-              <button onClick={() => { setMissionDismissed(true); localStorage.setItem('sm_mission_dismissed', 'true'); }} style={{ position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', cursor: 'pointer' }}>×</button>
-              <Subheading style={{ fontSize: 20, color: 'white', marginBottom: 10 }}>Initialize your first VIP</Subheading>
-              <button onClick={() => openNewClient()} style={{ background: 'var(--grad-pink)', color: 'white', border: 'none', borderRadius: 12, padding: '12px 24px', fontFamily: T.font, fontSize: 13, fontWeight: 700 }}>Add first client</button>
+            <div style={{ background: mode === 'dark' ? 'linear-gradient(135deg, #1A0B2E 0%, #0D0517 100%)' : 'linear-gradient(135deg, #FFF5F7 0%, #FFE9F0 100%)', border: `2px solid ${T.pink}`, borderRadius: 16, padding: '24px 20px', textAlign: 'center', marginBottom: 16, position: 'relative', overflow: 'hidden' }}>
+              <button onClick={() => { setMissionDismissed(true); localStorage.setItem('sm_mission_dismissed', 'true'); }} style={{ position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', color: mode === 'dark' ? 'rgba(255,255,255,0.3)' : T.inkMuted, cursor: 'pointer' }}>×</button>
+              <Subheading style={{ fontSize: 20, color: mode === 'dark' ? 'white' : T.ink, marginBottom: 10 }}>Initialize your first VIP</Subheading>
+              <button onClick={() => openNewClient()} style={{ background: T.pink, color: 'white', border: 'none', borderRadius: 12, padding: '12px 24px', fontFamily: T.font, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Add first client</button>
             </div>
           )}
 
@@ -419,14 +419,14 @@ export default function Home() {
           {activeJob && isSelectedToday && (
             <>
               <SectionLabel>Active Mission · {activeJob.client_name}</SectionLabel>
-              <div style={{ background: 'linear-gradient(135deg, #1A0B2E 0%, #0D0517 100%)', border: '1.5px solid rgba(233,30,106,0.5)', borderRadius: 14, padding: '16px 18px', marginBottom: 12 }}>
+              <div style={{ background: mode === 'dark' ? 'linear-gradient(135deg, #1A0B2E 0%, #0D0517 100%)' : T.hero, border: `1.5px solid ${mode === 'dark' ? 'rgba(233,30,106,0.5)' : T.cardBorder}`, borderRadius: 14, padding: '16px 18px', marginBottom: 12 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-                  <Subheading style={{ fontSize: 20, color: 'white' }}>{activeJob.client_name}</Subheading>
-                  <Caption style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>Scheduled: {fmtTime12(activeJob.start).time} – {fmtTime12(activeJob.end).time}</Caption>
+                  <Subheading style={{ fontSize: 20, color: mode === 'dark' ? 'white' : T.ink }}>{activeJob.client_name}</Subheading>
+                  <Caption style={{ fontSize: 10, color: mode === 'dark' ? 'rgba(255,255,255,0.5)' : T.inkSub, fontWeight: 600 }}>Scheduled: {fmtTime12(activeJob.start).time} – {fmtTime12(activeJob.end).time}</Caption>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 12 }}>
-                  <LiveTimer startTime={activeJob.ai_context.clock_in_time} T={T} />
-                  <button onClick={async (e) => { e.stopPropagation(); await handleClockOut(activeJob.id); openPostJob(activeJob.id); }} style={{ background: '#E91E6A', color: 'white', border: 'none', borderRadius: 10, padding: '10px 20px', fontWeight: 700 }}>Done</button>
+                  <LiveTimer startTime={activeJob.ai_context.clock_in_time} T={T} mode={mode} />
+                  <button onClick={async (e) => { e.stopPropagation(); await handleClockOut(activeJob.id); openPostJob(activeJob.id); }} style={{ background: T.pink, color: 'white', border: 'none', borderRadius: 10, padding: '10px 20px', fontWeight: 700, cursor: 'pointer' }}>Done</button>
                 </div>
               </div>
             </>
@@ -435,30 +435,30 @@ export default function Home() {
           {!activeJob && next && isSelectedToday && (
             <>
               <SectionLabel>Opening Act · {next.client_name}</SectionLabel>
-              <div onClick={() => openJob(next.id)} style={{ background: T.hero, border: '1.5px solid rgba(233,30,106,0.32)', borderRadius: 14, padding: '12px', marginBottom: 10, cursor: 'pointer', position: 'relative', overflow: 'hidden' }}>
-                <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.02) 1px, transparent 1px)', backgroundSize: '15px 15px', pointerEvents: 'none' }} />
+              <div onClick={() => openJob(next.id)} style={{ background: T.hero, border: `1.5px solid ${mode === 'dark' ? 'rgba(233,30,106,0.32)' : T.cardBorder}`, borderRadius: 14, padding: '12px', marginBottom: 10, cursor: 'pointer', position: 'relative', overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', inset: 0, backgroundImage: mode === 'dark' ? 'radial-gradient(circle, rgba(255,255,255,0.02) 1px, transparent 1px)' : `radial-gradient(circle, ${T.pink}08 1px, transparent 1px)`, backgroundSize: '15px 15px', pointerEvents: 'none' }} />
                 <div style={{ position: 'relative' }}>
-                  <Subheading style={{ fontSize: 18, color: 'white' }}>{next.client_name}</Subheading>
+                  <Subheading style={{ fontSize: 18, color: mode === 'dark' ? 'white' : T.ink }}>{next.client_name}</Subheading>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '4px 0 12px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                      <span style={{ fontFamily: T.font, fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>{fmtTime12(next.start).time} – {fmtTime12(next.end).time} {fmtTime12(next.end).period}</span>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={mode === 'dark' ? 'rgba(255,255,255,0.6)' : T.inkSub} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                      <span style={{ fontFamily: T.font, fontSize: 11, color: mode === 'dark' ? 'rgba(255,255,255,0.7)' : T.inkSub, fontWeight: 600 }}>{fmtTime12(next.start).time} – {fmtTime12(next.end).time} {fmtTime12(next.end).period}</span>
                     </div>
                     {!sameDay(next.start, today) && (
                       <>
-                        <div style={{ width: 3, height: 3, borderRadius: '50%', background: 'rgba(255,255,255,0.3)' }} />
-                        <span style={{ fontFamily: T.font, fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>{dateBrief(next.start)}</span>
+                        <div style={{ width: 3, height: 3, borderRadius: '50%', background: mode === 'dark' ? 'rgba(255,255,255,0.3)' : T.cardBorder }} />
+                        <span style={{ fontFamily: T.font, fontSize: 11, color: mode === 'dark' ? 'rgba(255,255,255,0.7)' : T.inkSub, fontWeight: 600 }}>{dateBrief(next.start)}</span>
                       </>
                     )}
                   </div>
                   {commandBrief && (
-                    <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 12, padding: '12px', marginBottom: 12 }}>
+                    <div style={{ background: mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.5)', borderRadius: 12, padding: '12px', marginBottom: 12, border: mode === 'dark' ? 'none' : `1px solid ${T.cardBorder}` }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                        <div style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 700, color: T.pinkLabel }}>✦ Command Brief</div>
-                        <button onClick={handleToggleSpeak} style={{ background: isSpeaking ? '#E91E6A' : 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 20, padding: '4px 10px', color: 'white', fontSize: 9 }}>{isSpeaking ? 'STOP' : 'LISTEN'}</button>
+                        <div style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 700, color: mode === 'dark' ? T.pinkLabel : T.pink }}>✦ Command Brief</div>
+                        <button onClick={handleToggleSpeak} style={{ background: isSpeaking ? T.pink : (mode === 'dark' ? 'rgba(255,255,255,0.1)' : T.pinkTint), border: 'none', borderRadius: 20, padding: '4px 10px', color: isSpeaking ? 'white' : T.pink, fontSize: 9, cursor: 'pointer' }}>{isSpeaking ? 'STOP' : 'LISTEN'}</button>
                       </div>
                       {commandBrief.bullets.map((b, i) => (
-                        <div key={i} style={{ display: 'flex', gap: 8, fontSize: 11, color: 'rgba(255,255,255,0.8)', marginBottom: 4 }}><span>{b.icon}</span><span>{b.text}</span></div>
+                        <div key={i} style={{ display: 'flex', gap: 8, fontSize: 11, color: mode === 'dark' ? 'rgba(255,255,255,0.8)' : T.inkSub, marginBottom: 4 }}><span>{b.icon}</span><span>{b.text}</span></div>
                       ))}
                     </div>
                   )}

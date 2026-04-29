@@ -7,25 +7,25 @@
 
 const LIGHT_PALETTE = {
   name: 'Vibrant Papaya',
-  bg: '#FFF9F5',          // Warm Cream
-  surface: '#FDF6F0',     // Softer surface
+  bg: '#FFF9F5',          // Airy Cream
+  surface: '#FCF5EF',     // Soft Sand
   card: '#FFFFFF',
-  cardBorder: '#FFD6E8',  // Refined border
+  cardBorder: '#F5E6D3',  // Warm Beige Border
   navBg: '#FFF9F5',
-  navBorder: '#FFD6E8',
-  pink: '#FF70A6',        // Vibrant Papaya Pink
+  navBorder: '#F5E6D3',
+  pink: '#E91E6A',        // Punchy Pink
   pinkLight: '#FF94BC',
-  pinkLabel: '#FF78B0',
-  pinkGlow: 'rgba(255,112,166,0.2)',
+  pinkLabel: '#E91E6A',
+  pinkGlow: 'rgba(233,30,106,0.15)',
   pinkTint: '#FFF0F7',
   amberBg: '#FEF3C7',
   amberBorder: 'rgba(245,158,11,0.4)',
   redBg: '#FFF1F1',
   redBorder: '#FCA5A540',
-  ink: '#1C1C1E',         // Dark Ink
-  inkSub: '#4A4A4A',
-  inkMuted: '#8A8A8E',
-  secLabel: '#8A8A8E',
+  ink: '#4E342E',         // Warm Cocoa (Softer than Mahogany)
+  inkSub: '#795548',      // Soft Brown
+  inkMuted: '#A1887F',    // Muted Clay
+  secLabel: '#8D6E63',
 };
 
 const DARK_PALETTE = {
@@ -57,8 +57,10 @@ export function smTokens(mode) {
 
   return {
     ...p,
-    // Shared structural/style tokens that don't change per theme
-    hero: 'linear-gradient(145deg,#1C1C1E 0%,#2C2C2E 100%)',
+    // Shared structural/style tokens that adapt to mode
+    hero: isDark 
+      ? 'linear-gradient(145deg,#1C1C1E 0%,#2C2C2E 100%)' 
+      : 'linear-gradient(145deg, #FFEFD5 0%, #FFE4B5 100%)', // Airy Golden Glow
     font: "'Inter', system-ui, sans-serif",
     serif: "'Fraunces', Georgia, serif",
   };

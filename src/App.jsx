@@ -1,24 +1,50 @@
-import { lazy, Suspense, useState } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { supabase } from './lib/supabase';
-import { AppThemeProvider } from './context/AppTheme';
-import { useAppTheme } from './context/AppThemeContext';
-import { ToastProvider } from './context/ToastContext';
-import { AuthProvider } from './context/Auth';
-import { useAuth } from './context/AuthContext';
-import { ViewpointProvider, useViewpoint } from './context/ViewpointContext';
-import { NewJobSheetProvider } from './context/NewJobSheet';
-import { NewClientSheetProvider } from './context/NewClientSheet';
-import { JobDetailSheetProvider } from './context/JobDetailSheet';
-import { FinanceDetailSheetProvider } from './context/FinanceDetailSheet';
-import { PostJobSheetProvider } from './context/PostJobSheet';
-import { GeofenceProvider } from './context/GeofenceContext';
-import LogoBar from './components/layout/LogoBar';
-import BottomNav from './components/layout/BottomNav';
-import OnboardingWalkthrough from './components/layout/OnboardingWalkthrough';
-import FAB from './components/ui/FAB';
-import { useRealtimeSync } from './data/useData';
-import { useEffect } from 'react';
+import { Component, lazy, Suspense, useState, useEffect } from 'react';
+
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error("ErrorBoundary caught an error", error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          padding: '40px 20px', textAlign: 'center', background: '#04010C', color: '#fff',
+          height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center'
+        }}>
+          <div style={{ fontSize: 40, marginBottom: 20 }}>👩‍🔧</div>
+          <h2 style={{ fontFamily: 'serif', fontSize: 24, marginBottom: 10 }}>Ouch! Something went wrong.</h2>
+          <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, marginBottom: 24 }}>
+            The app hit an unexpected glitch. Joel has been notified.
+          </p>
+          <pre style={{
+            background: 'rgba(255,255,255,0.05)', padding: 12, borderRadius: 8,
+            fontSize: 10, color: '#fca5a5', overflowX: 'auto', textAlign: 'left',
+            marginBottom: 24
+          }}>
+            {this.state.error?.toString()}
+          </pre>
+          <button
+            onClick={() => window.location.href = '/'}
+            style={{
+              background: '#E91E6A', color: 'white', border: 'none',
+              padding: '12px 24px', borderRadius: 12, fontWeight: 700, cursor: 'pointer'
+            }}
+          >
+            Restart Supermom
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const PalettePreview = lazy(() => import('./pages/PalettePreview'));
 const Home = lazy(() => import('./pages/Home'));
@@ -59,46 +85,50 @@ function AuthedShell() {
   }, [viewingAsId]);
 
   return (
-    <div style={{
-      display: 'flex', flexDirection: 'column',
-      height: '100dvh', width: '100%',
-      background: T.bg, color: T.ink, overflow: 'hidden',
-    }}>
-      <ViewpointBanner />
-      <OnboardingWalkthrough />
-      <LogoBar />
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
-        <Suspense fallback={<div style={{ padding: 20, color: T.inkMuted, fontFamily: T.font, fontSize: 13 }}>Loading...</div>}>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/calendar" element={<Calendar />} />
-            <Route path="/clients" element={<Clients />} />
-            <Route path="/clients/:id" element={<ClientProfile />} />
-            <Route path="/finance" element={<Finance />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/admin" element={<Admin />} />
-          </Routes>
-        </Suspense>
-        <FAB />
+    <ErrorBoundary>
+      <div style={{
+        display: 'flex', flexDirection: 'column',
+        height: '100dvh', width: '100%',
+        background: T.bg, color: T.ink, overflow: 'hidden',
+      }}>
+        <ViewpointBanner />
+        <OnboardingWalkthrough />
+        <LogoBar />
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
+          <Suspense fallback={<div style={{ padding: 20, color: T.inkMuted, fontFamily: T.font, fontSize: 13 }}>Loading...</div>}>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/calendar" element={<Calendar />} />
+              <Route path="/clients" element={<Clients />} />
+              <Route path="/clients/:id" element={<ClientProfile />} />
+              <Route path="/finance" element={<Finance />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/admin" element={<Admin />} />
+            </Routes>
+          </Suspense>
+          <FAB />
+        </div>
+        <BottomNav />
       </div>
-      <BottomNav />
-    </div>
+    </ErrorBoundary>
   );
 }
 
 function LoginShell() {
   const { T } = useAppTheme();
   return (
-    <div style={{
-      display: 'flex', flexDirection: 'column',
-      height: '100dvh', width: '100%',
-      background: T.bg, color: T.ink, overflow: 'hidden',
-    }}>
-      <LogoBar />
-      <Suspense fallback={<div style={{ padding: 20, color: T.inkMuted, fontFamily: T.font, fontSize: 13 }}>Loading...</div>}>
-        <Login />
-      </Suspense>
-    </div>
+    <ErrorBoundary>
+      <div style={{
+        display: 'flex', flexDirection: 'column',
+        height: '100dvh', width: '100%',
+        background: T.bg, color: T.ink, overflow: 'hidden',
+      }}>
+        <LogoBar />
+        <Suspense fallback={<div style={{ padding: 20, color: T.inkMuted, fontFamily: T.font, fontSize: 13 }}>Loading...</div>}>
+          <Login />
+        </Suspense>
+      </div>
+    </ErrorBoundary>
   );
 }
 

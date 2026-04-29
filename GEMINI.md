@@ -147,6 +147,8 @@ Key enhancements for "Supermom Spirit" and essential bug fixes:
 | CR | Routing Stability | ✅ **Fixed** — Explicit `vercel.json` rewrites prevent 404s on browser refresh | `vercel.json` |
 | CS | Unified Dev Flow | ✅ **Live** — `npm start` (via `vercel dev`) enables local API + routing parity | `package.json` |
 | DA | High-Visibility Date/Time | ✅ **Live** — Dedicated banner date/time rows and redesign of home job cards | `JobDetailSheet.jsx`, `Home.jsx`, `ClientProfile.jsx` |
+| DB | Crash Prevention | ✅ **Fixed** — Added `ErrorBoundary` and hardened `NewJobSheet` against null-refs | `App.jsx`, `NewJobSheet.jsx` |
+| DC | Airy Papaya Redesign | ✅ **Live** — Removed charcoal; implemented warm Golden Glow & Cocoa palette | `tokens.js`, `Home.jsx` |
 
 (Updated by Gemini CLI)
 

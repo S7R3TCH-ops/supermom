@@ -16,10 +16,13 @@ function todayISODate() {
 }
 
 function fmtTimeRange(timeStr, durationMin) {
-  if (!timeStr) return '';
-  const [h, m] = timeStr.split(':').map(Number);
-  const startMin = h * 60 + m;
-  const endMin = startMin + durationMin;
+  if (!timeStr || typeof timeStr !== 'string') return '';
+  const parts = timeStr.split(':');
+  if (parts.length < 2) return '';
+  
+  const [h, m] = parts.map(Number);
+  const startMin = (isNaN(h) ? 0 : h) * 60 + (isNaN(m) ? 0 : m);
+  const endMin = startMin + (durationMin || 0);
   const fmt = total => {
     const hh = Math.floor(total / 60) % 24;
     const mm = total % 60;
@@ -31,11 +34,12 @@ function fmtTimeRange(timeStr, durationMin) {
 }
 
 function fmtDuration(min) {
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  if (h === 0) return `${m}m`;
-  if (m === 0) return `${h}h`;
-  return `${h}h ${m}m`;
+  const m = Number(min || 0);
+  const h = Math.floor(m / 60);
+  const mm = m % 60;
+  if (h === 0) return `${mm}m`;
+  if (mm === 0) return `${h}h`;
+  return `${h}h ${mm}m`;
 }
 
 export default function NewJobSheet({ prefillClientId, onClose }) {
@@ -271,7 +275,7 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
           {step === 2 && (
             <Step2What
               T={T} mode={mode} client={selectedClient}
-              services={services} loading={loadingServices}
+              services={services} loading={servicesLoading}
               serviceId={serviceId} onPickService={onPickService}
               date={date} setDate={setDate}
               time={time} setTime={setTime}
@@ -472,8 +476,8 @@ function Step2What({
   aiEstimateLoading, aiEstimateReason,
   conflicts = []
 }) {
-  const usualService = client && client.service ? (
-    services.find(s => s.name.toLowerCase() === client.service.toLowerCase())
+  const usualService = (client && client.service && typeof client.service === 'string' && client.service !== '—') ? (
+    services.find(s => s.name?.toLowerCase() === client.service.toLowerCase())
   ) : null;
   const inputBg = mode === 'dark' ? 'rgba(255,255,255,0.05)' : '#fff';
 

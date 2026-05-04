@@ -205,7 +205,3 @@ export default function NewExpenseSheet({ onClose }) {
     </div>
   );
 }
-</div>
-    </div>
-  );
-}

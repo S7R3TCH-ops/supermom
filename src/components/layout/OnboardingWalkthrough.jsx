@@ -56,8 +56,8 @@ export default function OnboardingWalkthrough() {
     return (
       <div style={{
         position: 'fixed', inset: 0, zIndex: 1000,
-        background: 'rgba(26,10,18,0.92)',
-        backdropFilter: 'blur(8px)',
+        background: 'rgba(26,10,18,0.7)',
+        backdropFilter: 'blur(12px)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: 24,
       }}>
@@ -158,8 +158,8 @@ export default function OnboardingWalkthrough() {
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 1000,
-      background: 'rgba(26,10,18,0.92)',
-      backdropFilter: 'blur(8px)',
+      background: 'rgba(26,10,18,0.7)',
+      backdropFilter: 'blur(12px)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: 24,
     }}>

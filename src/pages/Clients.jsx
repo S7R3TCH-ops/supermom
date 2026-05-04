@@ -147,7 +147,7 @@ export default function Clients() {
               borderRadius: 13, padding: '10px 12px', marginBottom: 7, cursor: 'pointer',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: c.note ? 7 : 0 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
               <div style={{
                 width: 40, height: 40, borderRadius: 12, flexShrink: 0,
                 background: `${c.color}22`, border: `1.5px solid ${c.color}55`,
@@ -194,13 +194,6 @@ export default function Clients() {
                 )}
               </div>
             </div>
-
-            {c.note && (
-              <div style={{ borderTop: `1px dashed ${mode === 'dark' ? 'rgba(255,255,255,0.07)' : '#FFE8F2'}`, paddingTop: 6, display: 'flex', gap: 5, alignItems: 'flex-start' }}>
-                <span style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', color: c.owed ? '#F59E0B' : '#FF78B0', flexShrink: 0, marginTop: 1 }}>✦ NOTES</span>
-                <span style={{ fontFamily: T.font, fontSize: 10.5, color: T.inkSub, lineHeight: 1.4 }}>{c.note}</span>
-              </div>
-            )}
           </div>
         ))}
       </div>

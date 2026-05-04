@@ -132,7 +132,7 @@ export default function Calendar() {
       {/* Dark hero */}
       <div style={{ 
         background: T.hero, 
-        borderBottom: mode === 'dark' ? '3px solid #E91E6A' : 'none', 
+        borderBottom: mode === 'dark' ? '3px solid #E91E6A' : 'none',
         padding: '11px 13px 13px', 
         position: 'relative', 
         overflow: 'hidden', 

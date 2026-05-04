@@ -261,16 +261,10 @@ export default function Finance() {
                 {privacyOn ? '•••' : `$${periodTotal.toLocaleString()}`}
               </div>
             </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.28)', borderRadius: 20, padding: '3px 8px', marginBottom: 6 }}>
-                <span style={{ fontSize: 9, fontWeight: 800, color: '#4ADE80' }}>+12%</span>
-              </div>
-              <div style={{ fontFamily: T.font, fontSize: 10, fontWeight: 600, color: mode === 'dark' ? 'rgba(255,255,255,0.38)' : T.inkMuted, textTransform: 'uppercase', letterSpacing: '0.4px' }}>vs Last {period}</div>
-            </div>
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 3, background: mode === 'dark' ? '#1C1C1E' : 'rgba(255,255,255,0.4)', border: `1px solid ${mode === 'dark' ? 'transparent' : 'rgba(0,0,0,0.05)'}`, borderRadius: 12, padding: 3, marginTop: 18, position: 'relative' }}>
+        <div style={{ display: 'flex', gap: 3, background: '#2C2C2E', borderRadius: 12, padding: 3, marginTop: 18, position: 'relative' }}>
           {periods.map(v => (
             <button
               key={v}
@@ -279,7 +273,7 @@ export default function Finance() {
                 flex: 1, padding: '7px 0', border: 'none', borderRadius: 9,
                 fontFamily: T.font, fontSize: 11, fontWeight: 600,
                 background: period === v ? T.pink : 'transparent',
-                color: period === v ? 'white' : (mode === 'dark' ? 'rgba(255,255,255,0.4)' : T.inkMuted),
+                color: period === v ? 'white' : 'rgba(255,255,255,0.55)',
                 cursor: 'pointer', transition: 'all 0.1s',
               }}
             >{v}</button>

@@ -52,7 +52,7 @@ export function ToastProvider({ children }) {
       const next = [...prev, { id, type, message }];
       return next.slice(-3); // keep max 3
     });
-    timers.current[id] = setTimeout(() => dismiss(id), 3500);
+    timers.current[id] = setTimeout(() => dismiss(id), 6000);
   }, [dismiss]);
 
   const toast = {

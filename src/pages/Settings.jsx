@@ -84,9 +84,11 @@ export default function Settings() {
   useEffect(() => {
     async function checkIntegration() {
       if (!user) return;
+      const businessId = await getCurrentBusinessId();
       const { data } = await supabase
         .from('integrations')
         .select('*')
+        .eq('business_id', businessId)
         .eq('service_name', 'google_calendar')
         .maybeSingle();
       setIntegration(data);
@@ -127,7 +129,17 @@ export default function Settings() {
     setSaving(true);
     setError(null);
     try {
-      const ai_profile = { ...(business.ai_profile || {}), signature: form.signature };
+      let currentProfile = {};
+      try {
+        if (typeof business.ai_profile === 'string') {
+          currentProfile = JSON.parse(business.ai_profile);
+        } else if (business.ai_profile) {
+          currentProfile = business.ai_profile;
+        }
+      } catch (e) { /* ignore parse error */ }
+      
+      const ai_profile = { ...currentProfile, signature: form.signature };
+      
       await update({
         name:        form.name.trim(),
         owner_name:  form.owner_name.trim(),
@@ -243,9 +255,9 @@ export default function Settings() {
         overflow: 'hidden'
       }}>
         <div style={{ position: 'absolute', top: -50, right: -30, width: 150, height: 150, borderRadius: '50%', background: `radial-gradient(circle,${T.pinkGlow} 0%,transparent 70%)`, pointerEvents: 'none' }} />
-        <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '1.1px', textTransform: 'uppercase', color: mode === 'dark' ? T.pinkLabel : T.pink, marginBottom: 4, position: 'relative' }}>
+        <SectionLabel style={{ color: mode === 'dark' ? T.pinkLabel : T.pink, marginBottom: 4, position: 'relative' }}>
           ✦ Preferences
-        </div>
+        </SectionLabel>
         <h2 style={{ fontFamily: T.serif, fontSize: 24, margin: 0, color: mode === 'dark' ? 'white' : T.ink, fontWeight: 500, position: 'relative' }}>Settings</h2>
       </div>
 

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { useKeyboardFocus } from '../../hooks/useKeyboardFocus';
 import { SectionLabel } from '../ui/typography';
 import NewClientSheet from './NewClientSheet';
 import { fetchClients } from '../../data/clientsRepo';
@@ -45,6 +46,7 @@ function fmtDuration(min) {
 export default function NewJobSheet({ prefillClientId, onClose }) {
   const { T, mode, privacyOn } = useAppTheme();
   const toast = useToast();
+  const isKeyboardFocused = useKeyboardFocus();
   const { services, loading: servicesLoading } = useServices();
   const sheetRef = useRef(null);
   useFocusTrap(sheetRef, true, onClose);
@@ -257,7 +259,12 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
           ))}
         </div>
 
-        <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '6px 18px 14px' }}>
+        <div className="sm-scroll" style={{ 
+          flex: 1, 
+          overflowY: 'auto', 
+          padding: `6px 18px ${isKeyboardFocused ? '260px' : '14px'}`,
+          transition: 'padding-bottom 0.2s ease-out'
+        }}>
           {loadErr && (
             <div style={{ padding: 10, borderRadius: 8, background: T.redBg, border: `1px solid ${T.redBorder}`, color: T.ink, font: `12px/1.4 ${T.font}`, marginBottom: 10 }}>
               Failed to load: {loadErr.message}
@@ -650,7 +657,7 @@ function Step2What({
 /* ============= STEP 3 ============= */
 function Step3Review({
   T, mode, privacyOn, client, service, date, time, duration, recurrence, priceStr,
-  conflicts, clientLookup, confirmText, setConfirmText,
+  conflicts, clientLookup, confirmText, setConfirmText, onFixTime,
 }) {
   const timeRange = fmtTimeRange(time, duration);
   const dateObj = date ? new Date(`${date}T12:00:00`) : null;

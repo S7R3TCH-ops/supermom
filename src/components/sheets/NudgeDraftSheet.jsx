@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { useKeyboardFocus } from '../../hooks/useKeyboardFocus';
 
 export default function NudgeDraftSheet({ isOpen, onClose, clientsWithUnpaid }) {
   const { T, mode } = useAppTheme();
+  const isKeyboardFocused = useKeyboardFocus();
   const sheetRef = useRef(null);
   useFocusTrap(sheetRef, isOpen, onClose);
   const [selectedClient, setSelectedClient] = useState(null);
@@ -52,10 +54,11 @@ export default function NudgeDraftSheet({ isOpen, onClose, clientsWithUnpaid }) 
           background: T.bg, color: T.ink,
           borderRadius: '24px 24px 0 0',
           boxShadow: '0 -10px 40px rgba(0,0,0,0.38)',
-          maxHeight: '80svh', display: 'flex', flexDirection: 'column',
+          maxHeight: '88svh', display: 'flex', flexDirection: 'column',
           animation: 'nudgeSlide 260ms cubic-bezier(0.2,0.8,0.2,1)',
           border: `1px solid ${T.cardBorder}`, borderBottom: 'none',
-          padding: '8px 0 24px',
+          padding: `10px 18px ${isKeyboardFocused ? '260px' : '20px'}`,
+          transition: 'padding-bottom 0.2s ease-out'
         }}
       >
         <div style={{ width: 40, height: 4, background: '#FFD6E8', borderRadius: 4, margin: '0 auto 16px', opacity: mode === 'dark' ? 0.6 : 1 }} />

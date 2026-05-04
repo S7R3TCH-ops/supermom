@@ -331,9 +331,9 @@ export default function Home() {
           
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative' }}>
             <div style={{ flex: 1 }}>
-              <Caption style={{ fontWeight: 700, letterSpacing: '1.1px', textTransform: 'uppercase', color: mode === 'dark' ? T.pinkLabel : T.pink, marginBottom: 5 }}>
+              <SectionLabel style={{ color: mode === 'dark' ? T.pinkLabel : T.pink, marginBottom: 5 }}>
                 ✦ Command Brief · {dateBrief(today)}
-              </Caption>
+              </SectionLabel>
               <Title style={{ fontSize: 22, fontWeight: 500, letterSpacing: '-0.5px', color: mode === 'dark' ? 'white' : T.ink, lineHeight: 1.15, marginBottom: 4 }}>
                 {timeBasedGreeting}
               </Title>

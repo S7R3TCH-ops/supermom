@@ -4,6 +4,7 @@ import { createExpense } from '../../data/expensesRepo';
 import { notifyDataChanged } from '../../data/useData';
 import { useToast } from '../../context/ToastContext';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { useKeyboardFocus } from '../../hooks/useKeyboardFocus';
 
 const CATEGORIES = [
   { key: 'Supplies',  icon: '🧹' },
@@ -18,9 +19,10 @@ function todayISO() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-export default function NewExpenseSheet({ isOpen, onClose }) {
+export default function NewExpenseSheet({ onClose }) {
   const { T, mode } = useAppTheme();
   const toast = useToast();
+  const isKeyboardFocused = useKeyboardFocus();
   const sheetRef = useRef(null);
   useFocusTrap(sheetRef, isOpen, onClose);
   const [category, setCategory] = useState('Supplies');
@@ -107,7 +109,12 @@ export default function NewExpenseSheet({ isOpen, onClose }) {
         </div>
 
         {/* Body */}
-        <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '0 18px 6px' }}>
+        <div className="sm-scroll" style={{ 
+          flex: 1, 
+          overflowY: 'auto', 
+          padding: `0 18px ${isKeyboardFocused ? '260px' : '6px'}`,
+          transition: 'padding-bottom 0.2s ease-out'
+        }}>
 
           {/* Category */}
           <div id="ex-cat-label" style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.7px', textTransform: 'uppercase', color: T.inkMuted, marginBottom: 8 }}>Category</div>
@@ -195,6 +202,10 @@ export default function NewExpenseSheet({ isOpen, onClose }) {
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+</div>
     </div>
   );
 }

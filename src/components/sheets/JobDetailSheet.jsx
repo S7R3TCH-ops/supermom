@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { useKeyboardFocus } from '../../hooks/useKeyboardFocus';
 import { fetchJobById, updateJob, softDeleteJob } from '../../data/jobsRepo';
 import { notifyDataChanged, useBusiness, useServices } from '../../data/useData';
 import { useToast } from '../../context/ToastContext';
@@ -45,6 +46,7 @@ function calcEnd(timeStr, hours) {
 export default function JobDetailSheet({ jobId, onClose }) {
   const { T, mode } = useAppTheme();
   const toast = useToast();
+  const isKeyboardFocused = useKeyboardFocus();
   const { business } = useBusiness();
   const { services } = useServices();
   const sheetRef = useRef(null);
@@ -250,6 +252,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
             showSeriesPicker={showSeriesPicker} onSeriesChoice={onSeriesChoice}
             onSave={initiateSave}
             onCancelEdit={() => { setEditMode(false); setMutErr(null); setShowSeriesPicker(false); }}
+            isKeyboardFocused={isKeyboardFocused}
           />
         )}
 
@@ -357,7 +360,7 @@ function ReadMode({
 }
 
 /* ============= EDIT MODE ============= */
-function EditMode({ form, setForm, services, T, mode, busy, mutErr, showSeriesPicker, onSeriesChoice, onSave, onCancelEdit }) {
+function EditMode({ form, setForm, services, T, mode, busy, mutErr, showSeriesPicker, onSeriesChoice, onSave, onCancelEdit, isKeyboardFocused }) {
   function set(k, v) { setForm(f => ({ ...f, [k]: v })); }
 
   function onPickService(e) {
@@ -374,7 +377,12 @@ function EditMode({ form, setForm, services, T, mode, busy, mutErr, showSeriesPi
       <div style={{ padding: '8px 14px 10px', borderBottom: `1px solid ${T.cardBorder}` }}>
         <div style={{ fontSize: 9, fontWeight: 700, color: '#FF78B0', textTransform: 'uppercase' }}>Editing Job</div>
       </div>
-      <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '12px 14px 4px' }}>
+      <div className="sm-scroll" style={{ 
+        flex: 1, 
+        overflowY: 'auto', 
+        padding: `12px 14px ${isKeyboardFocused ? '260px' : '4px'}`,
+        transition: 'padding-bottom 0.2s ease-out'
+      }}>
         <Field T={T} label="Date"><input type="date" value={form.scheduled_date} onChange={e => set('scheduled_date', e.target.value)} style={iStyle(T)} /></Field>
         <Field T={T} label="Time"><input type="time" value={form.scheduled_time} onChange={e => set('scheduled_time', e.target.value)} style={iStyle(T)} /></Field>
         <Field T={T} label="Service">

@@ -8,13 +8,13 @@ export default function LogoBar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { T, mode, toggleMode, privacyOn, togglePrivacy } = useAppTheme();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { business } = useBusiness();
   const { isSuperAdmin } = useViewpoint();
 
   const onAvatarClick = () => {
     if (user) {
-      if (isSuperAdmin) navigate('/admin');
+      if (isSuperAdmin || profile?.role === 'owner') navigate('/admin');
       else navigate('/settings');
     }
   };

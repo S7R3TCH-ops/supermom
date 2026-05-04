@@ -32,7 +32,7 @@ At the end of every productive session, or upon major milestone completion, Gemi
 
 ---
 
-## Current State (as of April 27, 2026 — updated post UX & Stability Hardening)
+## Current State (as of May 1, 2026 — updated post QA Audit Fixes)
 
 | Feature | Status |
 |---|---|
@@ -53,21 +53,21 @@ At the end of every productive session, or upon major milestone completion, Gemi
 | **Expense logging** | ✅ **Live** — NewExpenseSheet (Strict validation); Finance Expenses card |
 | **CSV Export / Tax Ready** | ✅ **Live** — Finance Tax Ready section |
 | **Recurrence series editor** | ✅ **Live** — 'this / future / all' safely implemented |
-| **GCal Sync Security** | ✅ **Live** — CSRF nonce + multi-tenant state param |
+| **GCal Sync** | ✅ **Live** — Series limit increased to 20; reliability hardened |
 | **Drive time / mileage** | ✅ **Live** — Google Maps Distance Matrix API proxy |
 | **payments table audit row** | ✅ **Live** — mark-paid inserts into `payments` via `recordPayment()` |
 | **Client search** (Clients page) | ✅ **Live** — live filter by name/address |
 | **Finance nudge buttons** | ✅ **Live** — `NudgeDraftSheet` drafts SMS reminders |
 | **Code-split bundle** | ✅ **Live** — `React.lazy` + `Suspense` on all pages |
-| **Real-time subscriptions** | ✅ **Live** — Supabase Realtime auto-refresh |
+| **Realtime Sync** | ✅ **Live** — Fixed 'on after subscribe' crash loop |
 | **Storage bucket** | ✅ **Live** — Photos + Voice Notes in Job Detail |
 | **Geofence / auto-timer** | ✅ **Live** — Auto-start/stop with Live Timer card |
 | **Google Calendar sync** | ✅ **Live** — One-way sync (Supermom -> Google) |
 | **Settings / Admin page** | ✅ **Live** — `/settings` (profile+business form) + `/admin` (super admin panel) correctly routed |
 | **Owner Profile** | ✅ **Live** — avatar upload + signature field; DB patched to Joel's name |
-| **Onboarding flow (#20)** | ✅ **Live** — `OnboardingWalkthrough` bypassed for Super Admins |
+| **Onboarding flow (#20)** | ✅ **Live** — DB persistence fixed; backdrop polished |
 | **Auto-learning / client intelligence** | ✅ **Live** — Robust API initialization |
-| **Conflict detection (#29)** | ✅ **Live** — gap threshold logic |
+| **Conflict detection (#29)** | ✅ **Live** — gap threshold logic; conflict fix routing verified |
 | **Accessibility pass (#31)** | ✅ **Live** — Focus trap + Escape-to-close on all modals |
 | **Automated Invoicing** | ✅ **Live** — sequential numbering + public web view |
 | **Super Admin Identity** | ✅ **Live** — Joel recognized as Creator/Maintainer; viewpoint switching active |
@@ -81,126 +81,33 @@ At the end of every productive session, or upon major milestone completion, Gemi
 | **Specialized Services** | ✅ **Live** — Declutter, Organize, Assist roster for Sandra |
 | **ADHD Focus UI** | ✅ **Live** — High-contrast Amber highlighting for Unpaid completed jobs |
 | **AI Persona Picker** | ✅ **Live** — Fixed missing DB column; verified persistence |
-| **Typography Suite** | ✅ **Live** — Suite of atomic, theme-aware components (Title, Subheading, SectionLabel, Text, Caption) |
+| **Typography Standardization** | ✅ **Live** — All 5 pages migrated to semantic typography components |
 | **Design Compliance** | ✅ **Live** — 4-item nav consolidation; official Theme Toggle rule; Serif Section Labels |
+| **Mobile Keyboard Polish** | ✅ **Live** — Focus-aware padding added to all major sheets |
+| **Client List Privacy** | ✅ **Live** — Internal notes hidden from summary list |
 
-## Phase 15/16 Updates (Gemini CLI session, April 27, 2026)
+## Phase 23 QA Stability Hardening (Gemini CLI session, May 1, 2026)
 
-Key enhancements for scale and Super Admin control:
-
-| # | Change | Detail | File |
-|---|---|---|---|
-| AZ | Creative Greetings | Time-aware motivating greetings for Home screen | `Home.jsx`, `greetings.js` |
-| BA | AI Persona Tester | ✅ **Fixed** — Applied missing `ai_profile` column to database | `Admin.jsx`, `api/ai/test-persona.js` |
-| BB | Admin Provisioning | UI + Backend for Super Admins to create new business/owner accounts | `Admin.jsx`, `api/admin/provision.js` |
-| BC | Mandatory Password Reset | Force new users to change password on first login | `OnboardingWalkthrough.jsx` |
-| BD | Soft Delete (Admin) | Super Admin tool to safely hide businesses/users from UI | `Admin.jsx` |
-| BE | Premium Theme Toggle | Sleek pill-shaped switch in global LogoBar; accessible on every page | `LogoBar.jsx` |
-| BF | Responsive Shell | Removed fixed widths; app now fills 100% of phone, centered on desktop | `App.jsx`, `index.css` |
-| BG | Robust Viewpoint Switching | Fixed UI crashes when switching views via null-safety and syntax fixes | `Home.jsx`, `useData.js` |
-| BH | Varied Empty States | Prevented repetitive messaging in briefing vs schedule lists | `Home.jsx`, `greetings.js` |
-| BI | ADHD High-Contrast | Amber/Yellow highlighting for unpaid completed jobs | `Home.jsx`, `Calendar.jsx` |
-| BJ | Deep Realistic Seed | Script for full platform reset and high-quality mock data population | `full-reset-and-seed.mjs` |
-| BK | Recent Activity Filtering | Finance Activity only shows past/today jobs; clicking opens full detail sheet | `Finance.jsx` |
-| BL | Home Page Persistency | Today's jobs (completed/paid) stay on home screen; sort by time | `Home.jsx` |
-| BM | Back to the Future Warning | Funny warning when marking future jobs as complete or paid | `JobDetailSheet.jsx`, `PostJobSheet.jsx` |
-| BN | Enhanced Nudge Personalization | Nudges use client's personal AI context and handle missing names better | `Finance.jsx`, `NudgeDraftSheet.jsx` |
-| BO | AI Prep Note Resilience | Added robust logging and error handling to prep-note API | `api/ai/prep-note.js` |
-| BP | Deep Realistic Seed v2 | Expanded seed script with more clients and complex job histories | `seed_realistic.mjs` |
-| BQ | Persona-Aware Briefing | ✅ **Fixed** — Refined comments for organizing focus; no cleaning refs | `greetings.js`, `Home.jsx` |
-| BR | High-Visibility Cards | ✅ **Live** — Vertical time blocks (Start-End) + auto date context | `Home.jsx` |
-| BS | Default Light Theme | ✅ **Live** — Default set to 'warm'; preference persists via localStorage | `AppTheme.jsx` |
-| BS | Robust Page Stability | ✅ **Live** — Deterministic greetings + error catching layers | `Home.jsx`, `greetings.js` |
-| BT | Home Section Logic | Precise categorization of today's jobs into Active, Incomplete (Past Due), Upcoming, and Done sections | `Home.jsx` |
-| BU | Past Due Highlighting | Amber styling and "PAST DUE" badges for jobs that ended but weren't marked complete | `Home.jsx` |
-| BV | Persistent Done Jobs | Completed missions now stay on the home page under a dedicated "Accomplished" label | `Home.jsx` |
-| BW | Mission Wrap-up Flow | Marking a job complete now opens a comprehensive wrap-up sheet for duration and intel logging | `JobDetailSheet.jsx`, `PostJobSheet.jsx` |
-| BX | Duration & Intel Logging | Added manual hours/mins entry and After-Job Intel notes to the post-job flow | `PostJobSheet.jsx`, `jobsRepo.js` |
-| BY | Refined Status UI | Distinct color schemes and badges for PAST DUE (Amber), UNPAID (Yellow), and PAID (Green) | `Home.jsx` |
-| BZ | Manual Hours Prompt | UI now explicitly flags completed jobs missing actual duration data | `Home.jsx`, `PostJobSheet.jsx` |
-| CA | Service Catalog Management | ✅ **Live** — Full CRUD (Add/Edit/Delete) management with high-contrast inputs | `Admin.jsx`, `ServiceCatalogSheet.jsx` |
-| CB | Dynamic Timing Display | All job cards now show both start and estimated end times based on service defaults | `Home.jsx`, `Calendar.jsx` |
-| CC | Manual Duration Tracking | System tracks missing actual durations and flags them on Home/Calendar for update | `Home.jsx`, `Calendar.jsx`, `PostJobSheet.jsx` |
-| CD | AI Learning Engine | RecordPayment now recalculates service averages and updates catalog automatically | `jobsRepo.js` |
-| CE | Database Schema Sync | ✅ **Complete** — Synchronized `businesses`, `services`, and `integrations` tables; created `job-assets` storage bucket | `supabase/migrations/` |
-| CF | Phone UX Polish | ✅ **Live** — Full-screen filling (100dvh), 56px hero logo, and fixed conflict navigation | `index.css`, `App.jsx`, `LogoBar.jsx`, `Calendar.jsx` |
-| CG | Business Realignment | ✅ **Live** — AI persona and greetings updated to Organizing & Assistance themes | `greetings.js`, `ai.js`, `Admin.jsx` |
-
-(Updated by Gemini CLI)
-
-## Phase 17 UI/UX Personality & Logic Polish (Gemini CLI session, April 27, 2026)
-
-Key enhancements for "Supermom Spirit" and essential bug fixes:
+Key enhancements for application stability and design consistency:
 
 | # | Change | Detail | File |
 |---|---|---|---|
-| CH | Dynamic Personality | Randomized motivating closers (e.g., "Go get 'em!") in greetings | `greetings.js` |
-| CI | Smart Grouping | "3-Job Rule": hide section headers if 3 or fewer jobs in a category | `Home.jsx` |
-| CJ | Aesthetic Pop | Thicker left accents (5px), emerald green for Paid, amber glow for Unpaid | `Home.jsx` |
-| CK | Spirited Empty States | Persona-aware EmptyState component with encouraging messages and icons | `Home.jsx` |
-| CL | Hero Backgrounds | Subtle geometric patterns added to Hero and "Opening Act" sections | `Home.jsx` |
-| CM | Service List Fix | ✅ **Fixed** — useServices now correctly filters by current business_id | `useData.js` |
-| CN | Data Integrity | ✅ **Smart Fix** — Standardized time/date formats from UI to DB | `NewJobSheet.jsx`, `jobsRepo.js` |
-| CO | AI Resilience | ✅ **Live** — Robust mock fallbacks for all AI features (no key needed) | `api/ai/*.js` |
-| CP | Catalog Stability | ✅ **Fixed** — Service catalog CRUD enabled via RLS + optimized Save | `ServiceCatalogSheet.jsx`, `supabase/migrations/` |
-| CQ | Duplicate Prevention | ✅ **Live** — Database-level unique constraints and idempotent seeding | `clientsRepo.js`, `seed_idempotent.mjs` |
-| CR | Routing Stability | ✅ **Fixed** — Explicit `vercel.json` rewrites prevent 404s on browser refresh | `vercel.json` |
-| CS | Unified Dev Flow | ✅ **Live** — `npm start` (via `vercel dev`) enables local API + routing parity | `package.json` |
-| DA | High-Visibility Date/Time | ✅ **Live** — Dedicated banner date/time rows and redesign of home job cards | `JobDetailSheet.jsx`, `Home.jsx`, `ClientProfile.jsx` |
-| DB | Crash Prevention | ✅ **Fixed** — Added `ErrorBoundary` and hardened `NewJobSheet` against null-refs | `App.jsx`, `NewJobSheet.jsx` |
-| DC | Airy Papaya Redesign | ✅ **Live** — Removed charcoal; implemented warm Golden Glow & Cocoa palette | `tokens.js`, `Home.jsx` |
+| DU | Realtime Loop Fix | ✅ **Fixed** — Prevented 'on after subscribe' crash in `realtime.js` | `realtime.js` |
+| DV | Profile Route Fix | ✅ **Fixed** — Resolved `mode` reference error in `ClientProfile.jsx` | `ClientProfile.jsx` |
+| DW | RLS Hardening | ✅ **Live** — Comprehensive migration for `businesses`, `users`, `clients`, etc. | `supabase/migrations/` |
+| DX | GCal Reliability | ✅ **Live** — Awaited syncs + 20-occurrence series limit | `jobsRepo.js` |
+| DY | Design Compliance | ✅ **Live** — Standardized view toggles, hero borders, and FAB visibility | `Calendar.jsx`, `Finance.jsx`, `App.jsx` |
+| DZ | Backdrop Blur | ✅ **Live** — Optimized onboarding overlay for readability | `OnboardingWalkthrough.jsx` |
+| EA | Build Stabilization | ✅ **Fixed** — Resolved `jobsRepo.js` syntax error causing Vite compilation failure | `jobsRepo.js` |
+| EB | UX Polish | ✅ **Live** — Increased global Toast notification duration from 3.5s to 6.0s | `ToastContext.jsx` |
+| EC | Settings Hardening | ✅ **Fixed** — Added strict parsing for `ai_profile` JSON to prevent "cannot coerce" errors on save | `Settings.jsx` |
+| ED | Keyboard Resilience | ✅ **Live** — Added `useKeyboardFocus` hook for focus-aware sheet padding | `src/hooks/useKeyboardFocus.js` |
+| EE | Privacy Audit | ✅ **Live** — Removed internal notes from Client summary list | `src/pages/Clients.jsx` |
+| EF | Admin UX | ✅ **Live** — Added toast feedback for restricted `/admin` access | `src/pages/Admin.jsx` |
 
 (Updated by Gemini CLI)
 
-## Phase 19/20 Home Page Love & Conflict Hardening (Gemini CLI session, April 27, 2026)
-
-Key refinements for user engagement and schedule safety:
-
-| # | Change | Detail | File |
-|---|---|---|---|
-| DB | Home Page 'Love' | Added Daily Mission Progress bar, Motivation footer, and visual patterns | `Home.jsx` |
-| DC | Conflict Hardening | Real-time amber warning during booking when overlaps are detected | `NewJobSheet.jsx` |
-| DD | Seeder Fix | Resolved overlapping job times in the idempotent seed script | `seed_idempotent.mjs` |
-| DE | Hero Aesthetics | Geometric SVG patterns and refined gradients for a premium feel | `Home.jsx` |
-| DF | Date Persistence | Dates now show on all job cards (including Today/Unpaid) for quick orientation | `Home.jsx` |
-| DG | Design Compliance | ✅ **Live** — 4-item nav consolidation; official Theme Toggle rule; Serif Section Labels | `BottomNav.jsx`, `DESIGN.md`, `FAB.jsx` |
-
-(Updated by Gemini CLI)
-
-## Phase 21 Typography Standardization (Gemini CLI session, April 27, 2026)
-
-Key refinements for design system maturity and future-proofing:
-
-| # | Change | Detail | File |
-|---|---|---|---|
-| DG | Typography Suite | ✅ **Live** — Created `Title`, `Subheading`, `SectionLabel`, `Text`, `Caption` in `src/components/ui/typography/` | `src/components/ui/typography/` |
-| DH | Semantic HTML | Typography components support `component` prop (h1, h2, etc.) for better SEO/Accessibility | `src/components/ui/typography/` |
-| DI | Centralized Exports | Added `index.js` for clean named imports | `src/components/ui/typography/index.js` |
-| DJ | Home Modernization | Fully migrated `Home.jsx` to use semantic typography components | `Home.jsx` |
-| DK | Profile Modernization | Fully migrated `ClientProfile.jsx` to use semantic typography components | `ClientProfile.jsx` |
-| DL | Legacy Cleanup | Deleted legacy `src/components/ui/SectionLabel.jsx` and updated all 10+ dependencies | `src/pages/*`, `src/components/sheets/*` |
-
-(Updated by Gemini CLI)
-
-## Phase 22 Vibrant Papaya Refresh (Gemini CLI session, April 28, 2026)
-
-Key refinements for the brand's visual identity:
-
-| # | Change | Detail | File |
-|---|---|---|---|
-| DM | Modular Theme System | ✅ **Live** — Refactored tokens into swappable palettes; locked in dark mode | `src/lib/tokens.js` |
-| DN | Vibrant Papaya Release | ✅ **Live** — Updated design tokens and released v0.2.4 | `src/lib/tokens.js`, `package.json` |
-| DO | Theme Contrast Fixes | ✅ **Live** — Updated hardcoded white text on light buttons/headers across all sheets and pages to be theme-aware | `ClientProfile.jsx`, `Calendar.jsx`, `Settings.jsx`, `Admin.jsx`, `JobDetailSheet.jsx`, etc. |
-| DP | Rose Cream Background | ✅ **Live** — Deepened the pink hue of the light mode background to #FFF0F3 | `src/lib/tokens.js` |
-| DQ | Seamless Gradient | ✅ **Live** — Flipped the LogoBar gradient to flow dark-to-light pink, blending perfectly into the new hero gradient | `LogoBar.jsx`, `tokens.js` |
-| DR | Maximized Logo | ✅ **Live** — Scaled the top nav Supermom logo to 90px height using negative margins | `LogoBar.jsx` |
-| DS | UI Cleanup | ✅ **Live** — Removed the "Power Up" motivation footer from the Home page | `Home.jsx` |
-| DT | Command Brief Gradient | ✅ **Live** — Seamless top-to-bottom transition from LogoBar banner | `src/lib/tokens.js` |
-
-(Updated by Gemini CLI)
-
-## Next priorities (as of April 28, 2026)
-1. **Configure Supabase redirect URL allowlist** — add `http://localhost:5173/**` and `https://supermom-v2.vercel.app/**`.
-2. **Typography Migration (Batch 2)** — Migrate remaining pages (`Calendar`, `Clients`, `Finance`, `Settings`) to new typography components.
-3. **Empty state illustrations** — Upgrade text-based empty states to use rich icon/svg illustrations.
-4. **Self-serve client booking** — Start Phase 2 discovery.
+## Next priorities (as of May 1, 2026)
+1. **Supabase Redirect Allowlist** — Configure `localhost` and `vercel` URLs in project settings.
+2. **Empty state illustrations** — Upgrade text-based empty states to use rich icon/svg illustrations.
+3. **Swipe to Delete** — Implement swipe-to-delete gestures on job cards.

@@ -82,7 +82,7 @@ export async function createJob(payload) {
     .single();
   if (error) throw error;
   const decorated = decorateJob(data);
-  triggerGCalSync(decorated.id, 'upsert');
+  await triggerGCalSync(decorated.id, 'upsert');
   return decorated;
 }
 
@@ -139,7 +139,7 @@ async function createRecurringSeries(payload, businessId) {
 
   const results = data.map(decorateJob);
   // Sync all occurrences to GCal
-  results.forEach(job => triggerGCalSync(job.id, 'upsert'));
+  await Promise.allSettled(results.map(j => triggerGCalSync(j.id, 'upsert')));
   
   return results[0];
 }
@@ -167,6 +167,7 @@ export async function updateJob(id, patch, seriesAction = 'this') {
     .from('jobs')
     .select('template_id, scheduled_date')
     .eq('id', id)
+    .eq('business_id', businessId)
     .single();
   if (fErr) throw fErr;
   if (!job.template_id) return updateJob(id, cleanPatch, 'this');
@@ -190,7 +191,7 @@ export async function updateJob(id, patch, seriesAction = 'this') {
   if (error) throw error;
 
   // Sync affected jobs (limited to avoid blast)
-  data.slice(0, 5).forEach(j => triggerGCalSync(j.id, 'upsert'));
+  await Promise.allSettled(data.slice(0, 5).map(j => triggerGCalSync(j.id, 'upsert')));
 
   // Update the template itself if 'all'
   if (seriesAction === 'all') {
@@ -223,7 +224,7 @@ export async function softDeleteJob(id, seriesAction = 'this') {
       .select()
       .single();
     if (error) throw error;
-    triggerGCalSync(id, 'delete');
+    await triggerGCalSync(id, 'delete');
     return decorateJob(data);
   }
 
@@ -231,6 +232,7 @@ export async function softDeleteJob(id, seriesAction = 'this') {
     .from('jobs')
     .select('template_id, scheduled_date')
     .eq('id', id)
+    .eq('business_id', businessId)
     .single();
   if (fErr) throw fErr;
   if (!job.template_id) return softDeleteJob(id, 'this');
@@ -249,7 +251,7 @@ export async function softDeleteJob(id, seriesAction = 'this') {
   const { data, error } = await query.select();
   if (error) throw error;
 
-  data.slice(0, 5).forEach(j => triggerGCalSync(j.id, 'delete'));
+  await Promise.allSettled(data.slice(0, 20).map(j => triggerGCalSync(j.id, 'delete')));
 
   if (seriesAction === 'all') {
     await supabase

@@ -19,12 +19,13 @@ export default function Admin() {
   const { isSuperAdmin, allBusinesses, switchTo, viewingAsId, reset, refresh } = useViewpoint();
   const navigate = useNavigate();
 
-  // SECURITY: Redirect non-superadmins back to home
+  // SECURITY: Redirect non-superadmins and non-owners back to home
   useEffect(() => {
-    if (!bizLoading && !isSuperAdmin) {
+    if (!bizLoading && profile !== null && !isSuperAdmin && profile?.role !== 'owner') {
+      toast.error('Admin area is restricted to super admins.');
       navigate('/');
     }
-  }, [bizLoading, isSuperAdmin, navigate]);
+  }, [bizLoading, profile, isSuperAdmin, navigate, toast]);
 
   const [isSaving, setIsSaving] = useState(false);
   const [pendingStyle, setPendingStyle] = useState(null);
@@ -115,6 +116,10 @@ export default function Admin() {
   const [provForm, setProvForm] = useState({ biz: '', owner: '', email: '', pw: '' });
   const [isProv, setIsProv] = useState(false);
   const [provMsg, setProvMsg] = useState('');
+
+  // Block render until auth check is resolved — prevents UI flash for unauthorized users
+  if (bizLoading || profile === null) return null;
+  if (!isSuperAdmin && profile?.role !== 'owner') return null;
 
   const handleProvision = async () => {
     setIsProv(true); setProvMsg('');
@@ -234,7 +239,7 @@ export default function Admin() {
       </div>
 
       <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '16px 14px' }}>
-        {isSuperAdmin && (
+        {isSuperAdmin && !viewingAsId && (
           <>
             <SectionLabel>Super Admin: Viewpoint</SectionLabel>
             <div style={{

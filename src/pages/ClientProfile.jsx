@@ -18,7 +18,7 @@ function formatPhone(p) {
 export default function ClientProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { T, privacyOn } = useAppTheme();
+  const { T, mode, privacyOn } = useAppTheme();
   const { openFor } = useNewJobSheet();
   const { openJob } = useJobDetailSheet();
   const { client, raw, loading, error, refresh } = useClient(id);

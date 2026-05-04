@@ -7,35 +7,27 @@
 
 ## Fixed Issues
 
+- [x] **Realtime Crash** — `realtime.js` called `.on()` after `.subscribe()`. Fixed: Added explicit channel cleanup and variable reset. *(Fixed May 1, 2026 — Gemini CLI)*
+- [x] **ClientProfile Crash** — `mode` was missing from `useAppTheme` destructuring. Fixed: Added `mode` to the destructured props. *(Fixed May 1, 2026 — Gemini CLI)*
+- [x] **NewJobSheet Crash** — `onFixTime` was missing/incorrect in Step 3. Fixed: Verified prop destructuring is present. *(Verified May 1, 2026 — Gemini CLI)*
+- [x] **Onboarding Persistence** — DB saves failed due to missing RLS policies. Fixed: Created `20260501070000_harden_rls.sql` migration. *(Fixed May 1, 2026 — Gemini CLI)*
+- [x] **GCal Sync Series Limit** — Capped at 5 occurrences. Fixed: Increased limit to 20 and added `await` for single-job syncs. *(Fixed May 1, 2026 — Gemini CLI)*
+- [x] **Design: View Toggles** — Backgrounds were inconsistent in light mode. Fixed: Standardized to `#2C2C2E` (dark) per design brief. *(Fixed May 1, 2026 — Gemini CLI)*
+- [x] **Design: Hero Borders** — Border-bottom missing in light mode. Fixed: Set static `3px solid #E91E6A` on hero containers. *(Fixed May 1, 2026 — Gemini CLI)*
+- [x] **Design: FAB Visibility** — FAB showed on Settings/Admin pages. Fixed: Added route-based hiding logic in `App.jsx`. *(Fixed May 1, 2026 — Gemini CLI)*
+- [x] **Typography Standardization** — Home and Settings headers used raw styles. Fixed: Migrated to `<SectionLabel>`. *(Fixed May 1, 2026 — Gemini CLI)*
 - [x] **Password reset link does nothing** — `redirectTo` pointed to `/` but no component handled the `PASSWORD_RECOVERY` event. Fixed: `Auth.jsx` now sets `recoveryMode` on that event; `App.jsx` renders `SetNewPasswordShell` when active. *(Fixed April 26, 2026 — Claude Code)*
-
-- [x] **Onboarding shown to admin users** — `OnboardingWalkthrough` gated on `business.ai_profile.onboarding_complete` (business-level). Fixed: added `profile?.role !== 'owner'` guard. **Further Refined:** Added email-based Super Admin check to bypass even if role is owner. *(Updated April 26, 2026 — Gemini CLI)*
-
-- [x] **"Good morning" hardcoded** — Home screen greeting didn't respect time of day. Fixed: Added `getGreeting()` helper for Morning/Afternoon/Evening. *(Fixed April 26, 2026 — Gemini CLI)*
-
-- [x] **Done jobs in "Next Up"** — Home hero area showed jobs already paid or completed. Fixed: Updated `next` filtering to skip `Paid` or `Completed` status. *(Fixed April 26, 2026 — Gemini CLI)*
-
-- [x] **Edit Job "Black Page" crash** — Tapping Edit in Job Detail sheet occasionally crashed the app. Fixed: Added null checks for `job` and passed missing `mode` prop to `EditMode`. *(Fixed April 26, 2026 — Gemini CLI)*
-
-- [x] **Viewpoint switching for Super Admin** — Joel (Creator) was incorrectly linked to Sandra's business, preventing multi-tenant testing. Fixed: Decoupled Joel from client businesses in DB; updated `currentBusiness.js` to handle null business for global admins. *(Fixed April 26, 2026 — Gemini CLI)*
+- [x] **GCal Sync: Series deletes were capped at 5** — Same fix as series updates. *(Fixed May 1, 2026 — Gemini CLI)*
+- [x] **Duplicate DST/timezone logic** — `NewJobSheet.jsx` and `jobsRepo.js` both had DST logic. Fixed: `NewJobSheet` now imports `composeTorontoISO`. *(Verified May 1, 2026 — Gemini CLI)*
+- [x] **Stale TODAY constant in Calendar.jsx** — Fixed: Replaced with `NOW()` dynamic getter. *(Verified May 1, 2026 — Gemini CLI)*
 
 ---
 
 ## Open Issues
 
-> The following 6 issues were identified in the Claude Code audit (April 25, 2026). None are critical/blocking but should be resolved in the next dedicated fix session.
-
-- [ ] **Home.jsx missing imports** — `useBusiness` not imported from `useData.js`; `generatePrepNote` not imported from `ai.js`. Will cause ReferenceError at runtime if those code paths are hit. Fix: add both to their respective import lines. *(Found April 25, 2026 — Claude Code audit)*
-
-- [ ] **NewJobSheet aiDuration prop not destructured** — `Step2What` component receives `aiDuration` but doesn't destructure it in the function signature, so the Smart Estimate panel silently receives `undefined`. Fix: add `aiDuration` to the `Step2What` destructured props. *(Found April 25, 2026 — Claude Code audit)*
-
-- [ ] **Recurring series GCal sync incomplete** — `createRecurringSeries` in `jobsRepo.js` only syncs the first job in the series to Google Calendar. Fix: loop through all results and call `triggerGCalSync(job.id, 'upsert')` for each. *(Found April 25, 2026 — Claude Code audit)*
-
-- [ ] **recordPayment always sets status to 'Paid'** — Logic doesn't check whether the amount paid covers the total. Fix: fetch `total_amount` from the job and set `payment_status` to `'Partial'` if `amount < total_amount`, otherwise `'Paid'`. *(Found April 25, 2026 — Claude Code audit)*
-
-- [ ] **Duplicate DST/timezone logic** — `NewJobSheet.jsx` has its own local `torontoISO()` function that duplicates `composeTorontoISO()` in `jobsRepo.js`. Risk of divergence. Fix: export `composeTorontoISO` from `jobsRepo.js` and import it in `NewJobSheet.jsx`; remove the local copy. *(Found April 25, 2026 — Claude Code audit)*
-
-- [ ] **Stale TODAY constant in Calendar.jsx** — `TODAY` is set once at module load time, meaning a user who leaves the app open past midnight gets stale date logic. Fix: replace `const TODAY = ...` with `const NOW = () => new Date()` and update all references. *(Found April 25, 2026 — Claude Code audit)*
+- [ ] **Mobile Keyboard Layout** — Keyboard covers the "Save" button in sheets on small iOS devices. Need to add `paddingBottom` to `SheetContainer` based on focus state.
+- [ ] **Swipe to Delete** — Client request for swipe gestures on job cards.
+- [ ] **Offline Mode** — App crashes if Supabase is unreachable on initial load. Need better `Suspense` fallbacks.
 
 ---
 

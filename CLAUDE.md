@@ -99,6 +99,8 @@ This is a **managed service product** — Sandra is the first user, but the arch
 - [x] Dark mode toggle (Settings > Appearance)
 - [x] Test Isolation — Dedicated `tester@supermom.io` account
 - [x] Platform Hierarchy — Joel as Global Admin; Viewpoint switcher verified
+- [x] Mobile Keyboard Polish — Focus-aware sheet padding via `useKeyboardFocus` hook
+- [x] Privacy Audit — Internal notes hidden from summary lists
 
 ---
 
@@ -106,6 +108,7 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 - **Read `DESIGN.md` before writing any component** — all tokens, typography, and component anatomy are defined there
 - **Mobile-first** — design for 390px wide iPhone viewport first
+- **Keyboard aware** — Use `useKeyboardFocus` hook to adjust padding when keyboard is visible in bottom sheets
 - **Increment version numbers** in package.json on every meaningful release
 
 ---

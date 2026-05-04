@@ -18,6 +18,7 @@ import BottomNav from './components/layout/BottomNav';
 import OnboardingWalkthrough from './components/layout/OnboardingWalkthrough';
 import FAB from './components/ui/FAB';
 import { useRealtimeSync } from './data/useData';
+import { useLocation } from 'react-router-dom';
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -97,11 +98,14 @@ function ViewpointBanner() {
 function AuthedShell() {
   const { T } = useAppTheme();
   const { viewingAsId } = useViewpoint();
+  const location = useLocation();
   useRealtimeSync();
 
   useEffect(() => {
     window.__SUPER_VIEW_ID = viewingAsId;
   }, [viewingAsId]);
+
+  const hideFAB = ['/settings', '/admin'].includes(location.pathname);
 
   return (
     <ErrorBoundary>
@@ -125,7 +129,7 @@ function AuthedShell() {
               <Route path="/admin" element={<Admin />} />
             </Routes>
           </Suspense>
-          <FAB />
+          {!hideFAB && <FAB />}
         </div>
         <BottomNav />
       </div>

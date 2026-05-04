@@ -3,11 +3,13 @@ import { useAppTheme } from '../../context/AppThemeContext';
 import { createClient } from '../../data/clientsRepo';
 import { RECURRENCE } from '../../data/services';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { useKeyboardFocus } from '../../hooks/useKeyboardFocus';
 import { useToast } from '../../context/ToastContext';
 
 export default function NewClientSheet({ onClose, onCreated }) {
   const { T, mode } = useAppTheme();
   const toast = useToast();
+  const isKeyboardFocused = useKeyboardFocus();
   const sheetRef = useRef(null);
   useFocusTrap(sheetRef, true, onClose);
   const [first, setFirst] = useState('');
@@ -93,7 +95,15 @@ export default function NewClientSheet({ onClose, onCreated }) {
           </button>
         </div>
 
-        <form onSubmit={submit} className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '0 18px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <form onSubmit={submit} className="sm-scroll" style={{ 
+          flex: 1, 
+          overflowY: 'auto', 
+          padding: `0 18px ${isKeyboardFocused ? '260px' : '14px'}`, 
+          display: 'flex', 
+          flexDirection: 'column', 
+          gap: 10,
+          transition: 'padding-bottom 0.2s ease-out'
+        }}>
           <div style={{ display: 'flex', gap: 8 }}>
             <div style={{ flex: 1 }}>
               <label htmlFor="nc-first" style={label}>FIRST NAME *</label>

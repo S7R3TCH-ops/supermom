@@ -156,6 +156,7 @@ export default function Settings() {
       toast.success('Settings saved.');
       setTimeout(() => setSaved(false), 2500);
     } catch (err) {
+      console.error('[Settings] Save failed:', err);
       const msg = err.message || 'Could not save changes.';
       setError(msg);
       toast.error(msg);

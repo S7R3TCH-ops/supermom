@@ -106,10 +106,15 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
         });
 
       if (upserts.length > 0) {
-        const { error: upsertErr } = await supabase
+        const { data: upserted, error: upsertErr } = await supabase
           .from('services')
-          .upsert(upserts, { onConflict: 'id' });
+          .upsert(upserts, { onConflict: 'id' })
+          .select();
         if (upsertErr) throw upsertErr;
+        if (!upserted?.length) {
+          console.error('[ServiceCatalog] Upsert returned 0 rows — likely an RLS policy blocking writes for this user.');
+          throw new Error('Save was blocked — no rows were written. Check RLS policies in Supabase.');
+        }
       }
 
       setDeletedIds([]);

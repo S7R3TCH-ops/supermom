@@ -74,7 +74,13 @@ This is a **managed service product** — Sandra is the first user, but the arch
 - **Viewpoint**: Super Admins switch between client businesses via `ViewpointContext.jsx`, which sets `window.__SUPER_VIEW_ID` and triggers a data refresh.
 - **LogoBar**: Redirects Super Admins to `/admin` dashboard; regular owners to `/settings`.
 
-(Updated by Gemini CLI)
+### RLS policy rules (verified May 4, 2026)
+- All core tables have RLS enabled. Policies use two SECURITY DEFINER helper functions: `is_admin()` and `my_business_id()`.
+- `businesses` and `services` modify policies now correctly allow owners: `USING (is_admin() OR <scope>) WITH CHECK (same)`.
+- **Supabase migrations are NOT auto-applied** — the `supabase/migrations/` folder is documentation only. Any schema changes must be pasted and run manually in the Supabase dashboard SQL Editor. The Supabase CLI is not set up on this project.
+- Silent write failures (RLS blocking with no error) are now surfaced in `ServiceCatalogSheet.jsx` — upsert and soft-delete both call `.select()` and throw if 0 rows are returned.
+
+(Updated by Claude Code — May 4, 2026)
 
 ---
 
@@ -101,6 +107,7 @@ This is a **managed service product** — Sandra is the first user, but the arch
 - [x] Platform Hierarchy — Joel as Global Admin; Viewpoint switcher verified
 - [x] Mobile Keyboard Polish — Focus-aware sheet padding via `useKeyboardFocus` hook
 - [x] Privacy Audit — Internal notes hidden from summary lists
+- [x] RLS hardening — `businesses_modify` and `services_modify` policies fixed for owner role; silent failures now surfaced in ServiceCatalogSheet
 
 ---
 

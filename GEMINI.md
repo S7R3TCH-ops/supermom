@@ -107,7 +107,46 @@ Key enhancements for application stability and design consistency:
 
 (Updated by Gemini CLI)
 
-## Next priorities (as of May 1, 2026)
-1. **Supabase Redirect Allowlist** — Configure `localhost` and `vercel` URLs in project settings.
-2. **Empty state illustrations** — Upgrade text-based empty states to use rich icon/svg illustrations.
-3. **Swipe to Delete** — Implement swipe-to-delete gestures on job cards.
+## RLS Debug Session (May 4, 2026) — Claude Code
+
+### What we found
+The `businesses_modify` RLS policy was `USING (is_admin())` — completely blocking owners (Sandra, any owner-role user) from updating their own business record. Fixed by dropping and recreating with `USING (is_admin() OR id = my_business_id()) WITH CHECK (same)`.
+
+`services_modify` had the right USING clause but was missing an explicit WITH CHECK. Recreated with both.
+
+Both functions (`is_admin()`, `my_business_id()`) are `SECURITY DEFINER` — they bypass RLS on `users` and always return the correct value.
+
+### Current RLS policy state (verified in Supabase SQL Editor)
+| Table | Policy | Condition |
+|---|---|---|
+| `businesses` | `businesses_modify` ALL | `is_admin() OR id = my_business_id()` (USING + WITH CHECK) |
+| `businesses` | `businesses_select` SELECT | `is_admin() OR id = my_business_id()` |
+| `services` | `services_modify` ALL | `is_admin() OR business_id = my_business_id()` (USING + WITH CHECK) |
+| `services` | `services_select` SELECT | `is_admin() OR business_id = my_business_id()` |
+| `users` | `users_select` SELECT | `is_admin() OR id = auth.uid() OR business_id = my_business_id()` |
+
+### Code changes shipped (v0.2.7, main branch)
+- `ServiceCatalogSheet.jsx` — upsert now calls `.select()` and throws if 0 rows written (surfaces RLS silent blocks)
+- `ServiceCatalogSheet.jsx` — soft-delete (set `active=false`) also checks for 0 rows and throws
+- `Settings.jsx` — `console.error` added on save failure for easier debugging
+
+### Still open — needs verification next session
+- **Service Catalog "Add Service" button** — `joel@test.com` (owner, properly provisioned with business_id `52a7536c-dc89-446b-8a56-9d955e66859e`) reports clicking "+ Add Service" inside the ServiceCatalogSheet does nothing visually. Need to confirm: (1) does the Admin page fully render for them, (2) does the sheet open, (3) what does browser console show? Most likely the card IS added to state but may not be visible due to scroll position, or there's a silent render error.
+- **Service delete** — same user reports deletes not working. New code will now throw a real error if RLS blocks it.
+- **Settings save** — should now work for owners after the `businesses_modify` policy fix.
+
+### Test accounts in DB
+| Email | Role | Business ID |
+|---|---|---|
+| jlundie@gmail.com | admin | null (global) |
+| sandra@supermom.io | owner | 624794d2-4353-45d6-84f3-a2cf80cc8f1e |
+| joel@test.com | owner | 52a7536c-dc89-446b-8a56-9d955e66859e |
+
+(Updated by Claude Code)
+
+## Next priorities (as of May 4, 2026)
+1. **Verify Service Catalog for owner role** — confirm Add Service + Delete work for `joel@test.com`; diagnose via browser console if still broken
+2. **Verify Settings save for owner role** — hourly rate + business name should now persist after `businesses_modify` fix
+3. **Supabase Redirect Allowlist** — Configure `localhost` and `vercel` URLs in project settings.
+4. **Empty state illustrations** — Upgrade text-based empty states to use rich icon/svg illustrations.
+5. **Swipe to Delete** — Implement swipe-to-delete gestures on job cards.

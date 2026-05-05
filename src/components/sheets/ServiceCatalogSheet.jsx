@@ -79,12 +79,16 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
 
       // 1. Process Soft Deletions (active = false)
       if (deletedIds.length > 0) {
-        const { error: delErr } = await supabase
+        const { data: deleted, error: delErr } = await supabase
           .from('services')
           .update({ active: false })
           .in('id', deletedIds)
-          .eq('business_id', bid);
+          .eq('business_id', bid)
+          .select();
         if (delErr) throw delErr;
+        if (!deleted?.length) {
+          throw new Error('Delete was blocked — RLS policy may not allow this user to modify these services.');
+        }
       }
 
       // 2. Prepare items for Upsert

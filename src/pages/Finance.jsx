@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import { useAppTheme } from '../context/AppThemeContext';
 import { SectionLabel, Title, Subheading, Text, Caption } from '../components/ui/typography';
 import { useJobs, useExpenses, notifyDataChanged, useClients, useInvoices } from '../data/useData';
@@ -12,6 +12,34 @@ import AmtCell from '../components/ui/AmtCell';
 import { EmptyActivity, NoResults } from '../components/ui/Illustrations';
 
 const periods = ['Week', 'Month', 'Year', 'All'];
+
+const TransactionRow = memo(function TransactionRow({ tx, T, privacyOn, onPress }) {
+  const isJob = tx.type === 'job';
+  const tappable = isJob && tx.status !== 'Cancelled';
+  return (
+    <div
+      onClick={tappable ? () => onPress(tx.rawId) : undefined}
+      style={{
+        background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 11,
+        padding: '9px 12px', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 9,
+        cursor: tappable ? 'pointer' : 'default',
+      }}
+    >
+      <div style={{ width: 34, height: 34, borderRadius: 9, background: `${tx.color}18`, border: `1px solid ${tx.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 14 }}>
+        {tx.icon}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontFamily: T.serif, fontSize: 12.5, fontWeight: 500, color: T.ink, letterSpacing: '-0.2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tx.label}</div>
+        <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, marginTop: 1 }}>
+          {tx.date}{tappable ? ' · tap to view details' : ''}
+        </div>
+      </div>
+      <div style={{ fontFamily: T.serif, fontSize: 14, fontWeight: 500, color: tx.color, letterSpacing: '-0.3px', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+        {privacyOn ? '•••' : tx.amt}
+      </div>
+    </div>
+  );
+});
 const DOW = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
 function startOfWeek(d) {
@@ -196,6 +224,7 @@ export default function Finance() {
 
   // Recent activity — jobs + expenses merged by date
   const { openJob } = useJobDetailSheet();
+  const handleJobPress = useCallback((id) => openJob(id), [openJob]);
 
   const transactions = useMemo(() => {
     const jobTx = (allJobs || [])
@@ -337,35 +366,9 @@ export default function Finance() {
           </div>
         )}
 
-        {transactions.map(tx => {
-          const isJob = tx.type === 'job';
-          const tappable = isJob && tx.status !== 'Cancelled';
-          
-          return (
-            <div
-              key={tx.id}
-              onClick={tappable ? () => openJob(tx.rawId) : undefined}
-              style={{
-                background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 11,
-                padding: '9px 12px', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 9,
-                cursor: tappable ? 'pointer' : 'default',
-              }}
-            >
-              <div style={{ width: 34, height: 34, borderRadius: 9, background: `${tx.color}18`, border: `1px solid ${tx.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 14 }}>
-                {tx.icon}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontFamily: T.serif, fontSize: 12.5, fontWeight: 500, color: T.ink, letterSpacing: '-0.2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tx.label}</div>
-                <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, marginTop: 1 }}>
-                  {tx.date}{tappable ? ' · tap to view details' : ''}
-                </div>
-              </div>
-              <div style={{ fontFamily: T.serif, fontSize: 14, fontWeight: 500, color: tx.color, letterSpacing: '-0.3px', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
-                {privacyOn ? '•••' : tx.amt}
-              </div>
-            </div>
-          );
-        })}
+        {transactions.map(tx => (
+          <TransactionRow key={tx.id} tx={tx} T={T} privacyOn={privacyOn} onPress={handleJobPress} />
+        ))}
 
 
         <SectionLabel>Formal Invoices</SectionLabel>

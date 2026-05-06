@@ -107,6 +107,7 @@ export default function Finance() {
   const [showNewExpense, setShowNewExpense] = useState(false);
   const [csvStart, setCsvStart] = useState(() => `${new Date().getFullYear()}-01-01`);
   const [csvEnd, setCsvEnd] = useState(todayISO);
+  const [visibleCount, setVisibleCount] = useState(50);
   const { jobs: allJobs, loading, error } = useJobs();
   const { expenses: allExpenses } = useExpenses();
   const { clients } = useClients();
@@ -262,8 +263,7 @@ export default function Finance() {
       }));
 
     return [...jobTx, ...expTx]
-      .sort((a, b) => b._date - a._date)
-      .slice(0, 10);
+      .sort((a, b) => b._date - a._date);
   }, [allJobs, allExpenses, T.inkMuted, now]);
 
   if (loading && (!allJobs || allJobs.length === 0)) {
@@ -298,7 +298,7 @@ export default function Finance() {
           {periods.map(v => (
             <button
               key={v}
-              onClick={() => setPeriod(v)}
+              onClick={() => { setPeriod(v); setVisibleCount(50); }}
               style={{
                 flex: 1, padding: '7px 0', border: 'none', borderRadius: 9,
                 fontFamily: T.font, fontSize: 11, fontWeight: 600,
@@ -366,9 +366,22 @@ export default function Finance() {
           </div>
         )}
 
-        {transactions.map(tx => (
+        {transactions.slice(0, visibleCount).map(tx => (
           <TransactionRow key={tx.id} tx={tx} T={T} privacyOn={privacyOn} onPress={handleJobPress} />
         ))}
+        {transactions.length > visibleCount && (
+          <button
+            onClick={() => setVisibleCount(c => c + 50)}
+            style={{
+              width: '100%', padding: '10px 0', background: 'none',
+              border: `1px solid ${T.cardBorder}`, borderRadius: 10,
+              fontFamily: T.font, fontSize: 11, fontWeight: 600,
+              color: T.inkMuted, cursor: 'pointer', marginBottom: 8,
+            }}
+          >
+            Show {Math.min(50, transactions.length - visibleCount)} more
+          </button>
+        )}
 
 
         <SectionLabel>Formal Invoices</SectionLabel>

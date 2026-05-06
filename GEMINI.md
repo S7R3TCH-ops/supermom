@@ -89,7 +89,7 @@ At the end of every productive session, or upon major milestone completion, Gemi
 | **UI Illustrations** | ✅ **Live** — Rich SVG illustrations for all empty states (v0.3.2) |
 | **Swipe to Delete** | ✅ **Live** — Gesture-based deletion on Home & Agenda (v0.3.2) |
 | **Haptic Feedback** | ✅ **Live** — Taptic engine support for taps/swipes (v0.3.3) |
-| **Service Catalog UX** | ✅ **Live** — Added unsaved changes protection + dirty indicator (v0.3.4) |
+| **Service Catalog UX** | ✅ **Live** — Added unsaved changes protection, dirty indicators, and visual 'Mark for Deletion' flow (v0.3.5) |
 | **Unified Grab Bars** | ✅ **Live** — Standardized sheet handles across app (v0.3.3) |
 
 ## Phase 24 UI & UX Polish (Gemini CLI session, May 6, 2026)

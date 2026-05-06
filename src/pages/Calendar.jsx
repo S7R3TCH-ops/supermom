@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import { useAppTheme } from '../context/AppThemeContext';
 import { useJobs, useBusiness } from '../data/useData';
 import CapeUpButton from '../components/ui/CapeUpButton';
@@ -98,6 +98,7 @@ export default function Calendar() {
   const [selectedDay, setSelectedDay] = useState(() => NOW());
   const [weekStart, setWeekStart] = useState(() => startOfWeek(NOW()));
   const { openJob } = useJobDetailSheet();
+  const handleJobPress = useCallback((id) => openJob(id), [openJob]);
   const { profile } = useAuth();
   const { business } = useBusiness();
   const firstName = profile?.first_name || business?.owner_name?.split(' ')[0] || 'there';
@@ -234,9 +235,9 @@ export default function Calendar() {
         </div>
       )}
 
-      {view === 'Day'    && <DayView    T={T} mode={mode} privacyOn={privacyOn} selectedDay={selectedDay} todayJobs={selectedDayJobs} nextUpcoming={nextUpcoming} onJobPress={openJob} firstName={firstName} />}
-      {view === 'Week'   && <WeekView   T={T} mode={mode} weekDays={weekDays} allJobs={allJobs} onPickDay={handlePickDay} onJobPress={openJob} />}
-      {view === 'Agenda' && <AgendaView T={T} mode={mode} privacyOn={privacyOn} allJobs={allJobs} nextUpcoming={nextUpcoming} onJobPress={openJob} firstName={firstName} />}
+      {view === 'Day'    && <DayView    T={T} mode={mode} privacyOn={privacyOn} selectedDay={selectedDay} todayJobs={selectedDayJobs} nextUpcoming={nextUpcoming} onJobPress={handleJobPress} firstName={firstName} />}
+      {view === 'Week'   && <WeekView   T={T} mode={mode} weekDays={weekDays} allJobs={allJobs} onPickDay={handlePickDay} onJobPress={handleJobPress} />}
+      {view === 'Agenda' && <AgendaView T={T} mode={mode} privacyOn={privacyOn} allJobs={allJobs} nextUpcoming={nextUpcoming} onJobPress={handleJobPress} firstName={firstName} />}
     </div>
   );
 }
@@ -540,7 +541,7 @@ function AgendaView({ T, mode, privacyOn, allJobs, nextUpcoming, onJobPress, fir
   );
 }
 
-function AgendaCard({ T, mode, privacyOn, job, isNext, conflict, onPress }) {
+const AgendaCard = memo(function AgendaCard({ T, mode, privacyOn, job, isNext, conflict, onPress }) {
   const paid = job.paid;
   const isUnpaidCompleted = job.isUnpaidCompleted;
   
@@ -624,4 +625,4 @@ function AgendaCard({ T, mode, privacyOn, job, isNext, conflict, onPress }) {
       </div>
     </div>
   );
-}
+});

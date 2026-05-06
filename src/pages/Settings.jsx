@@ -307,7 +307,7 @@ export default function Settings() {
               id="settings-signature"
               type="text"
               placeholder="e.g. Sandra S. or Joel L."
-              value={form?.signature}
+              value={form?.signature ?? ''}
               onChange={e => setForm(f => ({ ...f, signature: e.target.value }))}
               style={{ ...inputStyle, fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: 16 }}
             />

@@ -135,6 +135,7 @@ export function toDisplayJob(jobRow, clientLookup = {}) {
     total: Number(jobRow.total_amount || 0),
     status: jobRow.job_status || 'Scheduled',
     payment_status: jobRow.payment_status || '',
+    actual_duration: jobRow.actual_duration ?? null,
     notes: jobRow.job_notes ?? '',
     photo_links: jobRow.photo_links ?? '',
     voice_note: jobRow.ai_context?.voice_note ?? null,

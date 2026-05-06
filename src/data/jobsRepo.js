@@ -7,6 +7,11 @@ import { supabase } from '../lib/supabase';
 import { getCurrentBusinessId } from './currentBusiness';
 import { generateInvoiceForJob } from './invoicesRepo';
 
+function assertWrote(data, op) {
+  const rows = Array.isArray(data) ? data : (data ? [data] : []);
+  if (rows.length === 0) throw new Error(`${op} failed — no rows changed (RLS or filter mismatch)`);
+}
+
 const SELECT_FULL = '*';
 
 export async function fetchActiveJobs() {
@@ -108,27 +113,26 @@ async function createRecurringSeries(payload, businessId) {
   // 2. Generate occurrences (Initial + 11 more = ~3-12 months depending on frequency)
   const count = template.frequency === 'Weekly' ? 12 : template.frequency === 'Biweekly' ? 6 : 4;
   const occurrences = [];
-  let currentDate = new Date(payload.scheduled_date + 'T12:00:00'); // Use noon to avoid date shifting
+  let currentDateStr = payload.scheduled_date;
 
   for (let i = 0; i < count; i++) {
-    const dateStr = currentDate.toISOString().split('T')[0];
     const occurrence = normalizeJobPayload({
       ...payload,
       business_id: businessId,
       template_id: template.id,
-      scheduled_date: dateStr,
+      scheduled_date: currentDateStr,
       ai_context: {
         ...(payload.ai_context || {}),
-        template_id: template.id, // Keep AI capable
+        template_id: template.id,
         occurrence_index: i,
       }
     });
     occurrences.push(occurrence);
 
-    // Advance date
-    if (template.frequency === 'Weekly') currentDate.setDate(currentDate.getDate() + 7);
-    else if (template.frequency === 'Biweekly') currentDate.setDate(currentDate.getDate() + 14);
-    else if (template.frequency === 'Monthly') currentDate.setMonth(currentDate.getMonth() + 1);
+    // Advance date using string-based UTC math to avoid DST drift
+    if (template.frequency === 'Weekly') currentDateStr = addDaysToDateStr(currentDateStr, 7);
+    else if (template.frequency === 'Biweekly') currentDateStr = addDaysToDateStr(currentDateStr, 14);
+    else if (template.frequency === 'Monthly') currentDateStr = addMonthsToDateStr(currentDateStr, 1);
   }
 
   const { data, error } = await supabase
@@ -146,7 +150,7 @@ async function createRecurringSeries(payload, businessId) {
 
 export async function updateJob(id, patch, seriesAction = 'this') {
   const businessId = await getCurrentBusinessId();
-  const cleanPatch = normalizeJobPayload(patch);
+  const cleanPatch = { ...normalizeJobPayload(patch), updated_at: new Date().toISOString() };
 
   if (seriesAction === 'this') {
     const { data, error } = await supabase
@@ -157,6 +161,7 @@ export async function updateJob(id, patch, seriesAction = 'this') {
       .select()
       .single();
     if (error) throw error;
+    assertWrote(data, 'updateJob:this');
     const decorated = decorateJob(data);
     triggerGCalSync(id, 'upsert');
     return decorated;
@@ -189,6 +194,7 @@ export async function updateJob(id, patch, seriesAction = 'this') {
 
   const { data, error } = await query.select();
   if (error) throw error;
+  assertWrote(data, 'updateJob:series');
 
   // Sync affected jobs (limited to avoid blast)
   await Promise.allSettled(data.slice(0, 5).map(j => triggerGCalSync(j.id, 'upsert')));
@@ -224,6 +230,7 @@ export async function softDeleteJob(id, seriesAction = 'this') {
       .select()
       .single();
     if (error) throw error;
+    assertWrote(data, 'softDeleteJob:this');
     await triggerGCalSync(id, 'delete');
     return decorateJob(data);
   }
@@ -250,6 +257,7 @@ export async function softDeleteJob(id, seriesAction = 'this') {
 
   const { data, error } = await query.select();
   if (error) throw error;
+  assertWrote(data, 'softDeleteJob:series');
 
   await Promise.allSettled(data.slice(0, 20).map(j => triggerGCalSync(j.id, 'delete')));
 
@@ -271,12 +279,13 @@ export async function recordPayment(jobId, amount, method = 'Cash', notes = null
     .from('jobs')
     .select('client_id, business_id, total_amount, service_id')
     .eq('id', jobId)
+    .eq('business_id', businessId)
     .single();
   if (getErr) throw getErr;
 
   // 2. Insert into payments if amount > 0
   if (amount > 0) {
-    const { error: payErr } = await supabase
+    const { data: payData, error: payErr } = await supabase
       .from('payments')
       .insert({
         business_id: businessId,
@@ -286,15 +295,21 @@ export async function recordPayment(jobId, amount, method = 'Cash', notes = null
         payment_method: method,
         payment_date: new Date().toISOString().split('T')[0],
         notes: notes,
-      });
+      })
+      .select();
     if (payErr) throw payErr;
+    assertWrote(payData, 'recordPayment:insert');
   }
 
-  // 3. Update job status, duration, and notes
+  // 3. Derive payment status from sum of all non-void payments for this job
+  const { data: existingPayments } = await supabase
+    .from('payments')
+    .select('amount')
+    .eq('job_id', jobId)
+    .eq('is_void', false);
+  const paid = (existingPayments ?? []).reduce((s, p) => s + Number(p.amount), 0);
   const total = Number(job.total_amount || 0);
-  const status = amount >= total && amount > 0 
-    ? 'Paid' 
-    : (amount > 0 ? 'Partial' : '');
+  const status = paid >= total && paid > 0 ? 'Paid' : paid > 0 ? 'Partial' : '';
 
   const updated = await updateJob(jobId, {
     payment_status: status,
@@ -311,7 +326,9 @@ export async function recordPayment(jobId, amount, method = 'Cash', notes = null
         .from('jobs')
         .select('actual_duration')
         .eq('service_id', job.service_id)
+        .eq('business_id', businessId)
         .eq('job_status', 'Completed')
+        .is('deleted_at', null)
         .not('actual_duration', 'is', null);
 
       if (pastJobs && pastJobs.length > 0) {
@@ -342,6 +359,18 @@ export async function recordPayment(jobId, amount, method = 'Cash', notes = null
 }
 
 // ---------- helpers ----------
+
+function addDaysToDateStr(dateStr, days) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d + days));
+  return dt.toISOString().split('T')[0];
+}
+
+function addMonthsToDateStr(dateStr, months) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1 + months, d));
+  return dt.toISOString().split('T')[0];
+}
 
 // Adds a derived `scheduled_at` ISO string in America/Toronto for UI sorting / time math.
 // The DB stores scheduled_date + scheduled_time separately.

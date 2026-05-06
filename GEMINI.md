@@ -130,10 +130,16 @@ Both functions (`is_admin()`, `my_business_id()`) are `SECURITY DEFINER` — the
 - `ServiceCatalogSheet.jsx` — soft-delete (set `active=false`) also checks for 0 rows and throws
 - `Settings.jsx` — `console.error` added on save failure for easier debugging
 
-### Still open — needs verification next session
-- **Service Catalog "Add Service" button** — `joel@test.com` (owner, properly provisioned with business_id `52a7536c-dc89-446b-8a56-9d955e66859e`) reports clicking "+ Add Service" inside the ServiceCatalogSheet does nothing visually. Need to confirm: (1) does the Admin page fully render for them, (2) does the sheet open, (3) what does browser console show? Most likely the card IS added to state but may not be visible due to scroll position, or there's a silent render error.
-- **Service delete** — same user reports deletes not working. New code will now throw a real error if RLS blocks it.
-- **Settings save** — should now work for owners after the `businesses_modify` policy fix.
+### Resolved May 4, 2026 (v0.3.0) — Phase 1 RLS verification COMPLETE
+- **Service Catalog "Add Service"** — Fixed in v0.2.9. Root cause was UX, not RLS: new cards appended to bottom of scrollable list rendered below the fold. Fix: prepend new cards (`[newSvc, ...prev]`).
+- **Service Catalog persistence** — VERIFIED v0.3.0: owner can Add → Save → reload → service persists. No console errors.
+- **Service Catalog delete** — Soft-delete (`active=false`) was working at the DB level all along. The lie was in `refresh()`: it selected services without filtering by `active`, so soft-deleted rows reappeared. Fixed by adding `.eq('active', true)` to the catalog query.
+- **Settings save (owner role)** — VERIFIED working. Hourly rate + business name persist after reload. "Uncontrolled → controlled input" warning fixed at `Settings.jsx:306` (`form?.signature ?? ''`).
+
+### Resolved May 6, 2026 (v0.3.1) — Phase B: Service Catalog & Pricing COMPLETE
+- **Service Catalog Price Inheritance** — Fixed in v0.3.1. Services can now "inherit" the business's default hourly rate.
+- **Service Catalog Saving** — Hardened upsert logic and added "DEFAULT" toggle for Hourly services.
+- **New Job Price Resolution** — `NewJobSheet` and `JobDetailSheet` now correctly resolve prices, prioritizing specific service rates but falling back to business defaults when needed.
 
 ### Test accounts in DB
 | Email | Role | Business ID |
@@ -142,11 +148,12 @@ Both functions (`is_admin()`, `my_business_id()`) are `SECURITY DEFINER` — the
 | sandra@supermom.io | owner | 624794d2-4353-45d6-84f3-a2cf80cc8f1e |
 | joel@test.com | owner | 52a7536c-dc89-446b-8a56-9d955e66859e |
 
-(Updated by Claude Code)
+(Updated by Gemini CLI)
 
-## Next priorities (as of May 4, 2026)
-1. **Verify Service Catalog for owner role** — confirm Add Service + Delete work for `joel@test.com`; diagnose via browser console if still broken
-2. **Verify Settings save for owner role** — hourly rate + business name should now persist after `businesses_modify` fix
-3. **Supabase Redirect Allowlist** — Configure `localhost` and `vercel` URLs in project settings.
-4. **Empty state illustrations** — Upgrade text-based empty states to use rich icon/svg illustrations.
-5. **Swipe to Delete** — Implement swipe-to-delete gestures on job cards.
+## Next priorities (as of May 6, 2026)
+1. **Supabase Redirect Allowlist** — Configure `localhost` and `vercel` URLs in project settings (Auth → URL Configuration).
+2. **Empty state illustrations** — Upgrade text-based empty states to use rich icon/svg illustrations.
+3. **Swipe to Delete** — Implement swipe-to-delete gestures on job cards.
+4. **Service Catalog deferred-save UX** — Consider auto-save on delete or an "unsaved changes" banner.
+
+(Updated by Gemini CLI — May 6, 2026)

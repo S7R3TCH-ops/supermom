@@ -12,6 +12,7 @@ import { NewClientSheetProvider } from './context/NewClientSheet';
 import { JobDetailSheetProvider } from './context/JobDetailSheet';
 import { FinanceDetailSheetProvider } from './context/FinanceDetailSheet';
 import { PostJobSheetProvider } from './context/PostJobSheet';
+import { EditClientSheetProvider } from './context/EditClientSheet';
 import { GeofenceProvider } from './context/GeofenceContext';
 import LogoBar from './components/layout/LogoBar';
 import BottomNav from './components/layout/BottomNav';
@@ -305,13 +306,15 @@ function Gate() {
     <PostJobSheetProvider>
       <NewJobSheetProvider>
         <NewClientSheetProvider>
-          <JobDetailSheetProvider>
-            <FinanceDetailSheetProvider>
-              <GeofenceProvider>
-                <AuthedShell />
-              </GeofenceProvider>
-            </FinanceDetailSheetProvider>
-          </JobDetailSheetProvider>
+          <EditClientSheetProvider>
+            <JobDetailSheetProvider>
+              <FinanceDetailSheetProvider>
+                <GeofenceProvider>
+                  <AuthedShell />
+                </GeofenceProvider>
+              </FinanceDetailSheetProvider>
+            </JobDetailSheetProvider>
+          </EditClientSheetProvider>
         </NewClientSheetProvider>
       </NewJobSheetProvider>
     </PostJobSheetProvider>

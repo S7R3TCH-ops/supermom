@@ -29,21 +29,11 @@
       "Bash(node scripts/dedup-data.mjs)",
       "Bash(node scripts/inspect_data.mjs)",
       "Bash(node *)",
-      "Bash(awk 'NR>=524 && NR<=530' \"C:/Users/jlund/Documents/Projects/supermom v2.0/website-mockup.html\")"
-    ]
-  },
-  "hooks": {
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ./scripts/auto-save.sh 2>/dev/null || true",
-            "timeout": 30,
-            "statusMessage": "Auto-saving..."
-          }
-        ]
-      }
+      "PowerShell(& 'C:\\\\Program Files\\\\Git\\\\bin\\\\git.exe' log --oneline -20)",
+      "Skill(update-config)",
+      "PowerShell(Get-Command *)",
+      "PowerShell($env:PATH)",
+      "PowerShell(& \"C:\\\\Users\\\\jlund\\\\AppData\\\\Local\\\\GitHubDesktop\\\\bin\\\\git.exe\" --version 2>&1)"
     ]
   }
 }

@@ -5,6 +5,11 @@
 import { supabase } from '../lib/supabase';
 import { getCurrentBusinessId } from './currentBusiness';
 
+function assertWrote(data, op) {
+  const rows = Array.isArray(data) ? data : (data ? [data] : []);
+  if (rows.length === 0) throw new Error(`${op} failed — no rows changed (RLS or filter mismatch)`);
+}
+
 const SELECT_FULL = '*';
 
 export async function fetchClients() {
@@ -50,22 +55,27 @@ export async function fetchClientByContact({ email, first_name, last_name, phone
     if (byEmail) return byEmail;
   }
 
-  const { data: byNamePhone } = await supabase
+  if (!first_name || (!phone && !last_name)) return null;
+
+  let nameQuery = supabase
     .from('clients')
     .select(SELECT_FULL)
     .eq('business_id', businessId)
     .eq('first_name', first_name)
-    .eq('last_name', last_name || null)
-    .eq('phone', phone || null)
-    .is('deleted_at', null)
-    .maybeSingle();
+    .is('deleted_at', null);
+  if (last_name) nameQuery = nameQuery.eq('last_name', last_name);
+  else nameQuery = nameQuery.is('last_name', null);
+  if (phone) nameQuery = nameQuery.eq('phone', phone);
+  else nameQuery = nameQuery.is('phone', null);
 
+  const { data: byNamePhone } = await nameQuery.maybeSingle();
   return byNamePhone;
 }
 
 export async function createClient(payload) {
   const businessId = await getCurrentBusinessId();
-  
+  if (!businessId) throw new Error('No active business — switch to a business viewpoint first');
+
   // Pre-check for duplicates
   const existing = await fetchClientByContact(payload);
   if (existing) {
@@ -91,6 +101,7 @@ export async function updateClient(id, patch) {
     .select()
     .single();
   if (error) throw error;
+  assertWrote(data, 'updateClient');
   return data;
 }
 

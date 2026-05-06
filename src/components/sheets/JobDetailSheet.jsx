@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useMemo } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useKeyboardFocus } from '../../hooks/useKeyboardFocus';
@@ -22,6 +22,14 @@ const PAY_COLORS = {
   Partial: { bg: 'rgba(245,158,11,0.12)', color: '#F59E0B', border: 'rgba(245,158,11,0.25)' },
   '':      { bg: 'rgba(233,30,106,0.12)', color: '#E91E6A', border: 'rgba(233,30,106,0.25)' },
 };
+
+function fmtDuration(decimalHours) {
+  const h = Math.floor(decimalHours);
+  const m = Math.round((decimalHours - h) * 60);
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
 
 function fmtDate(s) {
   if (!s) return '—';
@@ -324,6 +332,9 @@ function ReadMode({
           <Row T={T} label="Date" value={fmtDate(job.scheduled_date)} />
           <Row T={T} label="Time" value={timeRange} />
           <Row T={T} label="Est. hours" value={job.estimated_hours != null ? `${job.estimated_hours}h` : '—'} />
+          {job.actual_duration != null && job.job_status === 'Completed' && (
+            <Row T={T} label="Actual hours" value={fmtDuration(job.actual_duration)} highlight />
+          )}
           <Row T={T} label="Amount" value={amtDisplay} serif tabular />
           <Row T={T} label="Pricing" value={job.pricing_type || '—'} last />
         </InfoCard>
@@ -368,7 +379,12 @@ function EditMode({ form, setForm, services, T, mode, busy, mutErr, showSeriesPi
     if (!svc) return;
     set('service_id', svc.id);
     set('service_name', svc.name);
-    if (form.pricing_type === 'Flat') set('total_amount', String(svc.default_price));
+    
+    const resolvedPrice = (svc.pricing_type === 'Hourly' && (svc.default_price === null || svc.default_price === 0))
+      ? (business?.hourly_rate || 60)
+      : svc.default_price;
+
+    if (form.pricing_type === 'Flat') set('total_amount', String(resolvedPrice || ''));
     if (!form.hoursTouched) set('estimated_hours', (Number(svc.default_duration || 120) / 60).toFixed(1));
   }
 
@@ -415,7 +431,7 @@ function EditMode({ form, setForm, services, T, mode, busy, mutErr, showSeriesPi
 }
 
 function InfoCard({ T, children }) { return <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 12, padding: '11px 13px', marginBottom: 10 }}>{children}</div>; }
-function Row({ T, label, value, last, serif, tabular }) { return <><div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', padding: '6px 0' }}><span style={{ fontSize: 11, color: T.inkMuted }}>{label}</span><span style={{ fontFamily: serif ? T.serif : T.font, fontSize: 13, color: T.ink, fontVariantNumeric: tabular ? 'tabular-nums' : undefined }}>{value}</span></div>{!last && <div style={{ height: 1, background: T.cardBorder }} />}</>; }
+function Row({ T, label, value, last, serif, tabular, highlight }) { return <><div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', padding: '6px 0' }}><span style={{ fontSize: 11, color: T.inkMuted }}>{label}</span><span style={{ fontFamily: serif ? T.serif : T.font, fontSize: 13, color: highlight ? '#22C55E' : T.ink, fontWeight: highlight ? 700 : undefined, fontVariantNumeric: tabular ? 'tabular-nums' : undefined }}>{value}</span></div>{!last && <div style={{ height: 1, background: T.cardBorder }} />}</>; }
 function Pill({ bg, border, color, children, T }) { return <span style={{ padding: '3px 8px', borderRadius: 20, background: bg, border: `1px solid ${border}`, fontSize: 10.5, fontWeight: 600, color }}>{children}</span>; }
 function Btn({ onClick, disabled, bg, border, color, children, T, style: extra }) { return <button onClick={onClick} disabled={disabled} style={{ padding: '11px 14px', borderRadius: 12, background: bg, border: border || 'none', color, fontFamily: T.font, fontSize: 13, fontWeight: 600, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.6 : 1, width: '100%', ...extra }}>{children}</button>; }
 function Field({ T, label, children, last }) { return <div style={{ marginBottom: last ? 0 : 14 }}><div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: T.inkMuted, marginBottom: 5 }}>{label}</div>{children}</div>; }

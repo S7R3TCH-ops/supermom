@@ -3,10 +3,12 @@ import { useNavigate, useParams, Navigate } from 'react-router-dom';
 import { useAppTheme } from '../context/AppThemeContext';
 import { useJobDetailSheet } from '../context/JobDetailSheetContext';
 import { useNewJobSheet } from '../context/NewJobSheetContext';
+import { useEditClientSheet } from '../context/EditClientSheetContext';
+import { useToast } from '../context/ToastContext';
 import AmtCell from '../components/ui/AmtCell';
 import { Title, Subheading, Text, Caption, SectionLabel } from '../components/ui/typography';
 import { useClient, notifyDataChanged } from '../data/useData';
-import { updateClient, simulateAILearning } from '../data/clientsRepo';
+import { simulateAILearning, updateClient } from '../data/clientsRepo';
 
 function formatPhone(p) {
   if (!p) return '';
@@ -21,52 +23,13 @@ export default function ClientProfile() {
   const { T, mode, privacyOn } = useAppTheme();
   const { openFor } = useNewJobSheet();
   const { openJob } = useJobDetailSheet();
+  const { open: openEditClient } = useEditClientSheet();
+  const toast = useToast();
   const { client, raw, loading, error, refresh } = useClient(id);
 
-  // Edit AI Context state
-  const [isEditingAi, setIsEditingAi] = useState(false);
   const [isSavingAi, setIsSavingAi] = useState(false);
-  const [aiDraft, setAiDraft] = useState({});
-
-  const handleEditAi = () => {
-    setAiDraft({
-      notes: client.note || '',
-      prefs: client.aiContext.prefs || '',
-      access: client.aiContext.access || '',
-      comms: client.aiContext.comms || '',
-      personal: client.aiContext.personal || '',
-    });
-    setIsEditingAi(true);
-  };
-
-  const handleSaveAi = async () => {
-    setIsSavingAi(true);
-    try {
-      const newAiContext = {
-        ...(raw?.ai_context || {}),
-        prefs: aiDraft.prefs,
-        access: aiDraft.access,
-        comms: aiDraft.comms,
-        personal: aiDraft.personal,
-      };
-
-      await updateClient(id, {
-        notes: aiDraft.notes,
-        ai_context: newAiContext,
-      });
-
-      // Refetch and WAIT for it before closing edit mode
-      // This prevents the UI from reverting to old values momentarily
-      await refresh();
-      setIsEditingAi(false);
-      notifyDataChanged(); // Notify others (e.g. Clients list)
-    } catch (err) {
-      console.error('Failed to save client intel:', err);
-      alert('Failed to save changes. Please try again.');
-    } finally {
-      setIsSavingAi(false);
-    }
-  };
+  const [isEditingIntel, setIsEditingIntel] = useState(false);
+  const [intelDraft, setIntelDraft] = useState({});
 
   const handleSimulateFuture = async () => {
     setIsSavingAi(true);
@@ -76,6 +39,42 @@ export default function ClientProfile() {
       notifyDataChanged();
     } catch (err) {
       console.error('Simulation failed:', err);
+      toast.error('Simulation failed. Please try again.');
+    } finally {
+      setIsSavingAi(false);
+    }
+  };
+
+  const handleEditIntel = () => {
+    setIntelDraft({
+      notes:    client.note || '',
+      prefs:    client.aiContext.prefs || '',
+      access:   client.aiContext.access || '',
+      comms:    client.aiContext.comms || '',
+      personal: client.aiContext.personal || '',
+    });
+    setIsEditingIntel(true);
+  };
+
+  const handleSaveIntel = async () => {
+    setIsSavingAi(true);
+    try {
+      await updateClient(id, {
+        notes: intelDraft.notes,
+        ai_context: {
+          ...(raw?.ai_context || {}),
+          prefs:    intelDraft.prefs,
+          access:   intelDraft.access,
+          comms:    intelDraft.comms,
+          personal: intelDraft.personal,
+        },
+      });
+      await refresh();
+      setIsEditingIntel(false);
+      notifyDataChanged();
+    } catch (err) {
+      console.error('Failed to save intel:', err);
+      toast.error('Failed to save. Please try again.');
     } finally {
       setIsSavingAi(false);
     }
@@ -138,7 +137,21 @@ export default function ClientProfile() {
             fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '1.1px',
             textTransform: 'uppercase', color: mode === 'dark' ? '#FF78B0' : T.pink,
           }}>✦ Client Profile</div>
-          <div style={{ width: 30 }} />
+          <button
+            onClick={() => openEditClient(id)}
+            style={{
+              background: mode === 'dark' ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.4)',
+              border: `1px solid ${mode === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.05)'}`,
+              borderRadius: 9, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', padding: 0,
+            }}
+            aria-label="Edit client"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={mode === 'dark' ? 'white' : T.ink} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+            </svg>
+          </button>
         </div>
 
         {/* Avatar + name + tags */}
@@ -251,47 +264,40 @@ export default function ClientProfile() {
               fontSize: 9.5, fontWeight: 700, letterSpacing: '1.1px',
               textTransform: 'uppercase', color: '#FF78B0',
             }}>✦ What I know</Caption>
-            {!isEditingAi && (
-              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                {!client.aiContext.learned && (
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+              {!client.aiContext.learned && !isEditingIntel && (
+                <button
+                  onClick={handleSimulateFuture}
+                  disabled={isSavingAi}
+                  style={{
+                    background: 'var(--grad-pink)', border: 'none', borderRadius: 8, padding: '4px 10px',
+                    fontFamily: T.font, fontSize: 9, fontWeight: 700, color: 'white', cursor: 'pointer',
+                    boxShadow: '0 4px 10px rgba(233,30,106,0.2)'
+                  }}
+                >
+                  See my future ✦
+                </button>
+              )}
+              {!isEditingIntel ? (
+                <button
+                  onClick={handleEditIntel}
+                  style={{ background: 'none', border: 'none', padding: 0, fontFamily: T.font, fontSize: 10, fontWeight: 600, color: T.pink, cursor: 'pointer' }}
+                >Edit</button>
+              ) : (
+                <div style={{ display: 'flex', gap: 10 }}>
                   <button
-                    onClick={handleSimulateFuture}
+                    onClick={() => setIsEditingIntel(false)}
                     disabled={isSavingAi}
-                    style={{
-                      background: 'var(--grad-pink)', border: 'none', borderRadius: 8, padding: '4px 10px',
-                      fontFamily: T.font, fontSize: 9, fontWeight: 700, color: 'white', cursor: 'pointer',
-                      boxShadow: '0 4px 10px rgba(233,30,106,0.2)'
-                    }}
-                  >
-                    See my future ✦
-                  </button>
-                )}
-                <button
-                  onClick={handleEditAi}
-                  style={{
-                    background: 'none', border: 'none', padding: 0,
-                    fontFamily: T.font, fontSize: 10, fontWeight: 600, color: T.pink, cursor: 'pointer',
-                  }}>Edit</button>
-              </div>
-            )}
-            {isEditingAi && (
-              <div style={{ display: 'flex', gap: 10 }}>
-                <button
-                  onClick={() => setIsEditingAi(false)}
-                  disabled={isSavingAi}
-                  style={{
-                    background: 'none', border: 'none', padding: 0,
-                    fontFamily: T.font, fontSize: 10, fontWeight: 600, color: T.inkMuted, cursor: 'pointer',
-                  }}>Cancel</button>
-                <button
-                  onClick={handleSaveAi}
-                  disabled={isSavingAi}
-                  style={{
-                    background: 'none', border: 'none', padding: 0,
-                    fontFamily: T.font, fontSize: 10, fontWeight: 700, color: T.pink, cursor: 'pointer',
-                  }}>{isSavingAi ? 'Saving...' : 'Save'}</button>
-              </div>
-            )}
+                    style={{ background: 'none', border: 'none', padding: 0, fontFamily: T.font, fontSize: 10, fontWeight: 600, color: T.inkMuted, cursor: 'pointer' }}
+                  >Cancel</button>
+                  <button
+                    onClick={handleSaveIntel}
+                    disabled={isSavingAi}
+                    style={{ background: 'none', border: 'none', padding: 0, fontFamily: T.font, fontSize: 10, fontWeight: 700, color: T.pink, cursor: 'pointer' }}
+                  >{isSavingAi ? 'Saving…' : 'Save'}</button>
+                </div>
+              )}
+            </div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, position: 'relative' }}>
             {[
@@ -305,24 +311,23 @@ export default function ClientProfile() {
                 <Caption style={{
                   fontSize: 9, fontWeight: 700, letterSpacing: '0.5px',
                   textTransform: 'uppercase', color: T.inkMuted,
-                  flexShrink: 0, width: 58, marginTop: isEditingAi ? 6 : 2,
+                  flexShrink: 0, width: 58, marginTop: isEditingIntel ? 6 : 2,
                 }}>{row.k}</Caption>
-                {isEditingAi ? (
+                {isEditingIntel ? (
                   <textarea
-                    value={aiDraft[row.f]}
-                    onChange={(e) => setAiDraft({ ...aiDraft, [row.f]: e.target.value })}
-                    placeholder={`Enter ${row.k.toLowerCase()}...`}
+                    value={intelDraft[row.f]}
+                    onChange={e => setIntelDraft(d => ({ ...d, [row.f]: e.target.value }))}
+                    placeholder={`Enter ${row.k.toLowerCase()}…`}
                     style={{
                       flex: 1, background: T.pinkTint, border: `1px solid ${T.pinkBorder}`,
                       borderRadius: 8, padding: '4px 8px', fontFamily: T.font, fontSize: 11.5,
-                      color: T.ink, minHeight: 44, resize: 'none',
+                      color: T.ink, minHeight: 44, resize: 'none', outline: 'none',
                     }}
                   />
                 ) : (
-                  <Text style={{
-                    fontSize: 11.5, color: T.inkSub, lineHeight: 1.45, flex: 1,
-                    minHeight: row.v ? 0 : 16,
-                  }}>{row.v || <span style={{ color: T.inkMuted, fontStyle: 'italic', fontSize: 10 }}>None</span>}</Text>
+                  <Text style={{ fontSize: 11.5, color: T.inkSub, lineHeight: 1.45, flex: 1, minHeight: row.v ? 0 : 16 }}>
+                    {row.v || <span style={{ color: T.inkMuted, fontStyle: 'italic', fontSize: 10 }}>None</span>}
+                  </Text>
                 )}
               </div>
             ))}

@@ -158,7 +158,15 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
     return findConflicts(jobRows, scheduledISO, duration, 60).filter(j => j.client_id !== clientId);
   }, [scheduledISO, duration, clientId, jobRows]);
 
-  const price = selectedService ? Number(selectedService.default_price) : 0;
+  const price = useMemo(() => {
+    if (!selectedService) return 0;
+    // If default_price is null/0 and it's Hourly, use business default
+    if (selectedService.pricing_type === 'Hourly' && (selectedService.default_price === null || selectedService.default_price === 0)) {
+      return Number(business?.hourly_rate || 60);
+    }
+    return Number(selectedService.default_price || 0);
+  }, [selectedService, business?.hourly_rate]);
+
   const priceStr = `$${price}`;
 
   async function handleBook() {
@@ -543,7 +551,9 @@ function Step2What({
                 )}
                 <div style={{ fontFamily: T.serif, fontSize: 13, fontWeight: 500, color: T.ink, letterSpacing: '-0.2px' }}>{s.name}</div>
                 <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, fontVariantNumeric: 'tabular-nums' }}>
-                  ${s.default_price} {s.pricing_type === 'Hourly' ? '/hr' : ''} · {fmtDuration(Number(s.default_duration || 120))}
+                  ${s.pricing_type === 'Hourly' && (s.default_price === null || s.default_price === 0) 
+                    ? (business?.hourly_rate || 60) 
+                    : s.default_price} {s.pricing_type === 'Hourly' ? '/hr' : ''} · {fmtDuration(Number(s.default_duration || 120))}
                 </div>
               </button>
             );

@@ -19,6 +19,7 @@ export default function NewClientSheet({ onClose, onCreated }) {
   const [street, setStreet] = useState('');
   const [city, setCity] = useState('Georgetown');
   const [vip, setVip] = useState(false);
+  const [isLead, setIsLead] = useState(false);
   const [recurrence, setRecurrence] = useState(null);
   const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
@@ -46,7 +47,7 @@ export default function NewClientSheet({ onClose, onCreated }) {
         street: street.trim() || null,
         city: city.trim() || null,
         province: 'ON',
-        status: 'active',
+        status: isLead ? 'lead' : 'active',
         notes: notes.trim() || null,
         ai_context: { vip, recurrence },
       });
@@ -151,6 +152,10 @@ export default function NewClientSheet({ onClose, onCreated }) {
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontFamily: T.font, fontSize: 12, color: T.ink }}>
             <input type="checkbox" checked={vip} onChange={e => setVip(e.target.checked)} />
             Mark as VIP ★
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontFamily: T.font, fontSize: 12, color: T.ink }}>
+            <input type="checkbox" checked={isLead} onChange={e => setIsLead(e.target.checked)} />
+            Mark as Lead
           </label>
 
           <div>

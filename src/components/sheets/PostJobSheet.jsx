@@ -92,7 +92,7 @@ export default function PostJobSheet({ jobId, onClose }) {
       if (data) setInvoiceId(data.invoice_id);
 
       notifyDataChanged();
-      toast.success('Payment recorded!');
+      toast.success(isPaidToggle ? 'Payment recorded!' : 'Job marked complete!');
       setDone(true);
       setTimeout(onClose, 2500);
     } catch (e) {

@@ -30,12 +30,15 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
         .from('services')
         .select('*')
         .eq('business_id', bid)
+        .eq('active', true)
         .order('sort_order', { ascending: true });
       if (err) throw err;
 
       setFormServices((data || []).map(s => ({
         ...s,
-        default_price: String(s.default_price || 0),
+        // If default_price is null or exactly 0 (sentinel), we use business default
+        use_business_default: s.default_price === null || s.default_price === 0,
+        default_price: s.default_price !== null ? String(s.default_price) : String(business?.hourly_rate || 60),
         default_duration: String(s.default_duration || 120),
         isNew: false
       })));
@@ -45,7 +48,7 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [business?.hourly_rate]);
 
   useEffect(() => {
     if (isOpen) refresh();
@@ -62,12 +65,13 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
       tempId: Math.random().toString(36).substr(2, 9),
       name: '',
       pricing_type: 'Hourly',
-      default_price: '60',
+      use_business_default: true,
+      default_price: String(business?.hourly_rate || 60),
       default_duration: '120',
       active: true,
       isNew: true
     };
-    setFormServices(prev => [...prev, newSvc]);
+    setFormServices(prev => [newSvc, ...prev]);
   };
 
   const handleSave = async () => {
@@ -95,11 +99,13 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
       const upserts = formServices
         .filter(s => s.name.trim()) // Ignore empty names
         .map((s, idx) => {
+          const isHourly = s.pricing_type === 'Hourly';
           const item = {
             business_id: bid,
             name: s.name,
             pricing_type: s.pricing_type,
-            default_price: parseFloat(s.default_price) || 0,
+            // If using business default, we store NULL in the DB
+            default_price: (isHourly && s.use_business_default) ? null : (parseFloat(s.default_price) || 0),
             default_duration: parseFloat(s.default_duration) || 120,
             active: s.active,
             sort_order: idx
@@ -172,11 +178,12 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
             <div style={{ flex: 1, paddingRight: 20 }}>
               Manage your standard service offerings. These defaults are used when booking new jobs.
             </div>
-            <button 
+            <button
               onClick={handleAdd}
-              style={{ 
-                background: T.pink, color: 'white', border: 'none', borderRadius: 8, 
-                padding: '6px 12px', fontSize: 11, fontWeight: 700, cursor: 'pointer' 
+              disabled={loading}
+              style={{
+                background: loading ? T.pinkTint : T.pink, color: 'white', border: 'none', borderRadius: 8,
+                padding: '6px 12px', fontSize: 11, fontWeight: 700, cursor: loading ? 'default' : 'pointer'
               }}
             >
               + Add Service
@@ -192,129 +199,152 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
                   No services found. Click "+ Add Service" to start your catalog.
                 </div>
               )}
-              {formServices.map(s => (
-                <div key={s.id || s.tempId} style={{ 
-                  background: T.card, border: `1.5px solid ${T.cardBorder}`, 
-                  borderRadius: 16, padding: '14px', position: 'relative',
-                  boxShadow: mode === 'dark' ? 'none' : '0 2px 8px rgba(0,0,0,0.04)'
-                }}>
-                  {/* Delete Button */}
-                  <button
-                    onClick={() => {
-                      if (window.confirm(`Delete service "${s.name || 'this service'}"?`)) {
-                        setFormServices(prev => prev.filter(item => (s.id ? item.id !== s.id : item.tempId !== s.tempId)));
-                        if (s.id) setDeletedIds(prev => [...prev, s.id]);
-                      }
-                    }}
-                    style={{
-                      position: 'absolute', top: 10, right: 10,
-                      width: 24, height: 24, borderRadius: 6,
-                      background: mode === 'dark' ? 'rgba(255,255,255,0.05)' : '#FFF0F7',
-                      border: 'none', color: T.pink, fontSize: 16, fontWeight: 700,
-                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      zIndex: 2
-                    }}
-                  >
-                    ×
-                  </button>
+              {formServices.map(s => {
+                const isHourly = s.pricing_type === 'Hourly';
+                const useDefault = isHourly && s.use_business_default;
+                const displayPrice = useDefault ? (business?.hourly_rate || 60) : s.default_price;
 
-                  <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
-                    <div style={{ flex: 1 }}>
-                      <label style={{ fontSize: 9, fontWeight: 800, color: T.inkMuted, textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Service Name</label>
+                return (
+                  <div key={s.id || s.tempId} style={{ 
+                    background: T.card, border: `1.5px solid ${T.cardBorder}`, 
+                    borderRadius: 16, padding: '14px', position: 'relative',
+                    boxShadow: mode === 'dark' ? 'none' : '0 2px 8px rgba(0,0,0,0.04)'
+                  }}>
+                    {/* Delete Button */}
+                    <button
+                      onClick={() => {
+                        if (window.confirm(`Delete service "${s.name || 'this service'}"?`)) {
+                          setFormServices(prev => prev.filter(item => (s.id ? item.id !== s.id : item.tempId !== s.tempId)));
+                          if (s.id) setDeletedIds(prev => [...prev, s.id]);
+                        }
+                      }}
+                      style={{
+                        position: 'absolute', top: 10, right: 10,
+                        width: 24, height: 24, borderRadius: 6,
+                        background: mode === 'dark' ? 'rgba(255,255,255,0.05)' : '#FFF0F7',
+                        border: 'none', color: T.pink, fontSize: 16, fontWeight: 700,
+                        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        zIndex: 2
+                      }}
+                    >
+                      ×
+                    </button>
+
+                    <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
+                      <div style={{ flex: 1 }}>
+                        <label style={{ fontSize: 9, fontWeight: 800, color: T.inkMuted, textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Service Name</label>
+                        <input 
+                          placeholder="e.g. Decluttering"
+                          value={s.name} 
+                          onChange={e => handleUpdate(s.id || s.tempId, 'name', e.target.value)}
+                          style={{ 
+                            width: '100%', 
+                            background: mode === 'dark' ? 'rgba(255,255,255,0.03)' : '#FAF3F6', 
+                            border: 'none', 
+                            borderBottom: `2px solid ${T.pink}40`, 
+                            padding: '8px 10px', 
+                            borderRadius: '8px 8px 0 0',
+                            color: T.ink, 
+                            fontFamily: T.serif, 
+                            fontSize: 16, 
+                            outline: 'none',
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                      </div>
+                      <div style={{ width: 100 }}>
+                        <label style={{ fontSize: 9, fontWeight: 800, color: T.inkMuted, textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Pricing</label>
+                        <select 
+                          value={s.pricing_type} 
+                          onChange={e => handleUpdate(s.id || s.tempId, 'pricing_type', e.target.value)}
+                          style={{ 
+                            width: '100%', 
+                            background: mode === 'dark' ? 'rgba(255,255,255,0.03)' : '#FAF3F6', 
+                            border: 'none', 
+                            borderBottom: `2px solid ${T.pink}40`, 
+                            padding: '8px 8px', 
+                            borderRadius: '8px 8px 0 0',
+                            color: T.ink, 
+                            fontSize: 13, 
+                            outline: 'none',
+                            height: 37,
+                            boxSizing: 'border-box'
+                          }}
+                        >
+                          <option value="Hourly">Hourly</option>
+                          <option value="Flat">Flat Rate</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                          <label style={{ fontSize: 9, fontWeight: 800, color: T.inkMuted, textTransform: 'uppercase' }}>
+                            {s.pricing_type === 'Hourly' ? 'Rate ($/hr)' : 'Price ($)'}
+                          </label>
+                          {isHourly && (
+                            <button
+                              onClick={() => handleUpdate(s.id || s.tempId, 'use_business_default', !s.use_business_default)}
+                              style={{
+                                background: s.use_business_default ? T.pink : 'transparent',
+                                border: `1px solid ${T.pink}`,
+                                color: s.use_business_default ? 'white' : T.pink,
+                                borderRadius: 4, padding: '1px 5px', fontSize: 8, fontWeight: 700, cursor: 'pointer'
+                              }}
+                            >
+                              DEFAULT
+                            </button>
+                          )}
+                        </div>
+                        <div style={{ 
+                          display: 'flex', alignItems: 'center', gap: 4,
+                          background: useDefault ? (mode === 'dark' ? 'rgba(255,255,255,0.01)' : '#f0f0f0') : (mode === 'dark' ? 'rgba(255,255,255,0.03)' : '#FAF3F6'),
+                          padding: '0 10px', borderRadius: '8px 8px 0 0',
+                          borderBottom: `2px solid ${T.pink}40`,
+                          opacity: useDefault ? 0.7 : 1
+                        }}>
+                          <span style={{ color: T.inkMuted, fontSize: 14 }}>$</span>
+                          <input 
+                            type="number"
+                            value={displayPrice} 
+                            disabled={useDefault}
+                            onChange={e => handleUpdate(s.id || s.tempId, 'default_price', e.target.value)}
+                            style={{ width: '100%', background: 'transparent', border: 'none', padding: '8px 0', color: T.ink, fontSize: 15, outline: 'none' }}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 9, fontWeight: 800, color: T.inkMuted, textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Default Duration (mins)</label>
+                        <div style={{ 
+                          display: 'flex', alignItems: 'center', gap: 6,
+                          background: mode === 'dark' ? 'rgba(255,255,255,0.03)' : '#FAF3F6',
+                          padding: '0 10px', borderRadius: '8px 8px 0 0',
+                          borderBottom: `2px solid ${T.pink}40`,
+                        }}>
+                          <input 
+                            type="number"
+                            value={s.default_duration} 
+                            onChange={e => handleUpdate(s.id || s.tempId, 'default_duration', e.target.value)}
+                            style={{ width: '100%', background: 'transparent', border: 'none', padding: '8px 0', color: T.ink, fontSize: 15, outline: 'none' }}
+                          />
+                          <span style={{ color: T.inkMuted, fontSize: 10, fontWeight: 700 }}>MINS</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
                       <input 
-                        placeholder="e.g. Decluttering"
-                        value={s.name} 
-                        onChange={e => handleUpdate(s.id || s.tempId, 'name', e.target.value)}
-                        style={{ 
-                          width: '100%', 
-                          background: mode === 'dark' ? 'rgba(255,255,255,0.03)' : '#FAF3F6', 
-                          border: 'none', 
-                          borderBottom: `2px solid ${T.pink}40`, 
-                          padding: '8px 10px', 
-                          borderRadius: '8px 8px 0 0',
-                          color: T.ink, 
-                          fontFamily: T.serif, 
-                          fontSize: 16, 
-                          outline: 'none',
-                          boxSizing: 'border-box'
-                        }}
+                        type="checkbox" 
+                        checked={s.active} 
+                        onChange={e => handleUpdate(s.id || s.tempId, 'active', e.target.checked)}
+                        style={{ cursor: 'pointer' }}
                       />
-                    </div>
-                    <div style={{ width: 100 }}>
-                      <label style={{ fontSize: 9, fontWeight: 800, color: T.inkMuted, textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Pricing</label>
-                      <select 
-                        value={s.pricing_type} 
-                        onChange={e => handleUpdate(s.id || s.tempId, 'pricing_type', e.target.value)}
-                        style={{ 
-                          width: '100%', 
-                          background: mode === 'dark' ? 'rgba(255,255,255,0.03)' : '#FAF3F6', 
-                          border: 'none', 
-                          borderBottom: `2px solid ${T.pink}40`, 
-                          padding: '8px 8px', 
-                          borderRadius: '8px 8px 0 0',
-                          color: T.ink, 
-                          fontSize: 13, 
-                          outline: 'none',
-                          height: 37,
-                          boxSizing: 'border-box'
-                        }}
-                      >
-                        <option value="Hourly">Hourly</option>
-                        <option value="Flat">Flat Rate</option>
-                      </select>
+                      <span style={{ fontSize: 11, color: T.inkSub, fontWeight: 600 }}>Active in catalog</span>
                     </div>
                   </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                    <div>
-                      <label style={{ fontSize: 9, fontWeight: 800, color: T.inkMuted, textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>
-                        Default {s.pricing_type === 'Hourly' ? 'Rate ($/hr)' : 'Price ($)'}
-                      </label>
-                      <div style={{ 
-                        display: 'flex', alignItems: 'center', gap: 4,
-                        background: mode === 'dark' ? 'rgba(255,255,255,0.03)' : '#FAF3F6',
-                        padding: '0 10px', borderRadius: '8px 8px 0 0',
-                        borderBottom: `2px solid ${T.pink}40`,
-                      }}>
-                        <span style={{ color: T.inkMuted, fontSize: 14 }}>$</span>
-                        <input 
-                          type="number"
-                          value={s.default_price} 
-                          onChange={e => handleUpdate(s.id || s.tempId, 'default_price', e.target.value)}
-                          style={{ width: '100%', background: 'transparent', border: 'none', padding: '8px 0', color: T.ink, fontSize: 15, outline: 'none' }}
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label style={{ fontSize: 9, fontWeight: 800, color: T.inkMuted, textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Default Duration (mins)</label>
-                      <div style={{ 
-                        display: 'flex', alignItems: 'center', gap: 6,
-                        background: mode === 'dark' ? 'rgba(255,255,255,0.03)' : '#FAF3F6',
-                        padding: '0 10px', borderRadius: '8px 8px 0 0',
-                        borderBottom: `2px solid ${T.pink}40`,
-                      }}>
-                        <input 
-                          type="number"
-                          value={s.default_duration} 
-                          onChange={e => handleUpdate(s.id || s.tempId, 'default_duration', e.target.value)}
-                          style={{ width: '100%', background: 'transparent', border: 'none', padding: '8px 0', color: T.ink, fontSize: 15, outline: 'none' }}
-                        />
-                        <span style={{ color: T.inkMuted, fontSize: 10, fontWeight: 700 }}>MINS</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <input 
-                      type="checkbox" 
-                      checked={s.active} 
-                      onChange={e => handleUpdate(s.id || s.tempId, 'active', e.target.checked)}
-                      style={{ cursor: 'pointer' }}
-                    />
-                    <span style={{ fontSize: 11, color: T.inkSub, fontWeight: 600 }}>Active in catalog</span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 

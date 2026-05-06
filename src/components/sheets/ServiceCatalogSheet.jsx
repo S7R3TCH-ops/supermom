@@ -7,6 +7,7 @@ import { getCurrentBusinessId } from '../../data/currentBusiness';
 import { SectionLabel } from '../ui/typography';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { NoServices } from '../ui/Illustrations';
+import GrabBar from '../ui/GrabBar';
 
 export default function ServiceCatalogSheet({ isOpen, onClose }) {
   const { T, mode } = useAppTheme();
@@ -279,6 +280,7 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
                         <input 
                           placeholder="e.g. Decluttering"
                           value={s.name} 
+                          disabled={isPendingDelete}
                           onChange={e => handleUpdate(s.id || s.tempId, 'name', e.target.value)}
                           style={{ 
                             width: '100%', 
@@ -300,6 +302,7 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
                         <label style={{ fontSize: 9, fontWeight: 800, color: T.inkMuted, textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Pricing</label>
                         <select 
                           value={s.pricing_type} 
+                          disabled={isPendingDelete}
                           onChange={e => handleUpdate(s.id || s.tempId, 'pricing_type', e.target.value)}
                           style={{ 
                             width: '100%', 
@@ -330,11 +333,12 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
                           {isHourly && (
                             <button
                               onClick={() => handleUpdate(s.id || s.tempId, 'use_business_default', !s.use_business_default)}
+                              disabled={isPendingDelete}
                               style={{
                                 background: s.use_business_default ? T.pink : 'transparent',
                                 border: `1px solid ${T.pink}`,
                                 color: s.use_business_default ? 'white' : T.pink,
-                                borderRadius: 4, padding: '1px 5px', fontSize: 8, fontWeight: 700, cursor: 'pointer'
+                                borderRadius: 4, padding: '1px 5px', fontSize: 8, fontWeight: 700, cursor: isPendingDelete ? 'default' : 'pointer'
                               }}
                             >
                               DEFAULT
@@ -352,7 +356,7 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
                           <input 
                             type="number"
                             value={displayPrice} 
-                            disabled={useDefault}
+                            disabled={useDefault || isPendingDelete}
                             onChange={e => handleUpdate(s.id || s.tempId, 'default_price', e.target.value)}
                             style={{ width: '100%', background: 'transparent', border: 'none', padding: '8px 0', color: T.ink, fontSize: 15, outline: 'none' }}
                           />
@@ -369,6 +373,7 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
                           <input 
                             type="number"
                             value={s.default_duration} 
+                            disabled={isPendingDelete}
                             onChange={e => handleUpdate(s.id || s.tempId, 'default_duration', e.target.value)}
                             style={{ width: '100%', background: 'transparent', border: 'none', padding: '8px 0', color: T.ink, fontSize: 15, outline: 'none' }}
                           />
@@ -381,8 +386,9 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
                       <input 
                         type="checkbox" 
                         checked={s.active} 
+                        disabled={isPendingDelete}
                         onChange={e => handleUpdate(s.id || s.tempId, 'active', e.target.checked)}
-                        style={{ cursor: 'pointer' }}
+                        style={{ cursor: isPendingDelete ? 'default' : 'pointer' }}
                       />
                       <span style={{ fontSize: 11, color: T.inkSub, fontWeight: 600 }}>Active in catalog</span>
                     </div>

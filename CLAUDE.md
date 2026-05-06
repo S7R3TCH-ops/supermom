@@ -112,6 +112,8 @@ This is a **managed service product** — Sandra is the first user, but the arch
 - [x] Service Catalog Add visibility fix — new cards now prepended to the top of the list so they're immediately visible without scrolling; prior bug was UX-only (cards rendered below the fold). Settings.jsx signature input warning also fixed (v0.2.9)
 - [x] Service Catalog refresh now filters `active=true` — soft-deleted services no longer reappear in the catalog. End-to-end verification (v0.3.0): owner role can Add, Save, persist, and Delete services without errors.
 - [x] Scroll Performance — CSS containment on all scroll containers; React.memo on ClientCard, TransactionRow, AgendaCard; Finance transaction pagination (50/page) (v0.3.6)
+- [x] Service Catalog bug fixes (v0.3.7) — null ID on batch upsert fixed (crypto.randomUUID); DEFAULT ✎ toggle now obviously interactive with hint caption; can add multiple services without error
+- [x] Book Job from client profile (v0.3.7) — skips Step 1 (client pre-selected), opens directly on Step 2; `business` prop passed to Step2What fixing white screen crash for Hourly services with null default_price
 
 ---
 

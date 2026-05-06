@@ -163,10 +163,20 @@ Both functions (`is_admin()`, `my_business_id()`) are `SECURITY DEFINER` — the
 
 (Updated by Gemini CLI)
 
+### Bug Fixes — May 6, 2026 (v0.3.7) — Claude Code
+
+| # | Bug | Root Cause | Fix |
+|---|---|---|---|
+| 1 | Service Catalog: Hourly rate not editable; not obvious how to set custom rate | `use_business_default: true` disables input; DEFAULT button looked like a badge, not interactive | Button now shows `DEFAULT ✎` / `CUSTOM ✎` with tooltip; hint caption appears under disabled input |
+| 2 | Service Catalog: null ID error when adding second service | Batch upsert with `onConflict: 'id'` sent explicit NULL for new rows without `id` | New services now use `crypto.randomUUID()`; `id` always included in upsert payload |
+| 3a | Book Job from client profile shows Step 1 (who is it for?) | `step` always initialized to 1 regardless of `prefillClientId` | When `prefillClientId` is present, step initializes to 2; step counter shows "Step 1 of 2" |
+| 3b | White screen after clicking Next from Book Job | `business` variable referenced in `Step2What` but never passed as a prop | `business` now passed as explicit prop; fixes crash for Hourly services with `default_price = null` |
+
 ## Next priorities (as of May 6, 2026)
 1. ~~**Supabase Redirect Allowlist**~~ — ✅ Done (manually configured in Supabase Auth → URL Configuration).
-2. ~~**Scroll Performance Audit**~~ — ✅ Done (v0.3.6) — CSS containment on all scroll containers; React.memo on ClientCard, TransactionRow, AgendaCard; Finance transaction pagination (50/page).
-3. **Client Engagement Tools** — (Phase E) AI-suggested follow-ups and re-booking reminders.
-4. ~~**Service Catalog Deletion Flow**~~ — ✅ Done (v0.3.5) — mark-for-deletion with visual strike-through and undo; pending deletes batched into Save.
+2. ~~**Scroll Performance Audit**~~ — ✅ Done (v0.3.6).
+3. ~~**Service Catalog Deletion Flow**~~ — ✅ Done (v0.3.5).
+4. ~~**Service Catalog & Book Job bug fixes**~~ — ✅ Done (v0.3.7).
+5. **Client Engagement Tools** — (Phase E) AI-suggested follow-ups and re-booking reminders.
 
 (Updated by Claude Code — May 6, 2026)

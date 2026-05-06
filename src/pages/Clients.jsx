@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppTheme } from '../context/AppThemeContext';
 import { useNewClientSheet } from '../context/NewClientSheetContext';
@@ -8,6 +8,69 @@ import { EmptyClients, NoResults } from '../components/ui/Illustrations';
 
 const filters = ['All', 'Owes $', 'VIP', 'Active', 'Leads'];
 
+const ClientCard = memo(function ClientCard({ c, T, onPress }) {
+  return (
+    <div
+      onClick={() => onPress(c.id)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onPress(c.id); }}
+      style={{
+        background: T.card, border: `1.5px solid ${c.owed ? 'rgba(233,30,106,0.35)' : T.cardBorder}`,
+        borderRadius: 13, padding: '10px 12px', marginBottom: 7, cursor: 'pointer',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+        <div style={{
+          width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+          background: `${c.color}22`, border: `1.5px solid ${c.color}55`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontFamily: T.serif, fontSize: 16, fontWeight: 500, color: c.color,
+        }}>{c.init}</div>
+
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+            <div style={{ fontFamily: T.serif, fontSize: 14, fontWeight: 500, letterSpacing: '-0.2px', color: T.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
+            {c.vip && <span style={{ background: '#FCD34D', borderRadius: 4, padding: '1px 5px', fontFamily: T.font, fontSize: 8, fontWeight: 700, color: '#78350F', whiteSpace: 'nowrap' }}>VIP ★</span>}
+          </div>
+          <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, marginBottom: 4 }}>
+            {c.service !== '—' ? `${c.service} · Last: ${c.last}` : 'No jobs yet'}
+          </div>
+          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+            {c.tags.map(tag => {
+              const isOverdue = tag.toLowerCase().includes('overdue');
+              const isLead = tag === 'Lead';
+              return (
+                <span key={tag} style={{
+                  background: isOverdue ? '#FEF3C7' : isLead ? '#F3F0FF' : T.pinkTint,
+                  border: `1px solid ${isOverdue ? '#F59E0B40' : isLead ? '#7C3AED30' : T.cardBorder}`,
+                  borderRadius: 4, padding: '2px 6px',
+                  fontFamily: T.font, fontSize: 8.5, fontWeight: 700,
+                  color: isOverdue ? '#78350F' : isLead ? '#5B21B6' : T.inkMuted,
+                  letterSpacing: '0.3px', textTransform: 'uppercase',
+                }}>{tag}</span>
+              );
+            })}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3, flexShrink: 0 }}>
+          {c.owed && c.amt && <AmtCell amount={c.amt} size={13} />}
+          {c.next !== '—' && (
+            <div style={{ fontFamily: T.font, fontSize: 9, color: T.inkMuted, textAlign: 'right' }}>Next: {c.next}</div>
+          )}
+          {c.tags.includes('Lead') && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onPress(c.id); }}
+              style={{ background: T.pink, color: 'white', border: 'none', borderRadius: 6, padding: '4px 8px', fontFamily: T.font, fontSize: 9, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+            >Book</button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+});
+
 export default function Clients() {
   const { T, mode, privacyOn } = useAppTheme();
   const [filter, setFilter] = useState('All');
@@ -15,6 +78,7 @@ export default function Clients() {
   const { open } = useNewClientSheet();
   const navigate = useNavigate();
   const { clients, loading, error, refresh } = useClients();
+  const handleClientPress = useCallback((id) => navigate(`/clients/${id}`), [navigate]);
 
   const filtered = useMemo(() => clients.filter(c => {
     // Search filter
@@ -150,65 +214,7 @@ export default function Clients() {
       {/* Client list */}
       <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '4px 13px 8px', contain: 'layout style paint' }}>
         {filtered.map((c, i) => (
-          <div
-            key={c.id || i}
-            onClick={() => navigate(`/clients/${c.id}`)}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigate(`/clients/${c.id}`); }}
-            style={{
-              background: T.card, border: `1.5px solid ${c.owed ? 'rgba(233,30,106,0.35)' : T.cardBorder}`,
-              borderRadius: 13, padding: '10px 12px', marginBottom: 7, cursor: 'pointer',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-              <div style={{
-                width: 40, height: 40, borderRadius: 12, flexShrink: 0,
-                background: `${c.color}22`, border: `1.5px solid ${c.color}55`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontFamily: T.serif, fontSize: 16, fontWeight: 500, color: c.color,
-              }}>{c.init}</div>
-
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                  <div style={{ fontFamily: T.serif, fontSize: 14, fontWeight: 500, letterSpacing: '-0.2px', color: T.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
-                  {c.vip && <span style={{ background: '#FCD34D', borderRadius: 4, padding: '1px 5px', fontFamily: T.font, fontSize: 8, fontWeight: 700, color: '#78350F', whiteSpace: 'nowrap' }}>VIP ★</span>}
-                </div>
-                <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, marginBottom: 4 }}>
-                  {c.service !== '—' ? `${c.service} · Last: ${c.last}` : 'No jobs yet'}
-                </div>
-                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                  {c.tags.map(tag => {
-                    const isOverdue = tag.toLowerCase().includes('overdue');
-                    const isLead = tag === 'Lead';
-                    return (
-                      <span key={tag} style={{
-                        background: isOverdue ? '#FEF3C7' : isLead ? '#F3F0FF' : T.pinkTint,
-                        border: `1px solid ${isOverdue ? '#F59E0B40' : isLead ? '#7C3AED30' : T.cardBorder}`,
-                        borderRadius: 4, padding: '2px 6px',
-                        fontFamily: T.font, fontSize: 8.5, fontWeight: 700,
-                        color: isOverdue ? '#78350F' : isLead ? '#5B21B6' : T.inkMuted,
-                        letterSpacing: '0.3px', textTransform: 'uppercase',
-                      }}>{tag}</span>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3, flexShrink: 0 }}>
-                {c.owed && c.amt && <AmtCell amount={c.amt} size={13} />}
-                {c.next !== '—' && (
-                  <div style={{ fontFamily: T.font, fontSize: 9, color: T.inkMuted, textAlign: 'right' }}>Next: {c.next}</div>
-                )}
-                {c.tags.includes('Lead') && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); navigate(`/clients/${c.id}`); }}
-                    style={{ background: T.pink, color: 'white', border: 'none', borderRadius: 6, padding: '4px 8px', fontFamily: T.font, fontSize: 9, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
-                  >Book</button>
-                )}
-              </div>
-            </div>
-          </div>
+          <ClientCard key={c.id || i} c={c} T={T} onPress={handleClientPress} />
         ))}
       </div>
     </div>

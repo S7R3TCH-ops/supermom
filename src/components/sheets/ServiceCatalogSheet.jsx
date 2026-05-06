@@ -13,7 +13,6 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
   const { business } = useBusiness();
   const toast = useToast();
   const sheetRef = useRef(null);
-  useFocusTrap(sheetRef, isOpen, onClose);
 
   const [formServices, setFormServices] = useState([]);
   const [deletedIds, setDeletedIds] = useState([]);
@@ -30,6 +29,17 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
     });
     return current !== snapshot;
   }, [formServices, deletedIds, snapshot]);
+
+  const attemptClose = useCallback(() => {
+    if (isDirty) {
+      if (!window.confirm("You have unsaved changes. Discard them?")) {
+        return;
+      }
+    }
+    onClose();
+  }, [isDirty, onClose]);
+
+  useFocusTrap(sheetRef, isOpen, attemptClose);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -167,7 +177,7 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
         @keyframes scSlide { from { transform: translateY(100%); } to { transform: translateY(0); } }
       `}</style>
 
-      <div onClick={onClose} style={{ flex: 1 }} />
+      <div onClick={attemptClose} style={{ flex: 1 }} />
 
       <div ref={sheetRef} onClick={e => e.stopPropagation()} style={{
         background: T.bg, color: T.ink,
@@ -184,7 +194,7 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
             <div style={{ fontFamily: T.font, fontSize: 10, fontWeight: 700, color: T.pink, textTransform: 'uppercase', letterSpacing: '1px' }}>ADMIN TOOLS</div>
             <div style={{ fontFamily: T.serif, fontSize: 20, fontWeight: 500, color: T.ink }}>Service Catalog</div>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, color: T.inkMuted, cursor: 'pointer' }}>×</button>
+          <button onClick={attemptClose} style={{ background: 'none', border: 'none', fontSize: 20, color: T.inkMuted, cursor: 'pointer' }}>×</button>
         </div>
 
         {/* Scrollable Body */}
@@ -375,7 +385,7 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
 
         {/* Footer */}
         <div style={{ padding: '16px 20px 24px', borderTop: `1px solid ${T.cardBorder}`, display: 'flex', gap: 12 }}>
-          <button onClick={onClose} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: `1.5px solid ${T.cardBorder}`, background: 'transparent', color: T.inkSub, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+          <button onClick={attemptClose} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: `1.5px solid ${T.cardBorder}`, background: 'transparent', color: T.inkSub, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
           <button onClick={handleSave} disabled={busy || loading} style={{ flex: 2, padding: '12px 0', borderRadius: 12, border: 'none', background: (busy || loading) ? T.pinkTint : T.pink, color: 'white', fontSize: 13, fontWeight: 700, cursor: (busy || loading) ? 'default' : 'pointer', boxShadow: '0 4px 12px rgba(233,30,106,0.3)' }}>
             {busy ? 'Saving...' : 'Save Catalog Changes'}
           </button>

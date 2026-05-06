@@ -119,11 +119,15 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
       if (!bid) throw new Error('No business ID found');
 
       // 1. Process Soft Deletions (active = false)
-      if (pendingDeleteIds.length > 0) {
+      // Merge pendingDeleteIds with services manually unchecked as inactive
+      const deletedIds = formServices.filter(s => s.id && !s.active).map(s => s.id);
+      const allDeactivateIds = [...new Set([...pendingDeleteIds, ...deletedIds])];
+
+      if (allDeactivateIds.length > 0) {
         const { data: deleted, error: delErr } = await supabase
           .from('services')
           .update({ active: false })
-          .in('id', pendingDeleteIds)
+          .in('id', allDeactivateIds)
           .eq('business_id', bid)
           .select();
         if (delErr) throw delErr;

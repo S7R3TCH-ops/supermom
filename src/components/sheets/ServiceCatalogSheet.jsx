@@ -6,6 +6,7 @@ import { useToast } from '../../context/ToastContext';
 import { getCurrentBusinessId } from '../../data/currentBusiness';
 import { SectionLabel } from '../ui/typography';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { NoServices } from '../ui/Illustrations';
 
 export default function ServiceCatalogSheet({ isOpen, onClose }) {
   const { T, mode } = useAppTheme();
@@ -195,8 +196,11 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               {formServices.length === 0 && (
-                <div style={{ padding: '40px 20px', textAlign: 'center', border: `2px dashed ${T.cardBorder}`, borderRadius: 16, color: T.inkMuted }}>
-                  No services found. Click "+ Add Service" to start your catalog.
+                <div style={{ padding: '60px 20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
+                  <NoServices size={100} />
+                  <div style={{ fontFamily: T.font, fontSize: 13, color: T.inkMuted, maxWidth: 220, lineHeight: 1.5 }}>
+                    No services found. Click "+ Add Service" to start your catalog.
+                  </div>
                 </div>
               )}
               {formServices.map(s => {

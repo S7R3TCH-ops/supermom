@@ -4,6 +4,7 @@ import { useAppTheme } from '../context/AppThemeContext';
 import { useNewClientSheet } from '../context/NewClientSheetContext';
 import AmtCell from '../components/ui/AmtCell';
 import { useClients } from '../data/useData';
+import { EmptyClients, NoResults } from '../components/ui/Illustrations';
 
 const filters = ['All', 'Owes $', 'VIP', 'Active', 'Leads'];
 
@@ -126,10 +127,23 @@ export default function Clients() {
         </div>
       )}
 
-      {/* Empty state */}
+      {/* Empty state: No clients at all */}
       {!loading && !error && clients.length === 0 && (
-        <div style={{ padding: '24px 18px', textAlign: 'center', color: T.inkMuted, fontFamily: T.font, fontSize: 13 }}>
-          No clients yet. Tap <strong style={{ color: T.pink }}>+</strong> above to add your first.
+        <div style={{ padding: '60px 20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
+          <EmptyClients size={100} />
+          <div style={{ fontFamily: T.font, fontSize: 13, color: T.inkMuted, maxWidth: 220, lineHeight: 1.5 }}>
+            No clients yet. Tap <strong style={{ color: T.pink }}>+</strong> above to add your first VIP.
+          </div>
+        </div>
+      )}
+
+      {/* Empty state: No search/filter results */}
+      {!loading && !error && clients.length > 0 && filtered.length === 0 && (
+        <div style={{ padding: '60px 20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
+          <NoResults size={100} />
+          <div style={{ fontFamily: T.font, fontSize: 13, color: T.inkMuted, maxWidth: 220, lineHeight: 1.5 }}>
+            No matches found for "{search || filter}".
+          </div>
         </div>
       )}
 

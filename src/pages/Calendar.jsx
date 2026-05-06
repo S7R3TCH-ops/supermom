@@ -4,6 +4,10 @@ import { useJobs, useBusiness } from '../data/useData';
 import CapeUpButton from '../components/ui/CapeUpButton';
 import { useJobDetailSheet } from '../context/JobDetailSheetContext';
 import { useAuth } from '../context/AuthContext';
+import { EmptySchedule, NoResults } from '../components/ui/Illustrations';
+import Swipeable from '../components/ui/Swipeable';
+import { softDeleteJob } from '../data/jobsRepo';
+import { notifyDataChanged } from '../data/useData';
 
 // Real "now" — was previously a hard-coded prototype anchor.
 const NOW = () => new Date();
@@ -272,6 +276,19 @@ function DayView({ T, mode, privacyOn, selectedDay, todayJobs, nextUpcoming, onJ
           </div>
         ))}
 
+        {todayJobs.length === 0 && (
+          <div style={{ 
+            position: 'absolute', top: 60, left: 43, right: 0, 
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12,
+            padding: '40px 20px', textAlign: 'center', opacity: 0.8
+          }}>
+            <EmptySchedule size={80} />
+            <div style={{ fontFamily: T.font, fontSize: 12, color: T.inkMuted }}>
+              Nothing scheduled for this day.
+            </div>
+          </div>
+        )}
+
         {todayJobs.map(j => {
           const startDec = j.start.getHours() + j.start.getMinutes() / 60;
           const endDec   = j.end.getHours()   + j.end.getMinutes() / 60;
@@ -451,11 +468,25 @@ function AgendaView({ T, mode, privacyOn, allJobs, nextUpcoming, onJobPress, fir
     return Array.from(map.values()).sort((a, b) => a.date - b.date);
   }, [allJobs]);
 
+  const handleDeleteJob = async (jobId) => {
+    if (!window.confirm('Delete this job?')) return;
+    try {
+      await softDeleteJob(jobId);
+      notifyDataChanged();
+    } catch (e) {
+      console.error('Failed to delete job:', e);
+      alert('Could not delete job.');
+    }
+  };
+
   return (
     <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '8px 13px 14px' }}>
       {grouped.length === 0 && (
-        <div style={{ padding: 28, textAlign: 'center', fontFamily: T.font, fontSize: 12, color: T.inkMuted }}>
-          No upcoming jobs.
+        <div style={{ padding: '60px 20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
+          <EmptySchedule size={100} />
+          <div style={{ fontFamily: T.font, fontSize: 13, color: T.inkMuted, maxWidth: 220, lineHeight: 1.5 }}>
+            No upcoming jobs on your schedule.
+          </div>
         </div>
       )}
 
@@ -477,14 +508,15 @@ function AgendaView({ T, mode, privacyOn, allJobs, nextUpcoming, onJobPress, fir
               const conflict = conflicts.find(c => c.a.id === j.id || c.b.id === j.id);
               const isNext = nextUpcoming && j.id === nextUpcoming.id;
               return (
-                <AgendaCard
-                  key={j.id}
-                  T={T} mode={mode} privacyOn={privacyOn}
-                  job={j}
-                  isNext={isNext}
-                  conflict={conflict}
-                  onPress={onJobPress}
-                />
+                <Swipeable key={j.id} onDelete={() => handleDeleteJob(j.id)}>
+                  <AgendaCard
+                    T={T} mode={mode} privacyOn={privacyOn}
+                    job={j}
+                    isNext={isNext}
+                    conflict={conflict}
+                    onPress={onJobPress}
+                  />
+                </Swipeable>
               );
             })}
 

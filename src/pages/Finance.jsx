@@ -9,6 +9,7 @@ import { useJobDetailSheet } from '../context/JobDetailSheetContext';
 import NudgeDraftSheet from '../components/sheets/NudgeDraftSheet';
 import NewExpenseSheet from '../components/sheets/NewExpenseSheet';
 import AmtCell from '../components/ui/AmtCell';
+import { EmptyActivity, NoResults } from '../components/ui/Illustrations';
 
 const periods = ['Week', 'Month', 'Year', 'All'];
 const DOW = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
@@ -328,8 +329,11 @@ export default function Finance() {
         <SectionLabel>Recent Activity</SectionLabel>
 
         {transactions.length === 0 && (
-          <div style={{ padding: '16px 0', textAlign: 'center', color: T.inkMuted, fontFamily: T.font, fontSize: 12 }}>
-            No activity in this period.
+          <div style={{ padding: '40px 20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+            <EmptyActivity size={80} />
+            <div style={{ fontFamily: T.font, fontSize: 12, color: T.inkMuted }}>
+              No activity in this period.
+            </div>
           </div>
         )}
 
@@ -367,8 +371,11 @@ export default function Finance() {
         <SectionLabel>Formal Invoices</SectionLabel>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginBottom: 16 }}>
           {invoices.length === 0 ? (
-            <div style={{ padding: '16px 0', textAlign: 'center', color: T.inkMuted, fontFamily: T.font, fontSize: 12 }}>
-              No formal invoices yet.
+            <div style={{ padding: '30px 20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+              <NoResults size={60} />
+              <div style={{ fontFamily: T.font, fontSize: 11, color: T.inkMuted }}>
+                No formal invoices yet.
+              </div>
             </div>
           ) : (
             invoices.slice(0, 5).map(inv => (

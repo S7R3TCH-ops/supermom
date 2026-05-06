@@ -9,6 +9,7 @@ import AmtCell from '../components/ui/AmtCell';
 import { Title, Subheading, Text, Caption, SectionLabel } from '../components/ui/typography';
 import { useClient, notifyDataChanged } from '../data/useData';
 import { simulateAILearning, updateClient } from '../data/clientsRepo';
+import { EmptyActivity, EmptySchedule } from '../components/ui/Illustrations';
 
 function formatPhone(p) {
   if (!p) return '';
@@ -401,9 +402,11 @@ export default function ClientProfile() {
           {client.upcoming.length === 0 ? (
             <div style={{
               background: T.card, border: `1.5px dashed ${T.cardBorder}`,
-              borderRadius: 13, padding: '14px 14px', textAlign: 'center',
+              borderRadius: 16, padding: '30px 20px', textAlign: 'center',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12
             }}>
-              <div style={{ fontFamily: T.font, fontSize: 11.5, color: T.inkMuted, marginBottom: 6 }}>
+              <EmptySchedule size={60} />
+              <div style={{ fontFamily: T.font, fontSize: 11.5, color: T.inkMuted }}>
                 No upcoming jobs booked
               </div>
               <button
@@ -411,7 +414,7 @@ export default function ClientProfile() {
                 style={{
                   background: T.pink, color: 'white', border: 'none', borderRadius: 8,
                   padding: '6px 14px', fontFamily: T.font, fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                }}>Book new job</button>
+                }}>Book now</button>
             </div>
           ) : (
             client.upcoming.map((j, i) => (
@@ -447,10 +450,13 @@ export default function ClientProfile() {
           {client.history.length === 0 ? (
             <div style={{
               background: T.card, border: `1.5px solid ${T.cardBorder}`,
-              borderRadius: 13, padding: '14px', textAlign: 'center',
-              fontFamily: T.font, fontSize: 11.5, color: T.inkMuted,
+              borderRadius: 16, padding: '30px 20px', textAlign: 'center',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12
             }}>
-              No history yet.
+              <EmptyActivity size={60} />
+              <div style={{ fontFamily: T.font, fontSize: 11.5, color: T.inkMuted }}>
+                No history yet.
+              </div>
             </div>
           ) : (
             client.history.slice(0, 5).map((h, i) => (

@@ -3,7 +3,7 @@ import { useAppTheme } from '../context/AppThemeContext';
 import AmtCell from '../components/ui/AmtCell';
 import { Title, Subheading, Text, Caption, SectionLabel } from '../components/ui/typography';
 import CapeUpButton from '../components/ui/CapeUpButton';
-import { useJobs, useBusiness, useClients } from '../data/useData';
+import { useJobs, useBusiness, useClients, notifyDataChanged } from '../data/useData';
 import { useJobDetailSheet } from '../context/JobDetailSheetContext';
 import { usePostJobSheet } from '../context/PostJobSheetContext';
 import { useNewClientSheet } from '../context/NewClientSheetContext';
@@ -13,6 +13,10 @@ import { updateDailyRoutes } from '../lib/maps';
 import { useGeofence } from '../context/GeofenceContext';
 import { generateCommandBrief, generatePrepNote, speakBrief, stopSpeaking } from '../data/ai';
 import { getPersistentDailyMessage, getTimeBasedGreeting } from '../lib/greetings';
+import { softDeleteJob } from '../data/jobsRepo';
+
+import { EmptySchedule, AllDone } from '../components/ui/Illustrations';
+import Swipeable from '../components/ui/Swipeable';
 
 const NOW = () => new Date();
 const DOW_SHORT = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
@@ -80,8 +84,9 @@ const EmptyState = ({ persona, allDone, T }) => {
       };
   
   return (
-    <div style={{ padding: '32px 20px', textAlign: 'center', background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 16, marginBottom: 12 }}>
-      <Subheading style={{ fontSize: 16, color: T.ink, lineHeight: 1.5 }}>
+    <div style={{ padding: '40px 20px', textAlign: 'center', background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 16, marginBottom: 12, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+      {allDone ? <AllDone size={100} /> : <EmptySchedule size={100} />}
+      <Subheading style={{ fontSize: 16, color: T.ink, lineHeight: 1.5, maxWidth: 240 }}>
         {msg[persona] || msg.professional}
       </Subheading>
     </div>
@@ -230,6 +235,17 @@ export default function Home() {
   const progressPercent = todayJobs.length > 0 ? (completedJobsCount / todayJobs.length) * 100 : 0;
 
   const isSelectedToday = sameDay(selectedDate, today);
+
+  const handleDeleteJob = async (jobId) => {
+    if (!window.confirm('Delete this job?')) return;
+    try {
+      await softDeleteJob(jobId);
+      notifyDataChanged();
+    } catch (e) {
+      console.error('Failed to delete job:', e);
+      alert('Could not delete job.');
+    }
+  };
 
   const categorizedJobs = useMemo(() => {
     const now = new Date();
@@ -478,14 +494,22 @@ export default function Home() {
             {categorizedJobs.incomplete.length > 0 && (
               <>
                 {categorizedJobs.incomplete.length > 3 && <SectionLabel color="#F59E0B">✦ Incomplete Missions · Needs Update</SectionLabel>}
-                {categorizedJobs.incomplete.map(j => <JobCard key={j.id} j={j} T={T} mode={mode} openJob={openJob} variant="incomplete" today={today} />)}
+                {categorizedJobs.incomplete.map(j => (
+                  <Swipeable key={j.id} onDelete={() => handleDeleteJob(j.id)}>
+                    <JobCard j={j} T={T} mode={mode} openJob={openJob} variant="incomplete" today={today} />
+                  </Swipeable>
+                ))}
               </>
             )}
 
             {categorizedJobs.upcoming.length > 0 && (
               <>
                 {(categorizedJobs.upcoming.length > 3 || !isSelectedToday) && <SectionLabel>{isSelectedToday ? 'Upcoming Missions' : `Schedule: ${dateBrief(selectedDate)}`}</SectionLabel>}
-                {categorizedJobs.upcoming.map(j => <JobCard key={j.id} j={j} T={T} mode={mode} openJob={openJob} next={next} today={today} />)}
+                {categorizedJobs.upcoming.map(j => (
+                  <Swipeable key={j.id} onDelete={() => handleDeleteJob(j.id)}>
+                    <JobCard j={j} T={T} mode={mode} openJob={openJob} next={next} today={today} />
+                  </Swipeable>
+                ))}
               </>
             )}
 
@@ -496,7 +520,11 @@ export default function Home() {
             {isSelectedToday && categorizedJobs.done.length > 0 && (
               <>
                 {categorizedJobs.done.length > 3 && <SectionLabel>Missions Accomplished · Today</SectionLabel>}
-                {categorizedJobs.done.map(j => <JobCard key={j.id} j={j} T={T} mode={mode} openJob={openJob} variant="done" today={today} />)}
+                {categorizedJobs.done.map(j => (
+                  <Swipeable key={j.id} onDelete={() => handleDeleteJob(j.id)}>
+                    <JobCard j={j} T={T} mode={mode} openJob={openJob} variant="done" today={today} />
+                  </Swipeable>
+                ))}
               </>
             )}
           </div>

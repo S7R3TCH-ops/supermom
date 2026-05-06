@@ -85,25 +85,26 @@ At the end of every productive session, or upon major milestone completion, Gemi
 | **Design Compliance** | ✅ **Live** — 4-item nav consolidation; official Theme Toggle rule; Serif Section Labels |
 | **Mobile Keyboard Polish** | ✅ **Live** — Focus-aware padding added to all major sheets |
 | **Client List Privacy** | ✅ **Live** — Internal notes hidden from summary list |
+| **Price Inheritance** | ✅ **Live** — Services inherit business default hourly rate (v0.3.1) |
+| **UI Illustrations** | ✅ **Live** — Rich SVG illustrations for all empty states (v0.3.2) |
+| **Swipe to Delete** | ✅ **Live** — Gesture-based deletion on Home & Agenda (v0.3.2) |
+| **Haptic Feedback** | ✅ **Live** — Taptic engine support for taps/swipes (v0.3.3) |
+| **Unified Grab Bars** | ✅ **Live** — Standardized sheet handles across app (v0.3.3) |
 
-## Phase 23 QA Stability Hardening (Gemini CLI session, May 1, 2026)
+## Phase 24 UI & UX Polish (Gemini CLI session, May 6, 2026)
 
-Key enhancements for application stability and design consistency:
+Key enhancements for application "feel" and dynamic pricing:
 
 | # | Change | Detail | File |
 |---|---|---|---|
-| DU | Realtime Loop Fix | ✅ **Fixed** — Prevented 'on after subscribe' crash in `realtime.js` | `realtime.js` |
-| DV | Profile Route Fix | ✅ **Fixed** — Resolved `mode` reference error in `ClientProfile.jsx` | `ClientProfile.jsx` |
-| DW | RLS Hardening | ✅ **Live** — Comprehensive migration for `businesses`, `users`, `clients`, etc. | `supabase/migrations/` |
-| DX | GCal Reliability | ✅ **Live** — Awaited syncs + 20-occurrence series limit | `jobsRepo.js` |
-| DY | Design Compliance | ✅ **Live** — Standardized view toggles, hero borders, and FAB visibility | `Calendar.jsx`, `Finance.jsx`, `App.jsx` |
-| DZ | Backdrop Blur | ✅ **Live** — Optimized onboarding overlay for readability | `OnboardingWalkthrough.jsx` |
-| EA | Build Stabilization | ✅ **Fixed** — Resolved `jobsRepo.js` syntax error causing Vite compilation failure | `jobsRepo.js` |
-| EB | UX Polish | ✅ **Live** — Increased global Toast notification duration from 3.5s to 6.0s | `ToastContext.jsx` |
-| EC | Settings Hardening | ✅ **Fixed** — Added strict parsing for `ai_profile` JSON to prevent "cannot coerce" errors on save | `Settings.jsx` |
-| ED | Keyboard Resilience | ✅ **Live** — Added `useKeyboardFocus` hook for focus-aware sheet padding | `src/hooks/useKeyboardFocus.js` |
-| EE | Privacy Audit | ✅ **Live** — Removed internal notes from Client summary list | `src/pages/Clients.jsx` |
-| EF | Admin UX | ✅ **Live** — Added toast feedback for restricted `/admin` access | `src/pages/Admin.jsx` |
+| GA | Price Inheritance | ✅ **Live** — Services can track business default rate via `null` DB values | `ServiceCatalogSheet.jsx` |
+| GB | New Job Price Res | ✅ **Live** — Booking flow resolves inherited rates dynamically | `NewJobSheet.jsx` |
+| GC | SVG Illustrations | ✅ **Live** — Replaced dry text with branded SVG empty states | `Illustrations.jsx`, `Home.jsx`, etc. |
+| GD | Swipe to Delete | ✅ **Live** — Modern gesture for clearing schedule items | `Swipeable.jsx`, `Home.jsx` |
+| GE | Haptic Feedback | ✅ **Live** — Light/Medium vibration for key mobile interactions | `haptics.js`, `FAB.jsx`, etc. |
+| GF | Unified Grab Bars | ✅ **Live** — Standardized handle for 10+ bottom sheets | `GrabBar.jsx`, `JobDetailSheet.jsx`, etc. |
+| GG | Perf Optimization | ✅ **Live** — Pre-grouped jobs in Week View via useMemo | `Calendar.jsx` |
+| GH | UX Micro-polish | ✅ **Live** — Active scaling for buttons + pulse animation for timers | `index.css`, `Home.jsx` |
 
 (Updated by Gemini CLI)
 
@@ -136,6 +137,12 @@ Both functions (`is_admin()`, `my_business_id()`) are `SECURITY DEFINER` — the
 - **Service Catalog delete** — Soft-delete (`active=false`) was working at the DB level all along. The lie was in `refresh()`: it selected services without filtering by `active`, so soft-deleted rows reappeared. Fixed by adding `.eq('active', true)` to the catalog query.
 - **Settings save (owner role)** — VERIFIED working. Hourly rate + business name persist after reload. "Uncontrolled → controlled input" warning fixed at `Settings.jsx:306` (`form?.signature ?? ''`).
 
+### Resolved May 6, 2026 (v0.3.3) — Phase D: Mobile Polish COMPLETE
+- **Haptic Feedback** — Added subtle haptics for swipes, taps, and navigation.
+- **Unified Visuals** — Unified `GrabBar` across all bottom sheets for a native look.
+- **Performance** — Optimized `Calendar` Week view; implemented momentum scrolling.
+- **Micro-interactions** — Added pulse animations and global button active scaling.
+
 ### Resolved May 6, 2026 (v0.3.2) — Phase C: UI Polish & Gestures COMPLETE
 - **Empty State Illustrations** — Added rich SVG illustrations for empty states on all main pages.
 - **Swipe to Delete** — Implemented left-swipe gesture for job cards on Home and Calendar Agenda views.
@@ -157,7 +164,8 @@ Both functions (`is_admin()`, `my_business_id()`) are `SECURITY DEFINER` — the
 
 ## Next priorities (as of May 6, 2026)
 1. **Supabase Redirect Allowlist** — Configure `localhost` and `vercel` URLs in project settings (Auth → URL Configuration).
-2. **Phase D: Mobile Polish** — Bottom sheet optimizations and scroll performance.
-3. **Service Catalog deferred-save UX** — Consider auto-save on delete or an "unsaved changes" banner.
+2. **Service Catalog UX Hardening** — Add an "unsaved changes" banner and handle automatic soft-deletion sync.
+3. **Scroll Performance Audit** — Further optimize large client lists and finance history for low-end mobile devices.
+4. **Client Engagement Tools** — (Phase E) AI-suggested follow-ups and re-booking reminders.
 
 (Updated by Gemini CLI — May 6, 2026)

@@ -403,7 +403,7 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
           )}
 
           {error && (
-            <div style={{ marginTop: 16, padding: '10px', borderRadius: 10, background: T.redBg, color: T.red, fontSize: 12, border: `1px solid ${T.redBorder}` }}>
+            <div style={{ marginTop: 16, padding: '10px', borderRadius: 10, background: T.redBg, color: T.ink, fontSize: 12, border: `1px solid ${T.redBorder}` }}>
               {error}
             </div>
           )}

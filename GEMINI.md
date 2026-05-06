@@ -164,9 +164,9 @@ Both functions (`is_admin()`, `my_business_id()`) are `SECURITY DEFINER` — the
 (Updated by Gemini CLI)
 
 ## Next priorities (as of May 6, 2026)
-1. **Supabase Redirect Allowlist** — Configure `localhost` and `vercel` URLs in project settings (Auth → URL Configuration).
-2. **Service Catalog UX Hardening** — Add an "unsaved changes" banner and handle automatic soft-deletion sync.
-3. **Scroll Performance Audit** — Further optimize large client lists and finance history for low-end mobile devices.
-4. **Client Engagement Tools** — (Phase E) AI-suggested follow-ups and re-booking reminders.
+1. **Supabase Redirect Allowlist** — (Action Required) Configure `localhost` and `vercel` URLs in project settings (Auth → URL Configuration).
+2. **Scroll Performance Audit** — Further optimize large client lists and finance history for low-end mobile devices.
+3. **Client Engagement Tools** — (Phase E) AI-suggested follow-ups and re-booking reminders.
+4. **Service Catalog Deletion Flow** — Improve visual feedback (strike-through) for services pending deletion.
 
 (Updated by Gemini CLI — May 6, 2026)

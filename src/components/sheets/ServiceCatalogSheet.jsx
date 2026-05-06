@@ -81,15 +81,15 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
 
   if (!isOpen) return null;
 
-  const handleUpdate = (tempId, field, val) => {
-    setFormServices(prev => prev.map(s => (s.id === tempId || s.tempId === tempId) ? { ...s, [field]: val } : s));
+  const handleUpdate = (id, field, val) => {
+    setFormServices(prev => prev.map(s => s.id === id ? { ...s, [field]: val } : s));
   };
 
   const handleToggleDelete = (id) => {
-    const svc = formServices.find(s => s.id === id || s.tempId === id);
+    const svc = formServices.find(s => s.id === id);
     if (svc?.isNew) {
       // For new services, remove immediately
-      setFormServices(prev => prev.filter(s => (s.id ? s.id !== id : s.tempId !== id)));
+      setFormServices(prev => prev.filter(s => s.id !== id));
       return;
     }
     setPendingDeleteIds(prev => 
@@ -99,7 +99,7 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
 
   const handleAdd = () => {
     const newSvc = {
-      tempId: Math.random().toString(36).substr(2, 9),
+      id: crypto.randomUUID(),
       name: '',
       pricing_type: 'Hourly',
       use_business_default: true,
@@ -142,6 +142,7 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
         .map((s, idx) => {
           const isHourly = s.pricing_type === 'Hourly';
           const item = {
+            id: s.id,
             business_id: bid,
             name: s.name,
             pricing_type: s.pricing_type,
@@ -151,8 +152,6 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
             active: s.active,
             sort_order: idx
           };
-          // Only include ID if it's an existing record
-          if (s.id && !s.isNew) item.id = s.id;
           return item;
         });
 
@@ -248,10 +247,10 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
                 const isHourly = s.pricing_type === 'Hourly';
                 const useDefault = isHourly && s.use_business_default;
                 const displayPrice = useDefault ? (business?.hourly_rate || 60) : s.default_price;
-                const isPendingDelete = pendingDeleteIds.includes(s.id || s.tempId);
+                const isPendingDelete = pendingDeleteIds.includes(s.id);
 
                 return (
-                  <div key={s.id || s.tempId} style={{ 
+                  <div key={s.id} style={{ 
                     background: isPendingDelete 
                       ? (mode === 'dark' ? 'rgba(233,30,106,0.05)' : '#FFF0F7') 
                       : T.card, 
@@ -264,7 +263,7 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
                   }}>
                     {/* Delete Button */}
                     <button
-                      onClick={() => handleToggleDelete(s.id || s.tempId)}
+                      onClick={() => handleToggleDelete(s.id)}
                       style={{
                         position: 'absolute', top: 10, right: 10,
                         width: 24, height: 24, borderRadius: 6,
@@ -285,7 +284,7 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
                           placeholder="e.g. Decluttering"
                           value={s.name} 
                           disabled={isPendingDelete}
-                          onChange={e => handleUpdate(s.id || s.tempId, 'name', e.target.value)}
+                          onChange={e => handleUpdate(s.id, 'name', e.target.value)}
                           style={{ 
                             width: '100%', 
                             background: mode === 'dark' ? 'rgba(255,255,255,0.03)' : '#FAF3F6', 
@@ -307,7 +306,7 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
                         <select 
                           value={s.pricing_type} 
                           disabled={isPendingDelete}
-                          onChange={e => handleUpdate(s.id || s.tempId, 'pricing_type', e.target.value)}
+                          onChange={e => handleUpdate(s.id, 'pricing_type', e.target.value)}
                           style={{ 
                             width: '100%', 
                             background: mode === 'dark' ? 'rgba(255,255,255,0.03)' : '#FAF3F6', 
@@ -336,8 +335,9 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
                           </label>
                           {isHourly && (
                             <button
-                              onClick={() => handleUpdate(s.id || s.tempId, 'use_business_default', !s.use_business_default)}
+                              onClick={() => handleUpdate(s.id, 'use_business_default', !s.use_business_default)}
                               disabled={isPendingDelete}
+                              title={s.use_business_default ? 'Tap to set a custom rate' : 'Tap to use business default rate'}
                               style={{
                                 background: s.use_business_default ? T.pink : 'transparent',
                                 border: `1px solid ${T.pink}`,
@@ -345,11 +345,11 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
                                 borderRadius: 4, padding: '1px 5px', fontSize: 8, fontWeight: 700, cursor: isPendingDelete ? 'default' : 'pointer'
                               }}
                             >
-                              DEFAULT
+                              {s.use_business_default ? 'DEFAULT ✎' : 'CUSTOM ✎'}
                             </button>
                           )}
                         </div>
-                        <div style={{ 
+                        <div style={{
                           display: 'flex', alignItems: 'center', gap: 4,
                           background: useDefault ? (mode === 'dark' ? 'rgba(255,255,255,0.01)' : '#f0f0f0') : (mode === 'dark' ? 'rgba(255,255,255,0.03)' : '#FAF3F6'),
                           padding: '0 10px', borderRadius: '8px 8px 0 0',
@@ -357,14 +357,19 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
                           opacity: useDefault ? 0.7 : 1
                         }}>
                           <span style={{ color: T.inkMuted, fontSize: 14 }}>$</span>
-                          <input 
+                          <input
                             type="number"
-                            value={displayPrice} 
+                            value={displayPrice}
                             disabled={useDefault || isPendingDelete}
-                            onChange={e => handleUpdate(s.id || s.tempId, 'default_price', e.target.value)}
+                            onChange={e => handleUpdate(s.id, 'default_price', e.target.value)}
                             style={{ width: '100%', background: 'transparent', border: 'none', padding: '8px 0', color: T.ink, fontSize: 15, outline: 'none' }}
                           />
                         </div>
+                        {useDefault && (
+                          <div style={{ fontSize: 8, color: T.inkMuted, marginTop: 3 }}>
+                            Using business default · tap DEFAULT ✎ to customize
+                          </div>
+                        )}
                       </div>
                       <div>
                         <label style={{ fontSize: 9, fontWeight: 800, color: T.inkMuted, textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Default Duration (mins)</label>
@@ -378,7 +383,7 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
                             type="number"
                             value={s.default_duration} 
                             disabled={isPendingDelete}
-                            onChange={e => handleUpdate(s.id || s.tempId, 'default_duration', e.target.value)}
+                            onChange={e => handleUpdate(s.id, 'default_duration', e.target.value)}
                             style={{ width: '100%', background: 'transparent', border: 'none', padding: '8px 0', color: T.ink, fontSize: 15, outline: 'none' }}
                           />
                           <span style={{ color: T.inkMuted, fontSize: 10, fontWeight: 700 }}>MINS</span>
@@ -391,7 +396,7 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
                         type="checkbox" 
                         checked={s.active} 
                         disabled={isPendingDelete}
-                        onChange={e => handleUpdate(s.id || s.tempId, 'active', e.target.checked)}
+                        onChange={e => handleUpdate(s.id, 'active', e.target.checked)}
                         style={{ cursor: isPendingDelete ? 'default' : 'pointer' }}
                       />
                       <span style={{ fontSize: 11, color: T.inkSub, fontWeight: 600 }}>Active in catalog</span>

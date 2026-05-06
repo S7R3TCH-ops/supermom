@@ -51,7 +51,8 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
   const { services, loading: servicesLoading } = useServices();
   const sheetRef = useRef(null);
   useFocusTrap(sheetRef, true, onClose);
-  const [step, setStep] = useState(1);
+  const hasPrefill = !!prefillClientId && prefillClientId !== 'null';
+  const [step, setStep] = useState(() => hasPrefill ? 2 : 1);
 
   // Fetch clients + jobs on mount
   const [clientRows, setClientRows] = useState([]);
@@ -237,7 +238,7 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
         <div style={{ padding: '10px 18px 6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <div style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '1.1px', textTransform: 'uppercase', color: '#FF78B0' }}>
-              ✦ New Job · Step {step} of 3
+              ✦ New Job · Step {hasPrefill ? step - 1 : step} of {hasPrefill ? 2 : 3}
             </div>
             <div style={{ fontFamily: T.serif, fontSize: 20, fontWeight: 500, letterSpacing: '-0.4px', color: T.ink, marginTop: 2 }}>
               {step === 1 && 'Who is it for?'}
@@ -290,6 +291,7 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
             <Step2What
               T={T} mode={mode} client={selectedClient}
               services={services} loading={servicesLoading}
+              business={business}
               serviceId={serviceId} onPickService={onPickService}
               date={date} setDate={setDate}
               time={time} setTime={setTime}
@@ -329,7 +331,7 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
           borderTop: `1px solid ${T.cardBorder}`,
           display: 'flex', gap: 10, background: T.bg,
         }}>
-          {step > 1 ? (
+          {step > 1 && !(hasPrefill && step === 2) ? (
             <button onClick={() => setStep(s => s - 1)} style={{
               flex: 1, background: 'transparent',
               border: `1.5px solid ${T.cardBorder}`, color: T.inkSub,
@@ -484,7 +486,7 @@ function Step1Who({ T, mode, clients, selectedId, onSelect, onAddNew }) {
 
 /* ============= STEP 2 ============= */
 function Step2What({
-  T, mode, client, services, loading, serviceId, onPickService,
+  T, mode, client, services, loading, business, serviceId, onPickService,
   date, setDate, time, setTime, duration, setDuration,
   recurrence, setRecurrence, aiDuration,
   aiEstimateLoading, aiEstimateReason,

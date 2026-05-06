@@ -387,7 +387,7 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
         <div style={{ padding: '16px 20px 24px', borderTop: `1px solid ${T.cardBorder}`, display: 'flex', gap: 12 }}>
           <button onClick={attemptClose} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: `1.5px solid ${T.cardBorder}`, background: 'transparent', color: T.inkSub, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
           <button onClick={handleSave} disabled={busy || loading} style={{ flex: 2, padding: '12px 0', borderRadius: 12, border: 'none', background: (busy || loading) ? T.pinkTint : T.pink, color: 'white', fontSize: 13, fontWeight: 700, cursor: (busy || loading) ? 'default' : 'pointer', boxShadow: '0 4px 12px rgba(233,30,106,0.3)' }}>
-            {busy ? 'Saving...' : 'Save Catalog Changes'}
+            {busy ? 'Saving...' : `Save Catalog Changes${isDirty ? ' •' : ''}`}
           </button>
         </div>
       </div>

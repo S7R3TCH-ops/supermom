@@ -32,7 +32,7 @@ At the end of every productive session, or upon major milestone completion, Gemi
 
 ---
 
-## Current State (as of May 1, 2026 — updated post QA Audit Fixes)
+## Current State (as of May 6, 2026 — updated post 10-bug batch v0.4.2)
 
 | Feature | Status |
 |---|---|
@@ -74,7 +74,7 @@ At the end of every productive session, or upon major milestone completion, Gemi
 | **Platform Hierarchy** | ✅ **Live** — Joel as global admin; Sandra as business owner |
 | **EA Run-through** | ✅ **Live** — New user onboarding, Mission #1 banner, and Magic Button |
 | **Finance Drilldown** | ✅ **Live** — Tappable stats with detail sheet; actionable history |
-| **Interactive Home** | ✅ **Live** — Interactive 7-day strip; Dynamic EA empty-state messages |
+| **Interactive Home** | ✅ **Live** — Interactive 7-day strip; Dynamic EA empty-state messages; **Next Up redundancy fixed & card enhanced (v0.3.8)** |
 | **Contextual Nav** | ✅ **Live** — Route-aware Back button in LogoBar |
 | **Theme Toggle** | ✅ **Live** — Moved to LogoBar; premium pill switch UI |
 | **Test Isolation** | ✅ **Live** — Dedicated `tester@supermom.io` environment |
@@ -132,6 +132,25 @@ Both functions (`is_admin()`, `my_business_id()`) are `SECURITY DEFINER` — the
 - `ServiceCatalogSheet.jsx` — soft-delete (set `active=false`) also checks for 0 rows and throws
 - `Settings.jsx` — `console.error` added on save failure for easier debugging
 
+### Resolved May 6, 2026 (v0.4.1) — Home UX & Stability Overhaul
+- **"What's Next Today" Renaming** — Renamed "Opening Act" for clearer mission focus.
+- **Strict Exclusivity** — The highlighted mission card now completely hides that job from the "Upcoming Missions" list until its duration has passed, ensuring zero redundancy on the Home page.
+- **Intelligent Focus Trap** — Upgraded `useFocusTrap` with a 350ms animation delay and smart input prioritization (no more cursor jumping to the close button).
+- **Keyboard Layout Stability** — Replaced dynamic form padding with a stable "spacer" div to prevent layout jitter and unclickable fields when the mobile keyboard opens.
+- **Enhanced Mission Intel** — Pulled address links, service details, and client access/prefs directly into the highlighted Home card for a "one-tap" workflow.
+
+### Resolved May 6, 2026 (v0.4.0) — Focus & Keyboard Stability COMPLETE
+- **"Add Client" Interaction Fix** — Resolved issue where keyboard would "pop up and down" real quick by making `useFocusTrap` smarter and stabilizing parent callbacks in `NewJobSheet`.
+- **Layout Polish** — Removed disruptive transitions on focus-aware padding to prevent layout thrashing.
+
+### Resolved May 6, 2026 (v0.3.9) — Stability Fixes COMPLETE
+- **Calendar TypeError Fix** — Fixed crash in `getGoLabel` when receiving service objects; hardened all `toLowerCase` calls in selectors and AI logic.
+
+### Resolved May 6, 2026 (v0.3.8) — Phase E: Home UX Polish COMPLETE
+- **Next Up Redundancy** — Eliminated duplication of the next job in the upcoming list.
+- **Enhanced Next Up Card** — Added address (with map link), service name, amount, and client intelligence (access/prefs) to the card.
+- **Smarter Next Job Logic** — Correctly identifies the subsequent job when one is active and handles current/late jobs without skipping.
+
 ### Resolved May 4, 2026 (v0.3.0) — Phase 1 RLS verification COMPLETE
 - **Service Catalog "Add Service"** — Fixed in v0.2.9. Root cause was UX, not RLS: new cards appended to bottom of scrollable list rendered below the fold. Fix: prepend new cards (`[newSvc, ...prev]`).
 - **Service Catalog persistence** — VERIFIED v0.3.0: owner can Add → Save → reload → service persists. No console errors.
@@ -173,10 +192,12 @@ Both functions (`is_admin()`, `my_business_id()`) are `SECURITY DEFINER` — the
 | 3b | White screen after clicking Next from Book Job | `business` variable referenced in `Step2What` but never passed as a prop | `business` now passed as explicit prop; fixes crash for Hourly services with `default_price = null` |
 
 ## Next priorities (as of May 6, 2026)
-1. ~~**Supabase Redirect Allowlist**~~ — ✅ Done (manually configured in Supabase Auth → URL Configuration).
+1. ~~**Supabase Redirect Allowlist**~~ — ✅ Done.
 2. ~~**Scroll Performance Audit**~~ — ✅ Done (v0.3.6).
 3. ~~**Service Catalog Deletion Flow**~~ — ✅ Done (v0.3.5).
 4. ~~**Service Catalog & Book Job bug fixes**~~ — ✅ Done (v0.3.7).
-5. **Client Engagement Tools** — (Phase E) AI-suggested follow-ups and re-booking reminders.
+5. ~~**10-bug QA batch**~~ — ✅ Done (v0.4.2): schedule scroll, invoice button, duration picker, home sorting, additional costs, partial payment, hourly adjustment prompt, calendar swipe, GrabBar dismiss, FAB padding.
+6. **User testing with Sandra** — walk through the new payment flow (partial + additional costs) and confirm the Calendar swipe behavior feels right.
+7. **Client Engagement Tools** — (Phase E) AI-suggested follow-ups and re-booking reminders.
 
 (Updated by Claude Code — May 6, 2026)

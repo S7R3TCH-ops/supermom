@@ -114,6 +114,7 @@ This is a **managed service product** — Sandra is the first user, but the arch
 - [x] Scroll Performance — CSS containment on all scroll containers; React.memo on ClientCard, TransactionRow, AgendaCard; Finance transaction pagination (50/page) (v0.3.6)
 - [x] Service Catalog bug fixes (v0.3.7) — null ID on batch upsert fixed (crypto.randomUUID); DEFAULT ✎ toggle now obviously interactive with hint caption; can add multiple services without error
 - [x] Book Job from client profile (v0.3.7) — skips Step 1 (client pre-selected), opens directly on Step 2; `business` prop passed to Step2What fixing white screen crash for Hourly services with null default_price
+- [x] 10-bug batch (v0.4.2) — Schedule scroll extended 6am–10pm; invoice button CSS fixed (T.pink); duration picker hours-only (½/1/1½ etc); home screen unpaid jobs float to top with start+end times; additional_cost field surfaced in PostJobSheet+JobDetailSheet+InvoiceView; partial payment as third option with balance display; hourly-job hours-vs-amount adjustment prompt; Calendar view swipe + Week strip unified; GrabBar swipe-down dismiss on all sheets; tab swipe in AuthedShell; FAB padding on all scroll pages
 
 ---
 

@@ -7,12 +7,13 @@ import { useKeyboardFocus } from '../../hooks/useKeyboardFocus';
 import { useToast } from '../../context/ToastContext';
 import GrabBar from '../ui/GrabBar';
 
-export default function NewClientSheet({ onClose }) {
+export default function NewClientSheet({ onClose, onCreated }) {
   const { T, mode } = useAppTheme();
   const toast = useToast();
   const isKeyboardFocused = useKeyboardFocus();
   const sheetRef = useRef(null);
   useFocusTrap(sheetRef, true, onClose);
+  
   const [first, setFirst] = useState('');
   const [last, setLast] = useState('');
   const [phone, setPhone] = useState('');
@@ -77,7 +78,7 @@ export default function NewClientSheet({ onClose }) {
         maxHeight: '92vh', display: 'flex', flexDirection: 'column',
         border: `1px solid ${T.cardBorder}`, borderBottom: 'none',
       }}>
-        <GrabBar />
+        <GrabBar onDismiss={onClose} />
         <div style={{ padding: '10px 18px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <div style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '1.1px', textTransform: 'uppercase', color: '#FF78B0' }}>✦ New Client</div>
@@ -98,16 +99,15 @@ export default function NewClientSheet({ onClose }) {
         <form onSubmit={submit} className="sm-scroll" style={{ 
           flex: 1, 
           overflowY: 'auto', 
-          padding: `0 18px ${isKeyboardFocused ? '260px' : '14px'}`, 
+          padding: '0 18px 14px', 
           display: 'flex', 
           flexDirection: 'column', 
           gap: 10,
-          transition: 'padding-bottom 0.2s ease-out'
         }}>
           <div style={{ display: 'flex', gap: 8 }}>
             <div style={{ flex: 1 }}>
               <label htmlFor="nc-first" style={label}>FIRST NAME *</label>
-              <input id="nc-first" required style={input} value={first} onChange={e => setFirst(e.target.value)} autoFocus />
+              <input id="nc-first" required style={input} value={first} onChange={e => setFirst(e.target.value)} />
             </div>
             <div style={{ flex: 1 }}>
               <label htmlFor="nc-last" style={label}>LAST NAME</label>
@@ -171,6 +171,8 @@ export default function NewClientSheet({ onClose }) {
             background: T.pink, color: '#fff', font: `600 14px/1 ${T.font}`,
             opacity: busy ? 0.5 : 1, cursor: busy ? 'not-allowed' : 'pointer',
           }}>{busy ? 'Saving…' : 'Save client'}</button>
+
+          <div style={{ height: isKeyboardFocused ? 260 : 14, transition: 'height 0.2s ease-out' }} />
         </form>
       </div>
     </div>

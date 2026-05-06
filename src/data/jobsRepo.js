@@ -271,7 +271,7 @@ export async function softDeleteJob(id, seriesAction = 'this') {
   return decorateJob(data[0]);
 }
 
-export async function recordPayment(jobId, amount, method = 'Cash', notes = null, duration = null, jobNotes = null) {
+export async function recordPayment(jobId, amount, method = 'Cash', paymentStatus = null, duration = null, jobNotes = null, additionalCost = 0, additionalCostNotes = null) {
   const businessId = await getCurrentBusinessId();
 
   // 1. Get job info (we need client_id, total_amount, and service_id for learning)
@@ -301,23 +301,32 @@ export async function recordPayment(jobId, amount, method = 'Cash', notes = null
     assertWrote(payData, 'recordPayment:insert');
   }
 
-  // 3. Derive payment status from sum of all non-void payments for this job
-  const { data: existingPayments } = await supabase
-    .from('payments')
-    .select('amount')
-    .eq('job_id', jobId)
-    .eq('is_void', false);
-  const paid = (existingPayments ?? []).reduce((s, p) => s + Number(p.amount), 0);
-  const total = Number(job.total_amount || 0);
-  const status = paid >= total && paid > 0 ? 'Paid' : paid > 0 ? 'Partial' : '';
+  // 3. Derive payment status — use caller-supplied status if provided (e.g. Partial), else derive from payments sum
+  let status = paymentStatus;
+  if (!status) {
+    const { data: existingPayments } = await supabase
+      .from('payments')
+      .select('amount')
+      .eq('job_id', jobId)
+      .eq('is_void', false);
+    const paid = (existingPayments ?? []).reduce((s, p) => s + Number(p.amount), 0);
+    const total = Number(job.total_amount || 0);
+    status = paid >= total && paid > 0 ? 'Paid' : paid > 0 ? 'Partial' : '';
+  }
 
-  const updated = await updateJob(jobId, {
+  const jobPatch = {
     payment_status: status,
     job_status: 'Completed',
     payment_method: amount > 0 ? method : null,
     actual_duration: duration,
-    job_notes: jobNotes
-  });
+    job_notes: jobNotes,
+  };
+  if (additionalCost > 0) {
+    jobPatch.additional_cost = additionalCost;
+    if (additionalCostNotes) jobPatch.additional_cost_notes = additionalCostNotes;
+  }
+
+  const updated = await updateJob(jobId, jobPatch);
 
   // 4. AUTO-LEARNING: Update service default duration based on moving average
   if (duration > 0 && job.service_id) {

@@ -16,9 +16,19 @@ export function useFocusTrap(ref, isActive, onClose) {
     const el = ref.current;
     const getFocusable = () => Array.from(el.querySelectorAll(FOCUSABLE));
 
-    // Focus first focusable element on open
-    const first = getFocusable()[0];
-    if (first) first.focus();
+    // Focus appropriate element on open
+    const focusable = getFocusable();
+    if (focusable.length && !el.contains(document.activeElement)) {
+      // Prioritize inputs/textareas over close buttons
+      const priority = focusable.find(f => ['INPUT', 'TEXTAREA', 'SELECT'].includes(f.tagName)) || focusable[0];
+      
+      // 350ms delay to ensure animations (like njSlide) are finished
+      const timer = setTimeout(() => {
+        if (el.contains(document.activeElement)) return;
+        priority.focus();
+      }, 350);
+      return () => clearTimeout(timer);
+    }
 
     function handleKeyDown(e) {
       if (e.key === 'Escape') {

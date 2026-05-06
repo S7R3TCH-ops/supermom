@@ -67,7 +67,7 @@ export default function PrepNoteSheet({ isOpen, onClose, clientId, businessProfi
           overflow: 'hidden'
         }}
       >
-        <GrabBar />
+        <GrabBar onDismiss={onClose} />
         {/* Header Section */}
         <div style={{ background: T.hero, padding: '12px 20px 20px', position: 'relative' }}>
           <div style={{ 

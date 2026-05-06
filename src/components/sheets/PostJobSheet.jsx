@@ -19,15 +19,19 @@ export default function PostJobSheet({ jobId, onClose }) {
   const [fetchErr, setFetchErr] = useState(null);
   const [method, setMethod] = useState('Cash');
   const [amount, setAmount] = useState('');
-  const [actualH, setActualH] = useState('');
-  const [actualM, setActualM] = useState('');
+  const [actualMinutes, setActualMinutes] = useState(60);
   const [jobNotes, setJobNotes] = useState('');
-  const [isPaidToggle, setIsPaidToggle] = useState(true);
+  // payStatus: 'paid' | 'partial' | 'unpaid'
+  const [payStatus, setPayStatus] = useState('paid');
   const [busy, setBusy] = useState(false);
   const [mutErr, setMutErr] = useState(null);
   const [done, setDone] = useState(false);
   const [showThankYou, setShowThankYou] = useState(false);
   const [invoiceId, setInvoiceId] = useState(null);
+  const [additionalCost, setAdditionalCost] = useState('');
+  const [additionalCostNotes, setAdditionalCostNotes] = useState('');
+  const [showHoursPrompt, setShowHoursPrompt] = useState(false);
+  const [pendingAdjustedAmt, setPendingAdjustedAmt] = useState(null);
 
   useEffect(() => {
     setLoading(true);
@@ -37,14 +41,14 @@ export default function PostJobSheet({ jobId, onClose }) {
         setJob(j);
         setAmount(String(j?.total_amount ?? j?.flat_rate ?? 0));
         setJobNotes(j?.job_notes || '');
-        if (j?.actual_duration) {
-          setActualH(Math.floor(j.actual_duration).toString());
-          setActualM(Math.round((j.actual_duration % 1) * 60).toString());
-        } else if (j?.estimated_hours) {
-          setActualH(Math.floor(j.estimated_hours).toString());
-          setActualM(Math.round((j.estimated_hours % 1) * 60).toString());
-        }
-        
+        // Round to nearest 30-min increment
+        const srcHours = j?.actual_duration || j?.estimated_hours || 1;
+        const rawMin = Math.round(srcHours * 60);
+        const snapped = Math.max(30, Math.round(rawMin / 30) * 30);
+        setActualMinutes(snapped);
+        if (j?.additional_cost > 0) setAdditionalCost(String(j.additional_cost));
+        if (j?.additional_cost_notes) setAdditionalCostNotes(j.additional_cost_notes);
+
         supabase
           .from('invoice_jobs')
           .select('invoice_id')
@@ -58,23 +62,24 @@ export default function PostJobSheet({ jobId, onClose }) {
       .finally(() => setLoading(false));
   }, [jobId]);
 
-  async function handleLogPayment() {
+  async function handleLogPayment(overrideAmt = null) {
     const jobDate = new Date(job.scheduled_date + 'T00:00:00');
     const today = new Date();
     today.setHours(0,0,0,0);
-    
+
     if (jobDate > today) {
-      if (!window.confirm("Roads? Where we're going, we don't need roads... but we do need the right date! Mark this future job as complete/paid anyway?")) {
-        return;
-      }
+      if (!window.confirm("Roads? Where we're going, we don't need roads... but we do need the right date! Mark this future job as complete/paid anyway?")) return;
     }
 
-    const h = parseFloat(actualH) || 0;
-    const m = parseFloat(actualM) || 0;
-    const totalDuration = h + (m / 60);
+    const totalDuration = actualMinutes / 60;
 
-    if (totalDuration <= 0) {
-      if (!window.confirm("You haven't entered any hours for this job. Log it with 0 hours?")) {
+    // Bug 4: Hourly job — if actual hours differ from estimated, prompt to adjust amount
+    if (overrideAmt === null && job.pricing_type === 'Hourly' && job.estimated_hours && totalDuration !== job.estimated_hours) {
+      const hourlyRate = job.estimated_hours > 0 ? (parseFloat(amount) || 0) / job.estimated_hours : 0;
+      const adjusted = Math.round(hourlyRate * totalDuration * 100) / 100;
+      if (Math.abs(adjusted - (parseFloat(amount) || 0)) > 0.5) {
+        setPendingAdjustedAmt(adjusted);
+        setShowHoursPrompt(true);
         return;
       }
     }
@@ -82,9 +87,13 @@ export default function PostJobSheet({ jobId, onClose }) {
     setBusy(true);
     setMutErr(null);
     try {
-      const amt = isPaidToggle ? (parseFloat(amount) || 0) : 0;
-      await recordPayment(jobId, amt, method, null, totalDuration, jobNotes);
-      
+      const baseAmt = overrideAmt !== null ? overrideAmt : (parseFloat(amount) || 0);
+      const paidAmt = payStatus === 'paid' ? baseAmt : payStatus === 'partial' ? (parseFloat(amount) || 0) : 0;
+      const extraCost = parseFloat(additionalCost) || 0;
+      const ps = payStatus === 'paid' ? 'Paid' : payStatus === 'partial' ? 'Partial' : '';
+
+      await recordPayment(jobId, paidAmt, method, ps, totalDuration, jobNotes, extraCost, additionalCostNotes);
+
       const { data } = await supabase
         .from('invoice_jobs')
         .select('invoice_id')
@@ -93,7 +102,7 @@ export default function PostJobSheet({ jobId, onClose }) {
       if (data) setInvoiceId(data.invoice_id);
 
       notifyDataChanged();
-      toast.success(isPaidToggle ? 'Payment recorded!' : 'Job marked complete!');
+      toast.success(payStatus === 'paid' ? 'Payment recorded!' : 'Job marked complete!');
       setDone(true);
       setTimeout(onClose, 2500);
     } catch (e) {
@@ -106,6 +115,14 @@ export default function PostJobSheet({ jobId, onClose }) {
 
   const isPaidRecord = job?.payment_status === 'Paid';
   const totalAmt = parseFloat(job?.total_amount ?? job?.flat_rate ?? 0);
+
+  function fmtMins(min) {
+    const h = min / 60;
+    if (h === 0.5) return '½ hr';
+    if (h % 1 === 0.5) return `${Math.floor(h)}½ hrs`;
+    if (h === 1) return '1 hr';
+    return `${h} hrs`;
+  }
 
   return (
     <div ref={sheetRef} role="dialog" aria-modal="true" aria-label="Complete job" style={{
@@ -129,7 +146,7 @@ export default function PostJobSheet({ jobId, onClose }) {
         animation: 'pjSlide 260ms cubic-bezier(0.2,0.8,0.2,1)',
         border: `1px solid ${T.cardBorder}`, borderBottom: 'none',
       }}>
-        <GrabBar />
+        <GrabBar onDismiss={onClose} />
 
         {loading ? (
         <div style={{ padding: 40, textAlign: 'center', color: T.inkMuted }}>Loading…</div>
@@ -171,18 +188,71 @@ export default function PostJobSheet({ jobId, onClose }) {
         </div>
 
         <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '10px 18px 20px' }}>
-          
+
+          {/* Bug 4 — Hours adjustment prompt */}
+          {showHoursPrompt && pendingAdjustedAmt !== null && (
+            <div style={{ background: mode === 'dark' ? 'rgba(245,158,11,0.12)' : '#FEF3C7', border: '1.5px solid rgba(245,158,11,0.5)', borderRadius: 16, padding: '14px 16px', marginBottom: 16 }}>
+              <div style={{ fontFamily: T.font, fontSize: 13, fontWeight: 700, color: mode === 'dark' ? '#FCD34D' : '#92400E', marginBottom: 6 }}>Actual hours differ from estimate</div>
+              <div style={{ fontFamily: T.font, fontSize: 12, color: mode === 'dark' ? 'rgba(255,255,255,0.7)' : '#78350F', marginBottom: 12, lineHeight: 1.4 }}>
+                Adjust the total to <strong>${pendingAdjustedAmt.toFixed(0)}</strong> based on actual time, or keep the original <strong>${parseFloat(amount).toFixed(0)}</strong>?
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => { setAmount(String(pendingAdjustedAmt)); setShowHoursPrompt(false); handleLogPayment(pendingAdjustedAmt); }} style={{ flex: 1, padding: '10px 0', borderRadius: 10, background: '#F59E0B', border: 'none', color: 'white', fontFamily: T.font, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Adjust to ${pendingAdjustedAmt.toFixed(0)}</button>
+                <button onClick={() => { setShowHoursPrompt(false); handleLogPayment(parseFloat(amount) || 0); }} style={{ flex: 1, padding: '10px 0', borderRadius: 10, background: T.card, border: `1.5px solid ${T.cardBorder}`, color: T.inkSub, fontFamily: T.font, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Keep ${parseFloat(amount).toFixed(0)}</button>
+              </div>
+            </div>
+          )}
+
           <SectionLabel>Actual Duration</SectionLabel>
-          <div style={{ display: 'flex', gap: 10, marginBottom: 18 }}>
-            <div style={{ flex: 1, background: T.card, border: `1.5px solid ${actualH ? T.pink : T.cardBorder}`, borderRadius: 12, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <input type="number" placeholder="0" value={actualH} onChange={e => setActualH(e.target.value)} style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', fontFamily: T.serif, fontSize: 20, color: T.ink, textAlign: 'center' }} />
-              <span style={{ fontSize: 11, fontWeight: 700, color: T.inkMuted }}>HRS</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 12, padding: '8px 10px', marginBottom: 18 }}>
+            <button onClick={() => setActualMinutes(m => Math.max(30, m - 30))} style={{ width: 36, height: 36, borderRadius: 10, background: mode === 'dark' ? 'rgba(255,255,255,0.05)' : T.pinkTint, border: `1px solid ${T.cardBorder}`, color: T.pink, fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
+            <div style={{ flex: 1, textAlign: 'center' }}>
+              <div style={{ fontFamily: T.serif, fontSize: 20, fontWeight: 500, color: T.ink }}>{fmtMins(actualMinutes)}</div>
+              <div style={{ fontFamily: T.font, fontSize: 9.5, color: T.inkMuted }}>actual time</div>
             </div>
-            <div style={{ flex: 1, background: T.card, border: `1.5px solid ${actualM ? T.pink : T.cardBorder}`, borderRadius: 12, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <input type="number" placeholder="0" value={actualM} onChange={e => setActualM(e.target.value)} style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', fontFamily: T.serif, fontSize: 20, color: T.ink, textAlign: 'center' }} />
-              <span style={{ fontSize: 11, fontWeight: 700, color: T.inkMuted }}>MINS</span>
-            </div>
+            <button onClick={() => setActualMinutes(m => Math.min(720, m + 30))} style={{ width: 36, height: 36, borderRadius: 10, background: mode === 'dark' ? 'rgba(255,255,255,0.05)' : T.pinkTint, border: `1px solid ${T.cardBorder}`, color: T.pink, fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
           </div>
+
+          <SectionLabel>Payment Status</SectionLabel>
+          <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
+            {[
+              { key: 'paid',    label: 'Paid ✓',       activeColor: '#22C55E', activeBg: 'rgba(34,197,94,0.1)' },
+              { key: 'partial', label: 'Partial',       activeColor: '#F59E0B', activeBg: 'rgba(245,158,11,0.1)' },
+              { key: 'unpaid',  label: 'Not paid yet',  activeColor: '#E91E6A', activeBg: 'rgba(233,30,106,0.08)' },
+            ].map(({ key, label, activeColor, activeBg }) => (
+              <button key={key} onClick={() => setPayStatus(key)} style={{ flex: 1, padding: '10px 4px', borderRadius: 10, border: `1.5px solid ${payStatus === key ? activeColor : T.cardBorder}`, background: payStatus === key ? activeBg : 'transparent', color: payStatus === key ? activeColor : T.inkMuted, fontFamily: T.font, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>{label}</button>
+            ))}
+          </div>
+
+          {(payStatus === 'paid' || payStatus === 'partial') && (
+            <div style={{ animation: 'pjFade 200ms ease' }}>
+              <SectionLabel>Payment Method & Amount</SectionLabel>
+              <div style={{ display: 'flex', background: mode === 'dark' ? 'rgba(255,255,255,0.04)' : '#FFF0F7', borderRadius: 10, padding: 3, marginBottom: 10 }}>
+                {['Cash', 'e-Transfer'].map(m => (
+                  <button key={m} onClick={() => setMethod(m)} style={{ flex: 1, padding: '9px 0', borderRadius: 8, border: 'none', background: method === m ? '#E91E6A' : 'transparent', fontFamily: T.font, fontSize: 12, fontWeight: 600, color: method === m ? 'white' : T.inkSub, cursor: 'pointer' }}>{m}</button>
+                ))}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 12, padding: '10px 14px', marginBottom: payStatus === 'partial' ? 8 : 18 }}>
+                <span style={{ fontFamily: T.serif, fontSize: 20, fontWeight: 500, color: T.inkSub }}>$</span>
+                <input type="number" value={amount} onChange={e => setAmount(e.target.value)} style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontFamily: T.serif, fontSize: 22, fontWeight: 500, color: T.ink }} />
+              </div>
+              {payStatus === 'partial' && (
+                <div style={{ background: mode === 'dark' ? 'rgba(245,158,11,0.08)' : '#FEF9C3', borderRadius: 10, padding: '8px 12px', marginBottom: 18, fontFamily: T.font, fontSize: 12, color: mode === 'dark' ? '#FCD34D' : '#92400E' }}>
+                  Balance owing: <strong>${Math.max(0, totalAmt - (parseFloat(amount) || 0)).toFixed(0)}</strong> of ${totalAmt.toFixed(0)}
+                </div>
+              )}
+            </div>
+          )}
+
+          <SectionLabel>Additional Costs</SectionLabel>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: T.card, border: `1.5px solid ${additionalCost ? T.pink : T.cardBorder}`, borderRadius: 10, padding: '8px 12px', width: 110, flexShrink: 0 }}>
+              <span style={{ fontFamily: T.serif, fontSize: 16, color: T.inkSub }}>$</span>
+              <input type="number" placeholder="0" value={additionalCost} onChange={e => setAdditionalCost(e.target.value)} style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', fontFamily: T.serif, fontSize: 16, color: T.ink }} />
+            </div>
+            <input type="text" placeholder="e.g. cleaning supplies, lock box" value={additionalCostNotes} onChange={e => setAdditionalCostNotes(e.target.value)} style={{ flex: 1, background: T.card, border: `1.5px solid ${additionalCostNotes ? T.pink : T.cardBorder}`, borderRadius: 10, padding: '8px 12px', color: T.ink, fontFamily: T.font, fontSize: 12, outline: 'none' }} />
+          </div>
+          <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, marginBottom: 18 }}>Supplies or extra costs — included on the invoice</div>
 
           <SectionLabel>After-Job Intel (Updates System)</SectionLabel>
           <textarea
@@ -191,37 +261,6 @@ export default function PostJobSheet({ jobId, onClose }) {
             onChange={e => setJobNotes(e.target.value)}
             style={{ width: '100%', minHeight: 80, padding: '12px', borderRadius: 14, background: T.card, border: `1.5px solid ${T.cardBorder}`, color: T.ink, fontFamily: T.font, fontSize: 13, resize: 'none', outline: 'none', marginBottom: 18 }}
           />
-
-          <SectionLabel>Payment Status</SectionLabel>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-            <button 
-              onClick={() => setIsPaidToggle(true)}
-              style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: `1.5px solid ${isPaidToggle ? '#22C55E' : T.cardBorder}`, background: isPaidToggle ? 'rgba(34,197,94,0.1)' : 'transparent', color: isPaidToggle ? '#22C55E' : T.inkMuted, fontFamily: T.font, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
-            >
-              Paid now ✓
-            </button>
-            <button 
-              onClick={() => setIsPaidToggle(false)}
-              style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: `1.5px solid ${!isPaidToggle ? '#F59E0B' : T.cardBorder}`, background: !isPaidToggle ? 'rgba(245,158,11,0.1)' : 'transparent', color: !isPaidToggle ? '#D97706' : T.inkMuted, fontFamily: T.font, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
-            >
-              Not paid yet
-            </button>
-          </div>
-
-          {isPaidToggle && (
-            <div style={{ animation: 'pjFade 200ms ease' }}>
-              <SectionLabel>Payment Method & Amount</SectionLabel>
-              <div style={{ display: 'flex', background: mode === 'dark' ? 'rgba(255,255,255,0.04)' : '#FFF0F7', borderRadius: 10, padding: 3, marginBottom: 10 }}>
-                {['Cash', 'e-Transfer'].map(m => (
-                  <button key={m} onClick={() => setMethod(m)} style={{ flex: 1, padding: '9px 0', borderRadius: 8, border: 'none', background: method === m ? '#E91E6A' : 'transparent', fontFamily: T.font, fontSize: 12, fontWeight: 600, color: method === m ? 'white' : T.inkSub, cursor: 'pointer' }}>{m}</button>
-                ))}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 12, padding: '10px 14px', marginBottom: 18 }}>
-                <span style={{ fontFamily: T.serif, fontSize: 20, fontWeight: 500, color: T.inkSub }}>$</span>
-                <input type="number" value={amount} onChange={e => setAmount(e.target.value)} style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontFamily: T.serif, fontSize: 22, fontWeight: 500, color: T.ink }} />
-              </div>
-            </div>
-          )}
 
           {invoiceId && (
             <div style={{ background: mode === 'dark' ? 'rgba(233,30,106,0.05)' : '#FFF0F7', borderRadius: 16, border: `1px solid ${T.pink}40`, padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
@@ -238,7 +277,7 @@ export default function PostJobSheet({ jobId, onClose }) {
         <div style={{ padding: '10px 18px 18px', borderTop: `1px solid ${T.cardBorder}`, display: 'flex', gap: 10, background: T.bg }}>
           <button onClick={onClose} style={{ flex: 1, background: 'transparent', border: `1.5px solid ${T.cardBorder}`, color: T.inkSub, borderRadius: 12, padding: '12px 0', fontFamily: T.font, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Later</button>
           <button onClick={handleLogPayment} disabled={busy || done} style={{ flex: 2, background: busy || done ? T.pinkTint : '#E91E6A', color: 'white', border: 'none', borderRadius: 12, padding: '12px 0', fontFamily: T.font, fontSize: 13, fontWeight: 700, cursor: busy || done ? 'default' : 'pointer', boxShadow: '0 4px 12px rgba(233,30,106,0.3)' }}>
-            {busy ? 'Saving…' : done ? 'Success ✓' : isPaidToggle ? 'Save & Log Paid' : 'Save & Close'}
+            {busy ? 'Saving…' : done ? 'Success ✓' : payStatus === 'paid' ? 'Save & Log Paid' : payStatus === 'partial' ? 'Save & Log Partial' : 'Save & Close'}
           </button>
         </div>
         </>

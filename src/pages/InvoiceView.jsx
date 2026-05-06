@@ -143,14 +143,34 @@ export default function InvoiceView() {
                 ${Number(invoice.total_amount).toFixed(2)}
               </td>
             </tr>
+            {Number(job.additional_cost) > 0 && (
+              <tr style={{ borderBottom: '1px solid #eee' }}>
+                <td style={{ padding: '12px 15px' }}>
+                  <div style={{ fontWeight: 500 }}>Additional Costs</div>
+                  {job.additional_cost_notes && <div style={{ fontSize: 11, color: '#666', marginTop: 4 }}>{job.additional_cost_notes}</div>}
+                </td>
+                <td colSpan={2} style={{ textAlign: 'center', padding: '12px 15px' }}>—</td>
+                <td style={{ textAlign: 'right', padding: '12px 15px', fontWeight: 500 }}>
+                  ${Number(job.additional_cost).toFixed(2)}
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
 
         {/* Totals */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 60 }}>
-          <div style={{ width: 300, background: '#EAE2D8', padding: '12px 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '1px' }}>TOTAL</div>
-            <div className="fraunces" style={{ fontSize: 20, fontWeight: 600 }}>${Number(invoice.total_amount).toFixed(2)}</div>
+          <div style={{ width: 300 }}>
+            {Number(job.additional_cost) > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 15px', fontSize: 13 }}>
+                <div>Services</div>
+                <div>${Number(invoice.total_amount).toFixed(2)}</div>
+              </div>
+            )}
+            <div style={{ background: '#EAE2D8', padding: '12px 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '1px' }}>TOTAL</div>
+              <div className="fraunces" style={{ fontSize: 20, fontWeight: 600 }}>${(Number(invoice.total_amount) + Number(job.additional_cost || 0)).toFixed(2)}</div>
+            </div>
           </div>
         </div>
 

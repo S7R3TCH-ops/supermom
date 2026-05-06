@@ -40,7 +40,7 @@ export default function FinanceDetailSheet({ title, items, type, onClose }) {
         animation: 'njSlide 260ms cubic-bezier(0.2,0.8,0.2,1)',
         border: `1px solid ${T.cardBorder}`, borderBottom: 'none',
       }}>
-        <GrabBar />
+        <GrabBar onDismiss={onClose} />
 
         <div style={{ padding: '14px 18px 14px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', borderBottom: `1px solid ${T.cardBorder}` }}>
           <div>

@@ -57,10 +57,10 @@ export function toDisplayClient(row, jobs = []) {
 
   const recurrence = ai.recurrence ?? null;
   const tags = Array.isArray(row.tags) ? [...row.tags] : [];
-  if (recurrence && !tags.find(t => t?.toLowerCase() === recurrence)) {
+  if (recurrence && !tags.find(t => t?.toLowerCase?.() === recurrence)) {
     tags.unshift(recurrence.charAt(0).toUpperCase() + recurrence.slice(1));
   }
-  if (ai.vip && !tags.find(t => t?.toLowerCase().includes('vip'))) tags.push('VIP ★');
+  if (ai.vip && !tags.find(t => t?.toLowerCase?.().includes('vip'))) tags.push('VIP ★');
   if (row.status === 'lead' && !tags.includes('Lead')) tags.push('Lead');
 
   return {

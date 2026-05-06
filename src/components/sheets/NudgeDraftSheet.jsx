@@ -62,7 +62,7 @@ export default function NudgeDraftSheet({ isOpen, onClose, clientsWithUnpaid }) 
           transition: 'padding-bottom 0.2s ease-out'
         }}
       >
-        <GrabBar />
+        <GrabBar onDismiss={onClose} />
 
         <div style={{ padding: '0 18px 10px' }}>
           <div style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '1.1px', textTransform: 'uppercase', color: '#FF78B0', marginBottom: 4 }}>✦ AI Draft</div>

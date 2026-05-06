@@ -1,5 +1,7 @@
 export function getGoLabel(service, name = 'there') {
-  const svc = (service || '').toLowerCase();
+  // Handle case where service might be an object { label: '...' } or null
+  const serviceStr = typeof service === 'object' ? (service?.label || '') : (service || '');
+  const svc = String(serviceStr).toLowerCase();
   const h = new Date().getHours();
   const pools = {
     clean:    ["Making it sparkle ✨", `${name}'s on scrub duty!`, "Spotless incoming!", "Clean sweep time!"],

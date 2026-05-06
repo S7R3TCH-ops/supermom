@@ -169,10 +169,10 @@ export default function EditClientSheet({ clientId, onClose }) {
           borderRadius: '24px 24px 0 0',
           boxShadow: '0 -10px 40px rgba(0,0,0,0.38)',
           maxHeight: '92vh', display: 'flex', flexDirection: 'column',
-          border: `1.5px solid ${T.cardBorder}`, borderBottom: 'none',
+          border: `1px solid ${T.cardBorder}`, borderBottom: 'none',
           }}
           >
-          <GrabBar />
+          <GrabBar onDismiss={onClose} />
 
           {/* Header */}
           <div style={{ padding: '10px 18px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -205,16 +205,15 @@ export default function EditClientSheet({ clientId, onClose }) {
             className="sm-scroll"
             style={{
               flex: 1, overflowY: 'auto',
-              padding: `0 18px ${isKeyboardFocused ? '260px' : '24px'}`,
+              padding: '0 18px 14px',
               display: 'flex', flexDirection: 'column', gap: 10,
-              transition: 'padding-bottom 0.2s ease-out',
             }}
           >
             {/* Name */}
             <div style={{ display: 'flex', gap: 8 }}>
               <div style={{ flex: 1 }}>
                 <label style={labelStyle}>FIRST NAME *</label>
-                <input style={inputStyle} value={first} onChange={e => setFirst(e.target.value)} autoFocus />
+                <input style={inputStyle} value={first} onChange={e => setFirst(e.target.value)} />
               </div>
               <div style={{ flex: 1 }}>
                 <label style={labelStyle}>LAST NAME</label>
@@ -397,7 +396,7 @@ export default function EditClientSheet({ clientId, onClose }) {
               )}
             </div>
 
-            <div style={{ height: 8 }} />
+            <div style={{ height: isKeyboardFocused ? 260 : 14, transition: 'height 0.2s ease-out' }} />
           </div>
         )}
       </div>

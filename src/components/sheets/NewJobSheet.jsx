@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useKeyboardFocus } from '../../hooks/useKeyboardFocus';
@@ -37,11 +37,11 @@ function fmtTimeRange(timeStr, durationMin) {
 
 function fmtDuration(min) {
   const m = Number(min || 0);
-  const h = Math.floor(m / 60);
-  const mm = m % 60;
-  if (h === 0) return `${mm}m`;
-  if (mm === 0) return `${h}h`;
-  return `${h}h ${mm}m`;
+  const h = m / 60;
+  if (h === 0.5) return '½ hr';
+  if (h % 1 === 0.5) return `${Math.floor(h)}½ hrs`;
+  if (h === 1) return '1 hr';
+  return `${h} hrs`;
 }
 
 export default function NewJobSheet({ prefillClientId, onClose }) {
@@ -162,7 +162,6 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
 
   const price = useMemo(() => {
     if (!selectedService) return 0;
-    // If default_price is null/0 and it's Hourly, use business default
     if (selectedService.pricing_type === 'Hourly' && (selectedService.default_price === null || selectedService.default_price === 0)) {
       return Number(business?.hourly_rate || 60);
     }
@@ -170,6 +169,15 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
   }, [selectedService, business?.hourly_rate]);
 
   const priceStr = `$${price}`;
+
+  const closeNewClient = useCallback(() => setShowNewClient(false), []);
+  const handleClientCreated = useCallback((created) => {
+    fetchClients().then(rows => {
+      setClientRows(rows);
+      setClientId(created.id);
+      setShowNewClient(false);
+    });
+  }, []);
 
   async function handleBook() {
     if (!clientId) { setBookErr('Please select a client'); return; }
@@ -181,7 +189,6 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
     setBookErr('');
     try {
       const hours = duration / 60;
-      // Ensure time is formatted as HH:mm:00 for DB consistency
       const cleanTime = time.length === 5 ? `${time}:00` : time;
       
       await createJob({
@@ -233,7 +240,7 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
         animation: 'njSlide 260ms cubic-bezier(0.2,0.8,0.2,1)',
         border: `1px solid ${T.cardBorder}`, borderBottom: 'none',
       }}>
-        <GrabBar />
+        <GrabBar onDismiss={onClose} />
 
         <div style={{ padding: '10px 18px 6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
@@ -270,8 +277,7 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
         <div className="sm-scroll" style={{ 
           flex: 1, 
           overflowY: 'auto', 
-          padding: `6px 18px ${isKeyboardFocused ? '260px' : '14px'}`,
-          transition: 'padding-bottom 0.2s ease-out'
+          padding: '6px 18px 14px',
         }}>
           {loadErr && (
             <div style={{ padding: 10, borderRadius: 8, background: T.redBg, border: `1px solid ${T.redBorder}`, color: T.ink, font: `12px/1.4 ${T.font}`, marginBottom: 10 }}>
@@ -324,6 +330,8 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
           {bookErr && step === 3 && (
             <div style={{ marginTop: 8, padding: 10, borderRadius: 8, background: T.redBg, border: `1px solid ${T.redBorder}`, color: T.ink, font: `12px/1.4 ${T.font}` }}>{bookErr}</div>
           )}
+          
+          <div style={{ height: isKeyboardFocused ? 260 : 14, transition: 'height 0.2s ease-out' }} />
         </div>
 
         <div style={{
@@ -377,24 +385,16 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
 
       {showNewClient && (
         <NewClientSheet
-          onClose={() => setShowNewClient(false)}
-          onCreated={(created) => {
-            // Refetch + auto-select the new client
-            fetchClients().then(rows => {
-              setClientRows(rows);
-              setClientId(created.id);
-            });
-          }}
+          onClose={closeNewClient}
+          onCreated={handleClientCreated}
         />
       )}
     </div>
   );
 }
 
-/* ============= STEP 1 ============= */
 function Step1Who({ T, mode, clients, selectedId, onSelect, onAddNew }) {
   const selected = selectedId ? clients.find(c => c.id === selectedId) : null;
-
   return (
     <>
       <SectionLabel>Recent clients</SectionLabel>
@@ -484,7 +484,6 @@ function Step1Who({ T, mode, clients, selectedId, onSelect, onAddNew }) {
   );
 }
 
-/* ============= STEP 2 ============= */
 function Step2What({
   T, mode, client, services, loading, business, serviceId, onPickService,
   date, setDate, time, setTime, duration, setDuration,
@@ -665,7 +664,6 @@ function Step2What({
   );
 }
 
-/* ============= STEP 3 ============= */
 function Step3Review({
   T, mode, privacyOn, client, service, date, time, duration, recurrence, priceStr,
   conflicts, clientLookup, confirmText, setConfirmText, onFixTime,

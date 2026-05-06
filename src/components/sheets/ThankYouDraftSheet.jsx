@@ -93,7 +93,7 @@ export default function ThankYouDraftSheet({ isOpen, onClose, jobId }) {
           border: `1px solid ${T.cardBorder}`, borderBottom: 'none',
         }}
       >
-        <GrabBar />
+        <GrabBar onDismiss={onClose} />
 
         {/* Header */}
         <div style={{ padding: '6px 18px 14px' }}>

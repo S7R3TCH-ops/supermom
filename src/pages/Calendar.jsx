@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useRef, useState } from 'react';
 import { useAppTheme } from '../context/AppThemeContext';
 import { useJobs, useBusiness } from '../data/useData';
 import CapeUpButton from '../components/ui/CapeUpButton';
@@ -106,7 +106,7 @@ export default function Calendar() {
   const { jobs: displayJobs, clients: clientLookup, loading, error } = useJobs();
   const allJobs = useMemo(() => enrichDisplayJobs(displayJobs, clientLookup), [displayJobs, clientLookup]);
   const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
-  
+
   const selectedDayJobs = useMemo(
     () => allJobs.filter(j => sameDay(j.start, selectedDay)),
     [allJobs, selectedDay]
@@ -132,8 +132,29 @@ export default function Calendar() {
     setSelectedDay(today);
   };
 
+  // Swipe between Day / Week / Agenda
+  const swipeRef = useRef({ x: 0, y: 0 });
+  const handleSwipeStart = useCallback((e) => {
+    swipeRef.current.x = e.touches[0].clientX;
+    swipeRef.current.y = e.touches[0].clientY;
+  }, []);
+  const handleSwipeEnd = useCallback((e) => {
+    const dx = e.changedTouches[0].clientX - swipeRef.current.x;
+    const dy = e.changedTouches[0].clientY - swipeRef.current.y;
+    if (Math.abs(dx) < 50 || Math.abs(dy) > Math.abs(dx) * 0.8) return;
+    setView(v => {
+      const i = VIEWS.indexOf(v);
+      const next = dx < 0 ? (i + 1) % VIEWS.length : (i + VIEWS.length - 1) % VIEWS.length;
+      return VIEWS[next];
+    });
+  }, []);
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: T.bg, color: T.ink }}>
+    <div
+      style={{ display: 'flex', flexDirection: 'column', height: '100%', background: T.bg, color: T.ink }}
+      onTouchStart={handleSwipeStart}
+      onTouchEnd={handleSwipeEnd}
+    >
       {/* Dark hero */}
       <div style={{ 
         background: T.hero, 
@@ -168,33 +189,31 @@ export default function Calendar() {
           </div>
         </div>
 
-        {/* 7-day strip navigation (Hidden in Week view to avoid redundancy) */}
-        {view !== 'Week' && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 3, marginBottom: 9 }}>
-            {weekDays.map((d, i) => {
-              const isToday = sameDay(d, NOW());
-              const isSelected = sameDay(d, selectedDay);
-              const jobsHere = allJobs.filter(j => sameDay(j.start, d));
-              const dots = Math.min(jobsHere.length, 3);
-              return (
-                <div key={i}
-                  onClick={() => handlePickDay(d)}
-                  style={{ textAlign: 'center', padding: '4px 2px 5px', borderRadius: 8,
-                    background: isSelected ? '#E91E6A' : (mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.3)'),
-                    border: isSelected ? 'none' : `1px solid ${mode === 'dark' ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)'}`,
-                    cursor: 'pointer' }}>
-                  <div style={{ fontFamily: T.font, fontSize: 7.5, fontWeight: 700, letterSpacing: '0.3px', textTransform: 'uppercase', color: isSelected ? 'rgba(255,255,255,0.8)' : (isToday ? T.pink : T.inkMuted) }}>{DOW[i]}</div>
-                  <div style={{ fontFamily: T.serif, fontSize: 13, fontWeight: 500, color: isSelected ? 'white' : (mode === 'dark' ? 'white' : T.ink), lineHeight: 1.2, marginTop: 2 }}>{d.getDate()}</div>
-                  <div style={{ display: 'flex', gap: 2, justifyContent: 'center', marginTop: 2, minHeight: 3 }}>
-                    {Array.from({ length: dots }).map((_, k) => (
-                      <span key={k} style={{ width: 3, height: 3, borderRadius: '50%', background: isSelected ? 'rgba(255,255,255,0.7)' : T.pink, display: 'block' }} />
-                    ))}
-                  </div>
+        {/* 7-day strip — always visible; in Week view tapping a day switches to Day view */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 3, marginBottom: 9 }}>
+          {weekDays.map((d, i) => {
+            const isToday = sameDay(d, NOW());
+            const isSelected = view !== 'Week' && sameDay(d, selectedDay);
+            const jobsHere = allJobs.filter(j => sameDay(j.start, d));
+            const dots = Math.min(jobsHere.length, 3);
+            return (
+              <div key={i}
+                onClick={() => handlePickDay(d)}
+                style={{ textAlign: 'center', padding: '4px 2px 5px', borderRadius: 8,
+                  background: isSelected ? '#E91E6A' : (isToday && view === 'Week' ? 'rgba(233,30,106,0.2)' : (mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.3)')),
+                  border: isSelected ? 'none' : `1px solid ${mode === 'dark' ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)'}`,
+                  cursor: 'pointer' }}>
+                <div style={{ fontFamily: T.font, fontSize: 7.5, fontWeight: 700, letterSpacing: '0.3px', textTransform: 'uppercase', color: isSelected ? 'rgba(255,255,255,0.8)' : (isToday ? T.pink : T.inkMuted) }}>{DOW[i]}</div>
+                <div style={{ fontFamily: T.serif, fontSize: 13, fontWeight: 500, color: isSelected ? 'white' : (mode === 'dark' ? 'white' : T.ink), lineHeight: 1.2, marginTop: 2 }}>{d.getDate()}</div>
+                <div style={{ display: 'flex', gap: 2, justifyContent: 'center', marginTop: 2, minHeight: 3 }}>
+                  {Array.from({ length: dots }).map((_, k) => (
+                    <span key={k} style={{ width: 3, height: 3, borderRadius: '50%', background: isSelected ? 'rgba(255,255,255,0.7)' : T.pink, display: 'block' }} />
+                  ))}
                 </div>
-              );
-            })}
-          </div>
-        )}
+              </div>
+            );
+          })}
+        </div>
 
         {/* View toggle */}
         <div style={{ display: 'flex', background: mode === 'dark' ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.04)', borderRadius: 9, padding: 3 }}>
@@ -245,7 +264,7 @@ export default function Calendar() {
 /* ------------------------------ DAY VIEW ------------------------------ */
 
 function DayView({ T, mode, privacyOn, selectedDay, todayJobs, nextUpcoming, onJobPress, firstName }) {
-  const slotH = 50, startH = 8, endH = 18;
+  const slotH = 50, startH = 6, endH = 22;
   const hours = Array.from({ length: endH - startH + 1 }, (_, i) => startH + i);
 
   const isToday = sameDay(selectedDay, NOW());
@@ -259,7 +278,7 @@ function DayView({ T, mode, privacyOn, selectedDay, todayJobs, nextUpcoming, onJ
   }
 
   return (
-    <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '6px 12px', position: 'relative', contain: 'layout style paint' }}>
+    <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '6px 12px 80px', position: 'relative', contain: 'layout style paint' }}>
       {!isToday && (
         <div style={{ marginBottom: 12, padding: '4px 0', borderBottom: mode === 'dark' ? '1px solid rgba(255,255,255,0.05)' : '1px solid #FFE8F2' }}>
           <div style={{ fontFamily: T.font, fontSize: 10, fontWeight: 700, color: T.pink, letterSpacing: '0.5px', textTransform: 'uppercase' }}>
@@ -361,7 +380,7 @@ function DayView({ T, mode, privacyOn, selectedDay, todayJobs, nextUpcoming, onJ
 /* ------------------------------ WEEK VIEW ------------------------------ */
 
 function WeekView({ T, mode, weekDays, allJobs, onPickDay, onJobPress }) {
-  const slotH = 46, startH = 8, endH = 18;
+  const slotH = 46, startH = 6, endH = 22;
   const hours = Array.from({ length: endH - startH + 1 }, (_, i) => startH + i);
 
   const jobsByDay = useMemo(() => {
@@ -369,25 +388,8 @@ function WeekView({ T, mode, weekDays, allJobs, onPickDay, onJobPress }) {
   }, [weekDays, allJobs]);
 
   return (
-    <div className="sm-scroll" style={{ flex: 1, overflow: 'auto', padding: '6px 10px 14px', contain: 'strict' }}>
-      {/* Day headers */}
-      <div style={{ display: 'grid', gridTemplateColumns: '28px repeat(7,1fr)', gap: 2, marginBottom: 4, position: 'sticky', top: 0, background: T.bg, zIndex: 2, paddingBottom: 3 }}>
-        <div />
-        {weekDays.map((d, i) => {
-          const isToday = sameDay(d, NOW());
-          const dayJobs = jobsByDay[i];
-          const count = dayJobs.length;
-          return (
-            <div key={i} onClick={() => onPickDay(d)} style={{ textAlign: 'center', cursor: 'pointer', padding: '3px 0', borderRadius: 6, background: isToday ? 'rgba(233,30,106,0.12)' : 'transparent' }}>
-              <div style={{ fontFamily: T.font, fontSize: 8, fontWeight: 700, color: T.inkMuted, letterSpacing: '0.3px' }}>{DOW[i]}</div>
-              <div style={{ fontFamily: T.serif, fontSize: 12, fontWeight: 500, color: isToday ? '#E91E6A' : T.ink, marginTop: 1 }}>{d.getDate()}</div>
-              {count > 0 && <div style={{ fontFamily: T.font, fontSize: 7.5, fontWeight: 600, color: T.inkMuted, marginTop: 1 }}>{count} job{count > 1 ? 's' : ''}</div>}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Grid */}
+    <div className="sm-scroll" style={{ flex: 1, overflow: 'auto', padding: '4px 10px 80px', contain: 'strict' }}>
+      {/* Grid — day headers are in the shared hero strip above */}
       <div style={{ position: 'relative' }}>
         {hours.map(h => (
           <div key={h} style={{ display: 'grid', gridTemplateColumns: '28px repeat(7,1fr)', gap: 2, height: slotH, alignItems: 'stretch' }}>
@@ -486,7 +488,7 @@ function AgendaView({ T, mode, privacyOn, allJobs, nextUpcoming, onJobPress, fir
   };
 
   return (
-    <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '8px 13px 14px', contain: 'layout style paint' }}>
+    <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '8px 13px 80px', contain: 'layout style paint' }}>
       {grouped.length === 0 && (
         <div style={{ padding: '60px 20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
           <EmptySchedule size={100} />

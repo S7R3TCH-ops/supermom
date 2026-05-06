@@ -28,7 +28,7 @@ export function generateCommandBrief(job, businessProfile = null) {
   }
 
   // 1. High-priority flags
-  const isVip = tags.some(t => t.toLowerCase().includes('vip'));
+  const isVip = tags.some(t => t?.toLowerCase?.().includes('vip'));
   if (isVip) {
     bullets.push({ icon: '🌟', text: 'VIP Client' });
     speechText += style === 'coach' ? `They are one of your amazing VIPs. ` : `They are a VIP client. `;

@@ -1,5 +1,5 @@
-import { Component, lazy, Suspense, useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { Component, lazy, Suspense, useState, useEffect, useRef, useCallback } from 'react';
+import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from './lib/supabase';
 import { AppThemeProvider } from './context/AppTheme';
 import { useAppTheme } from './context/AppThemeContext';
@@ -19,7 +19,6 @@ import BottomNav from './components/layout/BottomNav';
 import OnboardingWalkthrough from './components/layout/OnboardingWalkthrough';
 import FAB from './components/ui/FAB';
 import { useRealtimeSync } from './data/useData';
-import { useLocation } from 'react-router-dom';
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -96,10 +95,13 @@ function ViewpointBanner() {
   );
 }
 
+const NAV_ROUTES = ['/', '/calendar', '/clients', '/finance'];
+
 function AuthedShell() {
   const { T } = useAppTheme();
   const { viewingAsId } = useViewpoint();
   const location = useLocation();
+  const navigate = useNavigate();
   useRealtimeSync();
 
   useEffect(() => {
@@ -107,6 +109,22 @@ function AuthedShell() {
   }, [viewingAsId]);
 
   const hideFAB = ['/settings', '/admin'].includes(location.pathname);
+
+  // Swipe between bottom-nav tabs
+  const swipe = useRef({ x: 0, y: 0 });
+  const onSwipeStart = useCallback((e) => {
+    swipe.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  }, []);
+  const onSwipeEnd = useCallback((e) => {
+    const dx = e.changedTouches[0].clientX - swipe.current.x;
+    const dy = e.changedTouches[0].clientY - swipe.current.y;
+    if (Math.abs(dx) < 70 || Math.abs(dy) > Math.abs(dx) * 0.6) return;
+    const base = location.pathname.startsWith('/clients/') ? '/clients' : location.pathname;
+    const idx = NAV_ROUTES.indexOf(base);
+    if (idx === -1) return;
+    const next = dx < 0 ? NAV_ROUTES[idx + 1] : NAV_ROUTES[idx - 1];
+    if (next) navigate(next);
+  }, [location.pathname, navigate]);
 
   return (
     <ErrorBoundary>
@@ -118,7 +136,11 @@ function AuthedShell() {
         <ViewpointBanner />
         <OnboardingWalkthrough />
         <LogoBar />
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
+        <div
+          style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}
+          onTouchStart={onSwipeStart}
+          onTouchEnd={onSwipeEnd}
+        >
           <Suspense fallback={<div style={{ padding: 20, color: T.inkMuted, fontFamily: T.font, fontSize: 13 }}>Loading...</div>}>
             <Routes>
               <Route path="/" element={<Home />} />

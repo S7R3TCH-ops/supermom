@@ -230,7 +230,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
           border: `1px solid ${T.cardBorder}`, borderBottom: 'none',
         }}
       >
-        <GrabBar />
+        <GrabBar onDismiss={onClose} />
 
         {loading && <div style={{ padding: 32, textAlign: 'center', color: T.inkMuted }}>Loading…</div>}
 
@@ -335,6 +335,9 @@ function ReadMode({
             <Row T={T} label="Actual hours" value={fmtDuration(job.actual_duration)} highlight />
           )}
           <Row T={T} label="Amount" value={amtDisplay} serif tabular />
+          {job.additional_cost > 0 && (
+            <Row T={T} label="Additional costs" value={`$${Number(job.additional_cost).toFixed(0)}${job.additional_cost_notes ? ` · ${job.additional_cost_notes}` : ''}`} />
+          )}
           <Row T={T} label="Pricing" value={job.pricing_type || '—'} last />
         </InfoCard>
         {job.job_notes && (
@@ -362,7 +365,12 @@ function ReadMode({
           {!isPaid && !isCancelled && <Btn onClick={onMarkPaid} disabled={busy} bg="#E91E6A" color="white" T={T}>Mark Paid</Btn>}
           <Btn onClick={onEdit} bg={T.card} border={`1.5px solid ${T.cardBorder}`} color={T.ink} T={T}>Edit Job</Btn>
           {isScheduled && <button onClick={onCancelConfirm} style={{ background: 'transparent', border: 'none', fontSize: 12.5, color: '#E91E6A', padding: '6px 0', cursor: 'pointer' }}>Delete Job</button>}
-          {invoiceId && <div style={{ marginTop: 12, background: 'white', borderRadius: 16, border: '1.5px solid var(--pink-border)', padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><div><div style={{ fontSize: 13, fontWeight: 700 }}>Invoice Ready</div></div><button onClick={() => window.open(`/i/${invoiceId}`, '_blank')} style={{ background: 'var(--pink)', color: 'white', border: 'none', padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700 }}>VIEW</button></div>}
+          {invoiceId && (
+            <div style={{ marginTop: 4, background: mode === 'dark' ? 'rgba(233,30,106,0.05)' : '#FFF0F7', borderRadius: 16, border: `1px solid ${T.pink}40`, padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: T.ink }}>Invoice Ready</div>
+              <button onClick={() => window.open(`/i/${invoiceId}`, '_blank')} style={{ background: T.pink, color: 'white', border: 'none', padding: '6px 14px', borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>VIEW</button>
+            </div>
+          )}
         </div>
       )}
     </>

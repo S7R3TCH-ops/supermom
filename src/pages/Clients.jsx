@@ -212,7 +212,7 @@ export default function Clients() {
       )}
 
       {/* Client list */}
-      <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '4px 13px 8px', contain: 'layout style paint' }}>
+      <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '4px 13px 80px', contain: 'layout style paint' }}>
         {filtered.map((c, i) => (
           <ClientCard key={c.id || i} c={c} T={T} onPress={handleClientPress} />
         ))}

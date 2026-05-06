@@ -228,7 +228,12 @@ export default function Home() {
   }, [allJobs, today]);
 
   const activeJob = todayJobs.find(j => j.status === 'Scheduled' && j.ai_context?.clock_in_time != null);
-  const next = todayJobs.find(j => j.status === 'Scheduled' && j.payment_status !== 'Paid' && j.start >= today);
+  
+  // The "highlighted" job is either the active one or the first scheduled/unpaid one for today
+  const firstScheduled = todayJobs.find(j => j.status === 'Scheduled' && j.payment_status !== 'Paid');
+  const next = (activeJob && firstScheduled?.id === activeJob.id)
+    ? todayJobs.find(j => j.status === 'Scheduled' && j.payment_status !== 'Paid' && j.id !== activeJob.id)
+    : firstScheduled;
   
   const revenueToday = todayJobs.reduce((s, j) => s + Number(j.total || 0), 0);
   const completedJobsCount = todayJobs.filter(j => j.status === 'Completed').length;
@@ -254,7 +259,8 @@ export default function Home() {
     const done = [];
 
     filteredSelectedJobs.forEach(j => {
-      if (j.id === activeJob?.id) return; 
+      if (j.id === activeJob?.id) return;
+      if (isSelectedToday && j.id === next?.id) return;
 
       const isCompleted = j.status === 'Completed';
       const isPast = j.end < now;
@@ -268,18 +274,27 @@ export default function Home() {
       }
     });
 
-    return { incomplete, upcoming, done };
-  }, [filteredSelectedJobs, activeJob, isSelectedToday]);
+    // Unpaid jobs float to the top of each bucket
+    const unpaidFirst = arr => [...arr].sort((a, b) => {
+      const aUnpaid = a.payment_status !== 'Paid' ? 0 : 1;
+      const bUnpaid = b.payment_status !== 'Paid' ? 0 : 1;
+      return aUnpaid - bUnpaid || a.start - b.start;
+    });
+
+    return { incomplete: unpaidFirst(incomplete), upcoming: unpaidFirst(upcoming), done: unpaidFirst(done) };
+  }, [filteredSelectedJobs, activeJob, next, isSelectedToday]);
 
   const commandBrief = useMemo(() => {
-    if (!next) return null;
+    // Command brief should be for the active job if it exists, otherwise the next one
+    const target = activeJob || next;
+    if (!target) return null;
     try {
-      return generateCommandBrief(next, business);
+      return generateCommandBrief(target, business);
     } catch (e) {
       console.error("Error generating command brief:", e);
       return null;
     }
-  }, [next, business]);
+  }, [activeJob, next, business]);
 
   const handleToggleSpeak = (e) => {
     e.stopPropagation();
@@ -324,7 +339,7 @@ export default function Home() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: T.bg, color: T.ink }}>
-      <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', paddingBottom: 8 }}>
+      <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', paddingBottom: 80 }}>
 
         {/* HERO */}
         <div style={{ 
@@ -456,34 +471,64 @@ export default function Home() {
 
           {!activeJob && next && isSelectedToday && (
             <>
-              <SectionLabel>Opening Act · {next.client_name}</SectionLabel>
-              <div onClick={() => openJob(next.id)} style={{ background: T.hero, border: `1.5px solid ${mode === 'dark' ? 'rgba(233,30,106,0.32)' : T.cardBorder}`, borderRadius: 14, padding: '12px', marginBottom: 10, cursor: 'pointer', position: 'relative', overflow: 'hidden' }}>
+              <SectionLabel>What's Next Today · {next.client_name}</SectionLabel>
+              <div onClick={() => openJob(next.id)} style={{ background: T.hero, border: `1.5px solid ${mode === 'dark' ? 'rgba(233,30,106,0.32)' : T.cardBorder}`, borderRadius: 14, padding: '16px', marginBottom: 12, cursor: 'pointer', position: 'relative', overflow: 'hidden' }}>
                 <div style={{ position: 'absolute', inset: 0, backgroundImage: mode === 'dark' ? 'radial-gradient(circle, rgba(255,255,255,0.02) 1px, transparent 1px)' : `radial-gradient(circle, ${T.pink}08 1px, transparent 1px)`, backgroundSize: '15px 15px', pointerEvents: 'none' }} />
+                
                 <div style={{ position: 'relative' }}>
-                  <Subheading style={{ fontSize: 18, color: mode === 'dark' ? 'white' : T.ink }}>{next.client_name}</Subheading>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '4px 0 12px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={mode === 'dark' ? 'rgba(255,255,255,0.6)' : T.inkSub} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                      <span style={{ fontFamily: T.font, fontSize: 11, color: mode === 'dark' ? 'rgba(255,255,255,0.7)' : T.inkSub, fontWeight: 600 }}>{fmtTime12(next.start).time} – {fmtTime12(next.end).time} {fmtTime12(next.end).period}</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                    <div style={{ flex: 1 }}>
+                      <Subheading style={{ fontSize: 20, color: mode === 'dark' ? 'white' : T.ink, marginBottom: 2 }}>{next.client_name}</Subheading>
+                      <Text style={{ fontSize: 13, fontWeight: 600, color: T.pink }}>{next.service_name}</Text>
                     </div>
-                    {!sameDay(next.start, today) && (
-                      <>
-                        <div style={{ width: 3, height: 3, borderRadius: '50%', background: mode === 'dark' ? 'rgba(255,255,255,0.3)' : T.cardBorder }} />
-                        <span style={{ fontFamily: T.font, fontSize: 11, color: mode === 'dark' ? 'rgba(255,255,255,0.7)' : T.inkSub, fontWeight: 600 }}>{dateBrief(next.start)}</span>
-                      </>
+                    <AmtCell amount={`$${next.total.toFixed(0)}`} size={18} />
+                  </div>
+
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={T.inkMuted} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                      <span style={{ fontFamily: T.font, fontSize: 12, color: T.inkSub, fontWeight: 600 }}>{fmtTime12(next.start).time} – {fmtTime12(next.end).time}</span>
+                    </div>
+                    {next.address && (
+                      <div onClick={(e) => { e.stopPropagation(); window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(next.address)}`, '_blank'); }} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={T.pink} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                        <span style={{ fontFamily: T.font, fontSize: 12, color: T.pink, fontWeight: 600, textDecoration: 'underline' }}>{next.address.split(',')[0]}</span>
+                      </div>
                     )}
                   </div>
+
                   {commandBrief && (
-                    <div style={{ background: mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.5)', borderRadius: 12, padding: '12px', marginBottom: 12, border: mode === 'dark' ? 'none' : `1px solid ${T.cardBorder}` }}>
+                    <div style={{ background: mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.6)', borderRadius: 12, padding: '12px', marginBottom: 16, border: mode === 'dark' ? 'none' : `1px solid ${T.cardBorder}` }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                        <div style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 700, color: mode === 'dark' ? T.pinkLabel : T.pink }}>✦ Command Brief</div>
-                        <button onClick={handleToggleSpeak} style={{ background: isSpeaking ? T.pink : (mode === 'dark' ? 'rgba(255,255,255,0.1)' : T.pinkTint), border: 'none', borderRadius: 20, padding: '4px 10px', color: isSpeaking ? 'white' : T.pink, fontSize: 9, cursor: 'pointer' }}>{isSpeaking ? 'STOP' : 'LISTEN'}</button>
+                        <div style={{ fontFamily: T.font, fontSize: 10, fontWeight: 800, color: mode === 'dark' ? T.pinkLabel : T.pink, textTransform: 'uppercase', letterSpacing: '0.5px' }}>✦ Command Brief</div>
+                        <button onClick={handleToggleSpeak} style={{ background: isSpeaking ? T.pink : (mode === 'dark' ? 'rgba(255,255,255,0.1)' : T.pinkTint), border: 'none', borderRadius: 20, padding: '4px 12px', color: isSpeaking ? 'white' : T.pink, fontSize: 9, fontWeight: 800, cursor: 'pointer' }}>{isSpeaking ? 'STOP' : 'LISTEN'}</button>
                       </div>
                       {commandBrief.bullets.map((b, i) => (
-                        <div key={i} style={{ display: 'flex', gap: 8, fontSize: 11, color: mode === 'dark' ? 'rgba(255,255,255,0.8)' : T.inkSub, marginBottom: 4 }}><span>{b.icon}</span><span>{b.text}</span></div>
+                        <div key={i} style={{ display: 'flex', gap: 8, fontSize: 12, color: mode === 'dark' ? 'rgba(255,255,255,0.85)' : T.inkSub, marginBottom: 6, lineHeight: 1.4 }}>
+                          <span style={{ flexShrink: 0 }}>{b.icon}</span>
+                          <span>{b.text}</span>
+                        </div>
                       ))}
                     </div>
                   )}
+
+                  {(next.client_ai_context?.access || next.client_ai_context?.prefs) && (
+                    <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {next.client_ai_context.access && (
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
+                          <span style={{ fontSize: 10, fontWeight: 800, color: T.inkMuted }}>ACCESS:</span>
+                          <span style={{ fontSize: 11, color: T.inkSub }}>{next.client_ai_context.access}</span>
+                        </div>
+                      )}
+                      {next.client_ai_context.prefs && (
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
+                          <span style={{ fontSize: 10, fontWeight: 800, color: T.inkMuted }}>PREFS:</span>
+                          <span style={{ fontSize: 11, color: T.inkSub }}>{next.client_ai_context.prefs}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <CapeUpButton job={next} name={firstName} />
                 </div>
               </div>
@@ -601,31 +646,32 @@ function JobCard({ j, T, mode, openJob, next, variant, today }) {
 
       <div style={{ display: 'flex', gap: 12, position: 'relative' }}>
         {/* TIME/DATE STAND-OUT BLOCK */}
-        <div style={{ width: 64, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: isIncomplete ? 'rgba(245,158,11,0.2)' : isCompleted ? (isPaid ? 'rgba(34,197,94,0.1)' : 'rgba(251,191,36,0.15)') : T.pinkTint, border: `1px solid ${border}`, borderRadius: 10, padding: '4px 0' }}>
-          <div style={{ textAlign: 'center', marginBottom: 2 }}>
-            <div style={{ fontFamily: T.font, fontSize: 8, fontWeight: 900, color: accentColor, textTransform: 'uppercase', lineHeight: 1 }}>{isToday ? 'TODAY' : dateBrief(j.start).split(',')[0]}</div>
-            <div style={{ fontFamily: T.serif, fontSize: 13, fontWeight: 700, color: accentColor }}>{j.start.getDate()}</div>
-          </div>
-          <div style={{ height: 1, width: 20, background: `${accentColor}40`, margin: '2px 0' }} />
-          <div style={{ fontFamily: T.serif, fontSize: 13, fontWeight: 700, color: accentColor, lineHeight: 1.1 }}>{startTime.time}</div>
-          <div style={{ fontFamily: T.font, fontSize: 7, fontWeight: 800, color: T.inkMuted, textTransform: 'uppercase', marginTop: 1 }}>{startTime.period}</div>
+        <div style={{ width: 64, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: isIncomplete ? 'rgba(245,158,11,0.2)' : isCompleted ? (isPaid ? 'rgba(34,197,94,0.1)' : 'rgba(251,191,36,0.15)') : T.pinkTint, border: `1px solid ${border}`, borderRadius: 10, padding: '6px 4px' }}>
+          <div style={{ fontFamily: T.font, fontSize: 7.5, fontWeight: 900, color: accentColor, textTransform: 'uppercase', lineHeight: 1 }}>{isToday ? 'TODAY' : dateBrief(j.start).split(',')[0]}</div>
+          <div style={{ fontFamily: T.serif, fontSize: 12, fontWeight: 700, color: accentColor, marginBottom: 3 }}>{j.start.getDate()}</div>
+          <div style={{ height: 1, width: 20, background: `${accentColor}40`, marginBottom: 3 }} />
+          <div style={{ fontFamily: T.serif, fontSize: 12, fontWeight: 700, color: accentColor, lineHeight: 1.15 }}>{startTime.time}</div>
+          <div style={{ fontFamily: T.font, fontSize: 6.5, fontWeight: 800, color: T.inkMuted, textTransform: 'uppercase' }}>{startTime.period}</div>
+          <div style={{ fontFamily: T.font, fontSize: 8, color: T.inkMuted, lineHeight: 1, marginTop: 2 }}>–</div>
+          <div style={{ fontFamily: T.serif, fontSize: 12, fontWeight: 700, color: accentColor, lineHeight: 1.15 }}>{endTime.time}</div>
+          <div style={{ fontFamily: T.font, fontSize: 6.5, fontWeight: 800, color: T.inkMuted, textTransform: 'uppercase' }}>{endTime.period}</div>
         </div>
 
         <div style={{ flex: 1, minWidth: 0 }}>
           <Subheading style={{ fontSize: 15, fontWeight: 600, color: T.ink, marginBottom: 1 }}>{j.client_name}</Subheading>
           <Text variant="secondary" style={{ fontSize: 10.5, fontWeight: 500 }}>{j.service_name}</Text>
-          
+
           {needsDuration && (
             <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 800, color: '#D97706', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
               <span>⚠</span> MANUAL HOURS NEEDED
             </div>
           )}
-          
-          <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-            Ends {endTime.time} {endTime.period}
-            {!isToday && <> · {dateBrief(j.start)}</>}
-          </div>
+
+          {!isToday && (
+            <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, marginTop: 4 }}>
+              {dateBrief(j.start)}
+            </div>
+          )}
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'space-between', gap: 4 }}>

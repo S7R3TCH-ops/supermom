@@ -311,7 +311,7 @@ export default function Finance() {
         </div>
       </div>
 
-      <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '11px 13px 8px', contain: 'layout style paint' }}>
+      <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '11px 13px 80px', contain: 'layout style paint' }}>
         {/* Stats Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
           <div onClick={() => openDetail(`${period} Collected`, collectedJobs, 'jobs')} style={{ background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 14, padding: 12, cursor: 'pointer' }}>

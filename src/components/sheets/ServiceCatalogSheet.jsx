@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { supabase } from '../../lib/supabase';
 import { notifyDataChanged, useBusiness } from '../../data/useData';
@@ -17,9 +17,19 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
 
   const [formServices, setFormServices] = useState([]);
   const [deletedIds, setDeletedIds] = useState([]);
+  const [snapshot, setSnapshot] = useState(null);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+
+  const isDirty = useMemo(() => {
+    if (!snapshot) return false;
+    const current = JSON.stringify({ 
+      services: formServices, 
+      deleted: deletedIds 
+    });
+    return current !== snapshot;
+  }, [formServices, deletedIds, snapshot]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -35,15 +45,18 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
         .order('sort_order', { ascending: true });
       if (err) throw err;
 
-      setFormServices((data || []).map(s => ({
+      const mapped = (data || []).map(s => ({
         ...s,
         // If default_price is null or exactly 0 (sentinel), we use business default
         use_business_default: s.default_price === null || s.default_price === 0,
         default_price: s.default_price !== null ? String(s.default_price) : String(business?.hourly_rate || 60),
         default_duration: String(s.default_duration || 120),
         isNew: false
-      })));
+      }));
+
+      setFormServices(mapped);
       setDeletedIds([]);
+      setSnapshot(JSON.stringify({ services: mapped, deleted: [] }));
     } catch (e) {
       setError(e.message);
     } finally {

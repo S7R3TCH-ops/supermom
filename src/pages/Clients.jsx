@@ -148,7 +148,7 @@ export default function Clients() {
       )}
 
       {/* Client list */}
-      <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '4px 13px 8px' }}>
+      <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '4px 13px 8px', contain: 'layout style paint' }}>
         {filtered.map((c, i) => (
           <div
             key={c.id || i}

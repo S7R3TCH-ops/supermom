@@ -258,7 +258,7 @@ function DayView({ T, mode, privacyOn, selectedDay, todayJobs, nextUpcoming, onJ
   }
 
   return (
-    <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '6px 12px', position: 'relative' }}>
+    <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '6px 12px', position: 'relative', contain: 'layout style paint' }}>
       {!isToday && (
         <div style={{ marginBottom: 12, padding: '4px 0', borderBottom: mode === 'dark' ? '1px solid rgba(255,255,255,0.05)' : '1px solid #FFE8F2' }}>
           <div style={{ fontFamily: T.font, fontSize: 10, fontWeight: 700, color: T.pink, letterSpacing: '0.5px', textTransform: 'uppercase' }}>
@@ -368,7 +368,7 @@ function WeekView({ T, mode, weekDays, allJobs, onPickDay, onJobPress }) {
   }, [weekDays, allJobs]);
 
   return (
-    <div className="sm-scroll" style={{ flex: 1, overflow: 'auto', padding: '6px 10px 14px' }}>
+    <div className="sm-scroll" style={{ flex: 1, overflow: 'auto', padding: '6px 10px 14px', contain: 'strict' }}>
       {/* Day headers */}
       <div style={{ display: 'grid', gridTemplateColumns: '28px repeat(7,1fr)', gap: 2, marginBottom: 4, position: 'sticky', top: 0, background: T.bg, zIndex: 2, paddingBottom: 3 }}>
         <div />
@@ -485,7 +485,7 @@ function AgendaView({ T, mode, privacyOn, allJobs, nextUpcoming, onJobPress, fir
   };
 
   return (
-    <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '8px 13px 14px' }}>
+    <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '8px 13px 14px', contain: 'layout style paint' }}>
       {grouped.length === 0 && (
         <div style={{ padding: '60px 20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
           <EmptySchedule size={100} />

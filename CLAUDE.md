@@ -111,6 +111,7 @@ This is a **managed service product** — Sandra is the first user, but the arch
 - [x] Service Catalog Add race fix — "+ Add Service" button disabled while initial `refresh()` is loading, so an early click can't be wiped out by the fetch resetting state (v0.2.8)
 - [x] Service Catalog Add visibility fix — new cards now prepended to the top of the list so they're immediately visible without scrolling; prior bug was UX-only (cards rendered below the fold). Settings.jsx signature input warning also fixed (v0.2.9)
 - [x] Service Catalog refresh now filters `active=true` — soft-deleted services no longer reappear in the catalog. End-to-end verification (v0.3.0): owner role can Add, Save, persist, and Delete services without errors.
+- [x] Scroll Performance — CSS containment on all scroll containers; React.memo on ClientCard, TransactionRow, AgendaCard; Finance transaction pagination (50/page) (v0.3.6)
 
 ---
 

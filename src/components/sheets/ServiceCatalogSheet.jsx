@@ -15,7 +15,7 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
   const sheetRef = useRef(null);
 
   const [formServices, setFormServices] = useState([]);
-  const [deletedIds, setDeletedIds] = useState([]);
+  const [pendingDeleteIds, setPendingDeleteIds] = useState([]);
   const [snapshot, setSnapshot] = useState(null);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -25,10 +25,10 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
     if (!snapshot) return false;
     const current = JSON.stringify({ 
       services: formServices, 
-      deleted: deletedIds 
+      deleted: pendingDeleteIds 
     });
     return current !== snapshot;
-  }, [formServices, deletedIds, snapshot]);
+  }, [formServices, pendingDeleteIds, snapshot]);
 
   const attemptClose = useCallback(() => {
     if (isDirty) {
@@ -65,7 +65,7 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
       }));
 
       setFormServices(mapped);
-      setDeletedIds([]);
+      setPendingDeleteIds([]);
       setSnapshot(JSON.stringify({ services: mapped, deleted: [] }));
     } catch (e) {
       setError(e.message);
@@ -82,6 +82,18 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
 
   const handleUpdate = (tempId, field, val) => {
     setFormServices(prev => prev.map(s => (s.id === tempId || s.tempId === tempId) ? { ...s, [field]: val } : s));
+  };
+
+  const handleToggleDelete = (id) => {
+    const svc = formServices.find(s => s.id === id || s.tempId === id);
+    if (svc?.isNew) {
+      // For new services, remove immediately
+      setFormServices(prev => prev.filter(s => (s.id ? s.id !== id : s.tempId !== id)));
+      return;
+    }
+    setPendingDeleteIds(prev => 
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
   };
 
   const handleAdd = () => {
@@ -106,11 +118,11 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
       if (!bid) throw new Error('No business ID found');
 
       // 1. Process Soft Deletions (active = false)
-      if (deletedIds.length > 0) {
+      if (pendingDeleteIds.length > 0) {
         const { data: deleted, error: delErr } = await supabase
           .from('services')
           .update({ active: false })
-          .in('id', deletedIds)
+          .in('id', pendingDeleteIds)
           .eq('business_id', bid)
           .select();
         if (delErr) throw delErr;
@@ -121,7 +133,7 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
 
       // 2. Prepare items for Upsert
       const upserts = formServices
-        .filter(s => s.name.trim()) // Ignore empty names
+        .filter(s => s.name.trim() && !pendingDeleteIds.includes(s.id)) // Ignore empty names & pending deletes
         .map((s, idx) => {
           const isHourly = s.pricing_type === 'Hourly';
           const item = {
@@ -151,7 +163,7 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
         }
       }
 
-      setDeletedIds([]);
+      setPendingDeleteIds([]);
       notifyDataChanged();
       toast.success('Service catalog updated.');
       onClose();
@@ -231,31 +243,34 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
                 const isHourly = s.pricing_type === 'Hourly';
                 const useDefault = isHourly && s.use_business_default;
                 const displayPrice = useDefault ? (business?.hourly_rate || 60) : s.default_price;
+                const isPendingDelete = pendingDeleteIds.includes(s.id || s.tempId);
 
                 return (
                   <div key={s.id || s.tempId} style={{ 
-                    background: T.card, border: `1.5px solid ${T.cardBorder}`, 
+                    background: isPendingDelete 
+                      ? (mode === 'dark' ? 'rgba(233,30,106,0.05)' : '#FFF0F7') 
+                      : T.card, 
+                    border: `1.5px solid ${T.cardBorder}`, 
                     borderRadius: 16, padding: '14px', position: 'relative',
-                    boxShadow: mode === 'dark' ? 'none' : '0 2px 8px rgba(0,0,0,0.04)'
+                    boxShadow: mode === 'dark' ? 'none' : '0 2px 8px rgba(0,0,0,0.04)',
+                    opacity: isPendingDelete ? 0.5 : 1,
+                    filter: isPendingDelete ? 'grayscale(1)' : 'none',
+                    pointerEvents: isPendingDelete ? 'none' : 'auto'
                   }}>
                     {/* Delete Button */}
                     <button
-                      onClick={() => {
-                        if (window.confirm(`Delete service "${s.name || 'this service'}"?`)) {
-                          setFormServices(prev => prev.filter(item => (s.id ? item.id !== s.id : item.tempId !== s.tempId)));
-                          if (s.id) setDeletedIds(prev => [...prev, s.id]);
-                        }
-                      }}
+                      onClick={() => handleToggleDelete(s.id || s.tempId)}
                       style={{
                         position: 'absolute', top: 10, right: 10,
                         width: 24, height: 24, borderRadius: 6,
                         background: mode === 'dark' ? 'rgba(255,255,255,0.05)' : '#FFF0F7',
                         border: 'none', color: T.pink, fontSize: 16, fontWeight: 700,
                         cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        zIndex: 2
+                        zIndex: 2,
+                        pointerEvents: 'auto'
                       }}
                     >
-                      ×
+                      {isPendingDelete ? '↺' : '×'}
                     </button>
 
                     <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
@@ -276,7 +291,8 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
                             fontFamily: T.serif, 
                             fontSize: 16, 
                             outline: 'none',
-                            boxSizing: 'border-box'
+                            boxSizing: 'border-box',
+                            textDecoration: isPendingDelete ? 'line-through' : 'none'
                           }}
                         />
                       </div>

@@ -3,6 +3,7 @@ import { useAppTheme } from '../../context/AppThemeContext';
 import { getGoLabel } from '../../lib/goLabel';
 import { getNavigationUrl, geocodeAddress } from '../../lib/maps';
 import { useGeofence } from '../../context/GeofenceContext';
+import { triggerHaptic } from '../../lib/haptics';
 
 export default function CapeUpButton({ job, onGo, name }) {
   const { T } = useAppTheme();
@@ -18,6 +19,7 @@ export default function CapeUpButton({ job, onGo, name }) {
     e.stopPropagation();
     if (flying) return;
     setFlying(true);
+    triggerHaptic('medium');
 
     // Parallel geocoding
     const coordsPromise = geocodeAddress(job.address);

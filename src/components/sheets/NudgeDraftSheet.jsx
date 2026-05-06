@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useKeyboardFocus } from '../../hooks/useKeyboardFocus';
+import GrabBar from '../ui/GrabBar';
 
 export default function NudgeDraftSheet({ isOpen, onClose, clientsWithUnpaid }) {
   const { T, mode } = useAppTheme();
@@ -57,13 +58,13 @@ export default function NudgeDraftSheet({ isOpen, onClose, clientsWithUnpaid }) 
           maxHeight: '88svh', display: 'flex', flexDirection: 'column',
           animation: 'nudgeSlide 260ms cubic-bezier(0.2,0.8,0.2,1)',
           border: `1px solid ${T.cardBorder}`, borderBottom: 'none',
-          padding: `10px 18px ${isKeyboardFocused ? '260px' : '20px'}`,
+          paddingBottom: isKeyboardFocused ? '260px' : '20px',
           transition: 'padding-bottom 0.2s ease-out'
         }}
       >
-        <div style={{ width: 40, height: 4, background: '#FFD6E8', borderRadius: 4, margin: '0 auto 16px', opacity: mode === 'dark' ? 0.6 : 1 }} />
+        <GrabBar />
 
-        <div style={{ padding: '0 18px' }}>
+        <div style={{ padding: '0 18px 10px' }}>
           <div style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '1.1px', textTransform: 'uppercase', color: '#FF78B0', marginBottom: 4 }}>✦ AI Draft</div>
           <div style={{ fontFamily: T.serif, fontSize: 20, fontWeight: 500, color: T.ink, marginBottom: 16 }}>Nudge {selectedClient?.name.split(' ')[0]}</div>
 

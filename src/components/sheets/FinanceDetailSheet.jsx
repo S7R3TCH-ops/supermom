@@ -3,6 +3,7 @@ import { useAppTheme } from '../../context/AppThemeContext';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useJobDetailSheet } from '../../context/JobDetailSheetContext';
 import AmtCell from '../ui/AmtCell';
+import GrabBar from '../ui/GrabBar';
 
 function fmtShortDate(iso) {
   if (!iso) return '';
@@ -39,9 +40,7 @@ export default function FinanceDetailSheet({ title, items, type, onClose }) {
         animation: 'njSlide 260ms cubic-bezier(0.2,0.8,0.2,1)',
         border: `1px solid ${T.cardBorder}`, borderBottom: 'none',
       }}>
-        <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 9 }}>
-          <div style={{ width: 42, height: 5, background: '#FFD6E8', borderRadius: 10, opacity: mode === 'dark' ? 0.6 : 1 }} />
-        </div>
+        <GrabBar />
 
         <div style={{ padding: '14px 18px 14px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', borderBottom: `1px solid ${T.cardBorder}` }}>
           <div>

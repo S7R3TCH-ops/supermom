@@ -64,7 +64,7 @@ function LiveTimer({ startTime, T, mode }) {
   }, [startTime]);
 
   return (
-    <Title style={{ fontSize: 32, color: mode === 'dark' ? 'white' : T.ink, letterSpacing: '-0.5px', fontVariantNumeric: 'tabular-nums' }}>
+    <Title className="sm-pulse" style={{ fontSize: 32, color: mode === 'dark' ? 'white' : T.ink, letterSpacing: '-0.5px', fontVariantNumeric: 'tabular-nums' }}>
       {elapsed}
     </Title>
   );

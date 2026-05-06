@@ -1,16 +1,19 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAppTheme } from '../../context/AppThemeContext';
+import { triggerHaptic } from '../../lib/haptics';
 
 export default function Swipeable({ children, onDelete, threshold = 80 }) {
   const { T } = useAppTheme();
   const [startX, setStartX] = useState(0);
   const [offsetX, setOffsetX] = useState(0);
   const [swiping, setSwiping] = useState(false);
+  const [hapticTriggered, setHapticTriggered] = useState(false);
   const containerRef = useRef(null);
 
   const onTouchStart = (e) => {
     setStartX(e.touches[0].clientX);
     setSwiping(true);
+    setHapticTriggered(false);
   };
 
   const onTouchMove = (e) => {
@@ -19,7 +22,15 @@ export default function Swipeable({ children, onDelete, threshold = 80 }) {
     const diff = currentX - startX;
     // Only allow left swipe
     if (diff < 0) {
-      setOffsetX(Math.max(diff, -120));
+      const off = Math.max(diff, -120);
+      setOffsetX(off);
+      
+      if (off < -threshold && !hapticTriggered) {
+        triggerHaptic('light');
+        setHapticTriggered(true);
+      } else if (off >= -threshold && hapticTriggered) {
+        setHapticTriggered(false);
+      }
     } else {
       setOffsetX(0);
     }
@@ -28,9 +39,11 @@ export default function Swipeable({ children, onDelete, threshold = 80 }) {
   const onTouchEnd = () => {
     setSwiping(false);
     if (offsetX < -threshold) {
+      triggerHaptic('medium');
       if (onDelete) onDelete();
     }
     setOffsetX(0);
+    setHapticTriggered(false);
   };
 
   return (

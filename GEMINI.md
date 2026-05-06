@@ -136,10 +136,15 @@ Both functions (`is_admin()`, `my_business_id()`) are `SECURITY DEFINER` — the
 - **Service Catalog delete** — Soft-delete (`active=false`) was working at the DB level all along. The lie was in `refresh()`: it selected services without filtering by `active`, so soft-deleted rows reappeared. Fixed by adding `.eq('active', true)` to the catalog query.
 - **Settings save (owner role)** — VERIFIED working. Hourly rate + business name persist after reload. "Uncontrolled → controlled input" warning fixed at `Settings.jsx:306` (`form?.signature ?? ''`).
 
+### Resolved May 6, 2026 (v0.3.2) — Phase C: UI Polish & Gestures COMPLETE
+- **Empty State Illustrations** — Added rich SVG illustrations for empty states on all main pages.
+- **Swipe to Delete** — Implemented left-swipe gesture for job cards on Home and Calendar Agenda views.
+- **Home UI Stability** — Restored accidentally removed helper functions and verified component structure.
+
 ### Resolved May 6, 2026 (v0.3.1) — Phase B: Service Catalog & Pricing COMPLETE
-- **Service Catalog Price Inheritance** — Fixed in v0.3.1. Services can now "inherit" the business's default hourly rate.
+- **Service Catalog Price Inheritance** — Services can now "inherit" the business's default hourly rate.
 - **Service Catalog Saving** — Hardened upsert logic and added "DEFAULT" toggle for Hourly services.
-- **New Job Price Resolution** — `NewJobSheet` and `JobDetailSheet` now correctly resolve prices, prioritizing specific service rates but falling back to business defaults when needed.
+- **New Job Price Resolution** — Correctly resolve prices, prioritizing specific service rates but falling back to business defaults.
 
 ### Test accounts in DB
 | Email | Role | Business ID |
@@ -152,8 +157,7 @@ Both functions (`is_admin()`, `my_business_id()`) are `SECURITY DEFINER` — the
 
 ## Next priorities (as of May 6, 2026)
 1. **Supabase Redirect Allowlist** — Configure `localhost` and `vercel` URLs in project settings (Auth → URL Configuration).
-2. **Empty state illustrations** — Upgrade text-based empty states to use rich icon/svg illustrations.
-3. **Swipe to Delete** — Implement swipe-to-delete gestures on job cards.
-4. **Service Catalog deferred-save UX** — Consider auto-save on delete or an "unsaved changes" banner.
+2. **Phase D: Mobile Polish** — Bottom sheet optimizations and scroll performance.
+3. **Service Catalog deferred-save UX** — Consider auto-save on delete or an "unsaved changes" banner.
 
 (Updated by Gemini CLI — May 6, 2026)

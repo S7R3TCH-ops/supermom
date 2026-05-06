@@ -363,6 +363,10 @@ function WeekView({ T, mode, weekDays, allJobs, onPickDay, onJobPress }) {
   const slotH = 46, startH = 8, endH = 18;
   const hours = Array.from({ length: endH - startH + 1 }, (_, i) => startH + i);
 
+  const jobsByDay = useMemo(() => {
+    return weekDays.map(d => allJobs.filter(j => sameDay(j.start, d)));
+  }, [weekDays, allJobs]);
+
   return (
     <div className="sm-scroll" style={{ flex: 1, overflow: 'auto', padding: '6px 10px 14px' }}>
       {/* Day headers */}
@@ -370,7 +374,8 @@ function WeekView({ T, mode, weekDays, allJobs, onPickDay, onJobPress }) {
         <div />
         {weekDays.map((d, i) => {
           const isToday = sameDay(d, NOW());
-          const count = allJobs.filter(j => sameDay(j.start, d)).length;
+          const dayJobs = jobsByDay[i];
+          const count = dayJobs.length;
           return (
             <div key={i} onClick={() => onPickDay(d)} style={{ textAlign: 'center', cursor: 'pointer', padding: '3px 0', borderRadius: 6, background: isToday ? 'rgba(233,30,106,0.12)' : 'transparent' }}>
               <div style={{ fontFamily: T.font, fontSize: 8, fontWeight: 700, color: T.inkMuted, letterSpacing: '0.3px' }}>{DOW[i]}</div>
@@ -398,7 +403,7 @@ function WeekView({ T, mode, weekDays, allJobs, onPickDay, onJobPress }) {
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'grid', gridTemplateColumns: '28px repeat(7,1fr)', gap: 2, pointerEvents: 'none' }}>
           <div />
           {weekDays.map((d, i) => {
-            const dayJobs = allJobs.filter(j => sameDay(j.start, d));
+            const dayJobs = jobsByDay[i];
             return (
               <div key={i} style={{ position: 'relative' }}>
                 {dayJobs.map(j => {

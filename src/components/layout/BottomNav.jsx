@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { useAppTheme } from '../../context/AppThemeContext';
+import { triggerHaptic } from '../../lib/haptics';
 
 const items = [
   { to: '/',         k: 'home',     icon: '⌂', label: 'Home' },
@@ -23,6 +24,7 @@ export default function BottomNav() {
           key={k}
           to={to}
           end={to === '/'}
+          onClick={() => triggerHaptic('light')}
           aria-label={label}
           style={({ isActive }) => ({
             flex: 1,

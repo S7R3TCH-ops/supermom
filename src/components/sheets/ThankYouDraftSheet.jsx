@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { useBusiness } from '../../data/useData';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+import GrabBar from '../ui/GrabBar';
 
 export default function ThankYouDraftSheet({ isOpen, onClose, jobId }) {
   const { T, mode } = useAppTheme();
@@ -92,10 +93,7 @@ export default function ThankYouDraftSheet({ isOpen, onClose, jobId }) {
           border: `1px solid ${T.cardBorder}`, borderBottom: 'none',
         }}
       >
-        {/* Handle */}
-        <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 8, paddingBottom: 4 }}>
-          <div style={{ width: 40, height: 4, background: '#FFD6E8', borderRadius: 4, opacity: mode === 'dark' ? 0.6 : 1 }} />
-        </div>
+        <GrabBar />
 
         {/* Header */}
         <div style={{ padding: '6px 18px 14px' }}>

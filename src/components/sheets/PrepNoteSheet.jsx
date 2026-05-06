@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { fetchDeepPrepNote } from '../../data/ai';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+import GrabBar from '../ui/GrabBar';
 
 export default function PrepNoteSheet({ isOpen, onClose, clientId, businessProfile }) {
   const { T, mode } = useAppTheme();
@@ -66,12 +67,9 @@ export default function PrepNoteSheet({ isOpen, onClose, clientId, businessProfi
           overflow: 'hidden'
         }}
       >
+        <GrabBar />
         {/* Header Section */}
         <div style={{ background: T.hero, padding: '12px 20px 20px', position: 'relative' }}>
-          <div style={{
-            width: 40, height: 4, background: '#FFD6E8', borderRadius: 4,
-            margin: '0 auto 16px', opacity: 0.6
-          }} />
           <div style={{ 
             fontFamily: T.font, fontSize: 10, fontWeight: 700, 
             letterSpacing: '1.2px', textTransform: 'uppercase', 

@@ -127,4 +127,26 @@ button {
 .sm-hero-icon.flying { animation: heroFly 0.85s cubic-bezier(0.2,0,0.55,1) forwards; }
 
 .sm-scroll::-webkit-scrollbar { width: 0; }
-.sm-scroll { scrollbar-width: none; }
+.sm-scroll { 
+  scrollbar-width: none; 
+  -webkit-overflow-scrolling: touch; /* Momentum scrolling for iOS */
+}
+
+/* Global Mobile Polish */
+* {
+  -webkit-tap-highlight-color: transparent; /* Remove the grey box on tap in iOS/Chrome */
+}
+
+button:active, 
+.tappable:active {
+  transform: scale(0.97);
+  opacity: 0.9;
+  transition: transform 0.1s ease;
+}
+
+/* Ensure inputs don't zoom on focus in iOS */
+@media screen and (max-width: 768px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}

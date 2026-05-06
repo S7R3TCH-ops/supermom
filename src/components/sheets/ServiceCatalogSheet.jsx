@@ -163,6 +163,7 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
         animation: 'scSlide 300ms cubic-bezier(0.2,0.8,0.2,1)',
         border: `1px solid ${T.cardBorder}`, borderBottom: 'none',
       }}>
+        <GrabBar />
         
         {/* Header */}
         <div style={{ padding: '16px 20px', borderBottom: `1px solid ${T.cardBorder}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

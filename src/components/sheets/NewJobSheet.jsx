@@ -11,6 +11,7 @@ import { notifyDataChanged, useBusiness, useServices } from '../../data/useData'
 import { useToast } from '../../context/ToastContext';
 import { RECURRENCE } from '../../data/services';
 import { calculateEstimatedDuration, fetchSmartDurationEstimate } from '../../data/ai';
+import GrabBar from '../ui/GrabBar';
 
 function todayISODate() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Toronto' }).format(new Date());
@@ -231,9 +232,7 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
         animation: 'njSlide 260ms cubic-bezier(0.2,0.8,0.2,1)',
         border: `1px solid ${T.cardBorder}`, borderBottom: 'none',
       }}>
-        <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 9 }}>
-          <div style={{ width: 42, height: 5, background: '#FFD6E8', borderRadius: 10, opacity: mode === 'dark' ? 0.6 : 1 }} />
-        </div>
+        <GrabBar />
 
         <div style={{ padding: '10px 18px 6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>

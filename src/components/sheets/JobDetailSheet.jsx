@@ -11,6 +11,7 @@ import { uploadFile, getSignedUrls, getSignedUrl } from '../../lib/storage';
 import { generateCommandBrief, speakBrief, stopSpeaking } from '../../data/ai';
 import PrepNoteSheet from '../sheets/PrepNoteSheet';
 import { supabase } from '../../lib/supabase';
+import GrabBar from '../ui/GrabBar';
 
 const STATUS_COLORS = {
   Scheduled: { bg: 'rgba(59,130,246,0.12)',   color: '#3B82F6', border: 'rgba(59,130,246,0.25)' },
@@ -229,9 +230,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
           border: `1px solid ${T.cardBorder}`, borderBottom: 'none',
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 9, paddingBottom: 6 }}>
-          <div style={{ width: 42, height: 5, borderRadius: 10, background: '#FFD6E8', opacity: mode === 'dark' ? 0.6 : 1 }} />
-        </div>
+        <GrabBar />
 
         {loading && <div style={{ padding: 32, textAlign: 'center', color: T.inkMuted }}>Loading…</div>}
 

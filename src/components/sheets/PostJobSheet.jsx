@@ -7,6 +7,7 @@ import { useToast } from '../../context/ToastContext';
 import ThankYouDraftSheet from './ThankYouDraftSheet';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { supabase } from '../../lib/supabase';
+import GrabBar from '../ui/GrabBar';
 
 export default function PostJobSheet({ jobId, onClose }) {
   const { T, mode } = useAppTheme();
@@ -128,11 +129,14 @@ export default function PostJobSheet({ jobId, onClose }) {
         animation: 'pjSlide 260ms cubic-bezier(0.2,0.8,0.2,1)',
         border: `1px solid ${T.cardBorder}`, borderBottom: 'none',
       }}>
+        <GrabBar />
 
-        <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 8 }}>
-          <div style={{ width: 40, height: 4, background: '#FFD6E8', borderRadius: 4, opacity: mode === 'dark' ? 0.6 : 1 }} />
-        </div>
-
+        {loading ? (
+        <div style={{ padding: 40, textAlign: 'center', color: T.inkMuted }}>Loading…</div>
+      ) : fetchErr ? (
+        <div style={{ padding: 40, textAlign: 'center', color: '#EF4444' }}>{fetchErr}</div>
+      ) : (
+        <>
         <div style={{
           background: 'linear-gradient(145deg,#1C1C1E 0%,#2C2C2E 100%)',
           borderBottom: '3px solid #E91E6A',

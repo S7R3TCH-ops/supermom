@@ -7,6 +7,7 @@ import { useToast } from '../../context/ToastContext';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useKeyboardFocus } from '../../hooks/useKeyboardFocus';
 import { RECURRENCE } from '../../data/services';
+import GrabBar from '../ui/GrabBar';
 
 const STATUS_OPTIONS = [
   { value: 'active',   label: 'Active' },
@@ -168,16 +169,13 @@ export default function EditClientSheet({ clientId, onClose }) {
           borderRadius: '24px 24px 0 0',
           boxShadow: '0 -10px 40px rgba(0,0,0,0.38)',
           maxHeight: '92vh', display: 'flex', flexDirection: 'column',
-          border: `1px solid ${T.cardBorder}`, borderBottom: 'none',
-        }}
-      >
-        {/* Handle */}
-        <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 8 }}>
-          <div style={{ width: 40, height: 4, background: '#FFD6E8', borderRadius: 4, opacity: mode === 'dark' ? 0.6 : 1 }} />
-        </div>
+          border: `1.5px solid ${T.cardBorder}`, borderBottom: 'none',
+          }}
+          >
+          <GrabBar />
 
-        {/* Header */}
-        <div style={{ padding: '10px 18px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          {/* Header */}
+          <div style={{ padding: '10px 18px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <div style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '1.1px', textTransform: 'uppercase', color: '#FF78B0' }}>✦ Edit Client</div>
             <div style={{ fontFamily: T.serif, fontSize: 20, fontWeight: 500, letterSpacing: '-0.4px', color: T.ink, marginTop: 2 }}>

@@ -1,5 +1,6 @@
 import { useNewJobSheet } from '../../context/NewJobSheetContext';
 import { useAppTheme } from '../../context/AppThemeContext';
+import { triggerHaptic } from '../../lib/haptics';
 
 export default function FAB() {
   const { openBlank, open } = useNewJobSheet();
@@ -8,7 +9,10 @@ export default function FAB() {
 
   return (
     <button
-      onClick={openBlank}
+      onClick={() => {
+        triggerHaptic('light');
+        openBlank();
+      }}
       aria-label="Book new job"
       style={{
         position: 'absolute',

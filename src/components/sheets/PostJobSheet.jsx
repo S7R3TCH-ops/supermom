@@ -241,6 +241,8 @@ export default function PostJobSheet({ jobId, onClose }) {
             {busy ? 'Saving…' : done ? 'Success ✓' : isPaidToggle ? 'Save & Log Paid' : 'Save & Close'}
           </button>
         </div>
+        </>
+      )}
       </div>
       <ThankYouDraftSheet isOpen={showThankYou} onClose={() => setShowThankYou(false)} jobId={jobId} />
     </div>

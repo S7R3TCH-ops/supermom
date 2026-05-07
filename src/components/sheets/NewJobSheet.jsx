@@ -110,6 +110,7 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
   const [confirmText, setConfirmText] = useState(true);
   const [busy, setBusy] = useState(false);
   const [bookErr, setBookErr] = useState('');
+  const [bookingNotes, setBookingNotes] = useState('');
 
   const [aiDuration, setAiDuration] = useState(null);
   const [aiEstimateLoading, setAiEstimateLoading] = useState(false);
@@ -205,7 +206,7 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
         total_amount: price,
         job_status: 'Scheduled',
         payment_status: '',
-        job_notes: selectedClient?.note || '',
+        job_notes: bookingNotes || '',
         ai_context: { recurrence_rule: recurrence },
       });
       notifyDataChanged();
@@ -324,6 +325,8 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
               confirmText={confirmText}
               setConfirmText={setConfirmText}
               onFixTime={() => setStep(2)}
+              bookingNotes={bookingNotes}
+              setBookingNotes={setBookingNotes}
             />
           )}
 
@@ -667,6 +670,7 @@ function Step2What({
 function Step3Review({
   T, mode, privacyOn, client, service, date, time, duration, recurrence, priceStr,
   conflicts, clientLookup, confirmText, setConfirmText, onFixTime,
+  bookingNotes, setBookingNotes,
 }) {
   const timeRange = fmtTimeRange(time, duration);
   const dateObj = date ? new Date(`${date}T12:00:00`) : null;
@@ -752,6 +756,20 @@ function Step3Review({
         <ChecklistRow T={T} icon="💬" label="Confirmation text to client"
           checked={confirmText} onToggle={() => setConfirmText(v => !v)} />
       </div>
+
+      <SectionLabel>Notes for this job</SectionLabel>
+      <textarea
+        placeholder="Optional — key entry, special instructions, reminders…"
+        value={bookingNotes}
+        onChange={e => setBookingNotes(e.target.value)}
+        rows={3}
+        style={{
+          width: '100%', padding: '12px', borderRadius: 14,
+          background: T.card, border: `1.5px solid ${bookingNotes ? T.pink : T.cardBorder}`,
+          color: T.ink, fontFamily: T.font, fontSize: 13, resize: 'none', outline: 'none',
+          marginBottom: 10,
+        }}
+      />
     </>
   );
 }

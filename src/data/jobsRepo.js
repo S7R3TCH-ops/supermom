@@ -271,7 +271,7 @@ export async function softDeleteJob(id, seriesAction = 'this') {
   return decorateJob(data[0]);
 }
 
-export async function recordPayment(jobId, amount, method = 'Cash', paymentStatus = null, duration = null, jobNotes = null, additionalCost = 0, additionalCostNotes = null) {
+export async function recordPayment(jobId, amount, method = 'Cash', paymentStatus = null, duration = null, jobNotes = null, additionalCosts = [], completionNotes = null) {
   const businessId = await getCurrentBusinessId();
 
   // 1. Get job info (we need client_id, total_amount, and service_id for learning)
@@ -314,16 +314,21 @@ export async function recordPayment(jobId, amount, method = 'Cash', paymentStatu
     status = paid >= total && paid > 0 ? 'Paid' : paid > 0 ? 'Partial' : '';
   }
 
+  const validCosts = (additionalCosts || []).filter(c => Number(c.amount) > 0);
+  const costSum = validCosts.reduce((s, c) => s + Number(c.amount), 0);
+  const costNotes = validCosts.map(c => c.description).filter(Boolean).join('; ');
+
   const jobPatch = {
     payment_status: status,
     job_status: 'Completed',
     payment_method: amount > 0 ? method : null,
     actual_duration: duration,
-    job_notes: jobNotes,
+    completion_notes: completionNotes,
   };
-  if (additionalCost > 0) {
-    jobPatch.additional_cost = additionalCost;
-    if (additionalCostNotes) jobPatch.additional_cost_notes = additionalCostNotes;
+  if (validCosts.length > 0) {
+    jobPatch.additional_costs_json = validCosts;
+    jobPatch.additional_cost = costSum;
+    jobPatch.additional_cost_notes = costNotes || null;
   }
 
   const updated = await updateJob(jobId, jobPatch);

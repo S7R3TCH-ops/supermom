@@ -191,13 +191,37 @@ Both functions (`is_admin()`, `my_business_id()`) are `SECURITY DEFINER` — the
 | 3a | Book Job from client profile shows Step 1 (who is it for?) | `step` always initialized to 1 regardless of `prefillClientId` | When `prefillClientId` is present, step initializes to 2; step counter shows "Step 1 of 2" |
 | 3b | White screen after clicking Next from Book Job | `business` variable referenced in `Step2What` but never passed as a prop | `business` now passed as explicit prop; fixes crash for Hourly services with `default_price = null` |
 
-## Next priorities (as of May 6, 2026)
+## Bug Fixes — May 6, 2026 (v0.4.4) — Claude Code (Playwright exploratory session)
+
+Full owner flow tested via Playwright (create client → book job → partial payment → full payment + additional costs). Two real bugs found and fixed:
+
+| # | Bug | Fix |
+|---|---|---|
+| 1 | PostJobSheet: opening "Mark Paid" on a partial-paid job defaulted amount to **full total** instead of remaining balance | Queries `payments` table on load; pre-fills with `total − already_paid` (rounded to 2dp) |
+| 2 | NewJobSheet Step 1: client cards showed **first name only** — impossible to distinguish "Sarah Smith" from "Sarah Jones" | Changed to "First L." format (first name + last initial); cards now show e.g. "Sarah S.", "Timothy S." |
+
+### Playwright infrastructure also updated
+- `playwright.config.ts` — split `setup` into `setup` (user auth) and `setup-superadmin` (admin auth); `superadmin-chromium` no longer depends on the failing user auth setup
+- `tests/auth.setup.ts` — updated to use `jlundie@gmail.com` / `TempPass2026!` (Joel's owner-equivalent account); Sandra's current password is unknown
+- `tests/explore-flows.spec.ts` — new comprehensive exploratory test covering create client → book job (FAB + profile) → partial payment → full payment + additional costs, with screenshots at every step
+
+## DB Cleanup — May 7, 2026 (Claude Code)
+
+- Soft-deleted all clients created before 2026-04-29 and their associated jobs, invoices, job templates
+- Hard-deleted dependent rows from tables with no `deleted_at` (payments, invoice_jobs, communication_log, notification_log, audit_log, template_schedule)
+- Also soft-deleted any remaining clients with "test" in their name (first or last)
+- DB now has 10 real active clients — Sandra's actual client base
+- Note: Supabase SQL Editor requires the **RLS toggle disabled** to run admin cleanup scripts; temp-table approach fails under RLS — use inline subqueries instead
+
+## Next priorities (as of May 7, 2026)
 1. ~~**Supabase Redirect Allowlist**~~ — ✅ Done.
 2. ~~**Scroll Performance Audit**~~ — ✅ Done (v0.3.6).
 3. ~~**Service Catalog Deletion Flow**~~ — ✅ Done (v0.3.5).
 4. ~~**Service Catalog & Book Job bug fixes**~~ — ✅ Done (v0.3.7).
-5. ~~**10-bug QA batch**~~ — ✅ Done (v0.4.2): schedule scroll, invoice button, duration picker, home sorting, additional costs, partial payment, hourly adjustment prompt, calendar swipe, GrabBar dismiss, FAB padding.
-6. **User testing with Sandra** — walk through the new payment flow (partial + additional costs) and confirm the Calendar swipe behavior feels right.
-7. **Client Engagement Tools** — (Phase E) AI-suggested follow-ups and re-booking reminders.
+5. ~~**10-bug QA batch**~~ — ✅ Done (v0.4.2).
+6. ~~**Partial payment + client name display bug fixes**~~ — ✅ Done (v0.4.4).
+7. ~~**DB cleanup**~~ — ✅ Done (May 7, 2026) — test/old clients removed; 10 real clients remain.
+8. **User testing with Sandra** — walk through the payment flow and confirm Calendar swipe feels right.
+9. **Client Engagement Tools** — AI-suggested follow-ups and re-booking reminders.
 
-(Updated by Claude Code — May 6, 2026)
+(Updated by Claude Code — May 7, 2026)

@@ -7,7 +7,9 @@ setup('authenticate', async ({ page }) => {
   await page.goto('/');
 
   // 2. Fill login form
-  const email = process.env.ADMIN_EMAIL || 'sandra@supermom.io';
+  // Use Joel's owner account (joel@test.com) — same permissions as Sandra for testing.
+  // Sandra's password is unknown; use ADMIN_EMAIL/ADMIN_PASSWORD env vars to override.
+  const email = process.env.ADMIN_EMAIL || 'jlundie@gmail.com';
   const password = process.env.ADMIN_PASSWORD || 'TempPass2026!';
 
   await page.getByLabel('EMAIL').fill(email);

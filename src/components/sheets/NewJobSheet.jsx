@@ -428,9 +428,13 @@ function Step1Who({ T, mode, clients, selectedId, onSelect, onAddNew }) {
                 }}>{c.init}</div>
                 <div style={{
                   fontFamily: T.font, fontSize: 10, fontWeight: 600, color: T.ink,
-                  textAlign: 'center', lineHeight: 1.15, maxWidth: '100%',
-                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                }}>{c.name.split(' ')[0]}</div>
+                  textAlign: 'center', lineHeight: 1.2, maxWidth: '100%',
+                  wordBreak: 'break-word',
+                }}>{(() => {
+                  const parts = c.name.trim().split(' ');
+                  if (parts.length === 1) return parts[0];
+                  return `${parts[0]} ${parts[parts.length - 1][0]}.`;
+                })()}</div>
                 {c.vip && (
                   <span style={{
                     background: '#FCD34D', borderRadius: 4, padding: '1px 5px',

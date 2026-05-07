@@ -117,6 +117,8 @@ This is a **managed service product** — Sandra is the first user, but the arch
 - [x] 10-bug batch (v0.4.2) — Schedule scroll extended 6am–10pm; invoice button CSS fixed (T.pink); duration picker hours-only (½/1/1½ etc); home screen unpaid jobs float to top with start+end times; additional_cost field surfaced in PostJobSheet+JobDetailSheet+InvoiceView; partial payment as third option with balance display; hourly-job hours-vs-amount adjustment prompt; Calendar view swipe + Week strip unified; GrabBar swipe-down dismiss on all sheets; tab swipe in AuthedShell; FAB padding on all scroll pages
 - [x] Multi-item additional costs (v0.4.3) — each cost is its own invoice line; stored as `additional_costs_json` (jsonb); backward-compat sum kept in `additional_cost`; requires `ALTER TABLE jobs ADD COLUMN IF NOT EXISTS additional_costs_json jsonb DEFAULT '[]'` in Supabase
 - [x] Pre-job + post-job notes (v0.4.3) — `job_notes` set at booking (Step 3), `completion_notes` set at wrap-up; both surface in AI command brief with 📌/🗒/📋 bullets; `fetchJobById` pulls last 2 completion notes from past visits for same client
+- [x] Partial payment completion fix (v0.4.4) — PostJobSheet now queries `payments` table on load; pre-fills amount with remaining balance (total − already paid) when `payment_status === 'Partial'`; floating-point rounded to 2dp
+- [x] NewJobSheet Step 1 client name display fix (v0.4.4) — client cards now show "First L." format (first name + last initial) instead of first name only; distinguishes clients with same first name
 
 ---
 

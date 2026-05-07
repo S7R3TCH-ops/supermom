@@ -38,8 +38,24 @@ export default function PostJobSheet({ jobId, onClose }) {
     fetchJobById(jobId)
       .then(j => {
         setJob(j);
-        setAmount(String(j?.total_amount ?? j?.flat_rate ?? 0));
         setJobNotes(j?.completion_notes || '');
+        const fullTotal = Number(j?.total_amount ?? j?.flat_rate ?? 0);
+        // For partial-paid jobs, pre-fill the remaining balance instead of full total
+        if (j?.payment_status === 'Partial') {
+          supabase
+            .from('payments')
+            .select('amount')
+            .eq('job_id', jobId)
+            .eq('is_void', false)
+            .then(({ data: pays }) => {
+              const alreadyPaid = (pays ?? []).reduce((s, p) => s + Number(p.amount), 0);
+              const remaining = Math.round(Math.max(0, fullTotal - alreadyPaid) * 100) / 100;
+              setAmount(String(remaining > 0 ? remaining : fullTotal));
+            })
+            .catch(() => setAmount(String(fullTotal)));
+        } else {
+          setAmount(String(fullTotal));
+        }
         // Round to nearest 30-min increment
         const srcHours = j?.actual_duration || j?.estimated_hours || 1;
         const rawMin = Math.round(srcHours * 60);

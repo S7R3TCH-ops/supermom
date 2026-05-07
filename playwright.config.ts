@@ -35,11 +35,12 @@ export default defineConfig({
 
   /* Configure projects for major browsers */
   projects: [
-    { name: 'setup', testMatch: /.*\.setup\.ts/ },
+    { name: 'setup', testMatch: /auth\.setup\.ts/ },
+    { name: 'setup-superadmin', testMatch: /superadmin\.setup\.ts/ },
 
     {
       name: 'chromium',
-      use: { 
+      use: {
         ...devices['Desktop Chrome'],
         storageState: 'playwright/.auth/user.json',
       },
@@ -47,15 +48,15 @@ export default defineConfig({
     },
     {
       name: 'superadmin-chromium',
-      use: { 
+      use: {
         ...devices['Desktop Chrome'],
         storageState: 'playwright/.auth/superadmin.json',
       },
-      dependencies: ['setup'],
+      dependencies: ['setup-superadmin'],
     },
     {
       name: 'Mobile Safari',
-      use: { 
+      use: {
         ...devices['iPhone 13'],
         storageState: 'playwright/.auth/user.json',
       },

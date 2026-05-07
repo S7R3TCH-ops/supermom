@@ -28,8 +28,7 @@ export default function PostJobSheet({ jobId, onClose }) {
   const [done, setDone] = useState(false);
   const [showThankYou, setShowThankYou] = useState(false);
   const [invoiceId, setInvoiceId] = useState(null);
-  const [additionalCost, setAdditionalCost] = useState('');
-  const [additionalCostNotes, setAdditionalCostNotes] = useState('');
+  const [costs, setCosts] = useState([{ amount: '', description: '' }]);
   const [showHoursPrompt, setShowHoursPrompt] = useState(false);
   const [pendingAdjustedAmt, setPendingAdjustedAmt] = useState(null);
 
@@ -40,14 +39,17 @@ export default function PostJobSheet({ jobId, onClose }) {
       .then(j => {
         setJob(j);
         setAmount(String(j?.total_amount ?? j?.flat_rate ?? 0));
-        setJobNotes(j?.job_notes || '');
+        setJobNotes(j?.completion_notes || '');
         // Round to nearest 30-min increment
         const srcHours = j?.actual_duration || j?.estimated_hours || 1;
         const rawMin = Math.round(srcHours * 60);
         const snapped = Math.max(30, Math.round(rawMin / 30) * 30);
         setActualMinutes(snapped);
-        if (j?.additional_cost > 0) setAdditionalCost(String(j.additional_cost));
-        if (j?.additional_cost_notes) setAdditionalCostNotes(j.additional_cost_notes);
+        if (j?.additional_costs_json?.length > 0) {
+          setCosts(j.additional_costs_json.map(c => ({ amount: String(c.amount), description: c.description || '' })));
+        } else if (j?.additional_cost > 0) {
+          setCosts([{ amount: String(j.additional_cost), description: j.additional_cost_notes || '' }]);
+        }
 
         supabase
           .from('invoice_jobs')
@@ -89,10 +91,13 @@ export default function PostJobSheet({ jobId, onClose }) {
     try {
       const baseAmt = overrideAmt !== null ? overrideAmt : (parseFloat(amount) || 0);
       const paidAmt = payStatus === 'paid' ? baseAmt : payStatus === 'partial' ? (parseFloat(amount) || 0) : 0;
-      const extraCost = parseFloat(additionalCost) || 0;
       const ps = payStatus === 'paid' ? 'Paid' : payStatus === 'partial' ? 'Partial' : '';
 
-      await recordPayment(jobId, paidAmt, method, ps, totalDuration, jobNotes, extraCost, additionalCostNotes);
+      const validCosts = costs
+        .filter(c => parseFloat(c.amount) > 0)
+        .map(c => ({ amount: parseFloat(c.amount), description: c.description }));
+
+      await recordPayment(jobId, paidAmt, method, ps, totalDuration, null, validCosts, jobNotes);
 
       const { data } = await supabase
         .from('invoice_jobs')
@@ -245,18 +250,48 @@ export default function PostJobSheet({ jobId, onClose }) {
           )}
 
           <SectionLabel>Additional Costs</SectionLabel>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: T.card, border: `1.5px solid ${additionalCost ? T.pink : T.cardBorder}`, borderRadius: 10, padding: '8px 12px', width: 110, flexShrink: 0 }}>
-              <span style={{ fontFamily: T.serif, fontSize: 16, color: T.inkSub }}>$</span>
-              <input type="number" placeholder="0" value={additionalCost} onChange={e => setAdditionalCost(e.target.value)} style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', fontFamily: T.serif, fontSize: 16, color: T.ink }} />
+          {costs.map((cost, idx) => (
+            <div key={idx} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: T.card, border: `1.5px solid ${cost.amount ? T.pink : T.cardBorder}`, borderRadius: 10, padding: '8px 12px', width: 110, flexShrink: 0 }}>
+                <span style={{ fontFamily: T.serif, fontSize: 16, color: T.inkSub }}>$</span>
+                <input
+                  type="number"
+                  placeholder="0"
+                  value={cost.amount}
+                  onChange={e => setCosts(prev => prev.map((c, i) => i === idx ? { ...c, amount: e.target.value } : c))}
+                  style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', fontFamily: T.serif, fontSize: 16, color: T.ink }}
+                />
+              </div>
+              <input
+                type="text"
+                placeholder="e.g. cleaning supplies"
+                value={cost.description}
+                onChange={e => setCosts(prev => prev.map((c, i) => i === idx ? { ...c, description: e.target.value } : c))}
+                style={{ flex: 1, background: T.card, border: `1.5px solid ${cost.description ? T.pink : T.cardBorder}`, borderRadius: 10, padding: '8px 12px', color: T.ink, fontFamily: T.font, fontSize: 12, outline: 'none' }}
+              />
+              {(costs.length > 1 || cost.amount || cost.description) && (
+                <button
+                  onClick={() => setCosts(prev => prev.length === 1 ? [{ amount: '', description: '' }] : prev.filter((_, i) => i !== idx))}
+                  style={{ background: 'none', border: 'none', color: T.inkMuted, cursor: 'pointer', fontSize: 18, padding: '0 4px', lineHeight: 1 }}
+                >×</button>
+              )}
             </div>
-            <input type="text" placeholder="e.g. cleaning supplies, lock box" value={additionalCostNotes} onChange={e => setAdditionalCostNotes(e.target.value)} style={{ flex: 1, background: T.card, border: `1.5px solid ${additionalCostNotes ? T.pink : T.cardBorder}`, borderRadius: 10, padding: '8px 12px', color: T.ink, fontFamily: T.font, fontSize: 12, outline: 'none' }} />
-          </div>
-          <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, marginBottom: 18 }}>Supplies or extra costs — included on the invoice</div>
+          ))}
+          <button
+            onClick={() => setCosts(prev => [...prev, { amount: '', description: '' }])}
+            style={{ background: 'transparent', border: `1.5px dashed ${T.cardBorder}`, borderRadius: 10, padding: '7px 14px', fontFamily: T.font, fontSize: 11, fontWeight: 600, color: T.pink, cursor: 'pointer', marginBottom: 8, width: '100%' }}
+          >＋ Add another cost</button>
+          <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, marginBottom: 18 }}>Supplies or extra costs — each appears as its own line on the invoice</div>
 
-          <SectionLabel>After-Job Intel (Updates System)</SectionLabel>
+          {job?.job_notes?.trim() && (
+            <div style={{ background: mode === 'dark' ? 'rgba(233,30,106,0.07)' : '#FFF0F7', border: `1px solid ${T.pink}30`, borderRadius: 12, padding: '10px 14px', marginBottom: 12 }}>
+              <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 800, textTransform: 'uppercase', color: T.pink, letterSpacing: '0.5px', marginBottom: 5 }}>📌 Pre-job notes</div>
+              <div style={{ fontFamily: T.font, fontSize: 12, color: T.inkSub, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{job.job_notes}</div>
+            </div>
+          )}
+          <SectionLabel>Post-Job Notes</SectionLabel>
           <textarea
-            placeholder="Any specific notes for this job? (e.g. key location, client mood, issues found)"
+            placeholder="What happened? Key entry, client mood, issues found, follow-ups…"
             value={jobNotes}
             onChange={e => setJobNotes(e.target.value)}
             style={{ width: '100%', minHeight: 80, padding: '12px', borderRadius: 14, background: T.card, border: `1.5px solid ${T.cardBorder}`, color: T.ink, fontFamily: T.font, fontSize: 13, resize: 'none', outline: 'none', marginBottom: 18 }}

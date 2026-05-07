@@ -45,6 +45,7 @@ export default function PostJobSheet({ jobId, onClose }) {
         const rawMin = Math.round(srcHours * 60);
         const snapped = Math.max(30, Math.round(rawMin / 30) * 30);
         setActualMinutes(snapped);
+        setCosts([{ amount: '', description: '' }]);
         if (j?.additional_costs_json?.length > 0) {
           setCosts(j.additional_costs_json.map(c => ({ amount: String(c.amount), description: c.description || '' })));
         } else if (j?.additional_cost > 0) {
@@ -271,6 +272,7 @@ export default function PostJobSheet({ jobId, onClose }) {
               />
               {(costs.length > 1 || cost.amount || cost.description) && (
                 <button
+                  aria-label={`Remove cost ${idx + 1}`}
                   onClick={() => setCosts(prev => prev.length === 1 ? [{ amount: '', description: '' }] : prev.filter((_, i) => i !== idx))}
                   style={{ background: 'none', border: 'none', color: T.inkMuted, cursor: 'pointer', fontSize: 18, padding: '0 4px', lineHeight: 1 }}
                 >×</button>

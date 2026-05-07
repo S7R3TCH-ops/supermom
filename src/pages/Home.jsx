@@ -139,6 +139,12 @@ export default function Home() {
   // Use a stable reference for "today"
   const [today] = useState(() => new Date());
   const [selectedDate, setSelectedDate] = useState(today);
+  // Live clock — re-evaluates which job owns the spotlight each minute
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(id);
+  }, []);
   const [missionDismissed, setMissionDismissed] = useState(() => {
     try {
       return localStorage.getItem('sm_mission_dismissed') === 'true';
@@ -228,11 +234,20 @@ export default function Home() {
   }, [allJobs, today]);
 
   const activeJob = todayJobs.find(j => j.status === 'Scheduled' && j.ai_context?.clock_in_time != null);
-  
-  // The "highlighted" job is either the active one or the first scheduled/unpaid one for today
-  const firstScheduled = todayJobs.find(j => j.status === 'Scheduled' && j.payment_status !== 'Paid');
+
+  // Scheduled jobs whose estimated window has passed but Sandra hasn't marked them done yet
+  const overdueScheduled = todayJobs.filter(j =>
+    j.status === 'Scheduled' &&
+    j.end <= now &&
+    j.id !== activeJob?.id
+  );
+
+  // The highlighted job is the first scheduled job whose window hasn't expired yet
+  const firstScheduled = todayJobs.find(j =>
+    j.status === 'Scheduled' && j.payment_status !== 'Paid' && j.end > now
+  );
   const next = (activeJob && firstScheduled?.id === activeJob.id)
-    ? todayJobs.find(j => j.status === 'Scheduled' && j.payment_status !== 'Paid' && j.id !== activeJob.id)
+    ? todayJobs.find(j => j.status === 'Scheduled' && j.payment_status !== 'Paid' && j.id !== activeJob.id && j.end > now)
     : firstScheduled;
   
   const revenueToday = todayJobs.reduce((s, j) => s + Number(j.total || 0), 0);
@@ -253,14 +268,15 @@ export default function Home() {
   };
 
   const categorizedJobs = useMemo(() => {
-    const now = new Date();
     const incomplete = [];
     const upcoming = [];
     const done = [];
+    const overdueIds = new Set(overdueScheduled.map(j => j.id));
 
     filteredSelectedJobs.forEach(j => {
       if (j.id === activeJob?.id) return;
       if (isSelectedToday && j.id === next?.id) return;
+      if (isSelectedToday && overdueIds.has(j.id)) return; // shown in their own section
 
       const isCompleted = j.status === 'Completed';
       const isPast = j.end < now;
@@ -274,7 +290,6 @@ export default function Home() {
       }
     });
 
-    // Unpaid jobs float to the top of each bucket
     const unpaidFirst = arr => [...arr].sort((a, b) => {
       const aUnpaid = a.payment_status !== 'Paid' ? 0 : 1;
       const bUnpaid = b.payment_status !== 'Paid' ? 0 : 1;
@@ -282,7 +297,7 @@ export default function Home() {
     });
 
     return { incomplete: unpaidFirst(incomplete), upcoming: unpaidFirst(upcoming), done: unpaidFirst(done) };
-  }, [filteredSelectedJobs, activeJob, next, isSelectedToday]);
+  }, [filteredSelectedJobs, activeJob, next, isSelectedToday, overdueScheduled, now]);
 
   const commandBrief = useMemo(() => {
     // Command brief should be for the active job if it exists, otherwise the next one
@@ -533,6 +548,40 @@ export default function Home() {
                 </div>
               </div>
             </>
+          )}
+
+          {overdueScheduled.length > 0 && isSelectedToday && (
+            <div style={{ marginTop: 4 }}>
+              {overdueScheduled.map(j => (
+                <Swipeable key={j.id} onDelete={() => handleDeleteJob(j.id)}>
+                  <div
+                    onClick={() => openPostJob(j.id)}
+                    style={{
+                      background: mode === 'dark' ? 'rgba(251,191,36,0.08)' : '#FEFDF0',
+                      border: `1.5px solid ${mode === 'dark' ? '#FBBF24' : '#F59E0B'}`,
+                      borderLeft: `5px solid #F59E0B`,
+                      borderRadius: 12,
+                      padding: '10px 12px',
+                      marginBottom: 8,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                    }}
+                  >
+                    <div style={{ fontSize: 22 }}>⚠️</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                        <span style={{ fontFamily: T.font, fontSize: 13, fontWeight: 700, color: T.ink }}>{j.client_name}</span>
+                        <span style={{ fontFamily: T.font, fontSize: 9, fontWeight: 800, color: '#F59E0B', textTransform: 'uppercase', letterSpacing: '0.4px', background: 'rgba(245,158,11,0.15)', borderRadius: 4, padding: '2px 5px' }}>Needs Attention</span>
+                      </div>
+                      <div style={{ fontFamily: T.font, fontSize: 11, color: T.inkSub }}>{j.service_name} · ended {fmtTime12(j.end).time} {fmtTime12(j.end).period}</div>
+                    </div>
+                    <div style={{ fontFamily: T.font, fontSize: 12, fontWeight: 700, color: '#F59E0B' }}>Wrap Up →</div>
+                  </div>
+                </Swipeable>
+              ))}
+            </div>
           )}
 
           <div style={{ marginTop: 12 }}>

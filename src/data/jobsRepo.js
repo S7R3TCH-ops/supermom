@@ -294,7 +294,7 @@ export async function recordPayment(jobId, amount, method = 'Cash', paymentStatu
         amount: amount,
         payment_method: method,
         payment_date: new Date().toISOString().split('T')[0],
-        notes: notes,
+        notes: jobNotes,
       })
       .select();
     if (payErr) throw payErr;

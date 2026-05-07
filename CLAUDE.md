@@ -115,6 +115,8 @@ This is a **managed service product** — Sandra is the first user, but the arch
 - [x] Service Catalog bug fixes (v0.3.7) — null ID on batch upsert fixed (crypto.randomUUID); DEFAULT ✎ toggle now obviously interactive with hint caption; can add multiple services without error
 - [x] Book Job from client profile (v0.3.7) — skips Step 1 (client pre-selected), opens directly on Step 2; `business` prop passed to Step2What fixing white screen crash for Hourly services with null default_price
 - [x] 10-bug batch (v0.4.2) — Schedule scroll extended 6am–10pm; invoice button CSS fixed (T.pink); duration picker hours-only (½/1/1½ etc); home screen unpaid jobs float to top with start+end times; additional_cost field surfaced in PostJobSheet+JobDetailSheet+InvoiceView; partial payment as third option with balance display; hourly-job hours-vs-amount adjustment prompt; Calendar view swipe + Week strip unified; GrabBar swipe-down dismiss on all sheets; tab swipe in AuthedShell; FAB padding on all scroll pages
+- [x] Multi-item additional costs (v0.4.3) — each cost is its own invoice line; stored as `additional_costs_json` (jsonb); backward-compat sum kept in `additional_cost`; requires `ALTER TABLE jobs ADD COLUMN IF NOT EXISTS additional_costs_json jsonb DEFAULT '[]'` in Supabase
+- [x] Pre-job + post-job notes (v0.4.3) — `job_notes` set at booking (Step 3), `completion_notes` set at wrap-up; both surface in AI command brief with 📌/🗒/📋 bullets; `fetchJobById` pulls last 2 completion notes from past visits for same client
 
 ---
 

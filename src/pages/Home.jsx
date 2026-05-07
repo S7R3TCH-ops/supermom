@@ -558,7 +558,7 @@ export default function Home() {
               </>
             )}
 
-            {isSelectedToday && categorizedJobs.upcoming.length === 0 && categorizedJobs.incomplete.length === 0 && !activeJob && (
+            {isSelectedToday && categorizedJobs.upcoming.length === 0 && categorizedJobs.incomplete.length === 0 && !activeJob && !next && (
               <EmptyState persona={persona} allDone={allDone} T={T} />
             )}
 

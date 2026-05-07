@@ -62,12 +62,29 @@ export async function fetchJobById(id) {
     ? [c.first_name, c.last_name].filter(Boolean).join(' ')
     : 'Unknown';
   const { clients: _dropped, ...jobRow } = data;
+
+  let client_recent_notes = [];
+  if (data.client_id) {
+    const { data: recentNotes } = await supabase
+      .from('jobs')
+      .select('completion_notes, scheduled_date')
+      .eq('client_id', data.client_id)
+      .eq('business_id', businessId)
+      .eq('job_status', 'Completed')
+      .not('completion_notes', 'is', null)
+      .neq('id', id)
+      .order('scheduled_date', { ascending: false })
+      .limit(2);
+    client_recent_notes = (recentNotes || []).filter(r => r.completion_notes?.trim());
+  }
+
   return {
     ...decorateJob(jobRow),
     client_name: clientName,
     client_notes: c?.notes || '',
     client_ai_context: c?.ai_context || {},
     client_tags: c?.tags || [],
+    client_recent_notes,
   };
 }
 

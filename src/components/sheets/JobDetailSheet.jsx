@@ -335,15 +335,26 @@ function ReadMode({
             <Row T={T} label="Actual hours" value={fmtDuration(job.actual_duration)} highlight />
           )}
           <Row T={T} label="Amount" value={amtDisplay} serif tabular />
-          {job.additional_cost > 0 && (
-            <Row T={T} label="Additional costs" value={`$${Number(job.additional_cost).toFixed(0)}${job.additional_cost_notes ? ` · ${job.additional_cost_notes}` : ''}`} />
-          )}
+          {(() => {
+            const items = Array.isArray(job.additional_costs_json) && job.additional_costs_json.length > 0
+              ? job.additional_costs_json.filter(c => Number(c.amount) > 0)
+              : (Number(job.additional_cost) > 0 ? [{ amount: job.additional_cost, description: job.additional_cost_notes }] : []);
+            return items.map((item, idx) => (
+              <Row key={idx} T={T} label={idx === 0 ? 'Additional cost' : ''} value={`$${Number(item.amount).toFixed(0)}${item.description ? ` · ${item.description}` : ''}`} />
+            ));
+          })()}
           <Row T={T} label="Pricing" value={job.pricing_type || '—'} last />
         </InfoCard>
         {job.job_notes && (
           <InfoCard T={T}>
-            <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: T.inkMuted, marginBottom: 6 }}>Notes</div>
+            <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: T.inkMuted, marginBottom: 6 }}>Pre-job Notes</div>
             <div style={{ fontFamily: T.font, fontSize: 12.5, color: T.inkSub, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{job.job_notes}</div>
+          </InfoCard>
+        )}
+        {job.completion_notes && (
+          <InfoCard T={T}>
+            <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: T.inkMuted, marginBottom: 6 }}>Post-Job Notes</div>
+            <div style={{ fontFamily: T.font, fontSize: 12.5, color: T.inkSub, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{job.completion_notes}</div>
           </InfoCard>
         )}
         <MediaCard job={job} T={T} mode={mode} onUpdate={onUpdate} />

@@ -213,7 +213,14 @@ Full owner flow tested via Playwright (create client → book job → partial pa
 - DB now has 10 real active clients — Sandra's actual client base
 - Note: Supabase SQL Editor requires the **RLS toggle disabled** to run admin cleanup scripts; temp-table approach fails under RLS — use inline subqueries instead
 
-## Next priorities (as of May 7, 2026)
+## Bug Fixes & Features — May 9, 2026 (Claude Code)
+
+| # | Change | Detail |
+|---|---|---|
+| 1 | Finance tab crash | `isOpen` stripped from `NewExpenseSheet` props but still used in `useFocusTrap` + early-return guard; re-added |
+| 2 | Home spotlight rotation | "What's Next Today" only holds a job while `now < start + estimated_duration`; next job auto-promotes; overdue card appears below with amber "Needs Attention" + Wrap Up CTA; 60s live clock drives transitions |
+
+## Next priorities (as of May 9, 2026)
 1. ~~**Supabase Redirect Allowlist**~~ — ✅ Done.
 2. ~~**Scroll Performance Audit**~~ — ✅ Done (v0.3.6).
 3. ~~**Service Catalog Deletion Flow**~~ — ✅ Done (v0.3.5).
@@ -221,7 +228,8 @@ Full owner flow tested via Playwright (create client → book job → partial pa
 5. ~~**10-bug QA batch**~~ — ✅ Done (v0.4.2).
 6. ~~**Partial payment + client name display bug fixes**~~ — ✅ Done (v0.4.4).
 7. ~~**DB cleanup**~~ — ✅ Done (May 7, 2026) — test/old clients removed; 10 real clients remain.
-8. **User testing with Sandra** — walk through the payment flow and confirm Calendar swipe feels right.
-9. **Client Engagement Tools** — AI-suggested follow-ups and re-booking reminders.
+8. ~~**Finance tab crash + Home spotlight rotation**~~ — ✅ Done (v0.4.5, May 9, 2026).
+9. **User testing with Sandra** — walk through the payment flow and confirm Calendar swipe feels right.
+10. **Client Engagement Tools** — AI-suggested follow-ups and re-booking reminders.
 
-(Updated by Claude Code — May 7, 2026)
+(Updated by Claude Code — May 9, 2026)

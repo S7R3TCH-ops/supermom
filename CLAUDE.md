@@ -119,6 +119,8 @@ This is a **managed service product** — Sandra is the first user, but the arch
 - [x] Pre-job + post-job notes (v0.4.3) — `job_notes` set at booking (Step 3), `completion_notes` set at wrap-up; both surface in AI command brief with 📌/🗒/📋 bullets; `fetchJobById` pulls last 2 completion notes from past visits for same client
 - [x] Partial payment completion fix (v0.4.4) — PostJobSheet now queries `payments` table on load; pre-fills amount with remaining balance (total − already paid) when `payment_status === 'Partial'`; floating-point rounded to 2dp
 - [x] NewJobSheet Step 1 client name display fix (v0.4.4) — client cards now show "First L." format (first name + last initial) instead of first name only; distinguishes clients with same first name
+- [x] Finance tab crash fix (v0.4.5) — `isOpen` prop was stripped from `NewExpenseSheet` destructuring but still referenced in `useFocusTrap` and early-return guard; re-added
+- [x] Home spotlight rotation (v0.4.5) — "What's Next Today" only holds a job while `now < start + estimated_duration`; once the window expires the next job takes the spotlight; the overdue-but-uncompleted job appears immediately below as an amber "Needs Attention" card with a Wrap Up tap; live 60s clock drives the transition without a page reload
 
 ---
 

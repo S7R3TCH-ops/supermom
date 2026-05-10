@@ -190,8 +190,10 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
     setBookErr('');
     try {
       const hours = duration / 60;
+      const isHourly = selectedService?.pricing_type === 'Hourly';
+      const jobTotal = isHourly ? price * hours : price;
       const cleanTime = time.length === 5 ? `${time}:00` : time;
-      
+
       await createJob({
         client_id: clientId,
         service_id: serviceId,
@@ -202,8 +204,8 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
         pricing_type: selectedService?.pricing_type || 'Flat',
         estimated_hours: hours,
         flat_rate: price,
-        subtotal: price,
-        total_amount: price,
+        subtotal: jobTotal,
+        total_amount: jobTotal,
         job_status: 'Scheduled',
         payment_status: '',
         job_notes: bookingNotes || '',
@@ -691,19 +693,36 @@ function Step3Review({
       }}>
         <div style={{ position: 'absolute', top: -50, right: -30, width: 150, height: 150, borderRadius: '50%', background: `radial-gradient(circle,${T.pinkGlow} 0%,transparent 70%)`, pointerEvents: 'none' }} />
         <div style={{ position: 'relative' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-            <div>
-              <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: mode === 'dark' ? '#FF78B0' : T.pink, marginBottom: 3 }}>{service?.name || 'Service'}</div>
-              <div style={{ fontFamily: T.serif, fontSize: 20, fontWeight: 500, color: mode === 'dark' ? 'white' : T.ink, letterSpacing: '-0.4px' }}>{client?.name || 'New client'}</div>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              {privacyOn ? (
-                <span style={{ fontFamily: T.font, fontSize: 18, fontWeight: 700, color: mode === 'dark' ? 'rgba(255,255,255,0.55)' : T.inkMuted, letterSpacing: '3px' }}>•••</span>
-              ) : (
-                <span style={{ fontFamily: T.serif, fontSize: 22, fontWeight: 500, color: mode === 'dark' ? 'white' : T.ink, letterSpacing: '-0.5px', fontVariantNumeric: 'tabular-nums' }}>{priceStr}</span>
-              )}
-            </div>
-          </div>
+          {(() => {
+            const rateVal = parseFloat((priceStr || '').replace('$', '')) || 0;
+            const hrs = duration / 60;
+            const isHourly = service?.pricing_type === 'Hourly';
+            const totalVal = isHourly ? rateVal * hrs : rateVal;
+            const totalStr = `$${totalVal.toFixed(0)}`;
+            const hrsLabel = hrs % 1 === 0 ? `${hrs}` : hrs.toFixed(1);
+            return (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                <div>
+                  <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: mode === 'dark' ? '#FF78B0' : T.pink, marginBottom: 3 }}>{service?.name || 'Service'}</div>
+                  <div style={{ fontFamily: T.serif, fontSize: 20, fontWeight: 500, color: mode === 'dark' ? 'white' : T.ink, letterSpacing: '-0.4px' }}>{client?.name || 'New client'}</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  {privacyOn ? (
+                    <span style={{ fontFamily: T.font, fontSize: 18, fontWeight: 700, color: mode === 'dark' ? 'rgba(255,255,255,0.55)' : T.inkMuted, letterSpacing: '3px' }}>•••</span>
+                  ) : (
+                    <>
+                      <span style={{ fontFamily: T.serif, fontSize: 22, fontWeight: 500, color: mode === 'dark' ? 'white' : T.ink, letterSpacing: '-0.5px', fontVariantNumeric: 'tabular-nums' }}>{totalStr}</span>
+                      {isHourly && (
+                        <div style={{ fontFamily: T.font, fontSize: 9, color: mode === 'dark' ? 'rgba(255,255,255,0.45)' : T.inkMuted, marginTop: 2 }}>
+                          {hrsLabel} hrs × {priceStr}/hr
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
             <InfoTile T={T} mode={mode} label="When"     value={dateLabel} sub={timeRange} />

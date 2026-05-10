@@ -61,7 +61,7 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
         // If default_price is null or exactly 0 (sentinel), we use business default
         use_business_default: s.default_price === null || s.default_price === 0,
         default_price: s.default_price !== null ? String(s.default_price) : String(business?.hourly_rate || 60),
-        default_duration: String(s.default_duration || 120),
+        default_duration: String((s.default_duration || 120) / 60),
         isNew: false
       }));
 
@@ -104,7 +104,7 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
       pricing_type: 'Hourly',
       use_business_default: true,
       default_price: String(business?.hourly_rate || 60),
-      default_duration: '120',
+      default_duration: '2',
       active: true,
       isNew: true
     };
@@ -148,7 +148,7 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
             pricing_type: s.pricing_type,
             // If using business default, we store NULL in the DB
             default_price: (isHourly && s.use_business_default) ? null : (parseFloat(s.default_price) || 0),
-            default_duration: parseFloat(s.default_duration) || 120,
+            default_duration: (parseFloat(s.default_duration) || 2) * 60,
             active: s.active,
             sort_order: idx
           };
@@ -372,21 +372,23 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
                         )}
                       </div>
                       <div>
-                        <label style={{ fontSize: 9, fontWeight: 800, color: T.inkMuted, textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Default Duration (mins)</label>
-                        <div style={{ 
+                        <label style={{ fontSize: 9, fontWeight: 800, color: T.inkMuted, textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Default Duration (hrs)</label>
+                        <div style={{
                           display: 'flex', alignItems: 'center', gap: 6,
                           background: mode === 'dark' ? 'rgba(255,255,255,0.03)' : '#FAF3F6',
                           padding: '0 10px', borderRadius: '8px 8px 0 0',
                           borderBottom: `2px solid ${T.pink}40`,
                         }}>
-                          <input 
+                          <input
                             type="number"
-                            value={s.default_duration} 
+                            step="0.5"
+                            min="0.5"
+                            value={s.default_duration}
                             disabled={isPendingDelete}
                             onChange={e => handleUpdate(s.id, 'default_duration', e.target.value)}
                             style={{ width: '100%', background: 'transparent', border: 'none', padding: '8px 0', color: T.ink, fontSize: 15, outline: 'none' }}
                           />
-                          <span style={{ color: T.inkMuted, fontSize: 10, fontWeight: 700 }}>MINS</span>
+                          <span style={{ color: T.inkMuted, fontSize: 10, fontWeight: 700 }}>HRS</span>
                         </div>
                       </div>
                     </div>

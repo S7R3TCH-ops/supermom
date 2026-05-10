@@ -19,7 +19,7 @@ import { EmptySchedule, AllDone } from '../components/ui/Illustrations';
 import Swipeable from '../components/ui/Swipeable';
 
 const NOW = () => new Date();
-const DOW_SHORT = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+const DOW_BY_DAY = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 function sameDay(a, b) {
   return a.getFullYear() === b.getFullYear()
@@ -207,19 +207,31 @@ export default function Home() {
     }
   }, [firstName, persona, allDone]);
 
-  const filteredSelectedJobs = useMemo(() => {
+  // Today's jobs used for categorized list (spotlight sections use todayJobs directly)
+  const filteredSelectedJobs = todayJobs;
+
+  // Jobs for the remaining 6 days of the week strip, grouped by day
+  const futureWeekGroups = useMemo(() => {
     if (!allJobs) return [];
-    return allJobs
-      .map(j => {
-        if (!j.scheduled_at) return null;
-        const start = new Date(j.scheduled_at);
-        if (isNaN(start.getTime())) return null;
-        const end = new Date(start.getTime() + (j.duration_est || 60) * 60000);
-        return { ...j, start, end };
-      })
-      .filter(j => j && sameDay(j.start, selectedDate) && j.status !== 'Cancelled')
-      .sort((a, b) => a.start - b.start);
-  }, [allJobs, selectedDate]);
+    const groups = [];
+    for (let i = 1; i <= 6; i++) {
+      const d = addDays(today, i);
+      const dayJobs = allJobs
+        .map(j => {
+          if (!j.scheduled_at) return null;
+          const start = new Date(j.scheduled_at);
+          if (isNaN(start.getTime())) return null;
+          const end = new Date(start.getTime() + (j.duration_est || 60) * 60000);
+          return { ...j, start, end };
+        })
+        .filter(j => j && sameDay(j.start, d) && j.status !== 'Cancelled')
+        .sort((a, b) => a.start - b.start);
+      if (dayJobs.length > 0) {
+        groups.push({ date: d, jobs: dayJobs });
+      }
+    }
+    return groups;
+  }, [allJobs, today]);
 
   const overdueJobs = useMemo(() => {
     if (!allJobs) return [];
@@ -275,15 +287,15 @@ export default function Home() {
 
     filteredSelectedJobs.forEach(j => {
       if (j.id === activeJob?.id) return;
-      if (isSelectedToday && j.id === next?.id) return;
-      if (isSelectedToday && overdueIds.has(j.id)) return; // shown in their own section
+      if (j.id === next?.id) return;
+      if (overdueIds.has(j.id)) return; // shown in their own section
 
       const isCompleted = j.status === 'Completed';
       const isPast = j.end < now;
 
       if (isCompleted) {
         done.push(j);
-      } else if (isSelectedToday && isPast) {
+      } else if (isPast) {
         incomplete.push(j);
       } else {
         upcoming.push(j);
@@ -297,7 +309,7 @@ export default function Home() {
     });
 
     return { incomplete: unpaidFirst(incomplete), upcoming: unpaidFirst(upcoming), done: unpaidFirst(done) };
-  }, [filteredSelectedJobs, activeJob, next, isSelectedToday, overdueScheduled, now]);
+  }, [filteredSelectedJobs, activeJob, next, overdueScheduled, now]);
 
   const commandBrief = useMemo(() => {
     // Command brief should be for the active job if it exists, otherwise the next one
@@ -459,7 +471,7 @@ export default function Home() {
                 const dayJobsCount = (allJobs || []).filter(j => j.status !== 'Cancelled' && sameDay(new Date(j.scheduled_at), d)).length;
                 return (
                   <div key={i} onClick={() => setSelectedDate(d)} style={{ textAlign: 'center', padding: '5px 2px 6px', borderRadius: 8, background: isSelected ? (mode === 'dark' ? '#1A0B2E' : T.pinkTint) : 'transparent', border: `1.5px solid ${isSelected ? T.pink : 'transparent'}`, cursor: 'pointer' }}>
-                    <Caption style={{ fontSize: 7.5, fontWeight: 700, color: isActuallyToday ? T.pink : (isSelected ? T.ink : T.inkMuted) }}>{DOW_SHORT[i]}</Caption>
+                    <Caption style={{ fontSize: 7.5, fontWeight: 700, color: isActuallyToday ? T.pink : (isSelected ? T.ink : T.inkMuted) }}>{DOW_BY_DAY[d.getDay()]}</Caption>
                     <Text style={{ fontSize: 13, fontWeight: 500, color: isSelected ? T.pink : T.ink, fontFamily: T.serif }}>{d.getDate()}</Text>
                     {dayJobsCount > 0 && <div style={{ display: 'flex', gap: 2, justifyContent: 'center', marginTop: 3 }}><span style={{ width: 4, height: 4, borderRadius: '50%', background: T.pink }} /></div>}
                   </div>
@@ -585,6 +597,7 @@ export default function Home() {
           )}
 
           <div style={{ marginTop: 12 }}>
+            {/* Today — incomplete / past-due */}
             {categorizedJobs.incomplete.length > 0 && (
               <>
                 {categorizedJobs.incomplete.length > 3 && <SectionLabel color="#F59E0B">✦ Incomplete Missions · Needs Update</SectionLabel>}
@@ -596,9 +609,10 @@ export default function Home() {
               </>
             )}
 
+            {/* Today — remaining upcoming */}
             {categorizedJobs.upcoming.length > 0 && (
               <>
-                {(categorizedJobs.upcoming.length > 3 || !isSelectedToday) && <SectionLabel>{isSelectedToday ? 'Upcoming Missions' : `Schedule: ${dateBrief(selectedDate)}`}</SectionLabel>}
+                {categorizedJobs.upcoming.length > 3 && <SectionLabel>Upcoming Today</SectionLabel>}
                 {categorizedJobs.upcoming.map(j => (
                   <Swipeable key={j.id} onDelete={() => handleDeleteJob(j.id)}>
                     <JobCard j={j} T={T} mode={mode} openJob={openJob} next={next} today={today} />
@@ -607,13 +621,15 @@ export default function Home() {
               </>
             )}
 
-            {isSelectedToday && categorizedJobs.upcoming.length === 0 && categorizedJobs.incomplete.length === 0 && !activeJob && !next && (
+            {/* Today — empty state */}
+            {categorizedJobs.upcoming.length === 0 && categorizedJobs.incomplete.length === 0 && !activeJob && !next && futureWeekGroups.length === 0 && (
               <EmptyState persona={persona} allDone={allDone} T={T} />
             )}
 
-            {isSelectedToday && categorizedJobs.done.length > 0 && (
+            {/* Today — completed */}
+            {categorizedJobs.done.length > 0 && (
               <>
-                {categorizedJobs.done.length > 3 && <SectionLabel>Missions Accomplished · Today</SectionLabel>}
+                {categorizedJobs.done.length > 1 && <SectionLabel>Missions Accomplished · Today</SectionLabel>}
                 {categorizedJobs.done.map(j => (
                   <Swipeable key={j.id} onDelete={() => handleDeleteJob(j.id)}>
                     <JobCard j={j} T={T} mode={mode} openJob={openJob} variant="done" today={today} />
@@ -621,18 +637,31 @@ export default function Home() {
                 ))}
               </>
             )}
-          </div>
 
-          {overdueJobs.length > 0 && isSelectedToday && (
-            <div onClick={() => openDetail("Unpaid Jobs", overdueJobs, 'jobs')} style={{ background: T.redBg, border: `1px solid ${T.redBorder}`, borderRadius: 10, padding: '8px 11px', display: 'flex', alignItems: 'center', gap: 9, marginTop: 4, cursor: 'pointer' }}>
-              <span style={{ fontSize: 13 }}>💰</span>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontFamily: T.font, fontSize: 11, fontWeight: 700, color: mode === 'dark' ? '#FCA5A5' : '#B91C1C' }}>{overdueJobs.length} unpaid completed jobs</div>
-                <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted }}>{overdueJobs.slice(0, 2).map(j => j.client_name).join(', ')}</div>
+            {/* Unpaid completed jobs banner */}
+            {overdueJobs.length > 0 && (
+              <div onClick={() => openDetail("Unpaid Jobs", overdueJobs, 'jobs')} style={{ background: T.redBg, border: `1px solid ${T.redBorder}`, borderRadius: 10, padding: '8px 11px', display: 'flex', alignItems: 'center', gap: 9, marginTop: 4, cursor: 'pointer' }}>
+                <span style={{ fontSize: 13 }}>💰</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontFamily: T.font, fontSize: 11, fontWeight: 700, color: mode === 'dark' ? '#FCA5A5' : '#B91C1C' }}>{overdueJobs.length} unpaid completed jobs</div>
+                  <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted }}>{overdueJobs.slice(0, 2).map(j => j.client_name).join(', ')}</div>
+                </div>
+                <AmtCell amount={`$${overdueJobs.reduce((s, j) => s + Number(j.total || 0), 0).toFixed(0)}`} size={12} />
               </div>
-              <AmtCell amount={`$${overdueJobs.reduce((s, j) => s + Number(j.total || 0), 0).toFixed(0)}`} size={12} />
-            </div>
-          )}
+            )}
+
+            {/* Rest of week — grouped by day */}
+            {futureWeekGroups.map(group => (
+              <div key={group.date.toDateString()}>
+                <SectionLabel style={{ marginTop: 16 }}>{dateBrief(group.date)}</SectionLabel>
+                {group.jobs.map(j => (
+                  <Swipeable key={j.id} onDelete={() => handleDeleteJob(j.id)}>
+                    <JobCard j={j} T={T} mode={mode} openJob={openJob} today={today} />
+                  </Swipeable>
+                ))}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

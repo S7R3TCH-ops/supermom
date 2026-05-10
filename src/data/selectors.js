@@ -49,7 +49,7 @@ export function toDisplayClient(row, jobs = []) {
   const lastJob = past[0];
   const nextJob = future[future.length - 1];
   const unpaidJobs = sorted.filter(j =>
-    j?.job_status !== 'Cancelled' &&
+    j?.job_status === 'Completed' &&
     (j?.payment_status === '' || j?.payment_status === 'Partial')
   );
   const owedTotal = unpaidJobs.reduce((sum, j) => sum + Number(j?.total_amount || 0), 0);
@@ -93,13 +93,17 @@ export function toDisplayClient(row, jobs = []) {
       revenueYtd: past.reduce((sum, j) => sum + Number(j?.total_amount || 0), 0),
       lastVisit: lastJob ? fmtShortDate(lastJob.scheduled_at) : '—',
     },
-    upcoming: future.map(j => ({
-      id: j?.id,
-      date: fmtShortDate(j?.scheduled_at),
-      service: j?.service_name,
-      time: fmtTime(j?.scheduled_at),
-      amt: `$${Number(j?.total_amount || 0).toFixed(0)}`,
-    })),
+    upcoming: future.map(j => {
+      const startStr = fmtTime(j?.scheduled_at);
+      const endStr = fmtEndTime(j?.scheduled_at, j?.estimated_hours);
+      return {
+        id: j?.id,
+        date: fmtShortDate(j?.scheduled_at),
+        service: j?.service_name,
+        time: endStr ? `${startStr} – ${endStr}` : startStr,
+        amt: `$${Number(j?.total_amount || 0).toFixed(0)}`,
+      };
+    }),
     history: past.map(j => ({
       id: j?.id,
       date: fmtShortDate(j?.scheduled_at),
@@ -147,6 +151,12 @@ export function toDisplayJob(jobRow, clientLookup = {}) {
 }
 
 // ---------- formatting ----------
+function fmtEndTime(iso, estimatedHours) {
+  if (!iso || !estimatedHours) return '';
+  const end = new Date(new Date(iso).getTime() + estimatedHours * 3600000);
+  if (Number.isNaN(end.getTime())) return '';
+  return end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/Toronto' });
+}
 function fmtShortDate(iso) {
   if (!iso) return '—';
   const d = new Date(iso);

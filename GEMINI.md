@@ -220,7 +220,15 @@ Full owner flow tested via Playwright (create client → book job → partial pa
 | 1 | Finance tab crash | `isOpen` stripped from `NewExpenseSheet` props but still used in `useFocusTrap` + early-return guard; re-added |
 | 2 | Home spotlight rotation | "What's Next Today" only holds a job while `now < start + estimated_duration`; next job auto-promotes; overdue card appears below with amber "Needs Attention" + Wrap Up CTA; 60s live clock drives transitions |
 
-## Next priorities (as of May 9, 2026)
+## Bug Fixes & Features — May 10, 2026 (Claude Code)
+
+| # | Change | Detail |
+|---|---|---|
+| 1 | Sandra bug batch (v0.4.6) | Hourly total saves as `rate × hours`; Step 3 math breakdown; Service Catalog duration in hours; dynamic DOW labels; full 7-day job list on home; outstanding amounts only for completed jobs; client profile start–end time range |
+| 2 | Larger fonts + status badges (v0.4.6) | Job card fonts bumped; distinct color-coded status badges (blue=Scheduled, pink=Up Next, amber=Needs Wrap-Up, red=Unpaid, green=Paid ✓) |
+| 3 | Live hourly math breakdown (v0.4.7) | NewJobSheet Step 2: live chip `X hrs × $Y/hr = $Z` updates as duration changes; PostJobSheet: header total live as hours/costs change with breakdown line; JobDetailSheet EditMode: auto-computes total when hours change + math chip; fixed `business` scope bug in EditMode |
+
+## Next priorities (as of May 10, 2026)
 1. ~~**Supabase Redirect Allowlist**~~ — ✅ Done.
 2. ~~**Scroll Performance Audit**~~ — ✅ Done (v0.3.6).
 3. ~~**Service Catalog Deletion Flow**~~ — ✅ Done (v0.3.5).
@@ -229,7 +237,9 @@ Full owner flow tested via Playwright (create client → book job → partial pa
 6. ~~**Partial payment + client name display bug fixes**~~ — ✅ Done (v0.4.4).
 7. ~~**DB cleanup**~~ — ✅ Done (May 7, 2026) — test/old clients removed; 10 real clients remain.
 8. ~~**Finance tab crash + Home spotlight rotation**~~ — ✅ Done (v0.4.5, May 9, 2026).
-9. **User testing with Sandra** — walk through the payment flow and confirm Calendar swipe feels right.
-10. **Client Engagement Tools** — AI-suggested follow-ups and re-booking reminders.
+9. ~~**Sandra bug batch + font/badge polish**~~ — ✅ Done (v0.4.6, May 10, 2026).
+10. ~~**Live hourly math breakdown**~~ — ✅ Done (v0.4.7, May 10, 2026).
+11. **Sandra user testing feedback** — gather any friction points from her live session today; prioritize based on what she finds confusing.
+12. **Client Engagement Tools** — AI-suggested follow-ups and re-booking reminders.
 
-(Updated by Claude Code — May 9, 2026)
+(Updated by Claude Code — May 10, 2026)

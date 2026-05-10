@@ -122,6 +122,7 @@ This is a **managed service product** — Sandra is the first user, but the arch
 - [x] Finance tab crash fix (v0.4.5) — `isOpen` prop was stripped from `NewExpenseSheet` destructuring but still referenced in `useFocusTrap` and early-return guard; re-added
 - [x] Home spotlight rotation (v0.4.5) — "What's Next Today" only holds a job while `now < start + estimated_duration`; once the window expires the next job takes the spotlight; the overdue-but-uncompleted job appears immediately below as an amber "Needs Attention" card with a Wrap Up tap; live 60s clock drives the transition without a page reload
 - [x] Sandra bug batch (v0.4.6) — Hourly total now `rate × hours` (not just rate); Step 3 review shows math breakdown; Service Catalog duration input changed to hours (not mins); week strip DOW labels now dynamic (not hardcoded Mon–Sun); home screen shows all 7-day week jobs in a continuous list below the strip; outstanding amounts now only shown for completed (not future) jobs in client list; client profile upcoming jobs show start–end time range
+- [x] Live hourly math breakdown (v0.4.7) — NewJobSheet Step 2 shows live `X hrs × $Y/hr = $Z` chip as duration changes; PostJobSheet header total updates live as actual hours or additional costs change; JobDetailSheet EditMode auto-computes `total_amount` when hours change for hourly jobs + shows math chip; fixes `business` scope bug in EditMode `onPickService`
 
 ---
 

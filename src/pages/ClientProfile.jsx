@@ -432,9 +432,9 @@ export default function ClientProfile() {
                   <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 700, color: T.pink, marginTop: 1 }}>{j.date.split(' ')[1]}</div>
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: T.serif, fontSize: 14, fontWeight: 500, color: T.ink, letterSpacing: '-0.2px' }}>{j.service}</div>
-                  <div style={{ fontFamily: T.font, fontSize: 11, color: T.inkSub, fontWeight: 600, marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                  <div style={{ fontFamily: T.serif, fontSize: 16, fontWeight: 500, color: T.ink, letterSpacing: '-0.2px' }}>{j.service}</div>
+                  <div style={{ fontFamily: T.font, fontSize: 13, color: T.inkSub, fontWeight: 600, marginTop: 3, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                     {j.time}
                   </div>
                 </div>

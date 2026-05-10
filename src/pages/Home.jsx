@@ -677,18 +677,18 @@ function JobCard({ j, T, mode, openJob, next, variant, today }) {
   
   const needsDuration = isCompleted && !j.actual_duration;
 
-  let border = T.cardBorder, bg = T.card, accentColor = T.pink, label = null;
+  let border = '#3B82F6', bg = T.card, accentColor = '#3B82F6', label = { text: 'SCHEDULED', color: '#3B82F6' };
 
   if (isIncomplete) {
-    border = '#F59E0B'; // Deep Amber
+    border = '#F59E0B';
     bg = mode === 'dark' ? 'rgba(245,158,11,0.1)' : '#FFFBEB';
     accentColor = '#D97706';
-    label = { text: 'PAST DUE', color: '#F59E0B' };
+    label = { text: 'NEEDS WRAP-UP', color: '#F59E0B' };
   } else if (isCompleted && !isPaid) {
-    border = mode === 'dark' ? '#FBBF24' : '#F59E0B'; // Gold/Amber
-    bg = mode === 'dark' ? 'rgba(251,191,36,0.08)' : '#FEFDF0';
-    accentColor = '#B45309';
-    label = { text: 'UNPAID', color: '#F59E0B' };
+    border = mode === 'dark' ? '#F87171' : '#EF4444';
+    bg = mode === 'dark' ? 'rgba(239,68,68,0.08)' : '#FFF5F5';
+    accentColor = '#EF4444';
+    label = { text: 'UNPAID', color: '#EF4444' };
   } else if (isCompleted && isPaid) {
     border = mode === 'dark' ? 'rgba(34,197,94,0.3)' : '#22C55E';
     bg = mode === 'dark' ? 'rgba(34,197,94,0.05)' : '#F0FFF4';
@@ -725,36 +725,36 @@ function JobCard({ j, T, mode, openJob, next, variant, today }) {
       <div style={{ display: 'flex', gap: 12, position: 'relative' }}>
         {/* TIME/DATE STAND-OUT BLOCK */}
         <div style={{ width: 64, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: isIncomplete ? 'rgba(245,158,11,0.2)' : isCompleted ? (isPaid ? 'rgba(34,197,94,0.1)' : 'rgba(251,191,36,0.15)') : T.pinkTint, border: `1px solid ${border}`, borderRadius: 10, padding: '6px 4px' }}>
-          <div style={{ fontFamily: T.font, fontSize: 7.5, fontWeight: 900, color: accentColor, textTransform: 'uppercase', lineHeight: 1 }}>{isToday ? 'TODAY' : dateBrief(j.start).split(',')[0]}</div>
-          <div style={{ fontFamily: T.serif, fontSize: 12, fontWeight: 700, color: accentColor, marginBottom: 3 }}>{j.start.getDate()}</div>
+          <div style={{ fontFamily: T.font, fontSize: 8.5, fontWeight: 900, color: accentColor, textTransform: 'uppercase', lineHeight: 1 }}>{isToday ? 'TODAY' : dateBrief(j.start).split(',')[0]}</div>
+          <div style={{ fontFamily: T.serif, fontSize: 14, fontWeight: 700, color: accentColor, marginBottom: 3 }}>{j.start.getDate()}</div>
           <div style={{ height: 1, width: 20, background: `${accentColor}40`, marginBottom: 3 }} />
-          <div style={{ fontFamily: T.serif, fontSize: 12, fontWeight: 700, color: accentColor, lineHeight: 1.15 }}>{startTime.time}</div>
-          <div style={{ fontFamily: T.font, fontSize: 6.5, fontWeight: 800, color: T.inkMuted, textTransform: 'uppercase' }}>{startTime.period}</div>
-          <div style={{ fontFamily: T.font, fontSize: 8, color: T.inkMuted, lineHeight: 1, marginTop: 2 }}>–</div>
-          <div style={{ fontFamily: T.serif, fontSize: 12, fontWeight: 700, color: accentColor, lineHeight: 1.15 }}>{endTime.time}</div>
-          <div style={{ fontFamily: T.font, fontSize: 6.5, fontWeight: 800, color: T.inkMuted, textTransform: 'uppercase' }}>{endTime.period}</div>
+          <div style={{ fontFamily: T.serif, fontSize: 13, fontWeight: 700, color: accentColor, lineHeight: 1.15 }}>{startTime.time}</div>
+          <div style={{ fontFamily: T.font, fontSize: 8, fontWeight: 800, color: T.inkMuted, textTransform: 'uppercase' }}>{startTime.period}</div>
+          <div style={{ fontFamily: T.font, fontSize: 9, color: T.inkMuted, lineHeight: 1, marginTop: 2 }}>–</div>
+          <div style={{ fontFamily: T.serif, fontSize: 13, fontWeight: 700, color: accentColor, lineHeight: 1.15 }}>{endTime.time}</div>
+          <div style={{ fontFamily: T.font, fontSize: 8, fontWeight: 800, color: T.inkMuted, textTransform: 'uppercase' }}>{endTime.period}</div>
         </div>
 
         <div style={{ flex: 1, minWidth: 0 }}>
-          <Subheading style={{ fontSize: 15, fontWeight: 600, color: T.ink, marginBottom: 1 }}>{j.client_name}</Subheading>
-          <Text variant="secondary" style={{ fontSize: 10.5, fontWeight: 500 }}>{j.service_name}</Text>
+          <Subheading style={{ fontSize: 17, fontWeight: 600, color: T.ink, marginBottom: 2 }}>{j.client_name}</Subheading>
+          <Text variant="secondary" style={{ fontSize: 13, fontWeight: 500 }}>{j.service_name}</Text>
 
           {needsDuration && (
-            <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 800, color: '#D97706', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <div style={{ fontFamily: T.font, fontSize: 11, fontWeight: 800, color: '#D97706', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
               <span>⚠</span> MANUAL HOURS NEEDED
             </div>
           )}
 
           {!isToday && (
-            <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, marginTop: 4 }}>
+            <div style={{ fontFamily: T.font, fontSize: 12, color: T.inkMuted, marginTop: 4 }}>
               {dateBrief(j.start)}
             </div>
           )}
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'space-between', gap: 4 }}>
-          {label && <span style={{ background: label.color, borderRadius: 4, padding: '2px 6px', fontSize: 8.5, fontWeight: 900, color: 'white' }}>{label.text}</span>}
-          <AmtCell amount={`$${Number(j.total || 0).toFixed(0)}`} size={14} />
+          {label && <span style={{ background: label.color, borderRadius: 5, padding: '4px 9px', fontSize: 11, fontWeight: 800, color: 'white', letterSpacing: '0.2px', whiteSpace: 'nowrap' }}>{label.text}</span>}
+          <AmtCell amount={`$${Number(j.total || 0).toFixed(0)}`} size={15} />
         </div>
       </div>
       

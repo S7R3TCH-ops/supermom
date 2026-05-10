@@ -30,10 +30,10 @@ const ClientCard = memo(function ClientCard({ c, T, onPress }) {
 
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-            <div style={{ fontFamily: T.serif, fontSize: 14, fontWeight: 500, letterSpacing: '-0.2px', color: T.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
-            {c.vip && <span style={{ background: '#FCD34D', borderRadius: 4, padding: '1px 5px', fontFamily: T.font, fontSize: 8, fontWeight: 700, color: '#78350F', whiteSpace: 'nowrap' }}>VIP ★</span>}
+            <div style={{ fontFamily: T.serif, fontSize: 16, fontWeight: 500, letterSpacing: '-0.2px', color: T.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
+            {c.vip && <span style={{ background: '#FCD34D', borderRadius: 4, padding: '2px 6px', fontFamily: T.font, fontSize: 10, fontWeight: 700, color: '#78350F', whiteSpace: 'nowrap' }}>VIP ★</span>}
           </div>
-          <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, marginBottom: 4 }}>
+          <div style={{ fontFamily: T.font, fontSize: 12, color: T.inkMuted, marginBottom: 5 }}>
             {c.service !== '—' ? `${c.service} · Last: ${c.last}` : 'No jobs yet'}
           </div>
           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
@@ -44,8 +44,8 @@ const ClientCard = memo(function ClientCard({ c, T, onPress }) {
                 <span key={tag} style={{
                   background: isOverdue ? '#FEF3C7' : isLead ? '#F3F0FF' : T.pinkTint,
                   border: `1px solid ${isOverdue ? '#F59E0B40' : isLead ? '#7C3AED30' : T.cardBorder}`,
-                  borderRadius: 4, padding: '2px 6px',
-                  fontFamily: T.font, fontSize: 8.5, fontWeight: 700,
+                  borderRadius: 4, padding: '3px 7px',
+                  fontFamily: T.font, fontSize: 11, fontWeight: 700,
                   color: isOverdue ? '#78350F' : isLead ? '#5B21B6' : T.inkMuted,
                   letterSpacing: '0.3px', textTransform: 'uppercase',
                 }}>{tag}</span>
@@ -57,7 +57,7 @@ const ClientCard = memo(function ClientCard({ c, T, onPress }) {
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3, flexShrink: 0 }}>
           {c.owed && c.amt && <AmtCell amount={c.amt} size={13} />}
           {c.next !== '—' && (
-            <div style={{ fontFamily: T.font, fontSize: 9, color: T.inkMuted, textAlign: 'right' }}>Next: {c.next}</div>
+            <div style={{ fontFamily: T.font, fontSize: 11, color: T.inkMuted, textAlign: 'right' }}>Next: {c.next}</div>
           )}
           {c.tags.includes('Lead') && (
             <button

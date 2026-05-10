@@ -181,6 +181,11 @@ export default function JobDetailSheet({ jobId, onClose }) {
   }
 
   function openEditMode() {
+    const storedTotal = Number(job.total_amount ?? job.flat_rate ?? 0);
+    const estimatedHrs = Number(job.estimated_hours || 0);
+    const derivedRate = job.flat_rate
+      ? Number(job.flat_rate)
+      : (estimatedHrs > 0 ? Math.round(storedTotal / estimatedHrs) : Number(business?.hourly_rate || 60));
     setForm({
       scheduled_date:  job.scheduled_date  || '',
       scheduled_time:  job.scheduled_time  || '',
@@ -189,6 +194,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
       pricing_type:    job.pricing_type    || 'Flat',
       total_amount:    String(job.total_amount ?? job.flat_rate ?? ''),
       estimated_hours: String(job.estimated_hours || ''),
+      hourly_rate:     String(derivedRate),
       payment_method:  job.ai_context?.payment_method || 'Cash',
       recurrence:      job.ai_context?.recurrence_rule || null,
       job_notes:       job.job_notes || '',
@@ -254,7 +260,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
 
         {!loading && job && editMode && (
           <EditMode
-            form={form} setForm={setForm} services={services}
+            form={form} setForm={setForm} services={services} business={business}
             T={T} mode={mode} busy={busy} mutErr={mutErr}
             showSeriesPicker={showSeriesPicker} onSeriesChoice={onSeriesChoice}
             onSave={initiateSave}
@@ -389,7 +395,7 @@ function ReadMode({
 }
 
 /* ============= EDIT MODE ============= */
-function EditMode({ form, setForm, services, T, mode, busy, mutErr, showSeriesPicker, onSeriesChoice, onSave, onCancelEdit, isKeyboardFocused }) {
+function EditMode({ form, setForm, services, business, T, mode, busy, mutErr, showSeriesPicker, onSeriesChoice, onSave, onCancelEdit, isKeyboardFocused }) {
   function set(k, v) { setForm(f => ({ ...f, [k]: v })); }
 
   function onPickService(e) {
@@ -397,7 +403,7 @@ function EditMode({ form, setForm, services, T, mode, busy, mutErr, showSeriesPi
     if (!svc) return;
     set('service_id', svc.id);
     set('service_name', svc.name);
-    
+
     const resolvedPrice = (svc.pricing_type === 'Hourly' && (svc.default_price === null || svc.default_price === 0))
       ? (business?.hourly_rate || 60)
       : svc.default_price;
@@ -406,14 +412,19 @@ function EditMode({ form, setForm, services, T, mode, busy, mutErr, showSeriesPi
     if (!form.hoursTouched) set('estimated_hours', (Number(svc.default_duration || 120) / 60).toFixed(1));
   }
 
+  const liveHourlyRate = parseFloat(form.hourly_rate) || 0;
+  const liveHrs = parseFloat(form.estimated_hours) || 0;
+  const showMathChip = form.pricing_type === 'Hourly' && liveHourlyRate > 0 && liveHrs > 0;
+  const liveMathTotal = liveHourlyRate * liveHrs;
+
   return (
     <>
       <div style={{ padding: '8px 14px 10px', borderBottom: `1px solid ${T.cardBorder}` }}>
         <div style={{ fontSize: 9, fontWeight: 700, color: '#FF78B0', textTransform: 'uppercase' }}>Editing Job</div>
       </div>
-      <div className="sm-scroll" style={{ 
-        flex: 1, 
-        overflowY: 'auto', 
+      <div className="sm-scroll" style={{
+        flex: 1,
+        overflowY: 'auto',
         padding: `12px 14px ${isKeyboardFocused ? '260px' : '4px'}`,
         transition: 'padding-bottom 0.2s ease-out'
       }}>
@@ -427,11 +438,32 @@ function EditMode({ form, setForm, services, T, mode, busy, mutErr, showSeriesPi
         </Field>
         <Field T={T} label="Pricing">
           <div style={{ display: 'flex', gap: 6 }}>
-            {['Flat', 'Hourly'].map(p => <button key={p} onClick={() => set('pricing_type', p)} style={{ flex: 1, padding: '9px 0', borderRadius: 8, background: form.pricing_type === p ? '#E91E6A' : T.card, border: `1.5px solid ${form.pricing_type === p ? '#E91E6A' : T.cardBorder}`, color: form.pricing_type === p ? 'white' : T.inkSub, cursor: 'pointer' }}>{p}</button>)}
+            {['Flat', 'Hourly'].map(p => <button key={p} onClick={() => {
+              set('pricing_type', p);
+              if (p === 'Hourly' && liveHourlyRate > 0 && liveHrs > 0) set('total_amount', liveMathTotal.toFixed(0));
+            }} style={{ flex: 1, padding: '9px 0', borderRadius: 8, background: form.pricing_type === p ? '#E91E6A' : T.card, border: `1.5px solid ${form.pricing_type === p ? '#E91E6A' : T.cardBorder}`, color: form.pricing_type === p ? 'white' : T.inkSub, cursor: 'pointer' }}>{p}</button>)}
           </div>
         </Field>
         <Field T={T} label="Amount ($)"><input type="number" value={form.total_amount} onChange={e => set('total_amount', e.target.value)} style={{ ...iStyle(T), width: '100%' }} /></Field>
-        <Field T={T} label="Est. hours"><input type="number" value={form.estimated_hours} onChange={e => { set('estimated_hours', e.target.value); set('hoursTouched', true); }} style={{ ...iStyle(T), width: '100%' }} /></Field>
+        <Field T={T} label="Est. hours"><input type="number" value={form.estimated_hours} onChange={e => {
+          const hrs = parseFloat(e.target.value) || 0;
+          set('estimated_hours', e.target.value);
+          set('hoursTouched', true);
+          if (form.pricing_type === 'Hourly' && liveHourlyRate > 0 && hrs > 0) set('total_amount', (liveHourlyRate * hrs).toFixed(0));
+        }} style={{ ...iStyle(T), width: '100%' }} /></Field>
+        {showMathChip && (
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            background: mode === 'dark' ? 'rgba(233,30,106,0.09)' : '#FFF0F7',
+            border: `1px solid ${mode === 'dark' ? 'rgba(233,30,106,0.25)' : '#FFBDD9'}`,
+            borderRadius: 10, padding: '8px 14px', marginBottom: 14,
+            fontFamily: T.font, fontVariantNumeric: 'tabular-nums',
+          }}>
+            <span style={{ fontSize: 12, color: T.inkSub }}>{liveHrs % 1 === 0 ? liveHrs : liveHrs.toFixed(1)} hrs × <strong style={{ color: T.ink }}>${liveHourlyRate.toFixed(0)}/hr</strong></span>
+            <span style={{ fontSize: 11, color: T.inkMuted }}>=</span>
+            <span style={{ fontSize: 15, fontWeight: 700, color: T.pink }}>${liveMathTotal.toFixed(0)}</span>
+          </div>
+        )}
         <Field T={T} label="Recurrence">
           <select value={form.recurrence || ''} onChange={e => set('recurrence', e.target.value || null)} style={{ ...iStyle(T), width: '100%' }}>
             {RECURRENCE.map(r => <option key={r.label} value={r.key || ''}>{r.label}</option>)}

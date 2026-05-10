@@ -618,6 +618,31 @@ function Step2What({
         }}>+</button>
       </div>
 
+      {(() => {
+        const selectedSvc = services.find(s => s.id === serviceId);
+        const isHourly = selectedSvc?.pricing_type === 'Hourly';
+        if (!isHourly || !selectedSvc || duration <= 0) return null;
+        const rate = (selectedSvc.default_price === null || selectedSvc.default_price === 0)
+          ? Number(business?.hourly_rate || 60)
+          : Number(selectedSvc.default_price || 0);
+        const hrs = duration / 60;
+        const hrsLabel = hrs % 1 === 0 ? `${hrs}` : hrs.toFixed(1);
+        const liveTotal = rate * hrs;
+        return (
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            background: mode === 'dark' ? 'rgba(233,30,106,0.09)' : '#FFF0F7',
+            border: `1px solid ${mode === 'dark' ? 'rgba(233,30,106,0.25)' : '#FFBDD9'}`,
+            borderRadius: 10, padding: '8px 14px', marginBottom: 10,
+            fontFamily: T.font, fontVariantNumeric: 'tabular-nums',
+          }}>
+            <span style={{ fontSize: 12, color: T.inkSub }}>{hrsLabel} hrs × <strong style={{ color: T.ink }}>${rate}/hr</strong></span>
+            <span style={{ fontSize: 11, color: T.inkMuted }}>=</span>
+            <span style={{ fontSize: 15, fontWeight: 700, color: T.pink }}>${liveTotal.toFixed(0)}</span>
+          </div>
+        );
+      })()}
+
       {(aiEstimateLoading || (aiDuration && aiDuration !== duration)) && (
         <div style={{
           background: T.hero, borderRadius: 16, padding: '12px 14px', marginBottom: 14,

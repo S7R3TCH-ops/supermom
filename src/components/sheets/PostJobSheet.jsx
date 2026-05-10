@@ -137,6 +137,11 @@ export default function PostJobSheet({ jobId, onClose }) {
 
   const isPaidRecord = job?.payment_status === 'Paid';
   const totalAmt = parseFloat(job?.total_amount ?? job?.flat_rate ?? 0);
+  const isHourly = job?.pricing_type === 'Hourly';
+  const hourlyRate = job ? (Number(job.flat_rate) || (job.estimated_hours > 0 ? totalAmt / job.estimated_hours : totalAmt)) : 0;
+  const liveTotalBase = isHourly ? hourlyRate * (actualMinutes / 60) : totalAmt;
+  const addlTotal = costs.reduce((s, c) => s + (parseFloat(c.amount) || 0), 0);
+  const liveTotal = Math.round((liveTotalBase + addlTotal) * 100) / 100;
 
   function fmtMins(min) {
     const h = min / 60;
@@ -199,8 +204,15 @@ export default function PostJobSheet({ jobId, onClose }) {
               </div>
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontFamily: T.serif, fontSize: 28, fontWeight: 500, color: mode === 'dark' ? 'white' : T.ink, letterSpacing: '-1px', fontVariantNumeric: 'tabular-nums' }}>
-                  ${totalAmt.toFixed(0)}
+                  ${liveTotal.toFixed(0)}
                 </div>
+                {(isHourly || addlTotal > 0) && (
+                  <div style={{ fontFamily: T.font, fontSize: 9.5, color: mode === 'dark' ? 'rgba(255,255,255,0.45)' : T.inkMuted, marginTop: 2, fontVariantNumeric: 'tabular-nums', lineHeight: 1.4 }}>
+                    {isHourly && `${(actualMinutes/60) % 1 === 0 ? actualMinutes/60 : (actualMinutes/60).toFixed(1)} hrs × $${hourlyRate.toFixed(0)}/hr`}
+                    {addlTotal > 0 && ` + $${addlTotal.toFixed(0)} costs`}
+                    {` = $${liveTotal.toFixed(0)}`}
+                  </div>
+                )}
                 <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, color: mode === 'dark' ? 'rgba(255,255,255,0.5)' : T.inkMuted, textTransform: 'uppercase', marginTop: 2 }}>
                    {isPaidRecord ? 'RECORDED ✓' : 'WRAP-UP'}
                 </div>

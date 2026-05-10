@@ -37,3 +37,4 @@ docs/*
 /playwright/.auth/
 \
 .worktrees/\
+!docs/minxymomma-dashboard.html

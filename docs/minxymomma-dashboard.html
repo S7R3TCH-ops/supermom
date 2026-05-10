@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MinxyMomma – Daily Posting Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:#0d0d1a;color:#f0e6ff;min-height:100vh}
+
+/* ── TOP BAR ── */
+.topbar{background:linear-gradient(135deg,#1a0a2e,#2d0a3e);border-bottom:1px solid #ff3e8230;
+  padding:18px 32px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.brand{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700;color:#fff}
+.brand em{font-style:italic;color:#ff3e82}
+.day-nav{display:flex;align-items:center;gap:10px}
+.nav-btn{background:#ff3e8220;border:1px solid #ff3e8250;color:#ff8ab0;padding:7px 16px;
+  border-radius:8px;cursor:pointer;font-size:0.85rem;font-family:'DM Sans',sans-serif;font-weight:600;
+  transition:all 0.15s}
+.nav-btn:hover{background:#ff3e8240;color:#fff}
+.nav-btn:disabled{opacity:0.3;cursor:default}
+.day-display{text-align:center;min-width:180px}
+.day-num{font-size:1.4rem;font-weight:700;color:#fff}
+.day-date{font-size:0.75rem;color:#9070a0;margin-top:2px}
+.day-jump{display:flex;align-items:center;gap:6px;font-size:0.78rem;color:#7a6a8a}
+.day-jump select{background:#1a1030;border:1px solid #ffffff20;color:#f0e6ff;
+  padding:5px 10px;border-radius:7px;font-family:'DM Sans',sans-serif;cursor:pointer}
+
+/* ── PROGRESS BAR ── */
+.progress-bar{height:3px;background:#ffffff08;position:relative}
+.progress-fill{height:100%;background:linear-gradient(90deg,#ff3e82,#a855f7);transition:width 0.3s}
+
+/* ── MAIN LAYOUT ── */
+.main{max-width:1200px;margin:0 auto;padding:28px 24px;display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:800px){.main{grid-template-columns:1fr}}
+
+/* ── SECTION HEADERS ── */
+.section{display:flex;flex-direction:column;gap:12px}
+.section-title{font-size:0.65rem;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;
+  padding:8px 14px;border-radius:8px;display:flex;align-items:center;gap:8px}
+.section-title.xi{background:#0e1d35;color:#3eb5ff;border:1px solid #3eb5ff20}
+.section-title.of{background:#2a0d1e;color:#ff8ab0;border:1px solid #ff3e8225}
+
+/* ── POST CARDS ── */
+.post-card{background:#111827;border-radius:12px;overflow:hidden;
+  border:1px solid #ffffff0a;transition:border-color 0.2s}
+.post-card.done{opacity:0.45;border-color:#ffffff05}
+.post-card-header{padding:12px 16px 10px;display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid #ffffff08}
+.post-time{font-size:0.7rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase}
+.xi .post-time{color:#3eb5ff}.of-card .post-time{color:#ff8ab0}
+.platform-tags{display:flex;gap:5px}
+.tag{font-size:0.62rem;font-weight:700;padding:2px 8px;border-radius:10px;letter-spacing:0.04em}
+.tag.x{background:#1d9bf015;color:#1d9bf0;border:1px solid #1d9bf030}
+.tag.ig{background:#e1306c15;color:#e1306c;border:1px solid #e1306c30}
+.tag.of{background:#ff3e8215;color:#ff3e82;border:1px solid #ff3e8235}
+.done-check{width:22px;height:22px;border-radius:50%;border:2px solid #3eb5ff40;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:0.7rem;transition:all 0.15s;flex-shrink:0}
+.done-check:hover{border-color:#3eb5ff;background:#3eb5ff15}
+.done-check.checked{background:#3eb5ff;border-color:#3eb5ff;color:#fff}
+.of-card .done-check{border-color:#ff3e8240}
+.of-card .done-check:hover{border-color:#ff3e82;background:#ff3e8215}
+.of-card .done-check.checked{background:#ff3e82;border-color:#ff3e82}
+
+.post-card-body{padding:14px 16px}
+.caption-text{font-size:0.85rem;color:#d4c0e4;line-height:1.55;margin-bottom:12px;
+  font-style:italic}
+.action-row{display:flex;gap:8px;flex-wrap:wrap}
+.btn{font-family:'DM Sans',sans-serif;font-size:0.72rem;font-weight:600;padding:6px 13px;
+  border-radius:8px;border:none;cursor:pointer;transition:all 0.15s;letter-spacing:0.02em}
+.btn-photo{background:#1d9bf020;color:#1d9bf0;border:1px solid #1d9bf035}
+.btn-photo:hover{background:#1d9bf035;color:#fff}
+.btn-copy{background:#ffffff0a;color:#a090b8;border:1px solid #ffffff15}
+.btn-copy:hover{background:#ffffff18;color:#fff}
+.btn-copy.copied{background:#22c55e20;color:#22c55e;border-color:#22c55e40}
+
+/* ── OF DUMP CARD ── */
+.of-card{background:#150818;border:1px solid #ff3e8218;border-radius:12px;overflow:hidden}
+.of-card-header{background:#2a0d1e;padding:14px 16px;border-bottom:1px solid #ff3e8215}
+.of-folder{font-size:0.78rem;color:#ff8ab0;font-weight:600;margin-bottom:4px}
+.of-folder span{color:#fff}
+.of-meta{display:flex;gap:12px;margin-top:8px;flex-wrap:wrap}
+.of-badge{font-size:0.67rem;padding:3px 10px;border-radius:20px;font-weight:600}
+.of-badge.count{background:#ff3e8215;color:#ff8ab0;border:1px solid #ff3e8230}
+.of-badge.files{background:#a855f715;color:#c084fc;border:1px solid #a855f730}
+.of-badge.path{background:#ffffff08;color:#8a7a9a;border:1px solid #ffffff12;font-family:monospace;font-size:0.63rem}
+
+.of-intro{padding:14px 16px;border-bottom:1px solid #ff3e8210}
+.of-intro-label{font-size:0.62rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;
+  color:#7a5a70;margin-bottom:6px}
+.of-intro-text{font-size:0.83rem;color:#e0c0d4;font-style:italic;line-height:1.5;margin-bottom:10px}
+
+.photo-list{padding:0 16px 14px}
+.photo-list-label{font-size:0.62rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;
+  color:#7a5a70;margin:14px 0 8px}
+.photo-item{display:flex;align-items:flex-start;gap:10px;padding:8px 10px;
+  border-radius:8px;margin-bottom:5px;background:#1a0d25;border:1px solid #ffffff08;
+  transition:background 0.15s}
+.photo-item.checked{background:#ff3e8208;border-color:#ff3e8215}
+.photo-num{font-size:0.68rem;font-weight:700;color:#ff8ab0;min-width:24px;padding-top:1px;flex-shrink:0}
+.photo-caption{font-size:0.78rem;color:#c8b0d8;line-height:1.45;flex:1}
+.photo-check{width:18px;height:18px;border-radius:4px;border:1px solid #ff3e8230;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:0.6rem;flex-shrink:0;margin-top:1px;transition:all 0.15s}
+.photo-check:hover{border-color:#ff3e82;background:#ff3e8215}
+.photo-check.checked{background:#ff3e82;border-color:#ff3e82;color:#fff}
+.photo-copy{background:none;border:none;color:#6a4a6a;cursor:pointer;font-size:0.68rem;
+  padding:0 4px;flex-shrink:0;margin-top:2px;transition:color 0.15s}
+.photo-copy:hover{color:#ff8ab0}
+
+/* ── DAILY PROGRESS ── */
+.day-stats{background:#0f1020;border:1px solid #ffffff08;border-radius:10px;
+  padding:14px 18px;display:flex;gap:20px;flex-wrap:wrap;margin-bottom:4px;grid-column:1/-1}
+.stat{text-align:center}
+.stat-num{font-size:1.4rem;font-weight:700;color:#fff}
+.stat-num.pink{color:#ff3e82}.stat-num.blue{color:#3eb5ff}
+.stat-label{font-size:0.65rem;color:#6a5a7a;text-transform:uppercase;letter-spacing:0.08em;margin-top:2px}
+
+/* ── FOOTER TIP ── */
+.tip-bar{background:#160d28;border-top:1px solid #ff3e8215;padding:12px 32px;
+  font-size:0.75rem;color:#7a6a8a;display:flex;gap:24px;flex-wrap:wrap}
+.tip{display:flex;align-items:center;gap:7px}
+.tip strong{color:#ff8ab0}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">💋 <em>MinxyMomma</em> Daily Dashboard</div>
+  <div class="day-nav">
+    <button class="nav-btn" id="prevBtn" onclick="changeDay(-1)">← Prev</button>
+    <div class="day-display">
+      <div class="day-num" id="dayNum">Day 1</div>
+      <div class="day-date" id="dayDate"></div>
+    </div>
+    <button class="nav-btn" id="nextBtn" onclick="changeDay(1)">Next →</button>
+  </div>
+  <div class="day-jump">
+    Jump to:
+    <select id="daySelect" onchange="goToDay(parseInt(this.value))">
+    </select>
+  </div>
+</div>
+
+<div class="progress-bar">
+  <div class="progress-fill" id="progressFill"></div>
+</div>
+
+<div class="main" id="mainContent"></div>
+
+<div class="tip-bar">
+  <div class="tip">💡 <strong>X + Insta:</strong> Click "Open Photo" → save the image → post same caption on both platforms simultaneously</div>
+  <div class="tip">🔥 <strong>OF tease:</strong> Post on X + Insta at 6pm: "Something spicy dropping tonight on OF 🔥" — then drop at 7pm</div>
+  <div class="tip">✅ <strong>Tip:</strong> Check off each photo as you upload it so you don't lose your place</div>
+</div>
+
+<script>
+const DAYS = [{"day":1,"date":"Monday, May 11, 2026","xi":[{"time":"10:00 AM","caption":"On top of the world","url":"https://fetlife.com/Minxymomma1973/pictures/184064590","score":0.1437007874,"posted_at":"2024-12-17"},{"time":"2:00 PM","caption":"Cheers! Bottoms up!","url":"https://fetlife.com/Minxymomma1973/pictures/184599815","score":0.104,"posted_at":"2024-12-25"},{"time":"8:00 PM","caption":"Is Santa cumming?","url":"https://fetlife.com/Minxymomma1973/pictures/184600131","score":0.346,"posted_at":"2024-12-25"}],"of":{"time":"7:00 PM","folder":"Bathroom and Home Selfies","folder_path":"OF Pics\\Bathroom and Home Selfies","dump_size":15,"file_range":"files 1–15","file_start":1,"file_end":15,"intro_caption":"💦 DAILY DROP 💦 Morning routine, no clothes required. 15 fresh pics just for you 😘","captions":["Just me and my reflection…do you like what you see? 👀","Getting squeaky clean for you. Care to scrub my back? 🛁","Caught me mid-rinse…now what? 💦","Morning routine interrupted…should I even bother getting dressed? 😘","The mirror never lies…what do you think it's saying? 🤭","Fresh out of the shower and all yours. Where do you start? 💦","My bathroom has the best lighting…or maybe that's just me 😉","Dripping wet and nowhere to be. Wanna keep me company? 💧","Good morning! This is how I start my day…jealous? 😈","Steam rising in here…is it the shower or is it me? 🔥","Soap is overrated when you have hands like mine 🫧","Towel? What towel? 😘","Starting my day right…care to join? 💦","Clean on the outside. Naughty on the inside 😈","You rang? 😘"]}},{"day":2,"date":"Tuesday, May 12, 2026","xi":[{"time":"10:00 AM","caption":"Do you like my nails?","url":"https://fetlife.com/Minxymomma1973/pictures/185289098","score":0.3326530612,"posted_at":"2025-01-04"},{"time":"2:00 PM","caption":"Do you see what I see??","url":"https://fetlife.com/Minxymomma1973/pictures/185555275","score":0.2181069959,"posted_at":"2025-01-08"},{"time":"8:00 PM","caption":"Twin peaks Snow White","url":"https://fetlife.com/Minxymomma1973/pictures/187934656","score":0.1703539823,"posted_at":"2025-02-11"}],"of":{"time":"7:00 PM","folder":"Dark Sheets with Toys","folder_path":"OF Pics\\Dark Sheets with Toys","dump_size":14,"file_range":"files 1–14","file_start":1,"file_end":14,"intro_caption":"🖤 NIGHT DROP 🖤 Me, my sheets, and my favourites. 14 pics tonight 😈","captions":["Bestie Bob wanted to say hi again 💦 He misses you too.","Dark sheets, darker thoughts…want to join me in my head? 😈","I may have a toy addiction. Are you going to help or watch? 👀","Rose says hello 🌹 She's been patient long enough.","Sheets are warm, toys are ready, only thing missing is you 💋","Late night adventures require good company…or great toys 😈","I'm thorough when I'm alone. Imagine when I'm not 😏","The dark is where I let loose…curious what that looks like? 🖤","My bed sees a lot…wanna be part of the story? 💦","My favorite kind of Saturday night 😏","No company needed when you've got good toys 😈","Late night. Dark room. You know the vibe 🖤","Bob never disappoints 💦","Tonight's plans involve these two. Jealous? 😈"]}},{"day":3,"date":"Wednesday, May 13, 2026","xi":[{"time":"10:00 AM","caption":"Naked Sunset","url":"https://fetlife.com/Minxymomma1973/pictures/187972390","score":0.0796460177,"posted_at":"2025-02-11"},{"time":"2:00 PM","caption":"Orange Skies Thick Thighs","url":"https://fetlife.com/Minxymomma1973/pictures/187973848","score":0.08849557522,"posted_at":"2025-02-11"},{"time":"8:00 PM","caption":"Meet Bob my Bestie","url":"https://fetlife.com/Minxymomma1973/pictures/187976163","score":0.1349557522,"posted_at":"2025-02-11"}],"of":{"time":"7:00 PM","folder":"Beach and Outdoor","folder_path":"OF Pics\\Beach and Outdoor","dump_size":13,"file_range":"files 1–13","file_start":1,"file_end":13,"intro_caption":"🏖️ BEACH DUMP 🏖️ Sandy, salty, shameless. 13 outdoor pics dropping now 🌊","captions":["Sandy and shameless…who's applying my sunscreen? 🌊","I'd rather be naked on a beach. Is that too much to ask? 🏖️","The sun loves my body almost as much as you do 😘","Tan lines are just my body's way of saying I was naughty 😈","Salt air and bare skin…my favorite combination 🌊","Caught the sun staring…same rules apply for you 👀","Nature's dressing room has the best lighting 🌿","Beach body? Already have one. Beach rules? Entirely optional 🏖️","Saltwater fixes everything…including the urge to stay dressed 💦","Public nudity is basically my cardio 🏃‍♀️","I love sneaking nudity into my day. Would you join me? 😜","The ocean and I have an understanding 🌊","Salty hair, no clothes, no problems 😘"]}},{"day":4,"date":"Thursday, May 14, 2026","xi":[{"time":"10:00 AM","caption":"Bad kitty 🐱","url":"https://fetlife.com/Minxymomma1973/pictures/188054816","score":0.1086474501,"posted_at":"2025-02-12"},{"time":"2:00 PM","caption":"Busting out…","url":"https://fetlife.com/Minxymomma1973/pictures/188098162","score":0.2311111111,"posted_at":"2025-02-13"},{"time":"8:00 PM","caption":"Happy Valentines Day! 💋","url":"https://fetlife.com/Minxymomma1973/pictures/188178935","score":0.2338530067,"posted_at":"2025-02-14"}],"of":{"time":"7:00 PM","folder":"Gray Bedroom Full Body","folder_path":"OF Pics\\Gray Bedroom Full Body","dump_size":12,"file_range":"files 1–12","file_start":1,"file_end":12,"intro_caption":"💫 FULL BODY DROP 💫 Head to toe, nothing in between. 12 pics 👀","captions":["Full body inspection…what's your verdict? 😏","Love my 52yr old body…she's been very good to me 🥰","Laid out just for you. Where do you start? 👀","Every inch of this was earned. Do you appreciate the work? 💪","Head to toe and nothing in between 😈","I assume the position…now what are you going to do? 😏","This body has stories. Want me to tell them with it? 💋","Full length, full view, full mood 😘","This is what 52 looks like when you own it 💪","Yours to look at. For now 😈","All laid out and nowhere to be…except here 😘","Bedroom light, no clothes, no regrets 🥰"]}},{"day":5,"date":"Friday, May 15, 2026","xi":[{"time":"10:00 AM","caption":"What can you teach me? 🤓","url":"https://fetlife.com/Minxymomma1973/pictures/188278883","score":0.2058165548,"posted_at":"2025-02-16"},{"time":"2:00 PM","caption":"Waiting to get plowed ❄️🌨️","url":"https://fetlife.com/Minxymomma1973/pictures/188367582","score":0.1457399103,"posted_at":"2025-02-17"},{"time":"8:00 PM","caption":"I love to wear a wig to switch my submissive side to dominate you just like you want me to. Admit it to me now!!","url":"https://fetlife.com/Minxymomma1973/pictures/188424463","score":0.1076233184,"posted_at":"2025-02-17"}],"of":{"time":"7:00 PM","folder":"Hotel Room Shoots","folder_path":"OF Pics\\Hotel Room Shoots","dump_size":13,"file_range":"files 1–13","file_start":1,"file_end":13,"intro_caption":"🛎️ HOTEL DROP 🛎️ What happens in the room stays here. 13 exclusive pics 💋","captions":["Hotel rooms bring out a different side of me…wanna see? 🛎️","Check in was smooth. Check out? Entirely up to you 😈","Somewhere between room service and mischief 🍾","Do Not Disturb sign is very much optional with me 🤭","Turned down the sheets, turned up everything else 💋","This is what vacation looks like for me…jealous? 🌴","Mini bar can wait. I've got better things to offer 😏","Clean towels, dirty thoughts 🛁","They said enjoy your stay. I did 😈","Room service? No thanks. I've got everything I need 😘","Thread count doesn't matter when you're not using the sheets 😏","The best hotel amenity is always me 💋","Hotel rooms bring out a different side of me…wanna see? 🛎️"]}},{"day":6,"date":"Saturday, May 16, 2026","xi":[{"time":"10:00 AM","caption":"Who doesn’t love getting naked on a beach? Would you do it or are you too scared??","url":"https://fetlife.com/Minxymomma1973/pictures/188542785","score":0.2094594595,"posted_at":"2025-02-19"},{"time":"2:00 PM","caption":"GO!","url":"https://fetlife.com/Minxymomma1973/pictures/188661555","score":0.1108597285,"posted_at":"2025-02-21"},{"time":"8:00 PM","caption":"CANADA!","url":"https://fetlife.com/Minxymomma1973/pictures/188661599","score":0.1696832579,"posted_at":"2025-02-21"}],"of":{"time":"7:00 PM","folder":"Closeups Natural Light","folder_path":"OF Pics\\Closeups Natural Light","dump_size":12,"file_range":"files 1–12","file_start":1,"file_end":12,"intro_caption":"☀️ GOLDEN HOUR ☀️ Natural light on every curve. 12 close-up pics 🌤️","captions":["Natural light hits different when you have nothing to hide 🌤️","Sun-kissed every inch of me…starting here 😘","Soft light, soft skin…hard to resist? 💛","Morning glow. Coffee is optional. This is not 🌅","No filter needed when the lighting loves you back ✨","Natural and unapologetic. Sound familiar? 😏","Golden hour was made for a body like mine 🌟","This is what real looks like. Do you like real? 💕","Unfiltered. Unapologetic. Undressed 😘","The light did most of the work…I just showed up 🌤️","Natural light hits different when you have nothing to hide 🌤️","Sun-kissed every inch of me…starting here 😘"]}},{"day":7,"date":"Sunday, May 17, 2026","xi":[{"time":"10:00 AM","caption":"GO!","url":"https://fetlife.com/Minxymomma1973/pictures/188661667","score":0.2058823529,"posted_at":"2025-02-21"},{"time":"2:00 PM","caption":"Look at my fat 🍑 I did this in a bar in front of ppl.","url":"https://fetlife.com/Minxymomma1973/pictures/188788790","score":0.2022727273,"posted_at":"2025-02-23"},{"time":"8:00 PM","caption":"Slide on in…🍆","url":"https://fetlife.com/Minxymomma1973/pictures/189548267","score":0.1837209302,"posted_at":"2025-03-05"}],"of":{"time":"7:00 PM","folder":"Closeups Explicit","folder_path":"OF Pics\\Closeups Explicit","dump_size":10,"file_range":"files 1–10","file_start":1,"file_end":10,"intro_caption":"🔥 NO FILTER DROP 🔥 Front row. No zoom needed. 10 pics. You're welcome 😈","captions":["Front row seats are now open 👀 You're welcome.","This close enough for you or do you need a better angle? 😏","You asked to see more…here you go. Do you like what you find? 💋","No zoom required for this one 😈","Up close and very personal. Still think you can handle me? 👀","Details matter. What do you notice first? 🤭","This is what you've been asking for…was it worth the wait? 😘","Pink and perfect…your move 💕","Consider this your reward 😈","This took courage to post. Worth it? 😘"]}},{"day":8,"date":"Monday, May 18, 2026","xi":[{"time":"10:00 AM","caption":"Beyond horny…time to worship me!","url":"https://fetlife.com/Minxymomma1973/pictures/189549251","score":0.2581395349,"posted_at":"2025-03-05"},{"time":"2:00 PM","caption":"Felt cute in this Bikini 👙","url":"https://fetlife.com/Minxymomma1973/pictures/189592800","score":0.1585081585,"posted_at":"2025-03-06"},{"time":"8:00 PM","caption":"Do you think I have nice legs and feet?","url":"https://fetlife.com/Minxymomma1973/pictures/189592981","score":0.1585081585,"posted_at":"2025-03-06"}],"of":{"time":"7:00 PM","folder":"Teal LED Bedroom","folder_path":"OF Pics\\Teal LED Bedroom","dump_size":12,"file_range":"files 1–12","file_start":1,"file_end":12,"intro_caption":"💙 NEON NIGHT 💙 Lit up and laid out. 12 teal light pics 😏","captions":["Teal hour is officially my favorite time of day 💙","Cool tones, warm body…you do the math 😏","Feeling electric tonight 💙 Are you plugged in?","Lit from every angle…just how I like it 💙","Teal me something good 😘","LED lights hit different when there's something worth illuminating 💎","Cool colors, hot content 💙","Blue-green and between the sheets 😈","Neon hours are my hours 💙","Every light in here is on me 😏","Teal hour is officially my favorite time of day 💙","Cool tones, warm body…you do the math 😏"]}},{"day":9,"date":"Tuesday, May 19, 2026","xi":[{"time":"10:00 AM","caption":"Peachylicious and feeling flirty 🍑","url":"https://fetlife.com/Minxymomma1973/pictures/189659565","score":0.2242990654,"posted_at":"2025-03-07"},{"time":"2:00 PM","caption":"Yes I’m a bad lil Devil 😈","url":"https://fetlife.com/Minxymomma1973/pictures/189659996","score":0.1051401869,"posted_at":"2025-03-07"},{"time":"8:00 PM","caption":"Would your hands fit here? Do you like body jewelry?","url":"https://fetlife.com/Minxymomma1973/pictures/189745811","score":0.07025761124,"posted_at":"2025-03-08"}],"of":{"time":"7:00 PM","folder":"Purple LED Bedroom","folder_path":"OF Pics\\Purple LED Bedroom","dump_size":9,"file_range":"files 1–9","file_start":1,"file_end":9,"intro_caption":"💜 PURPLE RAIN 💜 My bedroom, my rules. All 9 pics dropping now 😘","captions":["Purple vibes and zero clothes. Best combination? 💜","My bedroom glows…so do I 💜","Late night under purple lights is my natural habitat 😈","Low light, high energy, all for you 😏","The glow hits different at midnight 😘","In my purple era and thriving 💜","Lit from within, lit from above 💜","Purple reign over here 👑","My room, my rules, my vibe 💜"]}},{"day":10,"date":"Wednesday, May 20, 2026","xi":[{"time":"10:00 AM","caption":"Do you want to be caught too? I would love to fish naked…","url":"https://fetlife.com/Minxymomma1973/pictures/189746266","score":0.1943793911,"posted_at":"2025-03-08"},{"time":"2:00 PM","caption":"I have a bikini addiction. Do you like this color?","url":"https://fetlife.com/Minxymomma1973/pictures/189813951","score":0.2605633803,"posted_at":"2025-03-09"},{"time":"8:00 PM","caption":"I attract all the bad boys…are you one too?","url":"https://fetlife.com/Minxymomma1973/pictures/189814202","score":0.04460093897,"posted_at":"2025-03-09"}],"of":{"time":"7:00 PM","folder":"Pole Dance Color","folder_path":"OF Pics\\Pole Dance Color","dump_size":9,"file_range":"files 1–9","file_start":1,"file_end":9,"intro_caption":"💃 POLE DROP 💃 Flexible, strong, and showing off. 9 pole pics 😏","captions":["Spinning for you in full colour 💃","Strong enough to hold myself up…flexible enough to do the rest 😏","Work it out or work it in…I do both 💪","Height doesn't scare me. Boring does 😏","Flex check…passing or failing? 💪","Upside down and never more comfortable 🤭","Strong is the new everything 💃","This is my cardio and I love every second 😈","What goes up must come down…eventually 💃"]}},{"day":11,"date":"Thursday, May 21, 2026","xi":[{"time":"10:00 AM","caption":"What do you think? Would you watch me put on a show? Did you look at every angle?","url":"https://fetlife.com/Minxymomma1973/pictures/189951046","score":0.08962264151,"posted_at":"2025-03-11"},{"time":"2:00 PM","caption":"Getting ready…This lingerie makes me feel so naughty 😈","url":"https://fetlife.com/Minxymomma1973/pictures/189951283","score":0.1745283019,"posted_at":"2025-03-11"},{"time":"8:00 PM","caption":"I love to clean. Vote for which uniform you would buy me to watch me clean in! Left or right?","url":"https://fetlife.com/Minxymomma1973/pictures/190039680","score":0.1040189125,"posted_at":"2025-03-12"}],"of":{"time":"7:00 PM","folder":"Pole Dance Black and White","folder_path":"OF Pics\\Pole Dance Black and White","dump_size":7,"file_range":"files 1–7","file_start":1,"file_end":7,"intro_caption":"🖤 MONOCHROME DROP 🖤 Black and white and very hot. All 7 dropping now 💋","captions":["Strong thighs and strong poles…my two loves 🖤","Black and white but never boring 😏","Grace and filth in equal measure. Come see both 🖤","Art has many forms. This one's just hotter than most 😈","The pole doesn't lie…neither do I 💋","Monochrome mood, maximum heat 🖤","This took years to learn. Worth every second 💪"]}},{"day":12,"date":"Friday, May 22, 2026","xi":[{"time":"10:00 AM","caption":"For my phat ass loving peeps! Peachilicious 🍑","url":"https://fetlife.com/Minxymomma1973/pictures/190082343","score":0.08767772512,"posted_at":"2025-03-13"},{"time":"2:00 PM","caption":"For my feet worshipping and peek a butt loving peeps 🦶 👙","url":"https://fetlife.com/Minxymomma1973/pictures/190082810","score":0.1895734597,"posted_at":"2025-03-13"},{"time":"8:00 PM","caption":"Felt cute this day. Who else drinks out of a 🪣?","url":"https://fetlife.com/Minxymomma1973/pictures/190178824","score":0.1428571429,"posted_at":"2025-03-15"}],"of":{"time":"7:00 PM","folder":"Mirror Selfies Blue Light","folder_path":"OF Pics\\Mirror Selfies Blue Light","dump_size":3,"file_range":"files 1–3","file_start":1,"file_end":3,"intro_caption":"💙 MIRROR DROP 💙 Just me and my reflection. All 3 blue light pics for you 😈","captions":["Blue hour. Just me and my reflection plotting things 💙","Neon lights make everything hotter…don't you think? 💙","Double trouble — me and my mirror agree on everything 😏"]}},{"day":13,"date":"Saturday, May 23, 2026","xi":[{"time":"10:00 AM","caption":"Do you like this view?","url":"https://fetlife.com/Minxymomma1973/pictures/190178993","score":0.2476190476,"posted_at":"2025-03-15"},{"time":"2:00 PM","caption":"Spending my Friday night reading your amazing comments and emails. You rock! ❤️❤️❤️","url":"https://fetlife.com/Minxymomma1973/pictures/190190807","score":0.5523809524,"posted_at":"2025-03-15"},{"time":"8:00 PM","caption":"My First Video for y’all!: Like opening a can of Pillsbury biscuits 🤤","url":"https://fetlife.com/Minxymomma1973/videos/7312681","score":0.1380952381,"posted_at":"2025-03-15"}],"of":{"time":"7:00 PM","folder":"Bathroom and Home Selfies","folder_path":"OF Pics\\Bathroom and Home Selfies","dump_size":15,"file_range":"files 16–30","file_start":16,"file_end":30,"intro_caption":"💦 BATHROOM ROUND 2 💦 You asked for more. Here are 15 more 😘","captions":["Just me and my reflection…do you like what you see? 👀","Getting squeaky clean for you. Care to scrub my back? 🛁","Caught me mid-rinse…now what? 💦","Morning routine interrupted…should I even bother getting dressed? 😘","The mirror never lies…what do you think it's saying? 🤭","Fresh out of the shower and all yours. Where do you start? 💦","My bathroom has the best lighting…or maybe that's just me 😉","Dripping wet and nowhere to be. Wanna keep me company? 💧","Good morning! This is how I start my day…jealous? 😈","Steam rising in here…is it the shower or is it me? 🔥","Soap is overrated when you have hands like mine 🫧","Towel? What towel? 😘","Starting my day right…care to join? 💦","Clean on the outside. Naughty on the inside 😈","You rang? 😘"]}},{"day":14,"date":"Sunday, May 24, 2026","xi":[{"time":"10:00 AM","caption":"Ooops my jeans fell down 🤭","url":"https://fetlife.com/Minxymomma1973/pictures/190449277","score":0.4364508393,"posted_at":"2025-03-18"},{"time":"2:00 PM","caption":"Which is sexier? My cleavage tight stomach or my thigh gap?","url":"https://fetlife.com/Minxymomma1973/pictures/190452328","score":0.376498801,"posted_at":"2025-03-18"},{"time":"8:00 PM","caption":"Brought my camel to the party 🐫 want a ride?","url":"https://fetlife.com/Minxymomma1973/pictures/190548057","score":0.2457831325,"posted_at":"2025-03-20"}],"of":{"time":"7:00 PM","folder":"Dark Sheets with Toys","folder_path":"OF Pics\\Dark Sheets with Toys","dump_size":14,"file_range":"files 15–28","file_start":15,"file_end":28,"intro_caption":"🖤 LATE NIGHT ROUND 2 🖤 Back in bed, back with the toys. 14 new pics 😈","captions":["These are my best friends 🖤","Bestie Bob wanted to say hi again 💦 He misses you too.","Dark sheets, darker thoughts…want to join me in my head? 😈","I may have a toy addiction. Are you going to help or watch? 👀","Rose says hello 🌹 She's been patient long enough.","Sheets are warm, toys are ready, only thing missing is you 💋","Late night adventures require good company…or great toys 😈","I'm thorough when I'm alone. Imagine when I'm not 😏","The dark is where I let loose…curious what that looks like? 🖤","My bed sees a lot…wanna be part of the story? 💦","My favorite kind of Saturday night 😏","No company needed when you've got good toys 😈","Late night. Dark room. You know the vibe 🖤","Bob never disappoints 💦"]}},{"day":15,"date":"Monday, May 25, 2026","xi":[{"time":"10:00 AM","caption":"Are you into feet ass or peek?","url":"https://fetlife.com/Minxymomma1973/pictures/190548272","score":0.3012048193,"posted_at":"2025-03-20"},{"time":"2:00 PM","caption":"Look at that pussy! How I look when I wake up do I look cute?","url":"https://fetlife.com/Minxymomma1973/pictures/190596914","score":0.2481927711,"posted_at":"2025-03-20"},{"time":"8:00 PM","caption":"Ass Revealing Lingerie: Pilsbury Doughbutts. Would you consider this sexy?","url":"https://fetlife.com/Minxymomma1973/videos/7336800","score":0.1903614458,"posted_at":"2025-03-20"}],"of":{"time":"7:00 PM","folder":"Beach and Outdoor","folder_path":"OF Pics\\Beach and Outdoor","dump_size":12,"file_range":"files 14–25","file_start":14,"file_end":25,"intro_caption":"🌊 BEACH ROUND 2 🌊 More sand, more skin, 12 pics from the vault 🏖️","captions":["Caught between the waves and your gaze 👀","Nature is my dressing room and I'm always underdressed 😈","Sandy and shameless…who's applying my sunscreen? 🌊","I'd rather be naked on a beach. Is that too much to ask? 🏖️","The sun loves my body almost as much as you do 😘","Tan lines are just my body's way of saying I was naughty 😈","Salt air and bare skin…my favorite combination 🌊","Caught the sun staring…same rules apply for you 👀","Nature's dressing room has the best lighting 🌿","Beach body? Already have one. Beach rules? Entirely optional 🏖️","Saltwater fixes everything…including the urge to stay dressed 💦","Public nudity is basically my cardio 🏃‍♀️"]}},{"day":16,"date":"Tuesday, May 26, 2026","xi":[{"time":"10:00 AM","caption":"The girls behind me dared me to do it!","url":"https://fetlife.com/Minxymomma1973/pictures/191041305","score":0.2720588235,"posted_at":"2025-03-27"},{"time":"2:00 PM","caption":"Peek a boobs. Find me in the dark and what will you say when you see them?","url":"https://fetlife.com/Minxymomma1973/pictures/191041677","score":0.1544117647,"posted_at":"2025-03-27"},{"time":"8:00 PM","caption":"do I look cute trying something new?: Drinking an expresso martini for the first time and still trying to look cute ☺️","url":"https://fetlife.com/Minxymomma1973/videos/7366993","score":0.1348039216,"posted_at":"2025-03-27"}],"of":{"time":"7:00 PM","folder":"Hotel Room Shoots","folder_path":"OF Pics\\Hotel Room Shoots","dump_size":12,"file_range":"files 14–25","file_start":14,"file_end":25,"intro_caption":"🛎️ HOTEL ROUND 2 🛎️ Different room, same energy. 12 more exclusive pics 💋","captions":["Check in was smooth. Check out? Entirely up to you 😈","Somewhere between room service and mischief 🍾","Do Not Disturb sign is very much optional with me 🤭","Turned down the sheets, turned up everything else 💋","This is what vacation looks like for me…jealous? 🌴","Mini bar can wait. I've got better things to offer 😏","Clean towels, dirty thoughts 🛁","They said enjoy your stay. I did 😈","Room service? No thanks. I've got everything I need 😘","Thread count doesn't matter when you're not using the sheets 😏","The best hotel amenity is always me 💋","Hotel rooms bring out a different side of me…wanna see? 🛎️"]}},{"day":17,"date":"Wednesday, May 27, 2026","xi":[{"time":"10:00 AM","caption":"Get to know me! If you want to know what my body smells like..Bom Dia Bright Cream body lotion and Tom Ford Tobacco Vanille Eau de Perfume and sleep with Silk pillowcases 🤓","url":"https://fetlife.com/Minxymomma1973/pictures/191166660","score":0.2137592138,"posted_at":"2025-03-28"},{"time":"2:00 PM","caption":"You want a lady in the street…","url":"https://fetlife.com/Minxymomma1973/pictures/191297020","score":0.2691358025,"posted_at":"2025-03-30"},{"time":"8:00 PM","caption":"Brrr…it’s nippley in here! 🥶","url":"https://fetlife.com/Minxymomma1973/pictures/191403466","score":0.1464019851,"posted_at":"2025-04-01"}],"of":{"time":"7:00 PM","folder":"Closeups Natural Light","folder_path":"OF Pics\\Closeups Natural Light","dump_size":12,"file_range":"files 13–24","file_start":13,"file_end":24,"intro_caption":"☀️ GOLDEN HOUR 2 ☀️ Because once was not enough. 12 more sun-kissed pics 🌤️","captions":["Soft light, soft skin…hard to resist? 💛","Morning glow. Coffee is optional. This is not 🌅","No filter needed when the lighting loves you back ✨","Natural and unapologetic. Sound familiar? 😏","Golden hour was made for a body like mine 🌟","This is what real looks like. Do you like real? 💕","Unfiltered. Unapologetic. Undressed 😘","The light did most of the work…I just showed up 🌤️","Natural light hits different when you have nothing to hide 🌤️","Sun-kissed every inch of me…starting here 😘","Soft light, soft skin…hard to resist? 💛","Morning glow. Coffee is optional. This is not 🌅"]}},{"day":18,"date":"Thursday, May 28, 2026","xi":[{"time":"10:00 AM","caption":"How I would look bent over a chair…😘","url":"https://fetlife.com/Minxymomma1973/pictures/191438887","score":0.3200992556,"posted_at":"2025-04-01"},{"time":"2:00 PM","caption":"Have you been a bad boy?? Love to role play…what role would you want? Hot mommy? FemDom? Scolding Teacher?","url":"https://fetlife.com/Minxymomma1973/pictures/191440229","score":0.2853598015,"posted_at":"2025-04-01"},{"time":"8:00 PM","caption":"Can you see what I see?","url":"https://fetlife.com/Minxymomma1973/pictures/191518423","score":0.2313432836,"posted_at":"2025-04-02"}],"of":{"time":"7:00 PM","folder":"Gray Bedroom Full Body","folder_path":"OF Pics\\Gray Bedroom Full Body","dump_size":11,"file_range":"files 13–23","file_start":13,"file_end":23,"intro_caption":"💫 BEDROOM ROUND 2 💫 Laid out again, just for you. 11 more full body pics 👀","captions":["Full body inspection…what's your verdict? 😏","Love my 52yr old body…she's been very good to me 🥰","Laid out just for you. Where do you start? 👀","Every inch of this was earned. Do you appreciate the work? 💪","Head to toe and nothing in between 😈","I assume the position…now what are you going to do? 😏","This body has stories. Want me to tell them with it? 💋","Full length, full view, full mood 😘","This is what 52 looks like when you own it 💪","Yours to look at. For now 😈","All laid out and nowhere to be…except here 😘"]}},{"day":19,"date":"Friday, May 29, 2026","xi":[{"time":"10:00 AM","caption":"Do you like the glasses or the view? 🤓 🍑","url":"https://fetlife.com/Minxymomma1973/pictures/191519572","score":0.4651741294,"posted_at":"2025-04-02"},{"time":"2:00 PM","caption":"Happy Titty Tuesday!!","url":"https://fetlife.com/Minxymomma1973/pictures/191940344","score":0.2601010101,"posted_at":"2025-04-08"},{"time":"8:00 PM","caption":"My favorite 🐫 toe jeans 🤭","url":"https://fetlife.com/Minxymomma1973/pictures/191941451","score":0.2222222222,"posted_at":"2025-04-08"}],"of":{"time":"7:00 PM","folder":"Dark Sheets with Toys","folder_path":"OF Pics\\Dark Sheets with Toys","dump_size":12,"file_range":"files 29–40","file_start":29,"file_end":40,"intro_caption":"🖤 MIDNIGHT DROP 🖤 Round 3. Still not done with you. 12 more 😈","captions":["Tonight's plans involve these two. Jealous? 😈","These are my best friends 🖤","Bestie Bob wanted to say hi again 💦 He misses you too.","Dark sheets, darker thoughts…want to join me in my head? 😈","I may have a toy addiction. Are you going to help or watch? 👀","Rose says hello 🌹 She's been patient long enough.","Sheets are warm, toys are ready, only thing missing is you 💋","Late night adventures require good company…or great toys 😈","I'm thorough when I'm alone. Imagine when I'm not 😏","The dark is where I let loose…curious what that looks like? 🖤","My bed sees a lot…wanna be part of the story? 💦","My favorite kind of Saturday night 😏"]}},{"day":20,"date":"Saturday, May 30, 2026","xi":[{"time":"10:00 AM","caption":"I love to be naked outdoors…Where should I get naked next?","url":"https://fetlife.com/Minxymomma1973/pictures/192005350","score":0.3316455696,"posted_at":"2025-04-09"},{"time":"2:00 PM","caption":"Do you like black lingerie or a different color? Make some suggestions!","url":"https://fetlife.com/Minxymomma1973/pictures/192005813","score":0.417721519,"posted_at":"2025-04-09"},{"time":"8:00 PM","caption":"Phat Ass legs spread. Me fucking you with a strap on 😈","url":"https://fetlife.com/Minxymomma1973/pictures/192071866","score":0.2588832487,"posted_at":"2025-04-10"}],"of":{"time":"7:00 PM","folder":"Bathroom and Home Selfies","folder_path":"OF Pics\\Bathroom and Home Selfies","dump_size":12,"file_range":"files 31–42","file_start":31,"file_end":42,"intro_caption":"💦 SHOWER ROUND 3 💦 Still getting clean. Still failing. 12 pics 🛁","captions":["Just me and my reflection…do you like what you see? 👀","Getting squeaky clean for you. Care to scrub my back? 🛁","Caught me mid-rinse…now what? 💦","Morning routine interrupted…should I even bother getting dressed? 😘","The mirror never lies…what do you think it's saying? 🤭","Fresh out of the shower and all yours. Where do you start? 💦","My bathroom has the best lighting…or maybe that's just me 😉","Dripping wet and nowhere to be. Wanna keep me company? 💧","Good morning! This is how I start my day…jealous? 😈","Steam rising in here…is it the shower or is it me? 🔥","Soap is overrated when you have hands like mine 🫧","Towel? What towel? 😘"]}},{"day":21,"date":"Sunday, May 31, 2026","xi":[{"time":"10:00 AM","caption":"Bestie Bob wanted some limelight. He wants to play with you too 💦","url":"https://fetlife.com/Minxymomma1973/pictures/192072109","score":0.1395939086,"posted_at":"2025-04-10"},{"time":"2:00 PM","caption":"Sending out my love to all of you who comment like and message me. Nothing goes unnoticed 🤓🥰❤️💋💋💋","url":"https://fetlife.com/Minxymomma1973/pictures/192150476","score":0.2366412214,"posted_at":"2025-04-11"},{"time":"8:00 PM","caption":"It was illegal for me to be topless here. Do I go to jail topless too??","url":"https://fetlife.com/Minxymomma1973/pictures/192213026","score":0.2755102041,"posted_at":"2025-04-12"}],"of":{"time":"7:00 PM","folder":"Closeups Explicit","folder_path":"OF Pics\\Closeups Explicit","dump_size":10,"file_range":"files 11–20","file_start":11,"file_end":20,"intro_caption":"🔥 EXPLICIT ROUND 2 🔥 You begged for it. Here are 10 more 👀","captions":["Front row seats are now open 👀 You're welcome.","This close enough for you or do you need a better angle? 😏","You asked to see more…here you go. Do you like what you find? 💋","No zoom required for this one 😈","Up close and very personal. Still think you can handle me? 👀","Details matter. What do you notice first? 🤭","This is what you've been asking for…was it worth the wait? 😘","Pink and perfect…your move 💕","Consider this your reward 😈","This took courage to post. Worth it? 😘"]}},{"day":22,"date":"Monday, June 01, 2026","xi":[{"time":"10:00 AM","caption":"Clean up on aisle 3! Waterproof blankets are worth every penny 💰","url":"https://fetlife.com/Minxymomma1973/pictures/192222595","score":0.1607142857,"posted_at":"2025-04-12"},{"time":"2:00 PM","caption":"Do you like to be dominated?💋💋💋: Not bad for 51 🤔 I know you like me to be on Top 👩‍🏫","url":"https://fetlife.com/Minxymomma1973/videos/7450824","score":0.1406649616,"posted_at":"2025-04-13"},{"time":"8:00 PM","caption":"Muy bonita 😍 too bad I had to wear a 👙","url":"https://fetlife.com/Minxymomma1973/pictures/192294834","score":0.1713554987,"posted_at":"2025-04-13"}],"of":{"time":"7:00 PM","folder":"Beach and Outdoor","folder_path":"OF Pics\\Beach and Outdoor","dump_size":11,"file_range":"files 26–36","file_start":26,"file_end":36,"intro_caption":"🏖️ SUNSET DUMP 🏖️ Last light, best light. 11 outdoor pics 🌊","captions":["I love sneaking nudity into my day. Would you join me? 😜","The ocean and I have an understanding 🌊","Salty hair, no clothes, no problems 😘","Caught between the waves and your gaze 👀","Nature is my dressing room and I'm always underdressed 😈","Sandy and shameless…who's applying my sunscreen? 🌊","I'd rather be naked on a beach. Is that too much to ask? 🏖️","The sun loves my body almost as much as you do 😘","Tan lines are just my body's way of saying I was naughty 😈","Salt air and bare skin…my favorite combination 🌊","Caught the sun staring…same rules apply for you 👀"]}},{"day":23,"date":"Tuesday, June 02, 2026","xi":[{"time":"10:00 AM","caption":"I would make you beg for me! Could you handle that? Would it drive you crazy 😅","url":"https://fetlife.com/Minxymomma1973/pictures/192348310","score":0.2282051282,"posted_at":"2025-04-14"},{"time":"2:00 PM","caption":"Gotta keep my Phat Ass…would you work out with me or just watch?","url":"https://fetlife.com/Minxymomma1973/pictures/192348861","score":0.2794871795,"posted_at":"2025-04-14"},{"time":"8:00 PM","caption":"Shaking my ass! Would you watch or join me?: On my chartered sailboat in Italy! I love to Dance 💃","url":"https://fetlife.com/Minxymomma1973/videos/7460600","score":0.08740359897,"posted_at":"2025-04-15"}],"of":{"time":"7:00 PM","folder":"Hotel Room Shoots","folder_path":"OF Pics\\Hotel Room Shoots","dump_size":11,"file_range":"files 26–36","file_start":26,"file_end":36,"intro_caption":"🛎️ CHECKOUT DROP 🛎️ Final room check. 11 more hotel pics 💋","captions":["Check in was smooth. Check out? Entirely up to you 😈","Somewhere between room service and mischief 🍾","Do Not Disturb sign is very much optional with me 🤭","Turned down the sheets, turned up everything else 💋","This is what vacation looks like for me…jealous? 🌴","Mini bar can wait. I've got better things to offer 😏","Clean towels, dirty thoughts 🛁","They said enjoy your stay. I did 😈","Room service? No thanks. I've got everything I need 😘","Thread count doesn't matter when you're not using the sheets 😏","The best hotel amenity is always me 💋"]}},{"day":24,"date":"Wednesday, June 03, 2026","xi":[{"time":"10:00 AM","caption":"Security almost caught me! I love sneaking nudity into my life. Would you do this?","url":"https://fetlife.com/Minxymomma1973/pictures/192433003","score":0.4061696658,"posted_at":"2025-04-15"},{"time":"2:00 PM","caption":"Part 11 if you catch my drift? 🐫","url":"https://fetlife.com/Minxymomma1973/pictures/192433558","score":0.3650385604,"posted_at":"2025-04-15"},{"time":"8:00 PM","caption":"Another favorite toy of mine meet Rose! Should I introduce more of them in to you?","url":"https://fetlife.com/Minxymomma1973/pictures/192507528","score":0.06443298969,"posted_at":"2025-04-16"}],"of":{"time":"7:00 PM","folder":"Teal LED Bedroom","folder_path":"OF Pics\\Teal LED Bedroom","dump_size":10,"file_range":"files 13–22","file_start":13,"file_end":22,"intro_caption":"💙 NEON ROUND 2 💙 Back under the lights. 10 more teal pics 😏","captions":["Feeling electric tonight 💙 Are you plugged in?","Lit from every angle…just how I like it 💙","Teal me something good 😘","LED lights hit different when there's something worth illuminating 💎","Cool colors, hot content 💙","Blue-green and between the sheets 😈","Neon hours are my hours 💙","Every light in here is on me 😏","Teal hour is officially my favorite time of day 💙","Cool tones, warm body…you do the math 😏"]}},{"day":25,"date":"Thursday, June 04, 2026","xi":[{"time":"10:00 AM","caption":"I love this new Bra it undoes at the front for easy access. Do you want to see it open?","url":"https://fetlife.com/Minxymomma1973/pictures/192508161","score":0.2268041237,"posted_at":"2025-04-16"},{"time":"2:00 PM","caption":"It was so hot I wanted to pour this drink all over myself…would you buy me another?","url":"https://fetlife.com/Minxymomma1973/pictures/192573331","score":0.1834625323,"posted_at":"2025-04-17"},{"time":"8:00 PM","caption":"Somehow I managed to open the sexy black bra…thank you for all your encouragement to set them free!","url":"https://fetlife.com/Minxymomma1973/pictures/192573885","score":0.2687338501,"posted_at":"2025-04-17"}],"of":{"time":"7:00 PM","folder":"Gray Bedroom Full Body","folder_path":"OF Pics\\Gray Bedroom Full Body","dump_size":10,"file_range":"files 24–33","file_start":24,"file_end":33,"intro_caption":"💫 BEDROOM FINAL 💫 Full body, full mood, 10 pics 😘","captions":["Bedroom light, no clothes, no regrets 🥰","Full body inspection…what's your verdict? 😏","Love my 52yr old body…she's been very good to me 🥰","Laid out just for you. Where do you start? 👀","Every inch of this was earned. Do you appreciate the work? 💪","Head to toe and nothing in between 😈","I assume the position…now what are you going to do? 😏","This body has stories. Want me to tell them with it? 💋","Full length, full view, full mood 😘","This is what 52 looks like when you own it 💪"]}},{"day":26,"date":"Friday, June 05, 2026","xi":[{"time":"10:00 AM","caption":"White Lace Panties was on your menu wasn’t it??","url":"https://fetlife.com/Minxymomma1973/pictures/193000670","score":0.3228346457,"posted_at":"2025-04-23"},{"time":"2:00 PM","caption":"What am I up to??","url":"https://fetlife.com/Minxymomma1973/pictures/193001390","score":0.1758530184,"posted_at":"2025-04-23"},{"time":"8:00 PM","caption":"This is what Vacation looks like with me. Hot or not? Would you get excited?: Public stripping on vacation.","url":"https://fetlife.com/Minxymomma1973/videos/7503709","score":0.1394736842,"posted_at":"2025-04-24"}],"of":{"time":"7:00 PM","folder":"Bathroom and Home Selfies","folder_path":"OF Pics\\Bathroom and Home Selfies","dump_size":12,"file_range":"files 43–54","file_start":43,"file_end":54,"intro_caption":"💦 BATH DROP 4 💦 Still the best room in the house. 12 pics 😈","captions":["Starting my day right…care to join? 💦","Clean on the outside. Naughty on the inside 😈","You rang? 😘","Just me and my reflection…do you like what you see? 👀","Getting squeaky clean for you. Care to scrub my back? 🛁","Caught me mid-rinse…now what? 💦","Morning routine interrupted…should I even bother getting dressed? 😘","The mirror never lies…what do you think it's saying? 🤭","Fresh out of the shower and all yours. Where do you start? 💦","My bathroom has the best lighting…or maybe that's just me 😉","Dripping wet and nowhere to be. Wanna keep me company? 💧","Good morning! This is how I start my day…jealous? 😈"]}},{"day":27,"date":"Saturday, June 06, 2026","xi":[{"time":"10:00 AM","caption":"Red Lace Pink hair Black heels. What would you title this photo?","url":"https://fetlife.com/Minxymomma1973/pictures/193077714","score":0.2131578947,"posted_at":"2025-04-24"},{"time":"2:00 PM","caption":"I can’t stop getting them wet! 💦💦: Part Deux Public Nudity","url":"https://fetlife.com/Minxymomma1973/videos/7533496","score":0.1844919786,"posted_at":"2025-04-30"},{"time":"8:00 PM","caption":"When the universe mimics you. What a compliment! 👸","url":"https://fetlife.com/Minxymomma1973/pictures/193523566","score":0.2085561497,"posted_at":"2025-04-30"}],"of":{"time":"7:00 PM","folder":"Dark Sheets with Toys","folder_path":"OF Pics\\Dark Sheets with Toys","dump_size":12,"file_range":"files 41–52","file_start":41,"file_end":52,"intro_caption":"🖤 FINAL NIGHT DROP 🖤 Saving the darkest for last. 12 pics 🖤","captions":["No company needed when you've got good toys 😈","Late night. Dark room. You know the vibe 🖤","Bob never disappoints 💦","Tonight's plans involve these two. Jealous? 😈","These are my best friends 🖤","Bestie Bob wanted to say hi again 💦 He misses you too.","Dark sheets, darker thoughts…want to join me in my head? 😈","I may have a toy addiction. Are you going to help or watch? 👀","Rose says hello 🌹 She's been patient long enough.","Sheets are warm, toys are ready, only thing missing is you 💋","Late night adventures require good company…or great toys 😈","I'm thorough when I'm alone. Imagine when I'm not 😏"]}},{"day":28,"date":"Sunday, June 07, 2026","xi":[{"time":"10:00 AM","caption":"How about that ass! Don’t you just want to spank it? Grab it? Eat it?","url":"https://fetlife.com/Minxymomma1973/pictures/193643700","score":0.252688172,"posted_at":"2025-05-02"},{"time":"2:00 PM","caption":"Please take this bikini off of me! I want to be naked 😢","url":"https://fetlife.com/Minxymomma1973/pictures/193644463","score":0.2661290323,"posted_at":"2025-05-02"},{"time":"8:00 PM","caption":"Reporting for duty! I was captured by two aggressive women combatants & my ass took a beating but I didn't even flinch. Don’t worry I will never spill your secrets…🤫","url":"https://fetlife.com/Minxymomma1973/pictures/193943437","score":0.1630434783,"posted_at":"2025-05-06"}],"of":{"time":"7:00 PM","folder":"Closeups Natural Light","folder_path":"OF Pics\\Closeups Natural Light","dump_size":10,"file_range":"files 25–34","file_start":25,"file_end":34,"intro_caption":"☀️ GOLDEN HOUR FINAL ☀️ Last natural light drop of the month. 10 pics ✨","captions":["No filter needed when the lighting loves you back ✨","Natural and unapologetic. Sound familiar? 😏","Golden hour was made for a body like mine 🌟","This is what real looks like. Do you like real? 💕","Unfiltered. Unapologetic. Undressed 😘","The light did most of the work…I just showed up 🌤️","Natural light hits different when you have nothing to hide 🌤️","Sun-kissed every inch of me…starting here 😘","Soft light, soft skin…hard to resist? 💛","Morning glow. Coffee is optional. This is not 🌅"]}},{"day":29,"date":"Monday, June 08, 2026","xi":[{"time":"10:00 AM","caption":"How does this make you feel?","url":"https://fetlife.com/Minxymomma1973/pictures/193943742","score":0.05434782609,"posted_at":"2025-05-06"},{"time":"2:00 PM","caption":"I wish I was naked on a boat most days…where is my captain??","url":"https://fetlife.com/Minxymomma1973/pictures/194024338","score":0.1389645777,"posted_at":"2025-05-07"},{"time":"8:00 PM","caption":"Crossing my fingers for the leafs tonight! Are you rooting for them too??","url":"https://fetlife.com/Minxymomma1973/pictures/194024515","score":0.2752043597,"posted_at":"2025-05-07"}],"of":{"time":"7:00 PM","folder":"Beach and Outdoor","folder_path":"OF Pics\\Beach and Outdoor","dump_size":10,"file_range":"files 37–46","file_start":37,"file_end":46,"intro_caption":"🌊 CLOSING BEACH DUMP 🌊 Final outdoor drop. 10 pics to close out the month 🏖️","captions":["Nature's dressing room has the best lighting 🌿","Beach body? Already have one. Beach rules? Entirely optional 🏖️","Saltwater fixes everything…including the urge to stay dressed 💦","Public nudity is basically my cardio 🏃‍♀️","I love sneaking nudity into my day. Would you join me? 😜","The ocean and I have an understanding 🌊","Salty hair, no clothes, no problems 😘","Caught between the waves and your gaze 👀","Nature is my dressing room and I'm always underdressed 😈","Sandy and shameless…who's applying my sunscreen? 🌊"]}},{"day":30,"date":"Tuesday, June 09, 2026","xi":[{"time":"10:00 AM","caption":"I love MILF sandwiches! Would you be hungry enough to eat one?","url":"https://fetlife.com/Minxymomma1973/pictures/194138061","score":0.2273972603,"posted_at":"2025-05-09"},{"time":"2:00 PM","caption":"Señorita Selfie in a 🔥 dress and knee high boots. Feeling so sexy…would you let me step on you?","url":"https://fetlife.com/Minxymomma1973/pictures/194138309","score":0.3671232877,"posted_at":"2025-05-09"},{"time":"8:00 PM","caption":"New pedicure for my feet worshippers. Would you like to suck on my toes & play with my feet?","url":"https://fetlife.com/Minxymomma1973/pictures/194447579","score":0.1246537396,"posted_at":"2025-05-13"}],"of":{"time":"7:00 PM","folder":"Dark Sheets with Toys","folder_path":"OF Pics\\Dark Sheets with Toys","dump_size":12,"file_range":"files 53–64","file_start":53,"file_end":64,"intro_caption":"🖤 MONTH-END BOMB 🖤 30 days, and we're ending like this. 12 pics 😈","captions":["The dark is where I let loose…curious what that looks like? 🖤","My bed sees a lot…wanna be part of the story? 💦","My favorite kind of Saturday night 😏","No company needed when you've got good toys 😈","Late night. Dark room. You know the vibe 🖤","Bob never disappoints 💦","Tonight's plans involve these two. Jealous? 😈","These are my best friends 🖤","Bestie Bob wanted to say hi again 💦 He misses you too.","Dark sheets, darker thoughts…want to join me in my head? 😈","I may have a toy addiction. Are you going to help or watch? 👀","Rose says hello 🌹 She's been patient long enough."]}}];
+let currentDay = 1;
+
+// Load saved state
+function getState() {
+  try { return JSON.parse(localStorage.getItem('mm_state') || '{}'); } catch(e){ return {}; }
+}
+function saveState(state) {
+  localStorage.setItem('mm_state', JSON.stringify(state));
+}
+
+// Build day selector
+const sel = document.getElementById('daySelect');
+DAYS.forEach(d => {
+  const opt = document.createElement('option');
+  opt.value = d.day;
+  opt.textContent = `Day ${d.day} — ${d.date.split(', ')[1]}`;
+  sel.appendChild(opt);
+});
+
+function copyText(text, btn) {
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 1800);
+  });
+}
+
+function togglePostDone(day, postIdx) {
+  const state = getState();
+  const key = `d${day}_xi${postIdx}`;
+  state[key] = !state[key];
+  saveState(state);
+  renderDay(currentDay);
+}
+
+function togglePhotoDone(day, photoIdx) {
+  const state = getState();
+  const key = `d${day}_ph${photoIdx}`;
+  state[key] = !state[key];
+  saveState(state);
+  renderDay(currentDay);
+}
+
+function toggleOfDone(day) {
+  const state = getState();
+  const key = `d${day}_of`;
+  state[key] = !state[key];
+  saveState(state);
+  renderDay(currentDay);
+}
+
+function renderDay(dayNum) {
+  const d = DAYS[dayNum - 1];
+  const state = getState();
+
+  document.getElementById('dayNum').textContent = `Day ${d.day}`;
+  document.getElementById('dayDate').textContent = d.date;
+  document.getElementById('prevBtn').disabled = dayNum <= 1;
+  document.getElementById('nextBtn').disabled = dayNum >= 30;
+  document.getElementById('progressFill').style.width = `${(dayNum/30)*100}%`;
+  document.getElementById('daySelect').value = dayNum;
+
+  const xiDone = d.xi.filter((_,i) => state[`d${dayNum}_xi${i}`]).length;
+  const photoDone = d.of ? d.of.captions.filter((_,i) => state[`d${dayNum}_ph${i}`]).length : 0;
+  const ofTotal = d.of ? d.of.dump_size : 0;
+
+  let html = `
+    <div class="day-stats">
+      <div class="stat"><div class="stat-num blue">${xiDone}/${d.xi.length}</div><div class="stat-label">X + Insta posted</div></div>
+      <div class="stat"><div class="stat-num pink">${photoDone}/${ofTotal}</div><div class="stat-label">OF photos uploaded</div></div>
+      <div class="stat"><div class="stat-num">${d.of ? d.of.folder : '—'}</div><div class="stat-label">Today's OF folder</div></div>
+      <div class="stat"><div class="stat-num pink">${d.of ? d.of.file_range : '—'}</div><div class="stat-label">File range to grab</div></div>
+    </div>`;
+
+  // X + INSTAGRAM SECTION
+  html += `<div class="section">
+    <div class="section-title xi">📸 X + Instagram &nbsp;·&nbsp; Post same photo + caption on BOTH simultaneously</div>`;
+
+  d.xi.forEach((post, i) => {
+    const isDone = state[`d${dayNum}_xi${i}`];
+    html += `
+    <div class="post-card${isDone ? ' done' : ''}">
+      <div class="post-card-header">
+        <span class="post-time">${post.time}</span>
+        <div class="platform-tags">
+          <span class="tag x">𝕏 Twitter</span>
+          <span class="tag ig">📸 Instagram</span>
+        </div>
+        <div class="done-check${isDone ? ' checked' : ''}" onclick="togglePostDone(${dayNum},${i})" title="Mark as posted">${isDone ? '✓' : ''}</div>
+      </div>
+      <div class="post-card-body">
+        <p class="caption-text">"${post.caption}"</p>
+        <div class="action-row">
+          <a href="${post.url}" target="_blank" style="text-decoration:none">
+            <button class="btn btn-photo">🔗 Open Photo on Fetlife</button>
+          </a>
+          <button class="btn btn-copy" onclick="copyText('${post.caption.replace(/'/g,"\'")}', this)">📋 Copy Caption</button>
+        </div>
+      </div>
+    </div>`;
+  });
+
+  html += `</div>`;
+
+  // ONLYFANS SECTION
+  html += `<div class="section">
+    <div class="section-title of">🔥 OnlyFans Drop &nbsp;·&nbsp; 7pm (tease on X+Insta at 6pm first!)</div>`;
+
+  if (d.of) {
+    const of = d.of;
+    html += `
+    <div class="of-card">
+      <div class="of-card-header">
+        <div class="of-folder">📁 Folder: <span>${of.folder}</span></div>
+        <div class="of-meta">
+          <span class="of-badge count">📦 ${of.dump_size} photos</span>
+          <span class="of-badge files">📂 ${of.file_range}</span>
+          <span class="of-badge path">OF Pics\${of.folder}</span>
+        </div>
+      </div>
+      <div class="of-intro">
+        <div class="of-intro-label">🚀 Intro Post Caption (post this FIRST before uploading photos)</div>
+        <p class="of-intro-text">${of.intro_caption}</p>
+        <div class="action-row">
+          <button class="btn btn-copy" onclick="copyText('${of.intro_caption.replace(/'/g,"\'")}', this)">📋 Copy Intro Caption</button>
+        </div>
+      </div>
+      <div class="photo-list">
+        <div class="photo-list-label">📸 Per-photo captions — use one caption per photo as you upload</div>`;
+
+    of.captions.forEach((cap, i) => {
+      const isDone = state[`d${dayNum}_ph${i}`];
+      const fileNum = of.file_start + i;
+      html += `
+        <div class="photo-item${isDone ? ' checked' : ''}">
+          <div class="photo-num">${fileNum}</div>
+          <div class="photo-caption">${cap}</div>
+          <button class="photo-copy" onclick="copyText('${cap.replace(/'/g,"\'")}', this)" title="Copy caption">📋</button>
+          <div class="photo-check${isDone ? ' checked' : ''}" onclick="togglePhotoDone(${dayNum},${i})" title="Mark as uploaded">${isDone ? '✓' : ''}</div>
+        </div>`;
+    });
+
+    html += `</div></div>`;
+  }
+
+  html += `</div>`;
+
+  document.getElementById('mainContent').innerHTML = html;
+}
+
+function changeDay(delta) {
+  const newDay = currentDay + delta;
+  if (newDay >= 1 && newDay <= 30) goToDay(newDay);
+}
+
+function goToDay(day) {
+  currentDay = day;
+  renderDay(day);
+}
+
+// Start on today's day if within range, else day 1
+const today = new Date();
+const start = new Date('2026-05-11');
+const diff = Math.floor((today - start) / 86400000) + 1;
+const startDay = (diff >= 1 && diff <= 30) ? diff : 1;
+goToDay(startDay);
+</script>
+</body>
+</html>

@@ -8,9 +8,12 @@ import ThankYouDraftSheet from './ThankYouDraftSheet';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { supabase } from '../../lib/supabase';
 import GrabBar from '../ui/GrabBar';
+import FinancialMathBreakdown from '../ui/FinancialMathBreakdown';
+import { useBusiness } from '../../data/useData';
 
 export default function PostJobSheet({ jobId, onClose }) {
   const { T, mode } = useAppTheme();
+  const { business } = useBusiness();
   const toast = useToast();
   const sheetRef = useRef(null);
   useFocusTrap(sheetRef, true, onClose);
@@ -206,13 +209,6 @@ export default function PostJobSheet({ jobId, onClose }) {
                 <div style={{ fontFamily: T.serif, fontSize: 28, fontWeight: 500, color: mode === 'dark' ? 'white' : T.ink, letterSpacing: '-1px', fontVariantNumeric: 'tabular-nums' }}>
                   ${liveTotal.toFixed(0)}
                 </div>
-                {(isHourly || addlTotal > 0) && (
-                  <div style={{ fontFamily: T.font, fontSize: 9.5, color: mode === 'dark' ? 'rgba(255,255,255,0.45)' : T.inkMuted, marginTop: 2, fontVariantNumeric: 'tabular-nums', lineHeight: 1.4 }}>
-                    {isHourly && `${(actualMinutes/60) % 1 === 0 ? actualMinutes/60 : (actualMinutes/60).toFixed(1)} hrs × $${hourlyRate.toFixed(0)}/hr`}
-                    {addlTotal > 0 && ` + $${addlTotal.toFixed(0)} costs`}
-                    {` = $${liveTotal.toFixed(0)}`}
-                  </div>
-                )}
                 <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, color: mode === 'dark' ? 'rgba(255,255,255,0.5)' : T.inkMuted, textTransform: 'uppercase', marginTop: 2 }}>
                    {isPaidRecord ? 'RECORDED ✓' : 'WRAP-UP'}
                 </div>
@@ -222,6 +218,20 @@ export default function PostJobSheet({ jobId, onClose }) {
         </div>
 
         <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '10px 18px 20px' }}>
+          
+          {!loading && job && (
+            <FinancialMathBreakdown 
+              job={job} 
+              business={business} 
+              liveForm={{
+                pricing_type: job.pricing_type,
+                estimated_hours: actualMinutes / 60,
+                additional_costs_json: costs.filter(c => c.amount !== '')
+              }}
+              T={T} 
+              mode={mode} 
+            />
+          )}
 
           {/* Bug 4 — Hours adjustment prompt */}
           {showHoursPrompt && pendingAdjustedAmt !== null && (

@@ -139,6 +139,8 @@ export default function Home() {
   // Use a stable reference for "today"
   const [today] = useState(() => new Date());
   const [selectedDate, setSelectedDate] = useState(today);
+  const [weekOffset, setWeekOffset] = useState(0);
+
   // Live clock — re-evaluates which job owns the spotlight each minute
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -173,7 +175,10 @@ export default function Home() {
     }
   }, [persona]);
 
-  const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(today, i)), [today]);
+  const weekDays = useMemo(() => {
+    const start = addDays(today, weekOffset * 7);
+    return Array.from({ length: 7 }, (_, i) => addDays(start, i));
+  }, [today, weekOffset]);
 
   const firstName = useMemo(() => {
     try {
@@ -210,12 +215,15 @@ export default function Home() {
   // Today's jobs used for categorized list (spotlight sections use todayJobs directly)
   const filteredSelectedJobs = todayJobs;
 
-  // Jobs for the remaining 6 days of the week strip, grouped by day
+  // Jobs for the remaining days of the week strip, grouped by day
   const futureWeekGroups = useMemo(() => {
     if (!allJobs) return [];
     const groups = [];
-    for (let i = 1; i <= 6; i++) {
-      const d = addDays(today, i);
+    weekDays.forEach(d => {
+      // If we are looking at the current week (weekOffset === 0), skip today
+      // because today's jobs are already prominently displayed in categorized list
+      if (weekOffset === 0 && sameDay(d, today)) return;
+
       const dayJobs = allJobs
         .map(j => {
           if (!j.scheduled_at) return null;
@@ -229,9 +237,9 @@ export default function Home() {
       if (dayJobs.length > 0) {
         groups.push({ date: d, jobs: dayJobs });
       }
-    }
+    });
     return groups;
-  }, [allJobs, today]);
+  }, [allJobs, weekDays, weekOffset, today]);
 
   const overdueJobs = useMemo(() => {
     if (!allJobs) return [];
@@ -364,6 +372,48 @@ export default function Home() {
   const openNewClient = newClientSheet.open;
   const openDetail = financeSheet.open;
 
+  const [isRefreshingTraffic, setIsRefreshingTraffic] = useState(false);
+
+  const handleRefreshTraffic = async (e) => {
+    e.stopPropagation();
+    setIsRefreshingTraffic(true);
+    try {
+      await updateDailyRoutes(todayJobs.map(j => j.raw));
+      notifyDataChanged();
+    } catch (err) {
+      console.error("Traffic refresh failed:", err);
+    } finally {
+      setIsRefreshingTraffic(false);
+    }
+  };
+
+  const handleAddTime = async (job, mins = 30) => {
+    const currentHrs = job.estimated_hours || 0;
+    const newHrs = currentHrs + (mins / 60);
+    try {
+      await updateJob(job.id, { estimated_hours: newHrs });
+      notifyDataChanged();
+    } catch (err) {
+      alert("Could not add time.");
+    }
+  };
+
+  const handleAddQuickCost = async (job) => {
+    const amt = window.prompt("Amount to add ($)?");
+    if (!amt || isNaN(parseFloat(amt))) return;
+    const desc = window.prompt("What for?", "Supplies") || "Extra cost";
+    
+    const currentCosts = Array.isArray(job.additional_costs_json) ? job.additional_costs_json : [];
+    const newCosts = [...currentCosts, { amount: parseFloat(amt), description: desc }];
+    
+    try {
+      await updateJob(job.id, { additional_costs_json: newCosts });
+      notifyDataChanged();
+    } catch (err) {
+      alert("Could not add cost.");
+    }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: T.bg, color: T.ink }}>
       <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', paddingBottom: 80 }}>
@@ -462,8 +512,28 @@ export default function Home() {
             </div>
           )}
 
-          <SectionLabel>This Week</SectionLabel>
-          <div style={{ background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 13, padding: '10px 12px', marginBottom: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
+            <SectionLabel style={{ margin: 0 }}>
+              {weekOffset === 0 ? 'This Week' : (weekOffset < 0 ? 'Previous Week' : 'Future Week')}
+            </SectionLabel>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <button 
+                onClick={() => setWeekOffset(prev => prev - 1)}
+                style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 6, width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.ink, fontSize: 16, cursor: 'pointer' }}
+              >‹</button>
+              {weekOffset !== 0 && (
+                <button 
+                  onClick={() => { setWeekOffset(0); setSelectedDate(today); }}
+                  style={{ background: T.pink, border: 'none', borderRadius: 6, padding: '4px 8px', color: 'white', fontSize: 10, fontWeight: 700, cursor: 'pointer', textTransform: 'uppercase' }}
+                >Today</button>
+              )}
+              <button 
+                onClick={() => setWeekOffset(prev => prev + 1)}
+                style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 6, width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.ink, fontSize: 16, cursor: 'pointer' }}
+              >›</button>
+            </div>
+          </div>
+          <div style={{ background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 13, padding: '10px 12px', marginBottom: 12, marginTop: 8 }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 3 }}>
               {weekDays.map((d, i) => {
                 const isSelected = sameDay(d, selectedDate);
@@ -482,15 +552,30 @@ export default function Home() {
 
           {activeJob && isSelectedToday && (
             <>
-              <SectionLabel>Active Mission · {activeJob.client_name}</SectionLabel>
-              <div style={{ background: mode === 'dark' ? 'linear-gradient(135deg, #1A0B2E 0%, #0D0517 100%)' : T.hero, border: `1.5px solid ${mode === 'dark' ? 'rgba(233,30,106,0.5)' : T.cardBorder}`, borderRadius: 14, padding: '16px 18px', marginBottom: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-                  <Subheading style={{ fontSize: 20, color: mode === 'dark' ? 'white' : T.ink }}>{activeJob.client_name}</Subheading>
-                  <Caption style={{ fontSize: 10, color: mode === 'dark' ? 'rgba(255,255,255,0.5)' : T.inkSub, fontWeight: 600 }}>Scheduled: {fmtTime12(activeJob.start).time} – {fmtTime12(activeJob.end).time}</Caption>
+              <SectionLabel color={T.pink}>✦ MISSION ACTIVE · HAPPENING NOW</SectionLabel>
+              <div style={{ background: mode === 'dark' ? 'linear-gradient(135deg, #1A0B2E 0%, #0D0517 100%)' : T.hero, border: `2px solid ${T.pink}`, borderRadius: 16, padding: '18px', marginBottom: 12, boxShadow: `0 0 20px ${T.pink}30`, position: 'relative', overflow: 'hidden' }}>
+                <div className="sm-pulse" style={{ position: 'absolute', inset: 0, border: `2px solid ${T.pink}`, borderRadius: 16, pointerEvents: 'none' }} />
+                
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                  <Subheading style={{ fontSize: 22, color: mode === 'dark' ? 'white' : T.ink, fontWeight: 700 }}>{activeJob.client_name}</Subheading>
+                  <AmtCell amount={`$${Number(activeJob.total || 0).toFixed(0)}`} size={22} />
                 </div>
-                <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 12 }}>
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16 }}>
+                  <span style={{ fontFamily: T.font, fontSize: 11, fontWeight: 800, color: T.pink, textTransform: 'uppercase', background: `${T.pink}15`, padding: '3px 8px', borderRadius: 6 }}>{activeJob.service_name}</span>
+                  <Caption style={{ fontSize: 11, color: mode === 'dark' ? 'rgba(255,255,255,0.5)' : T.inkSub, fontWeight: 600 }}>until {fmtTime12(activeJob.end).time}{fmtTime12(activeJob.end).period}</Caption>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(0,0,0,0.03)', padding: '12px', borderRadius: 12, marginBottom: 16 }}>
                   <LiveTimer startTime={activeJob.ai_context.clock_in_time} T={T} mode={mode} />
-                  <button onClick={async (e) => { e.stopPropagation(); await handleClockOut(activeJob.id); openPostJob(activeJob.id); }} style={{ background: T.pink, color: 'white', border: 'none', borderRadius: 10, padding: '10px 20px', fontWeight: 700, cursor: 'pointer' }}>Done</button>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={() => handleAddTime(activeJob, 30)} style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 8, padding: '6px 12px', fontSize: 11, fontWeight: 700, color: T.ink, cursor: 'pointer' }}>+ 30m</button>
+                    <button onClick={() => handleAddQuickCost(activeJob)} style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 8, padding: '6px 12px', fontSize: 11, fontWeight: 700, color: T.ink, cursor: 'pointer' }}>+ $ Cost</button>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button onClick={async (e) => { e.stopPropagation(); await handleClockOut(activeJob.id); openPostJob(activeJob.id); }} style={{ flex: 1, background: T.pink, color: 'white', border: 'none', borderRadius: 12, padding: '14px', fontWeight: 800, fontSize: 14, cursor: 'pointer', boxShadow: '0 4px 12px rgba(233,30,106,0.3)' }}>COMPLETE MISSION</button>
                 </div>
               </div>
             </>
@@ -498,8 +583,23 @@ export default function Home() {
 
           {!activeJob && next && isSelectedToday && (
             <>
-              <SectionLabel>What's Next Today · {next.client_name}</SectionLabel>
-              <div onClick={() => openJob(next.id)} style={{ background: T.hero, border: `1.5px solid ${mode === 'dark' ? 'rgba(233,30,106,0.32)' : T.cardBorder}`, borderRadius: 14, padding: '16px', marginBottom: 12, cursor: 'pointer', position: 'relative', overflow: 'hidden' }}>
+              {now >= next.start ? (
+                <SectionLabel color={T.pink}>✦ MISSION READY · START NOW</SectionLabel>
+              ) : (
+                <SectionLabel>What's Next Today · {next.client_name}</SectionLabel>
+              )}
+              
+              <div onClick={() => openJob(next.id)} style={{ 
+                background: T.hero, 
+                border: now >= next.start ? `2px solid ${T.pink}` : `1.5px solid ${mode === 'dark' ? 'rgba(233,30,106,0.32)' : T.cardBorder}`, 
+                borderRadius: 14, 
+                padding: '16px', 
+                marginBottom: 12, 
+                cursor: 'pointer', 
+                position: 'relative', 
+                overflow: 'hidden',
+                boxShadow: now >= next.start ? `0 0 15px ${T.pink}20` : 'none'
+              }}>
                 <div style={{ position: 'absolute', inset: 0, backgroundImage: mode === 'dark' ? 'radial-gradient(circle, rgba(255,255,255,0.02) 1px, transparent 1px)' : `radial-gradient(circle, ${T.pink}08 1px, transparent 1px)`, backgroundSize: '15px 15px', pointerEvents: 'none' }} />
                 
                 <div style={{ position: 'relative' }}>
@@ -524,37 +624,38 @@ export default function Home() {
                     )}
                   </div>
 
-                  {commandBrief && (
-                    <div style={{ background: mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.6)', borderRadius: 12, padding: '12px', marginBottom: 16, border: mode === 'dark' ? 'none' : `1px solid ${T.cardBorder}` }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                        <div style={{ fontFamily: T.font, fontSize: 10, fontWeight: 800, color: mode === 'dark' ? T.pinkLabel : T.pink, textTransform: 'uppercase', letterSpacing: '0.5px' }}>✦ Command Brief</div>
-                        <button onClick={handleToggleSpeak} style={{ background: isSpeaking ? T.pink : (mode === 'dark' ? 'rgba(255,255,255,0.1)' : T.pinkTint), border: 'none', borderRadius: 20, padding: '4px 12px', color: isSpeaking ? 'white' : T.pink, fontSize: 9, fontWeight: 800, cursor: 'pointer' }}>{isSpeaking ? 'STOP' : 'LISTEN'}</button>
+                  {/* Travel Intelligence */}
+                  {next.ai_context?.drive_to && (
+                    <div style={{ 
+                      background: mode === 'dark' ? 'rgba(59,130,246,0.1)' : '#EFF6FF', 
+                      borderRadius: 10, 
+                      padding: '8px 12px', 
+                      marginBottom: 16, 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'space-between',
+                      border: mode === 'dark' ? '1px solid rgba(59,130,246,0.2)' : '1px solid #DBEAFE'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 14 }}>🚗</span>
+                        <Text style={{ fontSize: 11, fontWeight: 700, color: '#1D4ED8' }}>
+                          Traffic: {next.ai_context.drive_to.duration} ({next.ai_context.drive_to.distance})
+                        </Text>
                       </div>
-                      {commandBrief.bullets.map((b, i) => (
-                        <div key={i} style={{ display: 'flex', gap: 8, fontSize: 12, color: mode === 'dark' ? 'rgba(255,255,255,0.85)' : T.inkSub, marginBottom: 6, lineHeight: 1.4 }}>
-                          <span style={{ flexShrink: 0 }}>{b.icon}</span>
-                          <span>{b.text}</span>
-                        </div>
-                      ))}
+                      <button 
+                        onClick={handleRefreshTraffic}
+                        disabled={isRefreshingTraffic}
+                        style={{ background: 'none', border: 'none', color: '#3B82F6', fontSize: 10, fontWeight: 800, textTransform: 'uppercase', cursor: 'pointer', padding: '4px' }}
+                      >
+                        {isRefreshingTraffic ? '...' : 'Refresh ↻'}
+                      </button>
                     </div>
                   )}
 
-                  {(next.client_ai_context?.access || next.client_ai_context?.prefs) && (
-                    <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      {next.client_ai_context.access && (
-                        <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
-                          <span style={{ fontSize: 10, fontWeight: 800, color: T.inkMuted }}>ACCESS:</span>
-                          <span style={{ fontSize: 11, color: T.inkSub }}>{next.client_ai_context.access}</span>
-                        </div>
-                      )}
-                      {next.client_ai_context.prefs && (
-                        <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
-                          <span style={{ fontSize: 10, fontWeight: 800, color: T.inkMuted }}>PREFS:</span>
-                          <span style={{ fontSize: 11, color: T.inkSub }}>{next.client_ai_context.prefs}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                    <button onClick={(e) => { e.stopPropagation(); handleAddTime(next, 30); }} style={{ flex: 1, background: 'rgba(255,255,255,0.4)', border: `1px solid ${T.cardBorder}`, borderRadius: 8, padding: '8px', fontSize: 11, fontWeight: 700, color: T.ink, cursor: 'pointer' }}>+ 30m</button>
+                    <button onClick={(e) => { e.stopPropagation(); handleAddQuickCost(next); }} style={{ flex: 1, background: 'rgba(255,255,255,0.4)', border: `1px solid ${T.cardBorder}`, borderRadius: 8, padding: '8px', fontSize: 11, fontWeight: 700, color: T.ink, cursor: 'pointer' }}>+ $ Cost</button>
+                  </div>
 
                   <CapeUpButton job={next} name={firstName} />
                 </div>
@@ -677,27 +778,39 @@ function JobCard({ j, T, mode, openJob, next, variant, today }) {
   
   const needsDuration = isCompleted && !j.actual_duration;
 
-  let border = '#3B82F6', bg = T.card, accentColor = '#3B82F6', label = { text: 'SCHEDULED', color: '#3B82F6' };
+  // Urgency Heatmap Logic for Unpaid Jobs
+  let urgencyLevel = 0; // 0 (none) to 3 (critical)
+  if (isCompleted && !isPaid) {
+    const daysLate = Math.floor((today - j.start) / 86400000);
+    urgencyLevel = daysLate <= 0 ? 1 : (daysLate === 1 ? 2 : 3);
+  }
+
+  // Color Mapping
+  const COLORS = {
+    upcoming: { border: '#3B82F6', bg: mode === 'dark' ? 'rgba(59,130,246,0.1)' : '#EFF6FF', accent: '#3B82F6' },
+    paid: { border: '#22C55E', bg: mode === 'dark' ? 'rgba(34,197,94,0.1)' : '#F0FFF4', accent: '#22C55E' },
+    next: { border: '#E91E6A', bg: mode === 'dark' ? 'rgba(233,30,106,0.1)' : T.pinkTint, accent: '#E91E6A' },
+    incomplete: { border: '#F59E0B', bg: mode === 'dark' ? 'rgba(245,158,11,0.1)' : '#FFFBEB', accent: '#D97706' },
+    urgency1: { border: '#FCA5A5', bg: '#FFF5F5', accent: '#EF4444' }, // Soft red
+    urgency2: { border: '#F87171', bg: '#FEE2E2', accent: '#DC2626' }, // Medium red
+    urgency3: { border: '#EF4444', bg: '#FECACA', accent: '#B91C1C' }, // High-intensity red
+  };
+
+  let theme = COLORS.upcoming;
+  let label = { text: 'SCHEDULED', color: theme.accent };
 
   if (isIncomplete) {
-    border = '#F59E0B';
-    bg = mode === 'dark' ? 'rgba(245,158,11,0.1)' : '#FFFBEB';
-    accentColor = '#D97706';
-    label = { text: 'NEEDS WRAP-UP', color: '#F59E0B' };
-  } else if (isCompleted && !isPaid) {
-    border = mode === 'dark' ? '#F87171' : '#EF4444';
-    bg = mode === 'dark' ? 'rgba(239,68,68,0.08)' : '#FFF5F5';
-    accentColor = '#EF4444';
-    label = { text: 'UNPAID', color: '#EF4444' };
+    theme = COLORS.incomplete;
+    label = { text: 'NEEDS WRAP-UP', color: theme.accent };
+  } else if (urgencyLevel > 0) {
+    theme = COLORS[`urgency${urgencyLevel}`];
+    label = { text: 'UNPAID', color: theme.accent };
   } else if (isCompleted && isPaid) {
-    border = mode === 'dark' ? 'rgba(34,197,94,0.3)' : '#22C55E';
-    bg = mode === 'dark' ? 'rgba(34,197,94,0.05)' : '#F0FFF4';
-    accentColor = '#22C55E';
-    label = { text: 'PAID ✓', color: '#22C55E' };
+    theme = COLORS.paid;
+    label = { text: 'PAID ✓', color: theme.accent };
   } else if (isNext) {
-    border = 'rgba(233,30,106,0.38)';
-    accentColor = '#E91E6A';
-    label = { text: 'UP NEXT', color: '#E91E6A' };
+    theme = COLORS.next;
+    label = { text: 'UP NEXT', color: theme.accent };
   }
 
   const prepNote = generatePrepNote(j);
@@ -706,62 +819,116 @@ function JobCard({ j, T, mode, openJob, next, variant, today }) {
 
   return (
     <div onClick={() => openJob(j.id)} style={{ 
-      background: bg, 
-      border: `1.5px solid ${border}`, 
-      borderLeft: `5px solid ${accentColor}`,
-      borderRadius: 12, 
-      padding: '10px 12px', 
-      marginBottom: 8, 
+      background: mode === 'dark' ? (urgencyLevel > 0 ? 'rgba(239,68,68,0.15)' : theme.bg) : theme.bg, 
+      border: `1.5px solid ${theme.border}`, 
+      borderLeft: `6px solid ${theme.accent}`,
+      borderRadius: 16, 
+      padding: '14px 16px', 
+      marginBottom: 10, 
       cursor: 'pointer', 
-      transition: 'transform 0.1s',
-      boxShadow: !isPaid && isCompleted ? '0 2px 8px rgba(245,158,11,0.15)' : 'none',
+      transition: 'all 0.15s ease',
+      boxShadow: urgencyLevel >= 2 ? `0 4px 12px ${theme.border}40` : 'none',
       position: 'relative', overflow: 'hidden'
     }}>
-      {/* Subtle geometric pattern for completed cards */}
-      {isCompleted && (
-        <div style={{ position: 'absolute', top: -10, right: -10, width: 60, height: 60, borderRadius: '50%', background: `radial-gradient(circle, ${accentColor}10 0%, transparent 70%)`, pointerEvents: 'none' }} />
-      )}
+      {/* Visual Pattern Watermark to fill space */}
+      <div style={{ position: 'absolute', top: -10, right: -10, width: 80, height: 80, borderRadius: '50%', background: `radial-gradient(circle, ${theme.accent}08 0%, transparent 70%)`, pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', bottom: -20, left: 40, width: 60, height: 60, border: `1px solid ${theme.accent}05`, borderRadius: '50%', pointerEvents: 'none' }} />
 
-      <div style={{ display: 'flex', gap: 12, position: 'relative' }}>
-        {/* TIME/DATE STAND-OUT BLOCK */}
-        <div style={{ width: 64, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: isIncomplete ? 'rgba(245,158,11,0.2)' : isCompleted ? (isPaid ? 'rgba(34,197,94,0.1)' : 'rgba(251,191,36,0.15)') : T.pinkTint, border: `1px solid ${border}`, borderRadius: 10, padding: '6px 4px' }}>
-          <div style={{ fontFamily: T.font, fontSize: 8.5, fontWeight: 900, color: accentColor, textTransform: 'uppercase', lineHeight: 1 }}>{isToday ? 'TODAY' : dateBrief(j.start).split(',')[0]}</div>
-          <div style={{ fontFamily: T.serif, fontSize: 14, fontWeight: 700, color: accentColor, marginBottom: 3 }}>{j.start.getDate()}</div>
-          <div style={{ height: 1, width: 20, background: `${accentColor}40`, marginBottom: 3 }} />
-          <div style={{ fontFamily: T.serif, fontSize: 13, fontWeight: 700, color: accentColor, lineHeight: 1.15 }}>{startTime.time}</div>
-          <div style={{ fontFamily: T.font, fontSize: 8, fontWeight: 800, color: T.inkMuted, textTransform: 'uppercase' }}>{startTime.period}</div>
-          <div style={{ fontFamily: T.font, fontSize: 9, color: T.inkMuted, lineHeight: 1, marginTop: 2 }}>–</div>
-          <div style={{ fontFamily: T.serif, fontSize: 13, fontWeight: 700, color: accentColor, lineHeight: 1.15 }}>{endTime.time}</div>
-          <div style={{ fontFamily: T.font, fontSize: 8, fontWeight: 800, color: T.inkMuted, textTransform: 'uppercase' }}>{endTime.period}</div>
-        </div>
-
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <Subheading style={{ fontSize: 17, fontWeight: 600, color: T.ink, marginBottom: 2 }}>{j.client_name}</Subheading>
-          <Text variant="secondary" style={{ fontSize: 13, fontWeight: 500 }}>{j.service_name}</Text>
-
-          {needsDuration && (
-            <div style={{ fontFamily: T.font, fontSize: 11, fontWeight: 800, color: '#D97706', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
-              <span>⚠</span> MANUAL HOURS NEEDED
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, position: 'relative' }}>
+        
+        {/* TOP ROW: Title & Vitals */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <Subheading style={{ fontSize: 19, fontWeight: 700, color: T.ink, marginBottom: 2, letterSpacing: '-0.3px' }}>
+              {j.client_name}
+            </Subheading>
+            <Text variant="secondary" style={{ fontSize: 13, fontWeight: 600, color: theme.accent }}>
+              {j.service_name}
+            </Text>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 4 }}>
+              <span style={{ fontFamily: T.font, fontSize: 10, fontWeight: 800, color: T.inkMuted, textTransform: 'uppercase', background: 'rgba(0,0,0,0.04)', padding: '2px 6px', borderRadius: 4 }}>
+                {isCompleted ? 'Actual' : 'Est'}: {isCompleted ? (j.actual_duration || j.estimated_hours || 0) : (j.estimated_hours || 0)}h
+              </span>
+              {j.address && (
+                <Caption style={{ fontSize: 11, color: T.inkMuted, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  📍 {j.address.split(',')[0]}
+                </Caption>
+              )}
             </div>
-          )}
+          </div>
 
-          {!isToday && (
-            <div style={{ fontFamily: T.font, fontSize: 12, color: T.inkMuted, marginTop: 4 }}>
-              {dateBrief(j.start)}
+          {/* VITALS BLOCK (TOP RIGHT) */}
+          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+            <div style={{ 
+              fontFamily: T.font, 
+              fontSize: 11, 
+              fontWeight: 800, 
+              color: T.pink, 
+              textTransform: 'uppercase', 
+              letterSpacing: '0.6px',
+              marginBottom: 4
+            }}>
+              {isToday ? 'TODAY' : dateBrief(j.start).toUpperCase()}
             </div>
-          )}
+            <div style={{ 
+              fontFamily: T.serif, 
+              fontSize: 17, 
+              fontWeight: 900, 
+              color: T.pink,
+              lineHeight: 1
+            }}>
+              {startTime.time}{startTime.period}
+            </div>
+            <div style={{ 
+              fontFamily: T.serif, 
+              fontSize: 14, 
+              fontWeight: 800, 
+              color: T.pink,
+              opacity: 0.8,
+              marginTop: 4
+            }}>
+              to {endTime.time}{endTime.period}
+            </div>
+          </div>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'space-between', gap: 4 }}>
-          {label && <span style={{ background: label.color, borderRadius: 5, padding: '4px 9px', fontSize: 11, fontWeight: 800, color: 'white', letterSpacing: '0.2px', whiteSpace: 'nowrap' }}>{label.text}</span>}
-          <AmtCell amount={`$${Number(j.total || 0).toFixed(0)}`} size={15} />
+        {/* BOTTOM ROW: Status & Money */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <span style={{ 
+              background: label.color, 
+              borderRadius: 6, 
+              padding: '4px 9px', 
+              fontSize: 10, 
+              fontWeight: 900, 
+              color: 'white', 
+              letterSpacing: '0.4px', 
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)' 
+            }}>
+              {label.text}
+            </span>
+            {needsDuration && (
+              <span style={{ fontSize: 10, fontWeight: 900, color: '#D97706', background: 'rgba(245,158,11,0.1)', padding: '4px 8px', borderRadius: 6, border: '1px solid #F59E0B' }}>
+                ⚠ ADD HOURS
+              </span>
+            )}
+          </div>
+          <AmtCell amount={`$${Number(j.total || 0).toFixed(0)}`} size={18} />
         </div>
+
       </div>
       
       {prepNote && !isCompleted && (
-        <div style={{ borderTop: `1px dashed ${T.cardBorder}`, paddingTop: 8, marginTop: 8, display: 'flex', gap: 6 }}>
-          <span style={{ fontSize: 9, fontWeight: 800, color: accentColor, flexShrink: 0 }}>✦ PREP</span>
-          <span style={{ fontSize: 10.5, color: T.inkMuted, lineHeight: 1.4 }}>{prepNote}</span>
+        <div style={{ 
+          borderTop: `1px solid ${T.cardBorder}`, 
+          paddingTop: 10, 
+          marginTop: 10, 
+          display: 'flex', 
+          gap: 8,
+          opacity: 0.8
+        }}>
+          <span style={{ fontSize: 9, fontWeight: 900, color: theme.accent, flexShrink: 0 }}>✦ MISSION INTEL</span>
+          <span style={{ fontSize: 11, color: T.inkMuted, lineHeight: 1.4, fontWeight: 500 }}>{prepNote}</span>
         </div>
       )}
     </div>

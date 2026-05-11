@@ -12,6 +12,7 @@ import { generateCommandBrief, speakBrief, stopSpeaking } from '../../data/ai';
 import PrepNoteSheet from '../sheets/PrepNoteSheet';
 import { supabase } from '../../lib/supabase';
 import GrabBar from '../ui/GrabBar';
+import FinancialMathBreakdown from '../ui/FinancialMathBreakdown';
 
 const STATUS_COLORS = {
   Scheduled: { bg: 'rgba(59,130,246,0.12)',   color: '#3B82F6', border: 'rgba(59,130,246,0.25)' },
@@ -164,6 +165,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
           : { flat_rate: null, subtotal: null }),
         estimated_hours: form.estimated_hours === '' ? null : Number(form.estimated_hours),
         job_notes:       form.job_notes || null,
+        additional_costs_json: form.additional_costs_json || [],
         ai_context: {
           ...(job.ai_context || {}),
           payment_method:  form.payment_method,
@@ -198,6 +200,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
       payment_method:  job.ai_context?.payment_method || 'Cash',
       recurrence:      job.ai_context?.recurrence_rule || null,
       job_notes:       job.job_notes || '',
+      additional_costs_json: job.additional_costs_json || [],
     });
     setEditMode(true);
   }
@@ -333,24 +336,16 @@ function ReadMode({
 
       <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '12px 14px 4px' }}>
         <PrepNoteCard job={job} T={T} business={business} onDeepPrep={onDeepPrep} />
+        
+        <SectionLabel>Mission Vitals</SectionLabel>
         <InfoCard T={T}>
           <Row T={T} label="Date" value={fmtDate(job.scheduled_date)} />
           <Row T={T} label="Time" value={timeRange} />
-          <Row T={T} label="Est. hours" value={job.estimated_hours != null ? `${job.estimated_hours}h` : '—'} />
-          {job.actual_duration != null && job.job_status === 'Completed' && (
-            <Row T={T} label="Actual hours" value={fmtDuration(job.actual_duration)} highlight />
-          )}
-          <Row T={T} label="Amount" value={amtDisplay} serif tabular />
-          {(() => {
-            const items = Array.isArray(job.additional_costs_json) && job.additional_costs_json.length > 0
-              ? job.additional_costs_json.filter(c => Number(c.amount) > 0)
-              : (Number(job.additional_cost) > 0 ? [{ amount: job.additional_cost, description: job.additional_cost_notes }] : []);
-            return items.map((item, idx) => (
-              <Row key={idx} T={T} label={idx === 0 ? 'Additional cost' : ''} value={`$${Number(item.amount).toFixed(0)}${item.description ? ` · ${item.description}` : ''}`} />
-            ));
-          })()}
           <Row T={T} label="Pricing" value={job.pricing_type || '—'} last />
         </InfoCard>
+
+        <FinancialMathBreakdown job={job} business={business} T={T} mode={mode} />
+
         {job.job_notes && (
           <InfoCard T={T}>
             <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: T.inkMuted, marginBottom: 6 }}>Pre-job Notes</div>
@@ -449,21 +444,10 @@ function EditMode({ form, setForm, services, business, T, mode, busy, mutErr, sh
           const hrs = parseFloat(e.target.value) || 0;
           set('estimated_hours', e.target.value);
           set('hoursTouched', true);
-          if (form.pricing_type === 'Hourly' && liveHourlyRate > 0 && hrs > 0) set('total_amount', (liveHourlyRate * hrs).toFixed(0));
         }} style={{ ...iStyle(T), width: '100%' }} /></Field>
-        {showMathChip && (
-          <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-            background: mode === 'dark' ? 'rgba(233,30,106,0.09)' : '#FFF0F7',
-            border: `1px solid ${mode === 'dark' ? 'rgba(233,30,106,0.25)' : '#FFBDD9'}`,
-            borderRadius: 10, padding: '8px 14px', marginBottom: 14,
-            fontFamily: T.font, fontVariantNumeric: 'tabular-nums',
-          }}>
-            <span style={{ fontSize: 12, color: T.inkSub }}>{liveHrs % 1 === 0 ? liveHrs : liveHrs.toFixed(1)} hrs × <strong style={{ color: T.ink }}>${liveHourlyRate.toFixed(0)}/hr</strong></span>
-            <span style={{ fontSize: 11, color: T.inkMuted }}>=</span>
-            <span style={{ fontSize: 15, fontWeight: 700, color: T.pink }}>${liveMathTotal.toFixed(0)}</span>
-          </div>
-        )}
+
+        <FinancialMathBreakdown job={job} business={business} liveForm={form} T={T} mode={mode} />
+
         <Field T={T} label="Recurrence">
           <select value={form.recurrence || ''} onChange={e => set('recurrence', e.target.value || null)} style={{ ...iStyle(T), width: '100%' }}>
             {RECURRENCE.map(r => <option key={r.label} value={r.key || ''}>{r.label}</option>)}

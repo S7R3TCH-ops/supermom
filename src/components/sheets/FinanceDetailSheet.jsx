@@ -72,21 +72,36 @@ export default function FinanceDetailSheet({ title, items, type, onClose }) {
               {items.map(item => {
                 if (type === 'jobs') {
                   const amt = `$${Number(item.total || 0).toFixed(0)}`;
+                  const isHourly = item.pricing_type === 'Hourly';
+                  const rate = item.hourly_rate || (item.estimated_hours > 0 ? (item.total / item.estimated_hours) : 0);
+                  const hours = item.actual_duration || item.estimated_hours || 0;
+                  
                   return (
                     <div key={item.id} onClick={() => { onClose(); openJob(item.id); }} style={{
                       background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 12,
-                      padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10,
                       cursor: 'pointer'
                     }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontFamily: T.serif, fontSize: 14, fontWeight: 500, color: T.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <div style={{ fontFamily: T.serif, fontSize: 16, fontWeight: 500, color: T.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {item.client_name}
                         </div>
-                        <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, marginTop: 2 }}>
+                        <div style={{ fontFamily: T.font, fontSize: 11, color: T.inkSub, marginTop: 2 }}>
                           {fmtShortDate(item.scheduled_at)} · {item.service_name}
                         </div>
+                        {(isHourly || item.additional_cost > 0) && (
+                          <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, marginTop: 4, display: 'flex', gap: 6 }}>
+                            {isHourly && <span>{hours % 1 === 0 ? hours : hours.toFixed(1)}h @ ${Number(rate).toFixed(0)}/hr</span>}
+                            {item.additional_cost > 0 && <span>+ ${Number(item.additional_cost).toFixed(0)} costs</span>}
+                          </div>
+                        )}
                       </div>
-                      <AmtCell amount={privacyOn ? '•••' : amt} size={14} />
+                      <div style={{ textAlign: 'right' }}>
+                        <AmtCell amount={privacyOn ? '•••' : amt} size={16} />
+                        <div style={{ fontSize: 9, fontWeight: 700, color: item.payment_status === 'Paid' ? '#22C55E' : T.pink, textTransform: 'uppercase', marginTop: 2 }}>
+                          {item.payment_status || 'Unpaid'}
+                        </div>
+                      </div>
                     </div>
                   );
                 } else if (type === 'expenses') {

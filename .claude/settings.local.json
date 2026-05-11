@@ -33,7 +33,14 @@
       "Skill(update-config)",
       "PowerShell(Get-Command *)",
       "PowerShell($env:PATH)",
-      "PowerShell(& \"C:\\\\Users\\\\jlund\\\\AppData\\\\Local\\\\GitHubDesktop\\\\bin\\\\git.exe\" --version 2>&1)"
+      "PowerShell(& \"C:\\\\Users\\\\jlund\\\\AppData\\\\Local\\\\GitHubDesktop\\\\bin\\\\git.exe\" --version 2>&1)",
+      "Bash(npm test *)",
+      "Bash(npx playwright *)",
+      "Bash(ls -la .env*)",
+      "Bash(cat playwright/.env)",
+      "Bash(npm version *)",
+      "Bash(git stash *)",
+      "Bash(git pull *)"
     ]
   }
 }

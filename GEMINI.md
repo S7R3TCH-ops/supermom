@@ -227,6 +227,11 @@ Full owner flow tested via Playwright (create client → book job → partial pa
 | 1 | Sandra bug batch (v0.4.6) | Hourly total saves as `rate × hours`; Step 3 math breakdown; Service Catalog duration in hours; dynamic DOW labels; full 7-day job list on home; outstanding amounts only for completed jobs; client profile start–end time range |
 | 2 | Larger fonts + status badges (v0.4.6) | Job card fonts bumped; distinct color-coded status badges (blue=Scheduled, pink=Up Next, amber=Needs Wrap-Up, red=Unpaid, green=Paid ✓) |
 | 3 | Live hourly math breakdown (v0.4.7) | NewJobSheet Step 2: live chip `X hrs × $Y/hr = $Z` updates as duration changes; PostJobSheet: header total live as hours/costs change with breakdown line; JobDetailSheet EditMode: auto-computes total when hours change + math chip; fixed `business` scope bug in EditMode |
+| 4 | Home week scrolling (v0.4.8) | Added `‹` and `›` to Home week strip to scroll past/future weeks; "Today" quick-jump button; groups all jobs for selected week below |
+| 5 | Job card visual pop (v0.4.8) | Bolder 900-weight times and status badges; redesigned horizontal layout for better clarity and use of blank space |
+| 6 | Financial Math Breakdown (v0.4.9) | Standardized, transparent math layout across JobDetail, PostJob, and Finance screens; shows hours, rate, additional costs, and taxes clearly; live math updates in edit modes |
+| 7 | Mission Active Spotlight (v0.5.0) | Pulsing 'HAPPENING NOW' UI for ongoing/imminent jobs; quick buttons to add time/costs mid-job; live traffic refresh for next leg |
+| 8 | Card Duration Labels (v0.5.0) | Explicit 'Est' and 'Actual' hour labels on all JobCards for better time awareness |
 
 ## Next priorities (as of May 10, 2026)
 1. ~~**Supabase Redirect Allowlist**~~ — ✅ Done.
@@ -242,4 +247,4 @@ Full owner flow tested via Playwright (create client → book job → partial pa
 11. **Sandra user testing feedback** — gather any friction points from her live session today; prioritize based on what she finds confusing.
 12. **Client Engagement Tools** — AI-suggested follow-ups and re-booking reminders.
 
-(Updated by Claude Code — May 10, 2026)
+(Updated by Gemini CLI — May 10, 2026)

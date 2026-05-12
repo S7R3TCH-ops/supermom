@@ -3,11 +3,38 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAppTheme } from '../context/AppThemeContext';
 import { useAuth } from '../context/AuthContext';
-import { useBusiness, useClients, useJobs } from '../data/useData';
+import { useJobs, useBusiness, useClients } from '../data/useData';
 import { useToast } from '../context/ToastContext';
 import { SectionLabel } from '../components/ui/typography';
 import { useViewpoint } from '../context/ViewpointContext';
 import ServiceCatalogSheet from '../components/sheets/ServiceCatalogSheet';
+
+function ToggleBtn({ show, onToggle, color }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      style={{
+        position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+        background: 'transparent', border: 'none', cursor: 'pointer',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 4, color: color || 'var(--ink-muted)',
+      }}
+    >
+      {show ? (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+          <line x1="1" y1="1" x2="23" y2="23" />
+        </svg>
+      ) : (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+          <circle cx="12" cy="12" r="3" />
+        </svg>
+      )}
+    </button>
+  );
+}
 
 export default function Admin() {
   const { T, mode } = useAppTheme();
@@ -32,6 +59,11 @@ export default function Admin() {
   const [selectedBizId, setSelectedBizId] = useState('');
   const [showServices, setShowServices] = useState(false);
 
+  // Clear pending style when business data actually updates to match - adjusting state during render
+  if (pendingStyle && business?.ai_profile?.style === pendingStyle) {
+    setPendingStyle(null);
+  }
+
   const handleStyleChange = async (style) => {
     if (!business) return;
     setIsSaving(true);
@@ -52,18 +84,11 @@ export default function Admin() {
     if (biz) switchTo(biz.id, biz.owner_name || biz.name);
   };
 
-  const revenueYtd = jobs
-    .filter(j => j.raw.job_status === 'Completed')
-    .reduce((sum, j) => sum + Number(j.raw.total_amount || 0), 0);
+  const revenueYtd = (jobs || [])
+    .filter(j => j.raw?.job_status === 'Completed')
+    .reduce((sum, j) => sum + Number(j.raw?.total_amount || 0), 0);
 
   const aiStyle = pendingStyle || business?.ai_profile?.style || 'professional';
-
-  // Clear pending style when business data actually updates to match
-  useEffect(() => {
-    if (pendingStyle && business?.ai_profile?.style === pendingStyle) {
-      setPendingStyle(null);
-    }
-  }, [pendingStyle, business?.ai_profile?.style]);
 
   const [testResult, setTestResult] = useState('');
   const [isTesting, setIsTesting] = useState(false);
@@ -185,31 +210,6 @@ export default function Admin() {
     }
   };
 
-  const ToggleBtn = ({ show, onToggle }) => (
-    <button
-      type="button"
-      onClick={onToggle}
-      style={{
-        position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
-        background: 'transparent', border: 'none', cursor: 'pointer',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: 4, color: T.inkMuted,
-      }}
-    >
-      {show ? (
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-          <line x1="1" y1="1" x2="23" y2="23" />
-        </svg>
-      ) : (
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-          <circle cx="12" cy="12" r="3" />
-        </svg>
-      )}
-    </button>
-  );
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: T.bg, color: T.ink }}>
       {/* Hero */}
@@ -311,7 +311,7 @@ export default function Admin() {
             <div style={{ background: '#1C1C1E', border: '1.5px solid #8B0E3F', borderRadius: 16, padding: '14px', marginBottom: 20 }}>
               <div style={{ fontSize: 11, color: '#FF78B0', marginBottom: 12, fontWeight: 600 }}>Soft-delete businesses (immediately hides them from UI).</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {allBusinesses.filter(b => !b.deleted_at).map(b => (
+                {(allBusinesses || []).filter(b => !b.deleted_at).map(b => (
                   <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '10px 12px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)' }}>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ color: 'white', fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.name}</div>
@@ -327,7 +327,7 @@ export default function Admin() {
 
         <SectionLabel>Overview</SectionLabel>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
-          <StatCard T={T} label="Total Clients" value={clientsLoading ? '...' : clients.length} />
+          <StatCard T={T} label="Total Clients" value={clientsLoading ? '...' : (clients || []).length} />
           <StatCard T={T} label="Revenue YTD" value={jobsLoading ? '...' : `$${revenueYtd.toFixed(0)}`} />
         </div>
 
@@ -508,6 +508,20 @@ export default function Admin() {
     </div>
   );
 }
+
+const RESET_TABLES = [
+  'audit_log',
+  'communication_log',
+  'notification_log',
+  'payments',
+  'invoice_jobs',
+  'invoices',
+  'jobs',
+  'job_templates',
+  'template_schedule',
+  'clients',
+  'expense_log'
+];
 
 function StatCard({ T, label, value }) {
   return (

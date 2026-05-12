@@ -5,13 +5,14 @@ export const SectionLabel = ({
   color, 
   style, 
   serif = true, 
-  component: Component = 'div', 
+  component = 'div', 
   ...props 
 }) => {
   const { T } = useAppTheme();
+  const Tag = component;
   
   return (
-    <Component style={{
+    <Tag style={{
       fontFamily: serif ? T.serif : T.font,
       fontSize: 10,
       fontWeight: serif ? 700 : 800,
@@ -23,7 +24,7 @@ export const SectionLabel = ({
       ...style
     }} {...props}>
       {children}
-    </Component>
+    </Tag>
   );
 };
 

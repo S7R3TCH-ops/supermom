@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { triggerHaptic } from '../../lib/haptics';
 

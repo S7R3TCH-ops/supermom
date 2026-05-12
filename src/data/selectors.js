@@ -102,6 +102,8 @@ export function toDisplayClient(row, jobs = []) {
         service: j?.service_name,
         time: endStr ? `${startStr} – ${endStr}` : startStr,
         amt: `$${Number(j?.total_amount || 0).toFixed(0)}`,
+        job_status: j?.job_status || 'Scheduled',
+        payment_status: j?.payment_status || '',
       };
     }),
     history: past.map(j => ({
@@ -112,7 +114,8 @@ export function toDisplayClient(row, jobs = []) {
               : j?.estimated_hours ? fmtDur(Number(j.estimated_hours) * 60)
               : '—',
       amt: `$${Number(j?.total_amount || 0).toFixed(0)}`,
-      status: j?.payment_status === 'Paid' ? 'paid' : 'unpaid',
+      status: j?.payment_status === 'Paid' ? 'paid' : j?.payment_status === 'Partial' ? 'partial' : 'unpaid',
+      job_status: j?.job_status || 'Completed',
     })),
   };
 }

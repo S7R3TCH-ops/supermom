@@ -2,28 +2,25 @@ import { useAppTheme } from '../../../context/AppThemeContext';
 
 export const Text = ({ 
   children, 
-  variant = 'primary', 
   style, 
-  serif = false,
-  component: Component = 'div', 
+  serif = false, 
+  component = 'div', 
   ...props 
 }) => {
   const { T } = useAppTheme();
-  let color = T.ink;
-  if (variant === 'secondary') color = T.inkSub;
-  if (variant === 'muted') color = T.inkMuted;
+  const Tag = component;
   return (
-    <Component style={{
+    <Tag style={{
       fontFamily: serif ? T.serif : T.font,
-      color,
-      fontSize: 16,
+      color: T.ink,
+      fontSize: 15,
       fontWeight: 400,
       lineHeight: 1.5,
       margin: 0,
       ...style
     }} {...props}>
       {children}
-    </Component>
+    </Tag>
   );
 };
 

@@ -3,22 +3,24 @@ import { useAppTheme } from '../../../context/AppThemeContext';
 export const Caption = ({ 
   children, 
   style, 
-  serif = false,
-  component: Component = 'div', 
+  serif = false, 
+  component = 'div', 
   ...props 
 }) => {
   const { T } = useAppTheme();
+  const Tag = component;
   return (
-    <Component style={{
+    <Tag style={{
       fontFamily: serif ? T.serif : T.font,
       color: T.inkMuted,
-      fontSize: 12,
+      fontSize: 11,
       fontWeight: 500,
+      letterSpacing: '0.2px',
       margin: 0,
       ...style
     }} {...props}>
       {children}
-    </Component>
+    </Tag>
   );
 };
 

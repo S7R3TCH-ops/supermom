@@ -172,9 +172,9 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
         {/* Header */}
         <div style={{ padding: '16px 20px', borderBottom: `1px solid ${T.cardBorder}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <SectionLabel serif={false} style={{ marginBottom: 4 }}>Booking: Step {step} of 2</SectionLabel>
+            <SectionLabel serif={false} style={{ marginBottom: 4 }}>Booking: Step {step} of 3</SectionLabel>
             <div style={{ fontFamily: T.serif, fontSize: 20, fontWeight: 500, color: T.ink }}>
-              {step === 1 ? 'Who is it for?' : 'Mission Details'}
+              {step === 1 ? 'Who is it for?' : step === 2 ? 'Mission Details' : 'Review & Confirm'}
             </div>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, color: T.inkMuted, cursor: 'pointer' }}>×</button>
@@ -188,7 +188,7 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
               onNew={() => setShowNewClient(true)}
               T={T}
             />
-          ) : (
+          ) : step === 2 ? (
             <Step2What
               selectedClient={selectedClient}
               services={services}
@@ -210,16 +210,29 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
               business={business}
               T={T}
             />
+          ) : (
+            <Step3Review
+              selectedClient={selectedClient}
+              services={services}
+              serviceId={serviceId}
+              date={date}
+              time={time}
+              duration={duration}
+              recurrence={recurrence}
+              notes={bookingNotes}
+              business={business}
+              T={T}
+            />
           )}
         </div>
 
         {/* Footer */}
         <div style={{ padding: '10px 18px 18px', borderTop: `1px solid ${T.cardBorder}`, display: 'flex', gap: 10, background: T.bg }}>
-          {step === 2 && (
-            <button onClick={() => setStep(1)} style={{ flex: 1, background: 'transparent', border: `1.5px solid ${T.cardBorder}`, color: T.inkMuted, borderRadius: 12, padding: '12px 0', fontFamily: T.font, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Back</button>
+          {step > 1 && (
+            <button onClick={() => setStep(step - 1)} style={{ flex: 1, background: 'transparent', border: `1.5px solid ${T.cardBorder}`, color: T.inkMuted, borderRadius: 12, padding: '12px 0', fontFamily: T.font, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Back</button>
           )}
           <button 
-            onClick={step === 1 ? (clientId ? () => setStep(2) : () => {}) : handleBook} 
+            onClick={step === 1 ? (clientId ? () => setStep(2) : () => {}) : step === 2 ? () => setStep(3) : handleBook} 
             disabled={busy || (step === 1 && !clientId) || (step === 2 && !serviceId)} 
             style={{ 
               flex: 2, background: (busy || (step === 1 && !clientId) || (step === 2 && !serviceId)) ? T.pinkTint : '#E91E6A', 
@@ -228,7 +241,7 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
               boxShadow: '0 4px 12px rgba(233,30,106,0.3)' 
             }}
           >
-            {busy ? 'Booking...' : step === 1 ? 'Next' : 'Confirm Booking'}
+            {busy ? 'Booking...' : step < 3 ? 'Next' : 'Confirm Booking'}
           </button>
         </div>
         
@@ -426,6 +439,63 @@ function Step2What({
       </div>
 
       <div style={{ height: 20 }} />
+    </div>
+  );
+}
+
+function Step3Review({ 
+  selectedClient, services, serviceId, 
+  date, time, duration, recurrence, notes, 
+  business, T 
+}) {
+  const service = services.find(s => s.id === serviceId);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <SectionLabel>Review Booking</SectionLabel>
+      <div style={{ padding: '16px', background: T.card, borderRadius: 16, border: `1px solid ${T.cardBorder}`, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div>
+          <div style={{ fontSize: 11, color: T.inkMuted, textTransform: 'uppercase', fontWeight: 700 }}>Client</div>
+          <div style={{ fontSize: 15, fontWeight: 600, color: T.ink }}>{selectedClient?.firstName} {selectedClient?.lastName}</div>
+        </div>
+        <div>
+          <div style={{ fontSize: 11, color: T.inkMuted, textTransform: 'uppercase', fontWeight: 700 }}>Mission</div>
+          <div style={{ fontSize: 15, fontWeight: 600, color: T.ink }}>{service?.name}</div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div>
+            <div style={{ fontSize: 11, color: T.inkMuted, textTransform: 'uppercase', fontWeight: 700 }}>Date</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: T.ink }}>{date}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: T.inkMuted, textTransform: 'uppercase', fontWeight: 700 }}>Time</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: T.ink }}>{time}</div>
+          </div>
+        </div>
+        <div>
+          <div style={{ fontSize: 11, color: T.inkMuted, textTransform: 'uppercase', fontWeight: 700 }}>Recurrence</div>
+          <div style={{ fontSize: 15, fontWeight: 600, color: T.ink }}>{recurrence || 'One-time'}</div>
+        </div>
+      </div>
+
+      <FinancialMathBreakdown
+        job={{
+          pricing_type: service?.pricing_type || 'Hourly',
+          flat_rate: service?.use_business_default ? business?.hourly_rate : (service?.default_price || 0),
+          estimated_hours: duration / 60
+        }}
+        actualMinutes={duration}
+        business={business}
+        T={T}
+      />
+      
+      {notes && (
+        <div>
+          <SectionLabel>Notes</SectionLabel>
+          <div style={{ padding: '12px', background: T.card, borderRadius: 12, border: `1px solid ${T.cardBorder}`, fontSize: 13, color: T.ink, fontStyle: 'italic' }}>
+            "{notes}"
+          </div>
+        </div>
+      )}
     </div>
   );
 }

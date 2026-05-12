@@ -4,12 +4,13 @@ export const Title = ({
   children, 
   style, 
   serif = true, 
-  component: Component = 'h1', 
+  component = 'h1', 
   ...props 
 }) => {
   const { T } = useAppTheme();
+  const Tag = component;
   return (
-    <Component style={{
+    <Tag style={{
       fontFamily: serif ? T.serif : T.font,
       color: T.ink,
       fontSize: 28,
@@ -19,7 +20,7 @@ export const Title = ({
       ...style
     }} {...props}>
       {children}
-    </Component>
+    </Tag>
   );
 };
 

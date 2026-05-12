@@ -5,7 +5,7 @@ import { useFocusTrap } from '../../hooks/useFocusTrap';
 import GrabBar from '../ui/GrabBar';
 
 export default function PrepNoteSheet({ isOpen, onClose, clientId, businessProfile }) {
-  const { T, mode } = useAppTheme();
+  const { T } = useAppTheme();
   const sheetRef = useRef(null);
   useFocusTrap(sheetRef, isOpen, onClose);
   const [summary, setSummary] = useState('');

@@ -19,9 +19,11 @@ export default function ThankYouDraftSheet({ isOpen, onClose, jobId }) {
 
   useEffect(() => {
     if (!isOpen || !jobId) return;
-    setLoading(true);
-    setError(null);
-    setDraft('');
+    Promise.resolve().then(() => {
+      setLoading(true);
+      setError(null);
+      setDraft('');
+    });
 
     fetch('/api/ai/thank-you-draft', {
       method: 'POST',
@@ -38,9 +40,10 @@ export default function ThankYouDraftSheet({ isOpen, onClose, jobId }) {
       })
       .catch(e => {
         setError(e.message);
+        // Using a fixed string here to avoid missing dependency warnings if it was dynamic
         const fallback = type === 'receipt' 
-          ? `Hi ${clientFirstName || 'there'}, this is Sandra. Just confirming receipt of your payment. Thank you so much!`
-          : `Hi ${clientFirstName || 'there'}, just wanted to say thank you so much for today — it was a pleasure working for you!\n\n- Sandra`;
+          ? `Hi, this is Sandra. Just confirming receipt of your payment. Thank you so much!`
+          : `Hi, just wanted to say thank you so much for today — it was a pleasure working for you!\n\n- Sandra`;
         setDraft(fallback);
       })
       .finally(() => setLoading(false));

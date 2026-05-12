@@ -20,6 +20,7 @@
 - [x] **GCal Sync: Series deletes were capped at 5** — Same fix as series updates. *(Fixed May 1, 2026 — Gemini CLI)*
 - [x] **Duplicate DST/timezone logic** — `NewJobSheet.jsx` and `jobsRepo.js` both had DST logic. Fixed: `NewJobSheet` now imports `composeTorontoISO`. *(Verified May 1, 2026 — Gemini CLI)*
 - [x] **Stale TODAY constant in Calendar.jsx** — Fixed: Replaced with `NOW()` dynamic getter. *(Verified May 1, 2026 — Gemini CLI)*
+- [x] **Crash: SectionLabel ReferenceError** — Standardized all imports to `import { SectionLabel } from '../ui/typography';` (or equivalent) and verified balanced JSX tags in `PostJobSheet.jsx`, `ServiceCatalogSheet.jsx`, `Home.jsx`, and others. Fixed hook violation in `Home.jsx`. *(Fixed May 12, 2026 — Gemini CLI)*
 
 ---
 

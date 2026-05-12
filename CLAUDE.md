@@ -80,7 +80,9 @@ This is a **managed service product** — Sandra is the first user, but the arch
 - **Supabase migrations are NOT auto-applied** — the `supabase/migrations/` folder is documentation only. Any schema changes must be pasted and run manually in the Supabase dashboard SQL Editor. The Supabase CLI is not set up on this project.
 - Silent write failures (RLS blocking with no error) are now surfaced in `ServiceCatalogSheet.jsx` — upsert and soft-delete both call `.select()` and throw if 0 rows are returned.
 
-(Updated by Claude Code — May 4, 2026)
+- [x] Codebase Stability (v0.5.1) — Achieved **0 lint errors** by resolving 140+ issues including hook violations, cascading renders, and unused variables; configured Node.js globals for API directory.
+
+(Updated by Gemini CLI — May 12, 2026)
 
 ---
 

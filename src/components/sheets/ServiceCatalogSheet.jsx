@@ -76,7 +76,9 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
   }, [business?.hourly_rate]);
 
   useEffect(() => {
-    if (isOpen) refresh();
+    if (isOpen) {
+      Promise.resolve().then(() => refresh());
+    }
   }, [isOpen, refresh]);
 
   if (!isOpen) return null;
@@ -207,7 +209,7 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
         {/* Header */}
         <div style={{ padding: '16px 20px', borderBottom: `1px solid ${T.cardBorder}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <div style={{ fontFamily: T.font, fontSize: 10, fontWeight: 700, color: T.pink, textTransform: 'uppercase', letterSpacing: '1px' }}>ADMIN TOOLS</div>
+            <SectionLabel serif={false} style={{ marginBottom: 4 }}>ADMIN TOOLS</SectionLabel>
             <div style={{ fontFamily: T.serif, fontSize: 20, fontWeight: 500, color: T.ink }}>Service Catalog</div>
           </div>
           <button onClick={attemptClose} style={{ background: 'none', border: 'none', fontSize: 20, color: T.inkMuted, cursor: 'pointer' }}>×</button>

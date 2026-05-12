@@ -6,12 +6,11 @@ import { clearBusinessCache } from '../data/currentBusiness';
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(hasSupabaseConfig);
   const [recoveryMode, setRecoveryMode] = useState(false);
 
   useEffect(() => {
     if (!hasSupabaseConfig) {
-      setLoading(false);
       return;
     }
 

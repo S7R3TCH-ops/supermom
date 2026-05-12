@@ -1,15 +1,14 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { SectionLabel } from '../ui/typography';
 import { fetchJobById, recordPayment } from '../../data/jobsRepo';
-import { notifyDataChanged } from '../../data/useData';
+import { notifyDataChanged, useBusiness } from '../../data/useData';
 import { useToast } from '../../context/ToastContext';
 import ThankYouDraftSheet from './ThankYouDraftSheet';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { supabase } from '../../lib/supabase';
 import GrabBar from '../ui/GrabBar';
 import FinancialMathBreakdown from '../ui/FinancialMathBreakdown';
-import { useBusiness } from '../../data/useData';
 
 export default function PostJobSheet({ jobId, onClose }) {
   const { T, mode } = useAppTheme();
@@ -27,64 +26,99 @@ export default function PostJobSheet({ jobId, onClose }) {
   // payStatus: 'paid' | 'partial' | 'unpaid'
   const [payStatus, setPayStatus] = useState('paid');
   const [busy, setBusy] = useState(false);
-  const [mutErr, setMutErr] = useState(null);
   const [done, setDone] = useState(false);
   const [showThankYou, setShowThankYou] = useState(false);
   const [invoiceId, setInvoiceId] = useState(null);
   const [costs, setCosts] = useState([{ amount: '', description: '' }]);
   const [showHoursPrompt, setShowHoursPrompt] = useState(false);
   const [pendingAdjustedAmt, setPendingAdjustedAmt] = useState(null);
+  // Track whether this is the first time actualMinutes was set by job load
+  // so we don't overwrite the pre-filled amount on mount
+  const hoursInitialized = useRef(false);
+
+  // Derived state defined early to satisfy linter and simplify logic
+  const totalAmt = parseFloat(job?.total_amount ?? job?.flat_rate ?? 0);
+  const isHourly = job?.pricing_type === 'Hourly';
+  const hourlyRate = useMemo(() => {
+    if (!job) return 0;
+    return (Number(job.flat_rate) || (job.estimated_hours > 0 ? totalAmt / job.estimated_hours : totalAmt));
+  }, [job, totalAmt]);
+  
+  const liveTotal = useMemo(() => {
+    const liveTotalBase = isHourly ? hourlyRate * (actualMinutes / 60) : totalAmt;
+    const addlTotal = costs.reduce((s, c) => s + (parseFloat(c.amount) || 0), 0);
+    return Math.round((liveTotalBase + addlTotal) * 100) / 100;
+  }, [isHourly, hourlyRate, actualMinutes, totalAmt, costs]);
 
   useEffect(() => {
-    setLoading(true);
-    setFetchErr(null);
+    if (!jobId) return;
+    let alive = true;
+    Promise.resolve().then(() => setFetchErr(null));
     fetchJobById(jobId)
-      .then(j => {
-        setJob(j);
-        setJobNotes(j?.completion_notes || '');
-        const fullTotal = Number(j?.total_amount ?? j?.flat_rate ?? 0);
-        // For partial-paid jobs, pre-fill the remaining balance instead of full total
-        if (j?.payment_status === 'Partial') {
-          supabase
-            .from('payments')
-            .select('amount')
-            .eq('job_id', jobId)
-            .eq('is_void', false)
-            .then(({ data: pays }) => {
-              const alreadyPaid = (pays ?? []).reduce((s, p) => s + Number(p.amount), 0);
-              const remaining = Math.round(Math.max(0, fullTotal - alreadyPaid) * 100) / 100;
-              setAmount(String(remaining > 0 ? remaining : fullTotal));
-            })
-            .catch(() => setAmount(String(fullTotal)));
-        } else {
-          setAmount(String(fullTotal));
-        }
-        // Round to nearest 30-min increment
-        const srcHours = j?.actual_duration || j?.estimated_hours || 1;
-        const rawMin = Math.round(srcHours * 60);
-        const snapped = Math.max(30, Math.round(rawMin / 30) * 30);
-        setActualMinutes(snapped);
-        setCosts([{ amount: '', description: '' }]);
-        if (j?.additional_costs_json?.length > 0) {
-          setCosts(j.additional_costs_json.map(c => ({ amount: String(c.amount), description: c.description || '' })));
-        } else if (j?.additional_cost > 0) {
-          setCosts([{ amount: String(j.additional_cost), description: j.additional_cost_notes || '' }]);
-        }
+      .then(j => { 
+        if (alive) { 
+          setJob(j); 
+          setJobNotes(j?.completion_notes || '');
+          const fullTotal = Number(j?.total_amount ?? j?.flat_rate ?? 0);
+          // For partial-paid jobs, pre-fill the remaining balance instead of full total
+          if (j?.payment_status === 'Partial') {
+            supabase
+              .from('payments')
+              .select('amount')
+              .eq('job_id', jobId)
+              .eq('is_void', false)
+              .then(({ data: pays }) => {
+                const alreadyPaid = (pays ?? []).reduce((s, p) => s + Number(p.amount), 0);
+                const remaining = Math.round(Math.max(0, fullTotal - alreadyPaid) * 100) / 100;
+                setAmount(String(remaining > 0 ? remaining : fullTotal));
+              })
+              .catch(() => setAmount(String(fullTotal)));
+          } else {
+            setAmount(String(fullTotal));
+          }
+          // Round to nearest 30-min increment
+          const srcHours = j?.actual_duration || j?.estimated_hours || 1;
+          const rawMin = Math.round(srcHours * 60);
+          const snapped = Math.max(30, Math.round(rawMin / 30) * 30);
+          setActualMinutes(snapped);
+          setCosts([{ amount: '', description: '' }]);
+          if (j?.additional_costs_json?.length > 0) {
+            setCosts(j.additional_costs_json.map(c => ({ amount: String(c.amount), description: c.description || '' })));
+          } else if (j?.additional_cost > 0) {
+            setCosts([{ amount: String(j.additional_cost), description: j.additional_cost_notes || '' }]);
+          }
 
-        supabase
-          .from('invoice_jobs')
-          .select('invoice_id')
-          .eq('job_id', jobId)
-          .maybeSingle()
-          .then(({ data }) => {
-            if (data) setInvoiceId(data.invoice_id);
-          });
+          supabase
+            .from('invoice_jobs')
+            .select('invoice_id')
+            .eq('job_id', jobId)
+            .maybeSingle()
+            .then(({ data }) => {
+              if (data && alive) setInvoiceId(data.invoice_id);
+            });
+        } 
       })
-      .catch(e => setFetchErr(e.message))
-      .finally(() => setLoading(false));
+      .catch(e => { if (alive) setFetchErr(e.message || String(e)); })
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
   }, [jobId]);
 
+  // When actual hours change after initial load, sync the payment amount (for non-partial status)
+  // so the input field stays consistent with the live total shown in the header
+  useEffect(() => {
+    if (!hoursInitialized.current) {
+      hoursInitialized.current = true;
+      return;
+    }
+    if (!job || !isHourly) return;
+    if (payStatus !== 'partial') {
+      Promise.resolve().then(() => setAmount(String(Math.round(liveTotal * 100) / 100)));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [actualMinutes, liveTotal, isHourly]);
+
   async function handleLogPayment(overrideAmt = null) {
+    if (!job) return;
     const jobDate = new Date(job.scheduled_date + 'T00:00:00');
     const today = new Date();
     today.setHours(0,0,0,0);
@@ -95,10 +129,10 @@ export default function PostJobSheet({ jobId, onClose }) {
 
     const totalDuration = actualMinutes / 60;
 
-    // Bug 4: Hourly job — if actual hours differ from estimated, prompt to adjust amount
+    // Hourly job — if actual hours differ from estimated, prompt to adjust amount
     if (overrideAmt === null && job.pricing_type === 'Hourly' && job.estimated_hours && totalDuration !== job.estimated_hours) {
-      const hourlyRate = job.estimated_hours > 0 ? (parseFloat(amount) || 0) / job.estimated_hours : 0;
-      const adjusted = Math.round(hourlyRate * totalDuration * 100) / 100;
+      const hRate = job.estimated_hours > 0 ? (parseFloat(amount) || 0) / job.estimated_hours : 0;
+      const adjusted = Math.round(hRate * totalDuration * 100) / 100;
       if (Math.abs(adjusted - (parseFloat(amount) || 0)) > 0.5) {
         setPendingAdjustedAmt(adjusted);
         setShowHoursPrompt(true);
@@ -107,7 +141,6 @@ export default function PostJobSheet({ jobId, onClose }) {
     }
 
     setBusy(true);
-    setMutErr(null);
     try {
       const baseAmt = overrideAmt !== null ? overrideAmt : (parseFloat(amount) || 0);
       const paidAmt = payStatus === 'paid' ? baseAmt : payStatus === 'partial' ? (parseFloat(amount) || 0) : 0;
@@ -133,18 +166,9 @@ export default function PostJobSheet({ jobId, onClose }) {
     } catch (e) {
       const msg = e.message || String(e);
       toast.error(msg);
-      setMutErr(msg);
       setBusy(false);
     }
   }
-
-  const isPaidRecord = job?.payment_status === 'Paid';
-  const totalAmt = parseFloat(job?.total_amount ?? job?.flat_rate ?? 0);
-  const isHourly = job?.pricing_type === 'Hourly';
-  const hourlyRate = job ? (Number(job.flat_rate) || (job.estimated_hours > 0 ? totalAmt / job.estimated_hours : totalAmt)) : 0;
-  const liveTotalBase = isHourly ? hourlyRate * (actualMinutes / 60) : totalAmt;
-  const addlTotal = costs.reduce((s, c) => s + (parseFloat(c.amount) || 0), 0);
-  const liveTotal = Math.round((liveTotalBase + addlTotal) * 100) / 100;
 
   function fmtMins(min) {
     const h = min / 60;
@@ -153,6 +177,8 @@ export default function PostJobSheet({ jobId, onClose }) {
     if (h === 1) return '1 hr';
     return `${h} hrs`;
   }
+
+  const isPaidRecord = job?.payment_status === 'Paid';
 
   return (
     <div ref={sheetRef} role="dialog" aria-modal="true" aria-label="Complete job" style={{
@@ -165,198 +191,228 @@ export default function PostJobSheet({ jobId, onClose }) {
         @keyframes pjFade { from { opacity: 0; } to { opacity: 1; } }
         @keyframes pjSlide { from { transform: translateY(100%); } to { transform: translateY(0); } }
       `}</style>
-
-      <div onClick={onClose} style={{ flex: 1, minHeight: 40 }} />
-
-      <div onClick={e => e.stopPropagation()} style={{
-        background: T.bg, color: T.ink,
-        borderRadius: '24px 24px 0 0',
-        boxShadow: '0 -10px 40px rgba(0,0,0,0.38)',
-        maxHeight: '92vh', display: 'flex', flexDirection: 'column',
-        animation: 'pjSlide 260ms cubic-bezier(0.2,0.8,0.2,1)',
-        border: `1px solid ${T.cardBorder}`, borderBottom: 'none',
+      <div style={{
+        background: T.bg, width: '100%', maxWidth: 500, margin: '0 auto',
+        height: '92svh', borderTopLeftRadius: 28, borderTopRightRadius: 28,
+        display: 'flex', flexDirection: 'column', overflow: 'hidden',
+        animation: 'pjSlide 300ms cubic-bezier(0.16, 1, 0.3, 1)',
+        boxShadow: '0 -8px 40px rgba(0,0,0,0.4)',
       }}>
-        <GrabBar onDismiss={onClose} />
+        <GrabBar />
 
-        {loading ? (
-        <div style={{ padding: 40, textAlign: 'center', color: T.inkMuted }}>Loading…</div>
-      ) : fetchErr ? (
-        <div style={{ padding: 40, textAlign: 'center', color: '#EF4444' }}>{fetchErr}</div>
-      ) : (
-        <>
-        <div style={{
-          background: 'linear-gradient(145deg,#1C1C1E 0%,#2C2C2E 100%)',
-          borderBottom: '3px solid #E91E6A',
-          padding: '12px 18px 16px',
-          position: 'relative', overflow: 'hidden',
-        }}>
-          <div style={{ position: 'absolute', top: -50, right: -30, width: 150, height: 150, borderRadius: '50%', background: `radial-gradient(circle,${T.pinkGlow} 0%,transparent 65%)`, pointerEvents: 'none' }} />
-          <div style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '1.1px', textTransform: 'uppercase', color: mode === 'dark' ? '#FF78B0' : T.pink, marginBottom: 6, position: 'relative' }}>
-            ✦ MISSION WRAP-UP
-          </div>
-
-          {!loading && !fetchErr && job && (
-            <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <div style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '0.6px', textTransform: 'uppercase', color: mode === 'dark' ? 'rgba(255,255,255,0.4)' : T.inkMuted, marginBottom: 2 }}>
-                  {job.service_name}
-                </div>
-                <div style={{ fontFamily: T.serif, fontSize: 20, fontWeight: 500, color: mode === 'dark' ? 'white' : T.ink, letterSpacing: '-0.4px' }}>
-                  {job.client_name}
-                </div>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontFamily: T.serif, fontSize: 28, fontWeight: 500, color: mode === 'dark' ? 'white' : T.ink, letterSpacing: '-1px', fontVariantNumeric: 'tabular-nums' }}>
-                  ${liveTotal.toFixed(0)}
-                </div>
-                <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, color: mode === 'dark' ? 'rgba(255,255,255,0.5)' : T.inkMuted, textTransform: 'uppercase', marginTop: 2 }}>
-                   {isPaidRecord ? 'RECORDED ✓' : 'WRAP-UP'}
-                </div>
-              </div>
+        {/* Header with Live Total */}
+        <div style={{ padding: '16px 20px', borderBottom: `1px solid ${T.cardBorder}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: T.bg }}>
+          <div>
+            <SectionLabel serif={false} style={{ marginBottom: 4 }}>Job Wrap-Up</SectionLabel>
+            <div style={{ fontFamily: T.serif, fontSize: 20, fontWeight: 500, color: T.ink }}>
+              {loading ? 'Loading...' : job?.client_name || 'Done!'}
             </div>
-          )}
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: 22, fontWeight: 900, color: T.pink, fontFamily: T.font }}>
+              ${liveTotal.toFixed(2)}
+            </div>
+            <div style={{ fontSize: 9, fontWeight: 700, color: T.inkMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Live Total</div>
+          </div>
         </div>
 
-        <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '10px 18px 20px' }}>
+        {loading ? (
+          <div style={{ padding: 40, textAlign: 'center', color: T.inkMuted }}>Initializing...</div>
+        ) : fetchErr ? (
+          <div style={{ padding: 40, textAlign: 'center', color: '#EF4444' }}>{fetchErr}</div>
+        ) : (
+          <>
+          <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
           
-          {!loading && job && (
-            <FinancialMathBreakdown 
-              job={job} 
-              business={business} 
-              liveForm={{
-                pricing_type: job.pricing_type,
-                estimated_hours: actualMinutes / 60,
-                additional_costs_json: costs.filter(c => c.amount !== '')
-              }}
-              T={T} 
-              mode={mode} 
-            />
-          )}
-
-          {/* Bug 4 — Hours adjustment prompt */}
-          {showHoursPrompt && pendingAdjustedAmt !== null && (
-            <div style={{ background: mode === 'dark' ? 'rgba(245,158,11,0.12)' : '#FEF3C7', border: '1.5px solid rgba(245,158,11,0.5)', borderRadius: 16, padding: '14px 16px', marginBottom: 16 }}>
-              <div style={{ fontFamily: T.font, fontSize: 13, fontWeight: 700, color: mode === 'dark' ? '#FCD34D' : '#92400E', marginBottom: 6 }}>Actual hours differ from estimate</div>
-              <div style={{ fontFamily: T.font, fontSize: 12, color: mode === 'dark' ? 'rgba(255,255,255,0.7)' : '#78350F', marginBottom: 12, lineHeight: 1.4 }}>
-                Adjust the total to <strong>${pendingAdjustedAmt.toFixed(0)}</strong> based on actual time, or keep the original <strong>${parseFloat(amount).toFixed(0)}</strong>?
-              </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => { setAmount(String(pendingAdjustedAmt)); setShowHoursPrompt(false); handleLogPayment(pendingAdjustedAmt); }} style={{ flex: 1, padding: '10px 0', borderRadius: 10, background: '#F59E0B', border: 'none', color: 'white', fontFamily: T.font, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Adjust to ${pendingAdjustedAmt.toFixed(0)}</button>
-                <button onClick={() => { setShowHoursPrompt(false); handleLogPayment(parseFloat(amount) || 0); }} style={{ flex: 1, padding: '10px 0', borderRadius: 10, background: T.card, border: `1.5px solid ${T.cardBorder}`, color: T.inkSub, fontFamily: T.font, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Keep ${parseFloat(amount).toFixed(0)}</button>
-              </div>
-            </div>
-          )}
-
-          <SectionLabel>Actual Duration</SectionLabel>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 12, padding: '8px 10px', marginBottom: 18 }}>
-            <button onClick={() => setActualMinutes(m => Math.max(30, m - 30))} style={{ width: 36, height: 36, borderRadius: 10, background: mode === 'dark' ? 'rgba(255,255,255,0.05)' : T.pinkTint, border: `1px solid ${T.cardBorder}`, color: T.pink, fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
-            <div style={{ flex: 1, textAlign: 'center' }}>
-              <div style={{ fontFamily: T.serif, fontSize: 20, fontWeight: 500, color: T.ink }}>{fmtMins(actualMinutes)}</div>
-              <div style={{ fontFamily: T.font, fontSize: 9.5, color: T.inkMuted }}>actual time</div>
-            </div>
-            <button onClick={() => setActualMinutes(m => Math.min(720, m + 30))} style={{ width: 36, height: 36, borderRadius: 10, background: mode === 'dark' ? 'rgba(255,255,255,0.05)' : T.pinkTint, border: `1px solid ${T.cardBorder}`, color: T.pink, fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
-          </div>
-
-          <SectionLabel>Payment Status</SectionLabel>
-          <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
-            {[
-              { key: 'paid',    label: 'Paid ✓',       activeColor: '#22C55E', activeBg: 'rgba(34,197,94,0.1)' },
-              { key: 'partial', label: 'Partial',       activeColor: '#F59E0B', activeBg: 'rgba(245,158,11,0.1)' },
-              { key: 'unpaid',  label: 'Not paid yet',  activeColor: '#E91E6A', activeBg: 'rgba(233,30,106,0.08)' },
-            ].map(({ key, label, activeColor, activeBg }) => (
-              <button key={key} onClick={() => setPayStatus(key)} style={{ flex: 1, padding: '10px 4px', borderRadius: 10, border: `1.5px solid ${payStatus === key ? activeColor : T.cardBorder}`, background: payStatus === key ? activeBg : 'transparent', color: payStatus === key ? activeColor : T.inkMuted, fontFamily: T.font, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>{label}</button>
-            ))}
-          </div>
-
-          {(payStatus === 'paid' || payStatus === 'partial') && (
-            <div style={{ animation: 'pjFade 200ms ease' }}>
-              <SectionLabel>Payment Method & Amount</SectionLabel>
-              <div style={{ display: 'flex', background: mode === 'dark' ? 'rgba(255,255,255,0.04)' : '#FFF0F7', borderRadius: 10, padding: 3, marginBottom: 10 }}>
-                {['Cash', 'e-Transfer'].map(m => (
-                  <button key={m} onClick={() => setMethod(m)} style={{ flex: 1, padding: '9px 0', borderRadius: 8, border: 'none', background: method === m ? '#E91E6A' : 'transparent', fontFamily: T.font, fontSize: 12, fontWeight: 600, color: method === m ? 'white' : T.inkSub, cursor: 'pointer' }}>{m}</button>
-                ))}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 12, padding: '10px 14px', marginBottom: payStatus === 'partial' ? 8 : 18 }}>
-                <span style={{ fontFamily: T.serif, fontSize: 20, fontWeight: 500, color: T.inkSub }}>$</span>
-                <input type="number" value={amount} onChange={e => setAmount(e.target.value)} style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontFamily: T.serif, fontSize: 22, fontWeight: 500, color: T.ink }} />
-              </div>
-              {payStatus === 'partial' && (
-                <div style={{ background: mode === 'dark' ? 'rgba(245,158,11,0.08)' : '#FEF9C3', borderRadius: 10, padding: '8px 12px', marginBottom: 18, fontFamily: T.font, fontSize: 12, color: mode === 'dark' ? '#FCD34D' : '#92400E' }}>
-                  Balance owing: <strong>${Math.max(0, totalAmt - (parseFloat(amount) || 0)).toFixed(0)}</strong> of ${totalAmt.toFixed(0)}
-                </div>
-              )}
-            </div>
-          )}
-
-          <SectionLabel>Additional Costs</SectionLabel>
-          {costs.map((cost, idx) => (
-            <div key={idx} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: T.card, border: `1.5px solid ${cost.amount ? T.pink : T.cardBorder}`, borderRadius: 10, padding: '8px 12px', width: 110, flexShrink: 0 }}>
-                <span style={{ fontFamily: T.serif, fontSize: 16, color: T.inkSub }}>$</span>
-                <input
-                  type="number"
-                  placeholder="0"
-                  value={cost.amount}
-                  onChange={e => setCosts(prev => prev.map((c, i) => i === idx ? { ...c, amount: e.target.value } : c))}
-                  style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', fontFamily: T.serif, fontSize: 16, color: T.ink }}
-                />
-              </div>
-              <input
-                type="text"
-                placeholder="e.g. cleaning supplies"
-                value={cost.description}
-                onChange={e => setCosts(prev => prev.map((c, i) => i === idx ? { ...c, description: e.target.value } : c))}
-                style={{ flex: 1, background: T.card, border: `1.5px solid ${cost.description ? T.pink : T.cardBorder}`, borderRadius: 10, padding: '8px 12px', color: T.ink, fontFamily: T.font, fontSize: 12, outline: 'none' }}
-              />
-              {(costs.length > 1 || cost.amount || cost.description) && (
-                <button
-                  aria-label={`Remove cost ${idx + 1}`}
-                  onClick={() => setCosts(prev => prev.length === 1 ? [{ amount: '', description: '' }] : prev.filter((_, i) => i !== idx))}
-                  style={{ background: 'none', border: 'none', color: T.inkMuted, cursor: 'pointer', fontSize: 18, padding: '0 4px', lineHeight: 1 }}
-                >×</button>
-              )}
-            </div>
-          ))}
-          <button
-            onClick={() => setCosts(prev => [...prev, { amount: '', description: '' }])}
-            style={{ background: 'transparent', border: `1.5px dashed ${T.cardBorder}`, borderRadius: 10, padding: '7px 14px', fontFamily: T.font, fontSize: 11, fontWeight: 600, color: T.pink, cursor: 'pointer', marginBottom: 8, width: '100%' }}
-          >＋ Add another cost</button>
-          <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, marginBottom: 18 }}>Supplies or extra costs — each appears as its own line on the invoice</div>
-
-          {job?.job_notes?.trim() && (
-            <div style={{ background: mode === 'dark' ? 'rgba(233,30,106,0.07)' : '#FFF0F7', border: `1px solid ${T.pink}30`, borderRadius: 12, padding: '10px 14px', marginBottom: 12 }}>
-              <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 800, textTransform: 'uppercase', color: T.pink, letterSpacing: '0.5px', marginBottom: 5 }}>📌 Pre-job notes</div>
-              <div style={{ fontFamily: T.font, fontSize: 12, color: T.inkSub, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{job.job_notes}</div>
-            </div>
-          )}
-          <SectionLabel>Post-Job Notes</SectionLabel>
-          <textarea
-            placeholder="What happened? Key entry, client mood, issues found, follow-ups…"
-            value={jobNotes}
-            onChange={e => setJobNotes(e.target.value)}
-            style={{ width: '100%', minHeight: 80, padding: '12px', borderRadius: 14, background: T.card, border: `1.5px solid ${T.cardBorder}`, color: T.ink, fontFamily: T.font, fontSize: 13, resize: 'none', outline: 'none', marginBottom: 18 }}
+          <FinancialMathBreakdown 
+            job={job}
+            actualMinutes={actualMinutes}
+            costs={costs}
+            business={business}
+            T={T}
+            mode={mode}
           />
 
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20, marginTop: 24 }}>
+          
+          {/* Section 1: Duration Adjustment */}
+          <div>
+          <SectionLabel>Actual Duration</SectionLabel>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button onClick={() => setActualMinutes(m => Math.max(30, m - 30))} style={{ width: 44, height: 44, borderRadius: 12, border: `1.5px solid ${T.cardBorder}`, background: T.card, color: T.ink, fontSize: 20, fontWeight: 600, cursor: 'pointer' }}>–</button>
+            <div style={{ flex: 1, textAlign: 'center', background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 12, padding: '10px 0' }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: T.pink }}>{fmtMins(actualMinutes)}</div>
+            </div>
+            <button onClick={() => setActualMinutes(m => m + 30)} style={{ width: 44, height: 44, borderRadius: 12, border: `1.5px solid ${T.cardBorder}`, background: T.card, color: T.ink, fontSize: 20, fontWeight: 600, cursor: 'pointer' }}>+</button>
+          </div>
+          </div>
+
+          {/* Section 2: Payment Toggle */}
+          {!isPaidRecord && (
+          <div>
+          <SectionLabel>Payment Status</SectionLabel>
+          <div style={{ display: 'flex', background: T.card, borderRadius: 12, padding: 4, border: `1px solid ${T.cardBorder}` }}>
+            {['paid', 'partial', 'unpaid'].map(s => (
+              <button
+                key={s}
+                onClick={() => setPayStatus(s)}
+                style={{
+                  flex: 1, padding: '10px 0', borderRadius: 8, border: 'none',
+                  background: payStatus === s ? T.pink : 'transparent',
+                  color: payStatus === s ? 'white' : T.inkMuted,
+                  fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s',
+                  textTransform: 'uppercase'
+                }}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+          </div>
+          )}
+
+          {/* Section 3: Amount & Method */}
+          {payStatus !== 'unpaid' && !isPaidRecord && (
+            <div style={{ background: T.card, padding: 16, borderRadius: 16, border: `1px solid ${T.cardBorder}` }}>
+              <SectionLabel>Payment Method & Amount</SectionLabel>
+              <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
+                {['Cash', 'e-Transfer'].map(m => (
+                  <button
+                    key={m}
+                    onClick={() => setMethod(m)}
+                    style={{
+                      flex: 1, padding: '10px 0', borderRadius: 10,
+                      background: method === m ? (mode === 'dark' ? 'rgba(255,255,255,0.1)' : T.pinkPale) : 'transparent',
+                      border: `1.5px solid ${method === m ? T.pink : T.cardBorder}`,
+                      color: method === m ? T.pink : T.inkMuted,
+                      fontSize: 12, fontWeight: 700, cursor: 'pointer'
+                    }}
+                  >
+                    {m.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+              <div style={{ position: 'relative' }}>
+                <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: T.inkMuted, fontSize: 16, fontWeight: 600 }}>$</span>
+                <input
+                  type="number"
+                  value={amount}
+                  onChange={e => setAmount(e.target.value)}
+                  placeholder="0.00"
+                  style={{
+                    width: '100%', padding: '12px 14px 12px 30px', borderRadius: 12,
+                    background: T.bg, border: `1px solid ${T.cardBorder}`,
+                    color: T.ink, fontSize: 16, fontWeight: 600, outline: 'none'
+                  }}
+                />
+              </div>
+              <div style={{ fontSize: 10, color: T.inkMuted, marginTop: 8, textAlign: 'center', fontWeight: 500 }}>
+                {payStatus === 'paid' ? 'Full amount for this job' : 'Partial amount being paid today'}
+              </div>
+            </div>
+          )}
+
+          {/* Section 4: Additional Costs */}
+          <div>
+          <SectionLabel>Additional Costs</SectionLabel>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {costs.map((c, i) => (
+              <div key={i} style={{ display: 'flex', gap: 8 }}>
+                <div style={{ position: 'relative', width: 90 }}>
+                  <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: T.inkMuted, fontSize: 12 }}>$</span>
+                  <input
+                    type="number"
+                    value={c.amount}
+                    onChange={e => {
+                      const newCosts = [...costs];
+                      newCosts[i].amount = e.target.value;
+                      setCosts(newCosts);
+                    }}
+                    placeholder="0"
+                    style={{ width: '100%', padding: '10px 10px 10px 22px', borderRadius: 10, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.ink, fontSize: 13, outline: 'none' }}
+                  />
+                </div>
+                <input
+                  value={c.description}
+                  onChange={e => {
+                    const newCosts = [...costs];
+                    newCosts[i].description = e.target.value;
+                    setCosts(newCosts);
+                  }}
+                  placeholder="e.g. Supplies, Parking"
+                  style={{ flex: 1, padding: '10px 12px', borderRadius: 10, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.ink, fontSize: 13, outline: 'none' }}
+                />
+                {costs.length > 1 && (
+                  <button onClick={() => setCosts(costs.filter((_, idx) => idx !== i))} style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 18, cursor: 'pointer' }}>×</button>
+                )}
+              </div>
+            ))}
+            <button
+              onClick={() => setCosts([...costs, { amount: '', description: '' }])}
+              style={{ background: 'none', border: 'none', color: T.pink, fontSize: 11, fontWeight: 700, cursor: 'pointer', alignSelf: 'flex-start', padding: '4px 0' }}
+            >
+              + ADD ANOTHER COST
+            </button>
+          </div>
+          </div>
+
+          {/* Section 5: Completion Notes */}
+          <div>
+          <SectionLabel>Post-Job Notes</SectionLabel>
+          <textarea
+            value={jobNotes}
+            onChange={e => setJobNotes(e.target.value)}
+            placeholder="Anything special happen? Client wasn't home, dog was extra cute..."
+            style={{
+              width: '100%', height: 80, padding: '12px', borderRadius: 12,
+              background: T.card, border: `1px solid ${T.cardBorder}`,
+              color: T.ink, fontSize: 13, outline: 'none', resize: 'none', fontFamily: T.font
+            }}
+          />
+          </div>
+
+          {/* Invoice Link if exists */}
           {invoiceId && (
-            <div style={{ background: mode === 'dark' ? 'rgba(233,30,106,0.05)' : '#FFF0F7', borderRadius: 16, border: `1px solid ${T.pink}40`, padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: T.ink }}>Invoice Ready</div>
+            <div style={{ background: T.pinkTint, padding: '12px 16px', borderRadius: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: T.pink }}>Invoice Ready</div>
+                <div style={{ fontSize: 10, color: T.pink }}>Job will be added to invoice automatically.</div>
+              </div>
               <button onClick={() => window.open(`/i/${invoiceId}`, '_blank')} style={{ background: T.pink, color: 'white', border: 'none', padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>VIEW</button>
             </div>
           )}
 
-          <button onClick={() => setShowThankYou(true)} style={{ width: '100%', cursor: 'pointer', background: 'linear-gradient(135deg,#FF5A9D,#E91E6A)', border: 'none', borderRadius: 16, padding: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, color: 'white', fontWeight: 700, fontSize: 13, boxShadow: '0 4px 15px rgba(233,30,106,0.3)' }}>
-            <span style={{ fontSize: 16 }}>✦</span> AI Thank-you Message
-          </button>
+          <div style={{ height: 40 }} />
+        </div>
         </div>
 
+        {/* Footer */}
         <div style={{ padding: '10px 18px 18px', borderTop: `1px solid ${T.cardBorder}`, display: 'flex', gap: 10, background: T.bg }}>
-          <button onClick={onClose} style={{ flex: 1, background: 'transparent', border: `1.5px solid ${T.cardBorder}`, color: T.inkSub, borderRadius: 12, padding: '12px 0', fontFamily: T.font, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Later</button>
-          <button onClick={handleLogPayment} disabled={busy || done} style={{ flex: 2, background: busy || done ? T.pinkTint : '#E91E6A', color: 'white', border: 'none', borderRadius: 12, padding: '12px 0', fontFamily: T.font, fontSize: 13, fontWeight: 700, cursor: busy || done ? 'default' : 'pointer', boxShadow: '0 4px 12px rgba(233,30,106,0.3)' }}>
+          <button onClick={onClose} style={{ flex: 1, background: 'transparent', border: `1.5px solid ${T.cardBorder}`, color: T.inkMuted, borderRadius: 12, padding: '12px 0', fontFamily: T.font, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Later</button>
+          <button onClick={() => handleLogPayment()} disabled={busy || done} style={{ flex: 2, background: busy || done ? T.pinkTint : '#E91E6A', color: 'white', border: 'none', borderRadius: 12, padding: '12px 0', fontFamily: T.font, fontSize: 13, fontWeight: 700, cursor: busy || done ? 'default' : 'pointer', boxShadow: '0 4px 12px rgba(233,30,106,0.3)' }}>
             {busy ? 'Saving…' : done ? 'Success ✓' : payStatus === 'paid' ? 'Save & Log Paid' : payStatus === 'partial' ? 'Save & Log Partial' : 'Save & Close'}
           </button>
         </div>
         </>
       )}
+
+      {/* Hours Mismatch Prompt */}
+      {showHoursPrompt && (
+        <div style={{ position: 'absolute', inset: 0, zIndex: 70, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div style={{ background: T.card, borderRadius: 20, padding: 24, width: '100%', maxWidth: 320, textAlign: 'center' }}>
+            <div style={{ fontSize: 32, marginBottom: 16 }}>⏱️</div>
+            <Title style={{ fontSize: 18, marginBottom: 8 }}>Adjust Total?</Title>
+            <Text style={{ fontSize: 14, color: T.inkMuted, marginBottom: 20 }}>
+              You logged {fmtMins(actualMinutes)}, which changes the total to <strong>${pendingAdjustedAmt}</strong>. Update the payment amount to match?
+            </Text>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <button onClick={() => { setShowHoursPrompt(false); handleLogPayment(pendingAdjustedAmt); }} style={{ width: '100%', padding: '12px', borderRadius: 12, background: T.pink, color: 'white', border: 'none', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Yes, update amount</button>
+              <button onClick={() => { setShowHoursPrompt(false); handleLogPayment(null); }} style={{ width: '100%', padding: '12px', borderRadius: 12, background: 'transparent', border: `1.5px solid ${T.cardBorder}`, color: T.ink, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>No, keep original</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       </div>
       <ThankYouDraftSheet isOpen={showThankYou} onClose={() => setShowThankYou(false)} jobId={jobId} />
     </div>

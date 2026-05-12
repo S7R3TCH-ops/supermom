@@ -1,226 +1,17 @@
-import { useEffect, useState, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { getCurrentBusinessId } from '../data/currentBusiness';
-import { useBusiness } from '../data/useData';
-import { useToast } from '../context/ToastContext';
 import { useAppTheme } from '../context/AppThemeContext';
-import { SectionLabel } from '../components/ui/typography';
+import { useAuth } from '../context/AuthContext';
+import { notifyDataChanged, useBusiness } from '../data/useData';
+import { useToast } from '../context/ToastContext';
+import { getCurrentBusinessId } from '../data/currentBusiness';
 import { uploadAsset, getSignedUrl } from '../lib/storage';
+import { useKeyboardFocus } from '../hooks/useKeyboardFocus';
+import { SectionLabel } from '../components/ui/typography';
 
-const SUPER_ADMIN_EMAIL = 'jlundie@gmail.com';
-
-// FK-safe deletion order: leaf tables first so no constraint violations
-const RESET_TABLES = [
-  'audit_log',
-  'communication_log',
-  'notification_log',
-  'payments',
-  'invoice_jobs',
-  'invoices',
-  'template_schedule',
-  'jobs',
-  'job_templates',
-  'expense_log',
-  'clients',
-  'services',
-];
-
-const FIELDS = [
-  { key: 'name',        label: 'Business name',  type: 'text' },
-  { key: 'owner_name',  label: 'Your name',       type: 'text' },
-  { key: 'phone',       label: 'Phone',           type: 'tel'  },
-  { key: 'email',       label: 'Email',           type: 'email'},
-  { key: 'address',     label: 'Street address',  type: 'text' },
-  { key: 'city',        label: 'City',            type: 'text' },
-  { key: 'postal_code', label: 'Postal code',     type: 'text' },
-];
-
-export default function Settings() {
-  const { T, mode, toggleMode } = useAppTheme();
-  const toast = useToast();
-  const { user, signOut } = useAuth();
-  const { business, update } = useBusiness();
-  const [searchParams] = useSearchParams();
-  const [integration, setIntegration] = useState(null);
-
-  const [form, setForm] = useState(null);
-  const [pwForm, setPwForm] = useState({ pw: '', pw2: '' });
-  const [showPw, setShowPw] = useState(false);
-  const [showPw2, setShowPw2] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [savingPw, setSavingPw] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [pwSaved, setPwSaved] = useState(false);
-  const [resetPhase, setResetPhase] = useState(null); // null | 'confirm' | 'deleting' | 'done' | 'error'
-  const [resetError, setResetError] = useState(null);
-  const [error, setError] = useState(null);
-  const [pwError, setPwError] = useState(null);
-  const [avatarUrl, setAvatarUrl] = useState(null);
-  const fileInputRef = useRef(null);
-
-  useEffect(() => {
-    if (business && !form) {
-      setForm({
-        name:        business.name        ?? '',
-        owner_name:  business.owner_name  ?? '',
-        phone:       business.phone       ?? '',
-        email:       business.email       ?? '',
-        address:     business.address     ?? '',
-        city:        business.city        ?? '',
-        postal_code: business.postal_code ?? '',
-        hourly_rate: business.hourly_rate != null ? String(business.hourly_rate) : '',
-        tax_enabled: business.tax_enabled ?? false,
-        signature:   business.ai_profile?.signature ?? '',
-      });
-      
-      if (business.logo_url) {
-        getSignedUrl(business.logo_url).then(setAvatarUrl);
-      }
-    }
-  }, [business, form]);
-
-  useEffect(() => {
-    async function checkIntegration() {
-      if (!user) return;
-      const businessId = await getCurrentBusinessId();
-      const { data } = await supabase
-        .from('integrations')
-        .select('*')
-        .eq('business_id', businessId)
-        .eq('service_name', 'google_calendar')
-        .maybeSingle();
-      setIntegration(data);
-    }
-    checkIntegration();
-  }, [user]);
-
-  const handleAvatarClick = () => fileInputRef.current?.click();
-
-  const handleFileChange = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setSaving(true);
-    try {
-      const businessId = await getCurrentBusinessId();
-      const path = await uploadAsset(businessId, file, 'avatars');
-      await update({ logo_url: path });
-      const url = await getSignedUrl(path);
-      setAvatarUrl(url);
-    } catch (err) {
-      console.error('Avatar upload failed:', err);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const connectGoogle = async () => {
-    const businessId = await getCurrentBusinessId();
-    window.location.href = `/api/auth/google/login?business_id=${businessId}`;
-  };
-
-  const handleSave = async () => {
-    if (!form.name?.trim() || !form.owner_name?.trim()) {
-      setError('Business Name and Owner Name are required.');
-      return;
-    }
-    setSaving(true);
-    setError(null);
-    try {
-      let currentProfile = {};
-      try {
-        if (typeof business.ai_profile === 'string') {
-          currentProfile = JSON.parse(business.ai_profile);
-        } else if (business.ai_profile) {
-          currentProfile = business.ai_profile;
-        }
-      } catch (e) { /* ignore parse error */ }
-      
-      const ai_profile = { ...currentProfile, signature: form.signature };
-      
-      await update({
-        name:        form.name.trim(),
-        owner_name:  form.owner_name.trim(),
-        phone:       form.phone,
-        email:       form.email,
-        address:     form.address,
-        city:        form.city,
-        postal_code: form.postal_code,
-        hourly_rate: form.hourly_rate !== '' ? Number(form.hourly_rate) : null,
-        tax_enabled: form.tax_enabled,
-        ai_profile,
-      });
-      setSaved(true);
-      toast.success('Settings saved.');
-      setTimeout(() => setSaved(false), 2500);
-    } catch (err) {
-      console.error('[Settings] Save failed:', err);
-      const msg = err.message || 'Could not save changes.';
-      setError(msg);
-      toast.error(msg);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleUpdatePassword = async () => {
-    if (!pwForm.pw || pwForm.pw.length < 8) {
-      setPwError('Password must be at least 8 characters.');
-      return;
-    }
-    if (pwForm.pw !== pwForm.pw2) {
-      setPwError('Passwords do not match.');
-      return;
-    }
-    setSavingPw(true);
-    setPwError(null);
-    try {
-      const { error } = await supabase.auth.updateUser({ password: pwForm.pw });
-      if (error) throw error;
-      setPwSaved(true);
-      toast.success('Password updated.');
-      setPwForm({ pw: '', pw2: '' });
-      setTimeout(() => setPwSaved(false), 3000);
-    } catch (err) {
-      const msg = err.message || 'Failed to update password.';
-      setPwError(msg);
-      toast.error(msg);
-    } finally {
-      setSavingPw(false);
-    }
-  };
-
-  const handleDeleteAllData = async () => {
-    setResetPhase('deleting');
-    setResetError(null);
-    try {
-      const businessId = await getCurrentBusinessId();
-      for (const table of RESET_TABLES) {
-        const { error } = await supabase.from(table).delete().eq('business_id', businessId);
-        if (error) throw new Error(`Failed on ${table}: ${error.message}`);
-      }
-      setResetPhase('done');
-    } catch (err) {
-      setResetError(err.message);
-      setResetPhase('error');
-    }
-  };
-
-  const syncSuccess = searchParams.get('sync') === 'success';
-  const urlError = searchParams.get('error');
-
-  const inputStyle = {
-    width: '100%', boxSizing: 'border-box',
-    padding: '9px 11px', borderRadius: 'var(--r-input)',
-    border: '1.5px solid var(--pink-border)',
-    fontSize: 13, color: 'var(--ink)',
-    background: 'var(--pink-pale)', outline: 'none',
-    fontFamily: 'var(--font-ui)',
-  };
-
-  const ToggleBtn = ({ show, onToggle }) => (
+function ToggleBtn({ show, onToggle }) {
+  return (
     <button
       type="button"
       onClick={onToggle}
@@ -244,6 +35,160 @@ export default function Settings() {
       )}
     </button>
   );
+}
+
+export default function Settings() {
+  const { T, mode } = useAppTheme();
+  const toast = useToast();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { business, refreshBusiness } = useBusiness();
+  const isKeyboardFocused = useKeyboardFocus();
+
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const [form, setForm] = useState(null);
+  const [gcalOn, setGcalOn] = useState(false);
+
+  const [pw, setPw] = useState('');
+  const [showPw, setShowPw] = useState(false);
+  const [pwBusy, setPwBusy] = useState(false);
+  const [pwError, setPwError] = useState(null);
+  const [avatarUrl, setAvatarUrl] = useState(null);
+  const fileInputRef = useRef(null);
+  const formInitialized = useRef(false);
+
+  useEffect(() => {
+    if (business && !formInitialized.current) {
+      setForm({
+        name:        business.name        ?? '',
+        owner_name:  business.owner_name  ?? '',
+        phone:       business.phone       ?? '',
+        email:       business.email       ?? '',
+        address:     business.address     ?? '',
+        city:        business.city        ?? '',
+        postal_code: business.postal_code ?? '',
+        hourly_rate: business.hourly_rate != null ? String(business.hourly_rate) : '',
+        tax_enabled: business.tax_enabled ?? false,
+        signature:   business.ai_profile?.signature ?? '',
+      });
+      formInitialized.current = true;
+      
+      if (business.logo_url) {
+        getSignedUrl(business.logo_url).then(setAvatarUrl);
+      }
+    }
+  }, [business]);
+
+  useEffect(() => {
+    async function checkIntegration() {
+      if (!user) return;
+      const businessId = await getCurrentBusinessId();
+      if (!businessId) return;
+      const { data } = await supabase.from('integrations').select('*').eq('business_id', businessId).eq('provider', 'google_calendar').maybeSingle();
+      if (data) setGcalOn(true);
+    }
+    checkIntegration();
+  }, [user]);
+
+  async function handleSave() {
+    if (!form.name.trim()) { setError('Business name is required.'); return; }
+    setBusy(true); setError(null);
+    try {
+      const bid = await getCurrentBusinessId();
+      const { error: err } = await supabase
+        .from('businesses')
+        .update({
+          name:        form.name.trim(),
+          owner_name:  form.owner_name.trim(),
+          phone:       form.phone,
+          email:       form.email,
+          address:     form.address,
+          city:        form.city,
+          postal_code: form.postal_code,
+          hourly_rate: form.hourly_rate === '' ? null : Number(form.hourly_rate),
+          tax_enabled: form.tax_enabled,
+          ai_profile: {
+            ...(business?.ai_profile || {}),
+            signature: form.signature,
+          }
+        })
+        .eq('id', bid);
+      if (err) throw err;
+      toast.success('Settings saved!');
+      refreshBusiness();
+    } catch {
+      setError('Failed to save settings.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleUpdatePassword(e) {
+    e.preventDefault();
+    if (pw.length < 8) { setPwError('Password must be at least 8 characters.'); return; }
+    setPwBusy(true); setPwError(null);
+    const { error: err } = await supabase.auth.updateUser({ password: pw });
+    setPwBusy(false);
+    if (err) setPwError(err.message);
+    else { toast.success('Password updated!'); setPw(''); setShowPw(false); }
+  }
+
+  async function handleAvatarClick() {
+    fileInputRef.current.click();
+  }
+
+  async function handleFileChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setBusy(true);
+    try {
+      const bid = await getCurrentBusinessId();
+      const path = await uploadAsset(bid, file, 'avatars');
+      const { error: err } = await supabase.from('businesses').update({ logo_url: path }).eq('id', bid);
+      if (err) throw err;
+      const url = await getSignedUrl(path);
+      setAvatarUrl(url);
+      toast.success('Avatar updated!');
+      refreshBusiness();
+    } catch {
+      toast.error('Failed to upload avatar.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleResetData() {
+    if (!window.confirm('WARNING: This will delete ALL your data (clients, jobs, expenses). This cannot be undone. Are you sure?')) return;
+    const bid = await getCurrentBusinessId();
+    if (!bid) return;
+
+    setBusy(true);
+    try {
+      for (const table of RESET_TABLES) {
+        const { error: err } = await supabase.from(table).delete().eq('business_id', bid);
+        if (err) console.error(`Error deleting from ${table}:`, err);
+      }
+      toast.success('Data reset complete.');
+      notifyDataChanged();
+      navigate('/');
+    } catch {
+      toast.error('Data reset failed.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const inputStyle = {
+    width: '100%', boxSizing: 'border-box',
+    padding: '9px 11px', borderRadius: 'var(--r-input)',
+    border: '1.5px solid var(--pink-border)',
+    fontSize: 13, color: 'var(--ink)',
+    background: 'var(--pink-pale)', outline: 'none',
+    fontFamily: 'var(--font-ui)',
+  };
+
+  if (!form) return null;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: T.bg ?? 'var(--pink-pale)', color: T.ink ?? 'var(--ink)' }}>
@@ -255,357 +200,136 @@ export default function Settings() {
         position: 'relative',
         overflow: 'hidden'
       }}>
-        <div style={{ position: 'absolute', top: -50, right: -30, width: 150, height: 150, borderRadius: '50%', background: `radial-gradient(circle,${T.pinkGlow} 0%,transparent 70%)`, pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', top: -60, right: -40, width: 180, height: 180, borderRadius: '50%', background: `radial-gradient(circle,${T.pinkGlow} 0%,transparent 70%)`, pointerEvents: 'none' }} />
+        
+        <div style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '1.1px', textTransform: 'uppercase', color: mode === 'dark' ? '#FF78B0' : T.pink, marginBottom: 10, position: 'relative' }}>✦ System Settings</div>
+
+        <h2 style={{ fontFamily: T.serif, fontSize: 24, margin: 0, color: mode === 'dark' ? 'white' : T.ink, position: 'relative' }}>
+          Config & Profile
+        </h2>
+      </div>
+
+      <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '16px 14px' }}>
         <SectionLabel style={{ color: mode === 'dark' ? T.pinkLabel : T.pink, marginBottom: 4, position: 'relative' }}>
           ✦ Preferences
         </SectionLabel>
-        <h2 style={{ fontFamily: T.serif, fontSize: 24, margin: 0, color: mode === 'dark' ? 'white' : T.ink, fontWeight: 500, position: 'relative' }}>Settings</h2>
-      </div>
-
-      <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '16px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-
-        <SectionLabel>Personal Profile</SectionLabel>
-        {/* Owner Profile */}
-        <div style={{ background: 'white', borderRadius: 'var(--r-card)', border: '1.5px solid var(--pink-border)', padding: 16 }}>
+        <div style={{ marginBottom: 20, background: 'white', borderRadius: 'var(--r-card)', border: '1.5px solid var(--pink-border)', padding: 16 }}>
           <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)', display: 'block', marginBottom: 14 }}>Personal Profile</span>
           
           <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginBottom: 20 }}>
-            <div 
-              onClick={handleAvatarClick}
-              style={{ 
-                width: 72, height: 72, borderRadius: 20, 
-                background: 'var(--grad-action)', 
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer', overflow: 'hidden', position: 'relative',
-                border: '2px solid white', boxShadow: '0 4px 12px rgba(233,30,106,0.2)'
-              }}
-            >
-              {avatarUrl ? (
-                <img src={avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              ) : (
-                <span style={{ color: 'white', fontSize: 28, fontWeight: 600, fontFamily: 'var(--font-display)' }}>
-                  {form?.owner_name?.charAt(0) || 'S'}
-                </span>
-              )}
-              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.4)', color: 'white', fontSize: 8, textAlign: 'center', padding: '2px 0' }}>
-                EDIT
-              </div>
-            </div>
-            <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" style={{ display: 'none' }} />
-            
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink)', marginBottom: 2 }}>{form?.owner_name || '—'}</div>
-              <div style={{ fontSize: 11, color: 'var(--ink-muted)' }}>{form?.email}</div>
-            </div>
+             <div onClick={handleAvatarClick} style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--pink-pale)', border: '2px solid var(--pink-border)', cursor: 'pointer', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                {avatarUrl ? <img src={avatarUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Avatar" /> : <span style={{ fontSize: 24 }}>👤</span>}
+                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.4)', color: 'white', fontSize: 8, fontWeight: 700, textAlign: 'center', padding: '2px 0' }}>EDIT</div>
+             </div>
+             <input type="file" ref={fileInputRef} onChange={handleFileChange} style={{ display: 'none' }} accept="image/*" />
+             
+             <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--ink-muted)', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Full Name</label>
+                <input value={form.owner_name} onChange={e => setForm({...form, owner_name: e.target.value})} style={inputStyle} />
+             </div>
           </div>
 
-          <div style={{ marginBottom: 10 }}>
-            <label htmlFor="settings-signature" style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-muted)', display: 'block', marginBottom: 4 }}>
-              Digital Signature (for receipts)
-            </label>
-            <input
-              id="settings-signature"
-              type="text"
-              placeholder="e.g. Sandra S. or Joel L."
-              value={form?.signature ?? ''}
-              onChange={e => setForm(f => ({ ...f, signature: e.target.value }))}
-              style={{ ...inputStyle, fontFamily: 'var(--font-display)', fontStyle: 'italic', fontSize: 16 }}
-            />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--ink-muted)', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Business Name</label>
+              <input value={form.name} onChange={e => setForm({...form, name: e.target.value})} style={inputStyle} />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--ink-muted)', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Phone</label>
+                <input value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} style={inputStyle} />
+              </div>
+              <div>
+                <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--ink-muted)', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Email</label>
+                <input value={form.email} onChange={e => setForm({...form, email: e.target.value})} style={inputStyle} />
+              </div>
+            </div>
+
+            <div>
+              <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--ink-muted)', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Base Hourly Rate ($)</label>
+              <input type="number" value={form.hourly_rate} onChange={e => setForm({...form, hourly_rate: e.target.value})} style={inputStyle} />
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderTop: '1px solid var(--pink-border)', marginTop: 4 }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>Tax Calculation</div>
+                <div style={{ fontSize: 10, color: 'var(--ink-muted)' }}>Automatically add 13% HST to invoices</div>
+              </div>
+              <input type="checkbox" checked={form.tax_enabled} onChange={e => setForm({...form, tax_enabled: e.target.checked})} style={{ width: 18, height: 18 }} />
+            </div>
           </div>
         </div>
-
-        {/* Business Profile */}
-        {form && (
-          <div style={{ background: 'white', borderRadius: 'var(--r-card)', border: '1.5px solid var(--pink-border)', padding: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-              <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>Business Details</span>
-              {saved && (
-                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.5px', color: 'var(--green)', background: 'var(--green-light)', padding: '3px 8px', borderRadius: 'var(--r-badge)' }}>
-                  SAVED ✓
-                </span>
-              )}
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {FIELDS.map(({ key, label, type }) => (
-                <div key={key}>
-                  <label htmlFor={`settings-${key}`} style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-muted)', display: 'block', marginBottom: 4 }}>
-                    {label}
-                  </label>
-                  <input
-                    id={`settings-${key}`}
-                    type={type}
-                    required={key === 'name' || key === 'owner_name'}
-                    value={form[key]}
-                    onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-                    style={inputStyle}
-                  />
-                </div>
-              ))}
-
-              {/* Hourly rate */}
-              <div>
-                <label htmlFor="settings-hourly_rate" style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-muted)', display: 'block', marginBottom: 4 }}>
-                  Default hourly rate
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: 'var(--ink-muted)' }}>$</span>
-                  <input
-                    id="settings-hourly_rate"
-                    type="number"
-                    min="0"
-                    step="5"
-                    value={form.hourly_rate}
-                    onChange={e => setForm(f => ({ ...f, hourly_rate: e.target.value }))}
-                    style={{ ...inputStyle, paddingLeft: 22 }}
-                  />
-                </div>
-              </div>
-
-              {/* HST toggle */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderTop: '1px solid var(--pink-border)' }}>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>HST (13%)</div>
-                  <div style={{ fontSize: 11, color: 'var(--ink-muted)' }}>Add tax to invoices</div>
-                </div>
-                <button
-                  role="switch"
-                  aria-checked={form.tax_enabled}
-                  aria-label="Toggle HST"
-                  onClick={() => setForm(f => ({ ...f, tax_enabled: !f.tax_enabled }))}
-                  style={{
-                    width: 44, height: 26, borderRadius: 13, border: 'none', cursor: 'pointer',
-                    background: form.tax_enabled ? 'var(--pink)' : 'var(--pink-border)',
-                    position: 'relative', transition: 'background 0.2s', flexShrink: 0,
-                  }}
-                >
-                  <span style={{
-                    position: 'absolute', top: 3, left: form.tax_enabled ? 21 : 3,
-                    width: 20, height: 20, borderRadius: '50%', background: 'white',
-                    transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                  }} />
-                </button>
-              </div>
-
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                style={{
-                  marginTop: 4, width: '100%', padding: '12px',
-                  background: saving ? 'var(--pink-tint)' : 'var(--pink)',
-                  color: saving ? 'var(--pink-mid)' : 'white',
-                  border: 'none', borderRadius: 'var(--r-input)',
-                  fontSize: 13, fontWeight: 700, cursor: saving ? 'default' : 'pointer',
-                }}
-              >
-                {saving ? 'Saving…' : 'Save All Changes'}
-              </button>
-            </div>
-          </div>
-        )}
 
         <SectionLabel>Integrations</SectionLabel>
-        {/* Google Calendar Sync */}
-        <div style={{ background: T.card, borderRadius: 16, border: `1.5px solid ${T.cardBorder}`, padding: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>Google Calendar Sync</span>
-            {integration ? (
-              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.5px', color: 'var(--green-text)', background: 'var(--green-light)', padding: '3px 8px', borderRadius: 'var(--r-badge)' }}>CONNECTED ✓</span>
-            ) : (
-              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.5px', color: 'var(--pink-mid)', background: 'var(--pink-tint)', padding: '3px 8px', borderRadius: 'var(--r-badge)' }}>NOT CONNECTED</span>
-            )}
-          </div>
-
-          <p style={{ fontSize: 12, color: 'var(--ink-mid)', marginBottom: 16, margin: '0 0 16px' }}>
-            {integration
-              ? 'Your jobs are automatically synced to your Google Calendar.'
-              : 'Connect your Google account to sync your schedule to your personal calendar.'}
-          </p>
-
-          <button
-            onClick={connectGoogle}
-            style={{
-              background: integration ? 'var(--pink-tint)' : 'var(--pink)',
-              color: integration ? 'var(--pink-mid)' : 'white',
-              border: 'none', padding: '12px', borderRadius: 'var(--r-input)',
-              fontSize: 13, fontWeight: 700, width: '100%', cursor: 'pointer',
-            }}
-          >
-            {integration ? 'Reconnect Google Calendar' : 'Connect Google Calendar'}
-          </button>
+        <div style={{ marginBottom: 20, background: 'white', borderRadius: 'var(--r-card)', border: '1.5px solid var(--pink-border)', padding: 16 }}>
+           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                 <div style={{ width: 32, height: 32, borderRadius: 8, background: '#F1F5FE', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>📅</div>
+                 <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>Google Calendar</div>
+                    <div style={{ fontSize: 10, color: gcalOn ? '#10B981' : 'var(--ink-muted)', fontWeight: 600 }}>{gcalOn ? 'CONNECTED' : 'NOT CONNECTED'}</div>
+                 </div>
+              </div>
+              <button 
+                onClick={() => window.location.href = '/api/auth/google/login'}
+                style={{ background: 'transparent', border: '1.5px solid var(--pink-border)', borderRadius: 8, padding: '6px 12px', fontSize: 11, fontWeight: 700, color: 'var(--pink)', cursor: 'pointer' }}
+              >
+                {gcalOn ? 'RECONNECT' : 'CONNECT'}
+              </button>
+           </div>
         </div>
-
-        {syncSuccess && (
-          <div aria-live="polite" style={{ padding: 10, background: 'var(--green-light)', borderRadius: 8, fontSize: 12, color: 'var(--green-text)', textAlign: 'center' }}>
-            Successfully connected to Google Calendar!
-          </div>
-        )}
-
-        {error && (
-          <div aria-live="polite" style={{ padding: 10, background: '#FFF0F7', borderRadius: 8, fontSize: 12, color: '#B01550', textAlign: 'center' }}>
-            Error: {error}
-          </div>
-        )}
 
         <SectionLabel>Security</SectionLabel>
-        {/* Security / Password */}
-        <div style={{ background: T.card, borderRadius: 16, border: `1.5px solid ${T.cardBorder}`, padding: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>Security</span>
-            {pwSaved && (
-              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.5px', color: 'var(--green-text)', background: 'var(--green-light)', padding: '3px 8px', borderRadius: 'var(--r-badge)' }}>PASSWORD UPDATED ✓</span>
-            )}
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div>
-              <label htmlFor="settings-pw" style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-muted)', display: 'block', marginBottom: 4 }}>
-                New Password
-              </label>
+        <div style={{ marginBottom: 20, background: 'white', borderRadius: 'var(--r-card)', border: '1.5px solid var(--pink-border)', padding: 16 }}>
+           <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)', marginBottom: 14 }}>Password & Access</div>
+           
+           <form onSubmit={handleUpdatePassword} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div style={{ position: 'relative' }}>
-                <input
-                  id="settings-pw"
-                  type={showPw ? "text" : "password"}
-                  value={pwForm.pw}
-                  onChange={e => setPwForm(p => ({ ...p, pw: e.target.value }))}
-                  placeholder="At least 8 characters"
-                  style={{ ...inputStyle, paddingRight: 36 }}
-                />
-                <ToggleBtn show={showPw} onToggle={() => setShowPw(!showPw)} />
+                 <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--ink-muted)', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>New Password</label>
+                 <input type={showPw ? "text" : "password"} value={pw} onChange={e => setPw(e.target.value)} placeholder="Min 8 characters" style={inputStyle} />
+                 <ToggleBtn show={showPw} onToggle={() => setShowPw(!showPw)} />
               </div>
-            </div>
-
-            <div>
-              <label htmlFor="settings-pw2" style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-muted)', display: 'block', marginBottom: 4 }}>
-                Confirm Password
-              </label>
-              <div style={{ position: 'relative' }}>
-                <input
-                  id="settings-pw2"
-                  type={showPw2 ? "text" : "password"}
-                  value={pwForm.pw2}
-                  onChange={e => setPwForm(p => ({ ...p, pw2: e.target.value }))}
-                  style={{ ...inputStyle, paddingRight: 36 }}
-                />
-                <ToggleBtn show={showPw2} onToggle={() => setShowPw2(!showPw2)} />
-              </div>
-            </div>
-
-            {pwError && (
-              <div style={{ fontSize: 11, color: '#E91E6A', background: 'rgba(239,68,68,0.1)', padding: '6px 10px', borderRadius: 8 }}>
-                {pwError}
-              </div>
-            )}
-
-            <button
-              onClick={handleUpdatePassword}
-              disabled={savingPw}
-              style={{
-                marginTop: 4, width: '100%', padding: '12px',
-                background: savingPw ? 'var(--pink-tint)' : 'var(--pink)',
-                color: savingPw ? 'var(--pink-mid)' : 'white',
-                border: 'none', borderRadius: 'var(--r-input)',
-                fontSize: 13, fontWeight: 700, cursor: savingPw ? 'default' : 'pointer',
-              }}
-            >
-              {savingPw ? 'Updating…' : 'Update Password'}
-            </button>
-          </div>
+              {pwError && <div style={{ fontSize: 11, color: '#E91E6A' }}>{pwError}</div>}
+              <button type="submit" disabled={pwBusy || !pw} style={{ width: '100%', padding: '10px', borderRadius: 10, background: pwBusy ? 'var(--pink-pale)' : 'var(--pink)', color: 'white', border: 'none', fontWeight: 700, fontSize: 12, cursor: pwBusy ? 'default' : 'pointer' }}>
+                 {pwBusy ? 'UPDATING...' : 'UPDATE PASSWORD'}
+              </button>
+           </form>
         </div>
 
-        {/* Danger Zone — super admin only */}
-        {user?.email === SUPER_ADMIN_EMAIL && (
-          <>
-            <SectionLabel>System</SectionLabel>
-            <div style={{ background: '#1C1C1E', borderRadius: 16, border: '1.5px solid #8B0E3F', padding: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-              <span style={{ fontSize: 14, fontWeight: 700, color: '#FF78B0' }}>Danger Zone</span>
-              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.8px', color: '#E91E6A', background: 'rgba(239,68,68,0.15)', padding: '2px 7px', borderRadius: 'var(--r-badge)', border: '1px solid #8B0E3F' }}>SUPER ADMIN</span>
-            </div>
-            <p style={{ fontSize: 12, color: '#FF5A9D', margin: '0 0 14px', lineHeight: 1.5 }}>
-              Permanently deletes all jobs, clients, expenses, invoices, payments, and logs for this business. The business account and service catalog are wiped too. This cannot be undone.
-            </p>
-
-            {resetPhase === null && (
-              <button
-                onClick={() => setResetPhase('confirm')}
-                style={{ width: '100%', padding: '11px', background: 'transparent', border: '1.5px solid #8B0E3F', borderRadius: 'var(--r-input)', color: '#FF5A9D', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
-              >
-                Delete All Data…
-              </button>
-            )}
-
-            {resetPhase === 'confirm' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <p style={{ fontSize: 12, fontWeight: 700, color: '#FF78B0', margin: 0, textAlign: 'center' }}>
-                  Are you absolutely sure? There is no undo.
-                </p>
-                <button
-                  onClick={handleDeleteAllData}
-                  style={{ width: '100%', padding: '11px', background: '#B01550', border: 'none', borderRadius: 'var(--r-input)', color: 'white', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
-                >
-                  Yes, delete everything
-                </button>
-                <button
-                  onClick={() => setResetPhase(null)}
-                  style={{ width: '100%', padding: '11px', background: 'transparent', border: '1px solid #8B0E3F', borderRadius: 'var(--r-input)', color: '#FF5A9D', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-                >
-                  Cancel
-                </button>
-              </div>
-            )}
-
-            {resetPhase === 'deleting' && (
-              <div style={{ textAlign: 'center', color: '#FF5A9D', fontSize: 12, padding: '8px 0' }}>
-                Deleting…
-              </div>
-            )}
-
-            {resetPhase === 'done' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <div style={{ textAlign: 'center', color: '#86efac', fontSize: 12, padding: '4px 0' }}>
-                  All data deleted.
-                </div>
-                <button
-                  onClick={() => setResetPhase(null)}
-                  style={{ width: '100%', padding: '11px', background: 'transparent', border: '1px solid #8B0E3F', borderRadius: 'var(--r-input)', color: '#FF5A9D', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
-                >
-                  Dismiss
-                </button>
-              </div>
-            )}
-
-            {resetPhase === 'error' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <div style={{ color: '#FF78B0', fontSize: 12, wordBreak: 'break-word' }}>
-                  Error: {resetError}
-                </div>
-                <button
-                  onClick={() => setResetPhase(null)}
-                  style={{ width: '100%', padding: '11px', background: 'transparent', border: '1px solid #8B0E3F', borderRadius: 'var(--r-input)', color: '#FF5A9D', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
-                >
-                  Cancel
-                  </button>
-                  </div>
-                  )}
-                  </div>
-                  </>
-                  )}
-
-        <div style={{ paddingTop: 8, paddingBottom: 24 }}>
-          <button
-            onClick={signOut}
-            style={{ 
-              width: '100%', padding: '12px', 
-              background: 'transparent', border: `1px solid ${T.cardBorder}`, 
-              borderRadius: 12, color: T.inkMuted, 
-              fontSize: 12, fontWeight: 600, cursor: 'pointer' 
-            }}
-          >
-            Sign Out
+        <div style={{ padding: '10px 0 40px' }}>
+          <button onClick={handleSave} disabled={busy} style={{ width: '100%', padding: '14px', borderRadius: 12, background: busy ? 'var(--pink-pale)' : 'var(--pink)', color: 'white', border: 'none', fontWeight: 700, fontSize: 14, cursor: busy ? 'default' : 'pointer', boxShadow: '0 4px 12px rgba(233,30,106,0.3)' }}>
+            {busy ? 'SAVING CHANGES...' : 'SAVE SETTINGS'}
           </button>
+
+          {error && <div style={{ marginTop: 12, textAlign: 'center', color: '#E91E6A', fontSize: 12, fontWeight: 600 }}>{error}</div>}
+
+          <div style={{ marginTop: 40, borderTop: '1px solid var(--pink-border)', paddingTop: 20 }}>
+            <SectionLabel>System</SectionLabel>
+            <button onClick={handleResetData} style={{ width: '100%', background: 'transparent', border: '1.5px solid #EF4444', color: '#EF4444', padding: '12px', borderRadius: 12, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+              RESET ALL DATA
+            </button>
+            <div style={{ marginTop: 8, fontSize: 10, color: 'var(--ink-muted)', textAlign: 'center' }}>This will permanently delete all clients, jobs, and expenses.</div>
+          </div>
         </div>
       </div>
+      
+      <div style={{ height: isKeyboardFocused ? 260 : 0, transition: 'height 0.2s ease-out' }} />
     </div>
   );
 }
+
+// FK-safe deletion order: leaf tables first so no constraint violations
+const RESET_TABLES = [
+  'audit_log',
+  'communication_log',
+  'notification_log',
+  'payments',
+  'invoice_jobs',
+  'invoices',
+  'jobs',
+  'job_templates',
+  'template_schedule',
+  'clients',
+  'expense_log'
+];

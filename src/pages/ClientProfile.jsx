@@ -438,7 +438,14 @@ export default function ClientProfile() {
                     {j.time}
                   </div>
                 </div>
-                <AmtCell amount={j.amt} size={14} />
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5 }}>
+                  <AmtCell amount={j.amt} size={14} />
+                  <span style={{
+                    background: '#EFF6FF', color: '#1D4ED8',
+                    borderRadius: 5, padding: '1px 6px',
+                    fontFamily: T.font, fontSize: 8.5, fontWeight: 700, letterSpacing: '0.4px', textTransform: 'uppercase',
+                  }}>Scheduled</span>
+                </div>
               </div>
             ))
           )}
@@ -478,13 +485,13 @@ export default function ClientProfile() {
                   <div style={{ fontFamily: T.font, fontSize: 10.5, color: T.inkMuted, marginTop: 2 }}>{h.duration}</div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                  <AmtCell amount={privacyOn ? '•••' : h.amt} size={13} color={h.status === 'paid' ? T.ink : '#E91E6A'} />
+                  <AmtCell amount={privacyOn ? '•••' : h.amt} size={13} color={h.status === 'paid' ? T.ink : h.status === 'partial' ? '#92400E' : '#E91E6A'} />
                   <span style={{
-                    background: h.status === 'paid' ? '#DCFCE7' : '#FFE0EC',
-                    color:      h.status === 'paid' ? '#14532D' : '#9B0D3A',
+                    background: h.status === 'paid' ? '#DCFCE7' : h.status === 'partial' ? '#FEF3C7' : '#FFE0EC',
+                    color:      h.status === 'paid' ? '#14532D' : h.status === 'partial' ? '#92400E' : '#9B0D3A',
                     borderRadius: 5, padding: '1px 6px',
                     fontFamily: T.font, fontSize: 8.5, fontWeight: 700, letterSpacing: '0.4px', textTransform: 'uppercase',
-                  }}>{h.status === 'paid' ? 'Paid ✓' : 'Unpaid'}</span>
+                  }}>{h.status === 'paid' ? 'Paid ✓' : h.status === 'partial' ? 'Partial' : 'Unpaid'}</span>
                 </div>
               </div>
             ))

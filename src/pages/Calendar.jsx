@@ -379,7 +379,7 @@ function DayView({ T, mode, privacyOn, selectedDay, todayJobs, nextUpcoming, onJ
 
 /* ------------------------------ WEEK VIEW ------------------------------ */
 
-function WeekView({ T, mode, weekDays, allJobs, onPickDay, onJobPress }) {
+function WeekView({ T, mode, weekDays, allJobs, onJobPress }) {
   const slotH = 46, startH = 6, endH = 22;
   const hours = Array.from({ length: endH - startH + 1 }, (_, i) => startH + i);
 

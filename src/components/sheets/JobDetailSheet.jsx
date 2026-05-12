@@ -25,14 +25,6 @@ const PAY_COLORS = {
   '':      { bg: 'rgba(233,30,106,0.12)', color: '#E91E6A', border: 'rgba(233,30,106,0.25)' },
 };
 
-function fmtDuration(decimalHours) {
-  const h = Math.floor(decimalHours);
-  const m = Math.round((decimalHours - h) * 60);
-  if (h === 0) return `${m}m`;
-  if (m === 0) return `${h}h`;
-  return `${h}h ${m}m`;
-}
-
 function fmtDate(s) {
   if (!s) return '—';
   const [y, m, d] = s.split('-').map(Number);
@@ -69,17 +61,21 @@ export default function JobDetailSheet({ jobId, onClose }) {
   const [confirm, setConfirm] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [form, setForm] = useState({});
-  const [seriesAction, setSeriesAction] = useState(null);
   const [showSeriesPicker, setShowSeriesPicker] = useState(false);
   const [pendingAction, setPendingAction] = useState(null);
   const [showDeepPrep, setShowDeepPrep] = useState(false);
   const [invoiceId, setInvoiceId] = useState(null);
+  const [prevJobId, setPrevJobId] = useState(jobId);
+
+  if (jobId !== prevJobId) {
+    setPrevJobId(jobId);
+    setError(null);
+    setLoading(true);
+  }
 
   useEffect(() => {
     if (!jobId) return;
     let alive = true;
-    setLoading(true);
-    setError(null);
     fetchJobById(jobId)
       .then(j => { 
         if (alive) { 
@@ -243,6 +239,22 @@ export default function JobDetailSheet({ jobId, onClose }) {
 
         {loading && <div style={{ padding: 32, textAlign: 'center', color: T.inkMuted }}>Loading…</div>}
 
+        {!loading && error && !job && (
+          <div style={{ padding: 32, textAlign: 'center' }}>
+            <div style={{ fontSize: 22, marginBottom: 10 }}>😬</div>
+            <div style={{ fontFamily: T.font, fontSize: 13, color: '#EF4444', fontWeight: 600 }}>Couldn't load job details</div>
+            <div style={{ fontFamily: T.font, fontSize: 11, color: T.inkMuted, marginTop: 6 }}>{error}</div>
+          </div>
+        )}
+
+        {!loading && !error && !job && (
+          <div style={{ padding: 32, textAlign: 'center' }}>
+            <div style={{ fontSize: 22, marginBottom: 10 }}>🔍</div>
+            <div style={{ fontFamily: T.font, fontSize: 13, color: T.inkMuted, fontWeight: 600 }}>Job not found</div>
+            <div style={{ fontFamily: T.font, fontSize: 11, color: T.inkMuted, marginTop: 6 }}>This job may have been deleted or moved.</div>
+          </div>
+        )}
+
         {!loading && job && !editMode && (
           <ReadMode
             job={job} T={T} mode={mode} business={business}
@@ -263,6 +275,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
 
         {!loading && job && editMode && (
           <EditMode
+            job={job}
             form={form} setForm={setForm} services={services} business={business}
             T={T} mode={mode} busy={busy} mutErr={mutErr}
             showSeriesPicker={showSeriesPicker} onSeriesChoice={onSeriesChoice}
@@ -290,7 +303,6 @@ function ReadMode({
   
   const endTime = calcEnd(job.scheduled_time, job.estimated_hours);
   const timeRange = job.scheduled_time ? `${fmtTime12(job.scheduled_time)}${endTime ? ` – ${endTime}` : ''}` : '—';
-  const amtDisplay = job.total_amount != null ? `$${Number(job.total_amount).toFixed(0)}` : '—';
 
   return (
     <>
@@ -337,7 +349,7 @@ function ReadMode({
       <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '12px 14px 4px' }}>
         <PrepNoteCard job={job} T={T} business={business} onDeepPrep={onDeepPrep} />
         
-        <SectionLabel>Mission Vitals</SectionLabel>
+        <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', marginBottom: 8, color: T.pink }}>Mission Vitals</div>
         <InfoCard T={T}>
           <Row T={T} label="Date" value={fmtDate(job.scheduled_date)} />
           <Row T={T} label="Time" value={timeRange} />
@@ -390,7 +402,7 @@ function ReadMode({
 }
 
 /* ============= EDIT MODE ============= */
-function EditMode({ form, setForm, services, business, T, mode, busy, mutErr, showSeriesPicker, onSeriesChoice, onSave, onCancelEdit, isKeyboardFocused }) {
+function EditMode({ job, form, setForm, services, business, T, mode, busy, showSeriesPicker, onSeriesChoice, onSave, onCancelEdit, isKeyboardFocused }) {
   function set(k, v) { setForm(f => ({ ...f, [k]: v })); }
 
   function onPickService(e) {
@@ -409,7 +421,6 @@ function EditMode({ form, setForm, services, business, T, mode, busy, mutErr, sh
 
   const liveHourlyRate = parseFloat(form.hourly_rate) || 0;
   const liveHrs = parseFloat(form.estimated_hours) || 0;
-  const showMathChip = form.pricing_type === 'Hourly' && liveHourlyRate > 0 && liveHrs > 0;
   const liveMathTotal = liveHourlyRate * liveHrs;
 
   return (
@@ -441,7 +452,6 @@ function EditMode({ form, setForm, services, business, T, mode, busy, mutErr, sh
         </Field>
         <Field T={T} label="Amount ($)"><input type="number" value={form.total_amount} onChange={e => set('total_amount', e.target.value)} style={{ ...iStyle(T), width: '100%' }} /></Field>
         <Field T={T} label="Est. hours"><input type="number" value={form.estimated_hours} onChange={e => {
-          const hrs = parseFloat(e.target.value) || 0;
           set('estimated_hours', e.target.value);
           set('hoursTouched', true);
         }} style={{ ...iStyle(T), width: '100%' }} /></Field>
@@ -466,11 +476,11 @@ function EditMode({ form, setForm, services, business, T, mode, busy, mutErr, sh
 
 function InfoCard({ T, children }) { return <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 12, padding: '11px 13px', marginBottom: 10 }}>{children}</div>; }
 function Row({ T, label, value, last, serif, tabular, highlight }) { return <><div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', padding: '6px 0' }}><span style={{ fontSize: 11, color: T.inkMuted }}>{label}</span><span style={{ fontFamily: serif ? T.serif : T.font, fontSize: 13, color: highlight ? '#22C55E' : T.ink, fontWeight: highlight ? 700 : undefined, fontVariantNumeric: tabular ? 'tabular-nums' : undefined }}>{value}</span></div>{!last && <div style={{ height: 1, background: T.cardBorder }} />}</>; }
-function Pill({ bg, border, color, children, T }) { return <span style={{ padding: '3px 8px', borderRadius: 20, background: bg, border: `1px solid ${border}`, fontSize: 10.5, fontWeight: 600, color }}>{children}</span>; }
+function Pill({ bg, border, color, children }) { return <span style={{ padding: '3px 8px', borderRadius: 20, background: bg, border: `1px solid ${border}`, fontSize: 10.5, fontWeight: 600, color }}>{children}</span>; }
 function Btn({ onClick, disabled, bg, border, color, children, T, style: extra }) { return <button onClick={onClick} disabled={disabled} style={{ padding: '11px 14px', borderRadius: 12, background: bg, border: border || 'none', color, fontFamily: T.font, fontSize: 13, fontWeight: 600, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.6 : 1, width: '100%', ...extra }}>{children}</button>; }
 function Field({ T, label, children, last }) { return <div style={{ marginBottom: last ? 0 : 14 }}><div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: T.inkMuted, marginBottom: 5 }}>{label}</div>{children}</div>; }
 function iStyle(T) { return { background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 8, padding: '9px 11px', color: T.ink, fontSize: 13, outline: 'none', width: '100%', boxSizing: 'border-box' }; }
-function SeriesPicker({ show, onChoice, onCancel, busy, T, mode }) { 
+function SeriesPicker({ show, onChoice, busy, T, mode }) { 
   if (!show) return null; 
   return (
     <div style={{ 
@@ -597,10 +607,13 @@ function PrepNoteCard({ job, T, business, onDeepPrep, mode }) {
 function MediaCard({ job, T, mode, onUpdate }) {
   const [photoUrls, setPhotoUrls] = useState([]);
   const [voiceUrl, setVoiceUrl] = useState(null);
-  const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
   const photoPaths = (job.photo_links || '').split(',').filter(Boolean);
-  useEffect(() => { if (photoPaths.length > 0) getSignedUrls(photoPaths).then(setPhotoUrls); if (job.voice_note) getSignedUrl(job.voice_note).then(setVoiceUrl); }, [job.photo_links, job.voice_note]);
-  async function handlePhotoUpload(e) { const file = e.target.files?.[0]; if (!file) return; setUploading(true); try { const path = await uploadFile(job.id, file, 'photo'); await onUpdate({ photo_links: [...photoPaths, path].join(',') }); } catch (err) { alert(err.message); } finally { setUploading(false); } }
+  useEffect(() => { 
+    const paths = (job.photo_links || '').split(',').filter(Boolean);
+    if (paths.length > 0) getSignedUrls(paths).then(setPhotoUrls); 
+    if (job.voice_note) getSignedUrl(job.voice_note).then(setVoiceUrl); 
+  }, [job.photo_links, job.voice_note]);
+  async function handlePhotoUpload(e) { const file = e.target.files?.[0]; if (!file) return; try { const path = await uploadFile(job.id, file, 'photo'); await onUpdate({ photo_links: [...photoPaths, path].join(',') }); } catch (err) { alert(err.message); } }
   return <InfoCard T={T}><div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: T.inkMuted, marginBottom: 6 }}>Media</div>{photoUrls.length > 0 && <div className="sm-scroll" style={{ display: 'flex', gap: 8, overflowX: 'auto', marginBottom: 8 }}>{photoUrls.map((url, i) => <img key={i} src={url} alt="" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8 }} />)}</div>}{voiceUrl && <div style={{ marginBottom: 12 }}><audio controls src={voiceUrl} style={{ width: '100%', height: 32 }} /></div>}<div style={{ display: 'flex', gap: 8 }}><input type="file" accept="image/*" ref={fileInputRef} onChange={handlePhotoUpload} style={{ display: 'none' }} /><Btn onClick={() => fileInputRef.current?.click()} bg={mode === 'dark' ? 'rgba(255,255,255,0.05)' : T.pinkTint} color={T.pink} T={T} style={{ flex: 1, padding: '8px 0', fontSize: 11.5 }}>📸 Add Photo</Btn></div></InfoCard>;
 }

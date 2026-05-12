@@ -51,7 +51,6 @@ export default function EditClientSheet({ clientId, onClose }) {
   const [rawAiContext, setRawAiContext] = useState({});
 
   useEffect(() => {
-    setLoading(true);
     fetchClientById(clientId)
       .then(raw => {
         if (!raw) return;

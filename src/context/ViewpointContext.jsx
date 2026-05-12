@@ -1,96 +1,59 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { useAuth } from './AuthContext';
 import { clearBusinessCache, setSuperOverride } from '../data/currentBusiness';
 
-const ViewpointContext = createContext();
-
-const SUPER_ADMIN_EMAILS = ['jlundie@gmail.com', 'joel@supermom.com', 'joel@supermomforhire.com'];
+const ViewpointContext = createContext(null);
 
 export function ViewpointProvider({ children }) {
-  const [session, setSession] = useState(null);
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const { profile } = useAuth();
+  const [allBusinesses, setAllBusinesses] = useState([]);
   const [viewingAsId, setViewingAsId] = useState(null);
   const [viewingAsName, setViewingAsName] = useState(null);
-  const [allBusinesses, setAllBusinesses] = useState([]);
+
+  const isSuperAdmin = profile?.email === 'jlundie@gmail.com' || profile?.email === 'joel@supermom.io';
 
   useEffect(() => {
-    const checkAdmin = async (s) => {
-      if (!s?.user) {
-        setIsSuperAdmin(false);
-        return;
-      }
-      
-      const isEmailAdmin = SUPER_ADMIN_EMAILS.includes(s.user.email);
-      if (isEmailAdmin) {
-        setIsSuperAdmin(true);
-        return;
-      }
-
-      // Check DB role
-      const { data } = await supabase.from('users').select('role').eq('id', s.user.id).maybeSingle();
-      if (data?.role === 'admin') {
-        setIsSuperAdmin(true);
-      } else {
-        setIsSuperAdmin(false);
-      }
-    };
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      checkAdmin(session);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      checkAdmin(session);
-      if (!session) {
-        setViewingAsId(null);
-        setViewingAsName(null);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const refresh = () => {
     if (isSuperAdmin) {
-      supabase.from('businesses').select('id, name, owner_name, deleted_at').order('name').then(({ data }) => {
-        setAllBusinesses(data || []);
+      supabase.from('businesses').select('*').order('name').then(({ data }) => {
+        if (data) setAllBusinesses(data);
       });
     }
-  };
-
-  useEffect(() => {
-    refresh();
   }, [isSuperAdmin]);
 
-  const switchTo = (bizId, ownerName) => {
-    if (!isSuperAdmin) return;
-    setViewingAsId(bizId);
-    setViewingAsName(ownerName);
-    window.__SUPER_VIEW_ID = bizId;
-    setSuperOverride(bizId); // New explicit override
-    clearBusinessCache(); 
-    window.dispatchEvent(new Event('supermom:data-changed'));
+  const switchTo = (id, name) => {
+    setViewingAsId(id);
+    setViewingAsName(name);
+    setSuperOverride(id);
+    clearBusinessCache();
+    window.location.reload(); // Force full reload to ensure context propagates
   };
 
   const reset = () => {
     setViewingAsId(null);
     setViewingAsName(null);
-    window.__SUPER_VIEW_ID = null;
-    setSuperOverride(null); // New explicit reset
+    setSuperOverride(null);
     clearBusinessCache();
-    window.dispatchEvent(new Event('supermom:data-changed'));
+    window.location.reload();
+  };
+
+  const refresh = () => {
+    if (isSuperAdmin) {
+      supabase.from('businesses').select('*').order('name').then(({ data }) => {
+        if (data) setAllBusinesses(data);
+      });
+    }
   };
 
   return (
     <ViewpointContext.Provider value={{ 
       isSuperAdmin, 
+      allBusinesses, 
       viewingAsId, 
       viewingAsName, 
       switchTo, 
       reset,
-      allBusinesses,
       refresh
     }}>
       {children}
@@ -98,4 +61,8 @@ export function ViewpointProvider({ children }) {
   );
 }
 
-export const useViewpoint = () => useContext(ViewpointContext);
+export function useViewpoint() {
+  const ctx = useContext(ViewpointContext);
+  if (!ctx) throw new Error('useViewpoint must be used within ViewpointProvider');
+  return ctx;
+}

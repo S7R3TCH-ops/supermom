@@ -10,8 +10,8 @@ export function generateCommandBrief(job, businessProfile = null) {
   const ai = job.ai_context || {}; 
   const clientAi = job.client_ai_context || {};
   const notes = job.client_notes || '';
-  const tags = job.client_tags || [];
-  const clientName = job.client_name?.split(' ')[0] || 'Client';
+  const tags = Array.isArray(job.client_tags) ? job.client_tags : [];
+  const clientName = (typeof job.client_name === 'string' ? job.client_name : '').split(' ')[0] || 'Client';
 
   const style = businessProfile?.ai_profile?.style || 'professional';
 
@@ -28,7 +28,7 @@ export function generateCommandBrief(job, businessProfile = null) {
   }
 
   // 1. High-priority flags
-  const isVip = tags.some(t => t?.toLowerCase?.().includes('vip'));
+  const isVip = tags.some(t => typeof t === 'string' && t.toLowerCase().includes('vip'));
   if (isVip) {
     bullets.push({ icon: '🌟', text: 'VIP Client' });
     speechText += style === 'coach' ? `They are one of your amazing VIPs. ` : `They are a VIP client. `;

@@ -22,11 +22,13 @@ export default function FinancialMathBreakdown({ job, business, liveForm, T, mod
     // If completed, use actual_duration. If not, use estimated_hours.
     // If editing, use the live form value.
     const rawHours = liveForm?.estimated_hours ?? (job?.job_status === 'Completed' ? job?.actual_duration : job?.estimated_hours) ?? 0;
-    const hours = Number(rawHours);
+    const hoursNum = Number(rawHours);
+    const hours = isNaN(hoursNum) ? 0 : hoursNum;
 
     // 3. Resolve Rate
     const rawRate = liveForm?.hourly_rate ?? job?.hourly_rate ?? business?.hourly_rate ?? 60;
-    const rate = Number(rawRate);
+    const rateNum = Number(rawRate);
+    const rate = isNaN(rateNum) ? 60 : rateNum;
 
     // 4. Resolve Base Amount (Subtotal before costs/taxes)
     let subtotal = 0;
@@ -34,7 +36,8 @@ export default function FinancialMathBreakdown({ job, business, liveForm, T, mod
       subtotal = hours * rate;
     } else {
       const flat = liveForm?.total_amount ?? job?.flat_rate ?? job?.total_amount ?? 0;
-      subtotal = Number(flat);
+      const flatNum = Number(flat);
+      subtotal = isNaN(flatNum) ? 0 : flatNum;
     }
 
     // 5. Additional Costs
@@ -64,7 +67,6 @@ export default function FinancialMathBreakdown({ job, business, liveForm, T, mod
       rate,
       subtotal,
       activeCosts,
-      additionalTotal,
       taxEnabled,
       taxAmount,
       taxRate,
@@ -72,7 +74,7 @@ export default function FinancialMathBreakdown({ job, business, liveForm, T, mod
     };
   }, [job, business, liveForm]);
 
-  const { pricingType, isHourly, hours, rate, subtotal, activeCosts, additionalTotal, taxEnabled, taxAmount, taxRate, total } = data;
+  const { pricingType, isHourly, hours, rate, subtotal, activeCosts, taxEnabled, taxAmount, taxRate, total } = data;
 
   const rowStyle = { display: 'flex', justifyContent: 'space-between', padding: '4px 0', alignItems: 'baseline' };
   const labelStyle = { fontSize: compact ? 10 : 11, color: T.inkMuted, fontWeight: 500 };

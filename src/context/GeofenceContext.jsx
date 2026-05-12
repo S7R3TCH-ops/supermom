@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useRef, useEffect } from 'react';
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useContext, useState, useRef, useEffect, useCallback } from 'react';
 import { getDistanceMeters } from '../lib/maps';
 import { fetchJobById, updateJob } from '../data/jobsRepo';
 import { notifyDataChanged } from '../data/useData';
@@ -6,21 +7,21 @@ import { notifyDataChanged } from '../data/useData';
 const GeofenceContext = createContext(null);
 
 export function GeofenceProvider({ children }) {
-  const [trackingJob, setTrackingJob] = useState(null); // { id, lat, lng, state: 'approaching'|'working' }
   const trackingJobRef = useRef(null);
+  const [trackingJob, setTrackingJob] = useState(null); // { id, lat, lng, state: 'approaching'|'working' }
   const watchId = useRef(null);
   const departureTimer = useRef(null);
 
   // Keep ref in sync with state so the watchPosition callback can read
   // current tracking state without being stale (refs don't go through
   // React's batching, so side effects can safely read them).
-  const setTracking = (val) => {
+  const setTracking = useCallback((val) => {
     const next = typeof val === 'function' ? val(trackingJobRef.current) : val;
     trackingJobRef.current = next;
     setTrackingJob(next);
-  };
+  }, []);
 
-  const stopTracking = () => {
+  const stopTracking = useCallback(() => {
     if (watchId.current !== null) {
       navigator.geolocation.clearWatch(watchId.current);
       watchId.current = null;
@@ -30,7 +31,7 @@ export function GeofenceProvider({ children }) {
       departureTimer.current = null;
     }
     setTracking(null);
-  };
+  }, [setTracking]);
 
   const handleClockIn = async (jobId) => {
     try {
@@ -119,7 +120,7 @@ export function GeofenceProvider({ children }) {
 
   useEffect(() => {
     return () => stopTracking();
-  }, []);
+  }, [stopTracking]);
 
   return (
     <GeofenceContext.Provider value={{ trackingJob, startTracking, stopTracking, handleClockOut }}>

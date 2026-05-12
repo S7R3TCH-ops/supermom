@@ -55,7 +55,11 @@ export function useClients() {
     }
   }, []);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    let alive = true;
+    void Promise.resolve().then(() => { if (alive) refresh(); });
+    return () => { alive = false; };
+  }, [refresh]);
   useChangeListener(refresh);
 
   const display = rows.map(r => toDisplayClient(r, jobs.filter(j => j.client_id === r.id)));
@@ -94,7 +98,11 @@ export function useClient(id) {
     }
   }, [id]);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    let alive = true;
+    void Promise.resolve().then(() => { if (alive) refresh(); });
+    return () => { alive = false; };
+  }, [refresh]);
   useChangeListener(refresh);
 
   const display = row ? toDisplayClient(row, jobs) : null;
@@ -127,7 +135,11 @@ export function useJobs() {
     }
   }, []);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    let alive = true;
+    void Promise.resolve().then(() => { if (alive) refresh(); });
+    return () => { alive = false; };
+  }, [refresh]);
   useChangeListener(refresh);
 
   const clientLookup = Object.fromEntries(
@@ -160,7 +172,11 @@ export function useExpenses() {
     }
   }, []);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    let alive = true;
+    void Promise.resolve().then(() => { if (alive) refresh(); });
+    return () => { alive = false; };
+  }, [refresh]);
   useChangeListener(refresh);
 
   return { expenses: rows, loading, error, refresh };
@@ -177,7 +193,7 @@ export function useBusiness() {
     try {
       const data = await getBusinessProfile();
       setBusiness(data);
-    } catch (e) {
+    } catch {
       // If error is just "no business", that's fine for admins
       setBusiness(null);
     } finally {
@@ -185,7 +201,11 @@ export function useBusiness() {
     }
   }, []);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    let alive = true;
+    void Promise.resolve().then(() => { if (alive) refresh(); });
+    return () => { alive = false; };
+  }, [refresh]);
   useChangeListener(refresh);
 
   const update = async (patch) => {
@@ -218,7 +238,11 @@ export function useInvoices() {
     }
   }, []);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    let alive = true;
+    void Promise.resolve().then(() => { if (alive) refresh(); });
+    return () => { alive = false; };
+  }, [refresh]);
   useChangeListener(refresh);
 
   return { invoices, loading, error, refresh };
@@ -252,7 +276,11 @@ export function useServices() {
     }
   }, []);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    let alive = true;
+    void Promise.resolve().then(() => { if (alive) refresh(); });
+    return () => { alive = false; };
+  }, [refresh]);
   useChangeListener(refresh);
 
   return { services, loading, error, refresh };

@@ -176,6 +176,20 @@ export default function Home() {
       .sort((a, b) => a.start - b.start);
   }, [allJobs, today]);
 
+  const selectedDateJobs = useMemo(() => {
+    if (!allJobs) return [];
+    return allJobs
+      .map(j => {
+        if (!j.scheduled_at) return null;
+        const start = new Date(j.scheduled_at);
+        if (isNaN(start.getTime())) return null;
+        const end = new Date(start.getTime() + (j.duration_est || 60) * 60000);
+        return { ...j, start, end };
+      })
+      .filter(j => j && sameDay(j.start, selectedDate) && j.status !== 'Cancelled')
+      .sort((a, b) => a.start - b.start);
+  }, [allJobs, selectedDate]);
+
   const allDone = todayJobs.length > 0 && !todayJobs.some(j => j.status === 'Scheduled' || j.payment_status !== 'Paid');
 
   const timeBasedGreeting = useMemo(() => {
@@ -629,20 +643,17 @@ export default function Home() {
               </div>
             )}
 
-            {!activeJob && !next && categorizedJobs.upcoming.length === 0 && categorizedJobs.done.length === 0 && categorizedJobs.incomplete.length === 0 && (
+            {!activeJob && !next && categorizedJobs.upcoming.length === 0 && categorizedJobs.incomplete.length === 0 && (
               <EmptyState allDone={allDone} T={T} persona={persona} />
             )}
           </>
         ) : (
           <div style={{ marginBottom: 24 }}>
             <SectionLabel>{dateBrief(selectedDate)}</SectionLabel>
-            {todayJobs.length === 0 ? (
-              <div style={{ padding: '40px 20px', textAlign: 'center', opacity: 0.7 }}>
-                <NoResults size={60} />
-                <div style={{ marginTop: 12, fontSize: 13, color: T.inkMuted }}>No missions scheduled for this day.</div>
-              </div>
+            {selectedDateJobs.length === 0 ? (
+              <EmptyState allDone={false} T={T} persona={persona} />
             ) : (
-              todayJobs.map(j => (
+              selectedDateJobs.map(j => (
                 <Swipeable key={j.id} onSwipeLeft={() => handleDeleteJob(j.id)}>
                   <JobCard job={j} T={T} onClick={() => openJob(j.id)} />
                 </Swipeable>

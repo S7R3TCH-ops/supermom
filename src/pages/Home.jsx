@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { useJobDetailSheet } from '../context/JobDetailSheetContext';
 import { usePostJobSheet } from '../context/PostJobSheetContext';
 import { useFinanceDetailSheet } from '../context/FinanceDetailSheetContext';
-import { stopSpeaking } from '../data/ai';
+import { generateCommandBrief, speakBrief, stopSpeaking } from '../data/ai';
 import { updateDailyRoutes } from '../lib/maps';
 import { getPersistentDailyMessage, getTimeBasedGreeting } from '../lib/greetings';
 import { softDeleteJob, updateJob } from '../data/jobsRepo';
@@ -107,6 +107,7 @@ export default function Home() {
   const [today] = useState(() => new Date());
   const [selectedDate, setSelectedDate] = useState(today);
   const [weekOffset, setWeekOffset] = useState(0);
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
   // Live clock — re-evaluates which job owns the spotlight each minute
   const [now, setNow] = useState(() => new Date());
@@ -217,6 +218,20 @@ export default function Home() {
       notifyDataChanged();
     } catch {
       alert('Could not delete job.');
+    }
+  };
+
+  const handleReadAloud = (e) => {
+    e.stopPropagation();
+    if (isSpeaking) {
+      stopSpeaking();
+      setIsSpeaking(false);
+    } else {
+      const brief = generateCommandBrief(next, business);
+      if (brief?.speechText) {
+        setIsSpeaking(true);
+        speakBrief(brief.speechText, () => setIsSpeaking(false));
+      }
     }
   };
 
@@ -517,7 +532,15 @@ export default function Home() {
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: T.pink, textTransform: 'uppercase', marginBottom: 4 }}>Next Mission</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: T.pink, textTransform: 'uppercase' }}>Next Mission</div>
+                        <button 
+                          onClick={handleReadAloud}
+                          style={{ background: isSpeaking ? T.pink : 'none', border: `1px solid ${T.pink}`, borderRadius: 4, padding: '1px 6px', color: isSpeaking ? 'white' : T.pink, fontSize: 8, fontWeight: 800, cursor: 'pointer' }}
+                        >
+                          {isSpeaking ? 'STOP ⏹' : 'READ ALOUD 🔊'}
+                        </button>
+                      </div>
                       <Title style={{ fontSize: 18, color: T.ink }}>{next.client_name}</Title>
                     </div>
                     <div style={{ textAlign: 'right' }}>

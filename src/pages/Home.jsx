@@ -480,6 +480,8 @@ export default function Home() {
                       <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.inkMuted }}>{activeJob.estimated_hours}h EST</span>
                     </div>
 
+                    <LiveTimer startTime={activeJob.ai_context.clock_in_time} />
+
                     {activeJob.address && (
                       <div onClick={e => { e.stopPropagation(); window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(activeJob.address)}`, '_blank'); }} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, color: T.pink, cursor: 'pointer' }}>
                         <span style={{ fontSize: 14 }}>📍</span>
@@ -626,6 +628,38 @@ export default function Home() {
       </div>
 
       <div style={{ height: isKeyboardFocused ? 260 : 0, transition: 'height 0.2s ease-out' }} />
+    </div>
+  );
+}
+
+function LiveTimer({ startTime }) {
+  const [elapsed, setElapsed] = useState('');
+
+  useEffect(() => {
+    if (!startTime) return;
+    
+    const update = () => {
+      const start = new Date(startTime);
+      const now = new Date();
+      const diff = Math.max(0, now - start);
+      
+      const hh = Math.floor(diff / 3600000);
+      const mm = Math.floor((diff % 3600000) / 60000);
+      const ss = Math.floor((diff % 60000) / 1000);
+      
+      setElapsed(`${hh.toString().padStart(2, '0')}:${mm.toString().padStart(2, '0')}:${ss.toString().padStart(2, '0')}`);
+    };
+
+    update();
+    const id = setInterval(update, 1000);
+    return () => clearInterval(id);
+  }, [startTime]);
+
+  if (!startTime) return null;
+
+  return (
+    <div style={{ fontSize: 32, fontWeight: 900, fontFamily: 'monospace', letterSpacing: -1, margin: '8px 0 12px' }}>
+      {elapsed}
     </div>
   );
 }

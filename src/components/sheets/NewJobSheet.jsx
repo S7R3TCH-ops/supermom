@@ -30,7 +30,6 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
 
   // Fetch clients + jobs on mount
   const [clientRows, setClientRows] = useState([]);
-  // eslint-disable-next-line no-unused-vars
   const [jobRows, setJobRows] = useState([]);
   const [clientJobs, setClientJobs] = useState([]);
   const [showNewClient, setShowNewClient] = useState(false);

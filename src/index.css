@@ -39,6 +39,7 @@
   /* Gradients */
   --grad-pink:   linear-gradient(110deg, #FF70A6 0%, #E91E6A 45%, #B01550 100%);
   --grad-hero:   linear-gradient(145deg, #1C1C1E 0%, #2C2C2E 100%);
+  --border-hero: 3px solid #E91E6A;
   --grad-action: linear-gradient(135deg, #FF94BC, #FF70A6);
 
   /* Radius */

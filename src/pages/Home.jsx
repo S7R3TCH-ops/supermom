@@ -80,8 +80,26 @@ function JobCard({ job: j, T, onClick }) {
   );
 }
 
-const EmptyState = ({ allDone, T }) => {
-  const msg = allDone ? "Mission Accomplished! You've cleared the board." : "Schedule clear. Time for a well-deserved break?";
+const EmptyState = ({ allDone, T, persona }) => {
+  const messages = {
+    casual: {
+      allDone: "Mission accomplished! You totally crushed it today. Time to relax!",
+      notDone: "Nothing on the schedule yet. Ready to take on the day when you are!"
+    },
+    professional: {
+      allDone: "Mission Accomplished! You've cleared the board for today.",
+      notDone: "Your schedule is clear. Use this time to prepare for what's next."
+    },
+    coach: {
+      allDone: "Great work! You finished everything. Now, go get some well-deserved rest.",
+      notDone: "The board is empty. Focus on your goals and stay ready!"
+    }
+  };
+
+  const style = persona?.toLowerCase() || 'professional';
+  const msgSet = messages[style] || messages.professional;
+  const msg = allDone ? msgSet.allDone : msgSet.notDone;
+
   return (
     <div style={{ padding: '60px 20px', textAlign: 'center', opacity: 0.9 }}>
       <EmptyActivity size={100} />
@@ -612,7 +630,7 @@ export default function Home() {
             )}
 
             {!activeJob && !next && categorizedJobs.upcoming.length === 0 && categorizedJobs.done.length === 0 && categorizedJobs.incomplete.length === 0 && (
-              <EmptyState allDone={allDone} T={T} />
+              <EmptyState allDone={allDone} T={T} persona={persona} />
             )}
           </>
         ) : (

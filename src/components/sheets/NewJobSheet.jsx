@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { useServices, useBusiness, notifyDataChanged } from '../../data/useData';
-import { createJob, fetchActiveJobs, fetchJobsByClientId } from '../../data/jobsRepo';
+import { createJob, fetchActiveJobs, fetchJobsByClientId, findConflicts, composeTorontoISO } from '../../data/jobsRepo';
 import { fetchClients } from '../../data/clientsRepo';
 import { toDisplayClient } from '../../data/selectors';
 import { useToast } from '../../context/ToastContext';
@@ -83,6 +83,13 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
   const [busy, setBusy] = useState(false);
   const [bookErr, setBookErr] = useState('');
   const [bookingNotes, setBookingNotes] = useState('');
+  const [takingChances, setTakingChances] = useState(false);
+
+  const scheduledISO = useMemo(() => composeTorontoISO(date, time), [date, time]);
+  const conflicts = useMemo(() => {
+    if (!scheduledISO) return [];
+    return findConflicts(jobRows, scheduledISO, duration, 60);
+  }, [jobRows, scheduledISO, duration]);
 
   const [aiDuration, setAiDuration] = useState(null);
   const [aiEstimateLoading, setAiEstimateLoading] = useState(false);
@@ -127,16 +134,25 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
   };
 
   const handleBook = async () => {
-    if (!clientId || !serviceId) return;
+    if (!clientId || !serviceId) {
+      setBookErr('Client and Service are required.');
+      return;
+    }
+    if (conflicts.length > 0 && !takingChances) {
+      setBookErr("Please confirm you're taking chances!");
+      return;
+    }
+
     setBusy(true); setBookErr('');
     try {
       const payload = {
         client_id: clientId,
         service_id: serviceId,
-        scheduled_at: `${date}T${time}:00`,
-        duration_est: duration / 60,
+        scheduled_date: date,
+        scheduled_time: time,
+        estimated_hours: duration / 60,
         recurrence: recurrence,
-        notes: bookingNotes,
+        job_notes: bookingNotes,
       };
       await createJob(payload);
       notifyDataChanged();
@@ -221,6 +237,9 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
               recurrence={recurrence}
               notes={bookingNotes}
               business={business}
+              conflicts={conflicts}
+              takingChances={takingChances}
+              setTakingChances={setTakingChances}
               T={T}
             />
           )}
@@ -446,12 +465,46 @@ function Step2What({
 function Step3Review({ 
   selectedClient, services, serviceId, 
   date, time, duration, recurrence, notes, 
-  business, T 
+  business, conflicts = [], takingChances, setTakingChances, T 
 }) {
   const service = services.find(s => s.id === serviceId);
+  const hasConflict = conflicts.length > 0;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <SectionLabel>Review Booking</SectionLabel>
+
+      {hasConflict && (
+        <div style={{ 
+          padding: '14px', borderRadius: 16, background: '#FFF7ED', 
+          border: '1.5px solid #FDBA74', display: 'flex', flexDirection: 'column', gap: 8 
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 18 }}>⚠️</span>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#9A3412' }}>Gap vs Drive Time Warning</div>
+          </div>
+          <div style={{ fontSize: 12, color: '#C2410C', lineHeight: 1.4 }}>
+            There's another mission close to this time. You might be tight on travel!
+          </div>
+          
+          <label style={{ 
+            display: 'flex', alignItems: 'center', gap: 10, marginTop: 4, 
+            padding: '10px', background: 'white', borderRadius: 10, cursor: 'pointer',
+            border: `1px solid ${takingChances ? '#FDBA74' : '#FED7AA'}`
+          }}>
+            <input 
+              type="checkbox" 
+              checked={takingChances} 
+              onChange={e => setTakingChances(e.target.checked)}
+              style={{ width: 18, height: 18, accentColor: '#EA580C' }}
+            />
+            <span style={{ fontSize: 12, fontWeight: 600, color: '#9A3412' }}>
+              Taking chances and driving fast? Confirm anyway.
+            </span>
+          </label>
+        </div>
+      )}
+
       <div style={{ padding: '16px', background: T.card, borderRadius: 16, border: `1px solid ${T.cardBorder}`, display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div>
           <div style={{ fontSize: 11, color: T.inkMuted, textTransform: 'uppercase', fontWeight: 700 }}>Client</div>

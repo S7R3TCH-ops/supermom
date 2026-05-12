@@ -83,16 +83,16 @@ function JobCard({ job: j, T, onClick }) {
 const EmptyState = ({ allDone, T, persona }) => {
   const messages = {
     casual: {
-      allDone: "Mission accomplished! You totally crushed it today. Time to relax!",
-      notDone: "Nothing on the schedule yet. Ready to take on the day when you are!"
+      allDone: "Nice work, you're all set!",
+      notDone: "Nothing on the list today. Chill time?"
     },
     professional: {
-      allDone: "Mission Accomplished! You've cleared the board for today.",
-      notDone: "Your schedule is clear. Use this time to prepare for what's next."
+      allDone: "Mission Accomplished!",
+      notDone: "Schedule clear."
     },
     coach: {
-      allDone: "Great work! You finished everything. Now, go get some well-deserved rest.",
-      notDone: "The board is empty. Focus on your goals and stay ready!"
+      allDone: "Solid hustle today!",
+      notDone: "The board is clean. Time to recharge!"
     }
   };
 

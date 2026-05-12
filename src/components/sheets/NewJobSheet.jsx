@@ -472,63 +472,77 @@ function Step3Review({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <SectionLabel>Review Booking</SectionLabel>
+      {/* Dark Hero Summary Section */}
+      <div style={{ 
+        padding: '20px', 
+        background: 'var(--grad-hero)', 
+        borderBottom: 'var(--border-hero)', 
+        margin: '-20px -20px 10px', 
+        display: 'flex', 
+        flexDirection: 'column', 
+        gap: 16,
+        position: 'relative',
+        overflow: 'hidden'
+      }}>
+        {/* Radial glow */}
+        <div style={{ position: 'absolute', top: -40, right: -20, width: 140, height: 140, borderRadius: '50%', background: `radial-gradient(circle,rgba(233,30,106,.22) 0%,transparent 70%)`, pointerEvents: 'none' }} />
+        
+        <div style={{ position: 'relative' }}>
+          <div style={{ fontSize: 10, color: 'var(--pink-label)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '1.2px', marginBottom: 2 }}>Client</div>
+          <div style={{ fontFamily: T.serif, fontSize: 19, fontWeight: 500, color: 'white' }}>{selectedClient?.firstName} {selectedClient?.lastName}</div>
+        </div>
+        <div style={{ position: 'relative' }}>
+          <div style={{ fontSize: 10, color: 'var(--pink-label)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '1.2px', marginBottom: 2 }}>Mission</div>
+          <div style={{ fontFamily: T.serif, fontSize: 19, fontWeight: 500, color: 'white' }}>{service?.name}</div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, position: 'relative' }}>
+          <div>
+            <div style={{ fontSize: 10, color: 'var(--pink-label)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '1.2px', marginBottom: 2 }}>Date</div>
+            <div style={{ fontFamily: T.serif, fontSize: 16, fontWeight: 500, color: 'white' }}>{date}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 10, color: 'var(--pink-label)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '1.2px', marginBottom: 2 }}>Time</div>
+            <div style={{ fontFamily: T.serif, fontSize: 16, fontWeight: 500, color: 'white' }}>{time}</div>
+          </div>
+        </div>
+        <div style={{ position: 'relative' }}>
+          <div style={{ fontSize: 10, color: 'var(--pink-label)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '1.2px', marginBottom: 2 }}>Recurrence</div>
+          <div style={{ fontFamily: T.serif, fontSize: 16, fontWeight: 500, color: 'white' }}>{recurrence || 'One-time'}</div>
+        </div>
+      </div>
+
+      <SectionLabel>Review Details</SectionLabel>
 
       {hasConflict && (
         <div style={{ 
-          padding: '14px', borderRadius: 16, background: '#FFF7ED', 
-          border: '1.5px solid #FDBA74', display: 'flex', flexDirection: 'column', gap: 8 
+          padding: '14px', borderRadius: 16, background: 'var(--amber-light)', 
+          border: '1.5px solid var(--amber)', display: 'flex', flexDirection: 'column', gap: 8 
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 18 }}>⚠️</span>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#9A3412' }}>Gap vs Drive Time Warning</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--amber-text)' }}>Gap vs Drive Time Warning</div>
           </div>
-          <div style={{ fontSize: 12, color: '#C2410C', lineHeight: 1.4 }}>
+          <div style={{ fontSize: 12, color: 'var(--amber-text)', opacity: 0.9, lineHeight: 1.4 }}>
             There's another mission close to this time. You might be tight on travel!
           </div>
           
           <label style={{ 
             display: 'flex', alignItems: 'center', gap: 10, marginTop: 4, 
             padding: '10px', background: 'white', borderRadius: 10, cursor: 'pointer',
-            border: `1px solid ${takingChances ? '#FDBA74' : '#FED7AA'}`
+            border: `1px solid ${takingChances ? 'var(--amber)' : 'var(--amber-light)'}`
           }}>
             <input 
               type="checkbox" 
               checked={takingChances} 
               onChange={e => setTakingChances(e.target.checked)}
-              style={{ width: 18, height: 18, accentColor: '#EA580C' }}
+              style={{ width: 18, height: 18, accentColor: 'var(--amber)' }}
             />
-            <span style={{ fontSize: 12, fontWeight: 600, color: '#9A3412' }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--amber-text)' }}>
               Taking chances and driving fast? Confirm anyway.
             </span>
           </label>
         </div>
       )}
-
-      <div style={{ padding: '16px', background: T.card, borderRadius: 16, border: `1px solid ${T.cardBorder}`, display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <div>
-          <div style={{ fontSize: 11, color: T.inkMuted, textTransform: 'uppercase', fontWeight: 700 }}>Client</div>
-          <div style={{ fontSize: 15, fontWeight: 600, color: T.ink }}>{selectedClient?.firstName} {selectedClient?.lastName}</div>
-        </div>
-        <div>
-          <div style={{ fontSize: 11, color: T.inkMuted, textTransform: 'uppercase', fontWeight: 700 }}>Mission</div>
-          <div style={{ fontSize: 15, fontWeight: 600, color: T.ink }}>{service?.name}</div>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <div>
-            <div style={{ fontSize: 11, color: T.inkMuted, textTransform: 'uppercase', fontWeight: 700 }}>Date</div>
-            <div style={{ fontSize: 15, fontWeight: 600, color: T.ink }}>{date}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 11, color: T.inkMuted, textTransform: 'uppercase', fontWeight: 700 }}>Time</div>
-            <div style={{ fontSize: 15, fontWeight: 600, color: T.ink }}>{time}</div>
-          </div>
-        </div>
-        <div>
-          <div style={{ fontSize: 11, color: T.inkMuted, textTransform: 'uppercase', fontWeight: 700 }}>Recurrence</div>
-          <div style={{ fontSize: 15, fontWeight: 600, color: T.ink }}>{recurrence || 'One-time'}</div>
-        </div>
-      </div>
 
       <FinancialMathBreakdown
         job={{

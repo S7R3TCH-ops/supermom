@@ -23,6 +23,16 @@ function sameDay(a, b) {
 
 function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
 
+function getWeekRange(date) {
+  const d = new Date(date);
+  const day = d.getDay(); // 0 (Sun) to 6 (Sat)
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+  const mon = new Date(d.setDate(diff));
+  mon.setHours(0,0,0,0);
+  const days = Array.from({ length: 7 }, (_, i) => addDays(mon, i));
+  return days;
+}
+
 function fmtTime12(d) {
   const h = d.getHours(), m = d.getMinutes();
   const hh = ((h + 11) % 12) + 1;
@@ -123,7 +133,7 @@ export default function Home() {
 
   // Use a stable reference for "today"
   const [today] = useState(() => new Date());
-  const [selectedDate, setSelectedDate] = useState(today);
+  const [selectedDate, setSelectedDate] = useState(null);
   const [weekOffset, setWeekOffset] = useState(0);
   const [isSpeaking, setIsSpeaking] = useState(false);
 
@@ -150,9 +160,8 @@ export default function Home() {
   }, [persona]);
 
   const weekDays = useMemo(() => {
-    const start = addDays(today, weekOffset * 7);
-    return Array.from({ length: 7 }, (_, i) => addDays(start, i));
-  }, [today, weekOffset]);
+    return getWeekRange(today);
+  }, [today]);
 
   const firstName = useMemo(() => {
     try {

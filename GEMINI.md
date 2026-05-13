@@ -98,6 +98,8 @@ At the end of every productive session, or upon major milestone completion, Gemi
 | **Service Catalog UX** | ✅ **Live** — Added unsaved changes protection, dirty indicators, and visual 'Mark for Deletion' flow (v0.3.5) |
 | **Unified Grab Bars** | ✅ **Live** — Standardized sheet handles across app (v0.3.3) |
 | **Codebase Stability** | ✅ **0 Lint Errors** — Comprehensive cleanup of unused vars and React Hook violations (v0.5.1) |
+| **Weekly Summary / Fixed Week** | ✅ **Live** — Home grid fixed to current week; selectedDate defaults to null (v0.5.2) |
+| **7-Day Grid Navigation** | ✅ **Live** — Replaced scrolling strip with fixed CSS grid on Home (v0.5.2) |
 
 ## Phase 25 Codebase Stability & Cleanup (Gemini CLI session, May 12, 2026)
 
@@ -111,6 +113,8 @@ Key technical improvements and linting resolution:
 | LD | Cleanup | ✅ **Live** — Removed 50+ unused variables and imports | Entire codebase |
 | LE | Context Optimization | ✅ **Live** — Fixed Fast Refresh warnings in context providers | `ToastContext.jsx`, etc. |
 | LF | Typography Immutability | ✅ **Live** — Fixed unused `Component` variable in semantic components | `Title.jsx`, `Text.jsx`, etc. |
+| LG | Week Range Helpers | ✅ **Live** — Added getWeekRange and updated Home state for weekly summary | `Home.jsx` |
+| LH | 7-Day Fixed Grid | ✅ **Live** — Implemented CSS Grid nav and selection toggle logic | `Home.jsx` |
 
 (Updated by Gemini CLI)
 
@@ -137,11 +141,10 @@ Both functions (`is_admin()`, `my_business_id()`) are `SECURITY DEFINER` — the
 - `ServiceCatalogSheet.jsx` — soft-delete (set `active=false`) also checks for 0 rows and throws
 - `Settings.jsx` — `console.error` added on save failure for easier debugging
 
-### Resolved May 12, 2026 (v0.5.1) — Codebase Stability & Cleanup
-- **0 Lint Errors** — Achieved a clean lint report by resolving 140+ issues including unused variables, React Hook violations, and environment configuration gaps.
-- **SectionLabel Standardization** — Fixed the `ReferenceError` and ensured all typography components follow a consistent import and implementation pattern.
-- **React Compiler Readiness** — Adjusted manual memoization patterns to satisfy strict compiler checks and improved component stability.
-- **Environment Context** — Configured ESLint to correctly recognize Node.js globals in API routes and browser globals in the frontend, eliminating false positive errors.
+### Resolved May 12, 2026 (v0.5.2) — Home UX Redesign Phase
+- **7-Day Fixed Grid** — Replaced the scrolling week strip with a fixed 7-column grid on Home.
+- **Weekly Summary Mode** — Implemented selection toggle: clicking a selected day returns to Weekly Summary mode.
+- **Visual Polish** — Standardized grid styling (white bg inactive, pink selected) following design compliance.
 
 ### Resolved May 10, 2026 (v0.5.0) — Mission Active Overhaul & Financial Transparency
 - **Mission Active Spotlight** — Pulsing 'HAPPENING NOW' UI for ongoing jobs; quick buttons to add time/costs.
@@ -149,9 +152,10 @@ Both functions (`is_admin()`, `my_business_id()`) are `SECURITY DEFINER` — the
 - **Card Duration Labels** — Explicit 'Est' and 'Actual' hour labels on all JobCards.
 
 ## Next priorities (as of May 12, 2026)
-1. **Sandra user testing feedback** — gather any friction points from her live session today; prioritize based on what she finds confusing.
-2. **Client Engagement Tools** — AI-suggested follow-ups and re-booking reminders.
-3. **Offline Mode** — App crashes if Supabase is unreachable on initial load. Need better `Suspense` fallbacks.
-4. **Mobile Keyboard Layout** — Keyboard covers the "Save" button in sheets on small iOS devices. Need to add `paddingBottom` to `SheetContainer` based on focus state.
+1. **Home UX Redesign - Step 3** — design compliance pass for Home page content.
+2. **Sandra user testing feedback** — gather any friction points from her live session today; prioritize based on what she finds confusing.
+3. **Client Engagement Tools** — AI-suggested follow-ups and re-booking reminders.
+4. **Offline Mode** — App crashes if Supabase is unreachable on initial load. Need better `Suspense` fallbacks.
+5. **Mobile Keyboard Layout** — Keyboard covers the "Save" button in sheets on small iOS devices. Need to add `paddingBottom` to `SheetContainer` based on focus state.
 
 (Updated by Gemini CLI — May 12, 2026)

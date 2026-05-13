@@ -160,8 +160,9 @@ export default function Home() {
   }, [persona]);
 
   const weekDays = useMemo(() => {
-    return getWeekRange(today);
-  }, [today]);
+    const baseDate = addDays(today, weekOffset * 7);
+    return getWeekRange(baseDate);
+  }, [today, weekOffset]);
 
   const firstName = useMemo(() => {
     try {
@@ -186,7 +187,7 @@ export default function Home() {
   }, [allJobs, today]);
 
   const selectedDateJobs = useMemo(() => {
-    if (!allJobs) return [];
+    if (!allJobs || !selectedDate) return [];
     return allJobs
       .map(j => {
         if (!j.scheduled_at) return null;
@@ -250,7 +251,7 @@ export default function Home() {
   
   const revenueToday = todayJobs.reduce((s, j) => s + Number(j.total || 0), 0);
 
-  const isSelectedToday = sameDay(selectedDate, today);
+  const isSelectedToday = selectedDate ? sameDay(selectedDate, today) : false;
 
   const handleDeleteJob = async (jobId) => {
     if (!window.confirm('Delete this job?')) return;
@@ -435,62 +436,63 @@ export default function Home() {
       </div>
 
       <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '16px 14px' }}>
-        {/* Week Strip */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 20 }}>
-          <button 
-            onClick={() => setWeekOffset(w => w - 1)}
-            style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 8, width: 30, height: 38, color: T.ink, cursor: 'pointer' }}
-          >‹</button>
-          
-          <div className="sm-scroll" style={{ flex: 1, display: 'flex', gap: 6, overflowX: 'auto', padding: '2px 0' }}>
-            {weekDays.map(d => {
-              const isToday = sameDay(d, today);
-              const isSelected = sameDay(d, selectedDate);
-              const dayJobs = (allJobs || []).filter(j => sameDay(new Date(j.scheduled_at), d));
-              return (
-                <div
-                  key={d.toISOString()}
-                  onClick={() => { setSelectedDate(d); setWeekOffset(0); }}
-                  style={{
-                    minWidth: 42, height: 54, borderRadius: 12,
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                    background: isToday ? T.pink : isSelected ? T.pinkTint : T.card,
-                    border: `1.5px solid ${isToday ? T.pink : isSelected ? T.pink : T.cardBorder}`,
-                    cursor: 'pointer', position: 'relative'
-                  }}
-                >
-                  <div style={{ fontSize: 9, fontWeight: 700, color: isToday ? 'white' : T.inkMuted, textTransform: 'uppercase' }}>
-                    {d.toLocaleDateString('en-US', { weekday: 'short' })}
-                  </div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: isToday ? 'white' : T.ink }}>
-                    {d.getDate()}
-                  </div>
-                  {dayJobs.length > 0 && (
-                    <div style={{ position: 'absolute', bottom: 4, display: 'flex', gap: 2 }}>
-                      {dayJobs.slice(0, 3).map((_, i) => (
-                        <div key={i} style={{ width: 3, height: 3, borderRadius: '50%', background: isToday ? 'white' : T.pink }} />
-                      ))}
-                    </div>
-                  )}
+        {/* 7-Day Week Grid */}
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(7, 1fr)', 
+          gap: 6, 
+          marginBottom: 20,
+          background: T.card,
+          padding: '8px',
+          borderRadius: 16,
+          border: `1px solid ${T.cardBorder}`
+        }}>
+          {weekDays.map(d => {
+            const isToday = sameDay(d, today);
+            const isSelected = selectedDate && sameDay(d, selectedDate);
+            const dayJobs = (allJobs || []).filter(j => sameDay(new Date(j.scheduled_at), d));
+            return (
+              <div
+                key={d.toISOString()}
+                onClick={() => { 
+                  if (isSelected) {
+                    setSelectedDate(null);
+                  } else {
+                    setSelectedDate(d); 
+                    setWeekOffset(0); 
+                  }
+                }}
+                style={{
+                  height: 52, borderRadius: 10,
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                  background: isSelected ? T.pink : 'white',
+                  border: isSelected ? `1.5px solid ${T.pink}` : `1.5px solid transparent`,
+                  cursor: 'pointer', position: 'relative',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <div style={{ fontSize: 8, fontWeight: 700, color: isSelected ? 'white' : T.inkMuted, textTransform: 'uppercase' }}>
+                  {d.toLocaleDateString('en-US', { weekday: 'short' })}
                 </div>
-              );
-            })}
-          </div>
-
-          <button 
-            onClick={() => setWeekOffset(w => w + 1)}
-            style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 8, width: 30, height: 38, color: T.ink, cursor: 'pointer' }}
-          >›</button>
-
-          {weekOffset !== 0 && (
-            <button 
-              onClick={() => { setWeekOffset(0); setSelectedDate(today); }}
-              style={{ background: T.pink, border: 'none', borderRadius: 6, padding: '4px 8px', color: 'white', fontSize: 10, fontWeight: 700, cursor: 'pointer', textTransform: 'uppercase' }}
-            >Today</button>
-          )}
+                <div style={{ fontSize: 15, fontWeight: 700, color: isSelected ? 'white' : T.ink }}>
+                  {d.getDate()}
+                </div>
+                {dayJobs.length > 0 && (
+                  <div style={{ position: 'absolute', bottom: 4, display: 'flex', gap: 2 }}>
+                    {dayJobs.slice(0, 3).map((_, i) => (
+                      <div key={i} style={{ width: 3, height: 3, borderRadius: '50%', background: isSelected ? 'white' : T.pink }} />
+                    ))}
+                  </div>
+                )}
+                {isToday && !isSelected && (
+                   <div style={{ position: 'absolute', top: 2, right: 2, width: 4, height: 4, borderRadius: '50%', background: T.pink }} />
+                )}
+              </div>
+            );
+          })}
         </div>
 
-        {isSelectedToday ? (
+        {(isSelectedToday || !selectedDate) ? (
           <>
             {/* Mission Critical Alert: Tight Gap */}
             {tightGap && (
@@ -658,7 +660,7 @@ export default function Home() {
           </>
         ) : (
           <div style={{ marginBottom: 24 }}>
-            <SectionLabel>{dateBrief(selectedDate)}</SectionLabel>
+            <SectionLabel>{selectedDate ? dateBrief(selectedDate) : 'Schedule'}</SectionLabel>
             {selectedDateJobs.length === 0 ? (
               <EmptyState allDone={false} T={T} persona={persona} />
             ) : (
@@ -671,8 +673,8 @@ export default function Home() {
           </div>
         )}
 
-        {/* Future Schedule Groups */}
-        {futureWeekGroups.length > 0 && (
+        {/* Weekly Summary (Rest of week) */}
+        {futureWeekGroups.length > 0 && !selectedDate && (
           <div style={{ marginTop: 12, paddingBottom: 40 }}>
             {futureWeekGroups.map(group => (
               <div key={group.date.toISOString()} style={{ marginBottom: 24 }}>

@@ -18,14 +18,14 @@ function todayISODate() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Toronto' }).format(new Date());
 }
 
-export default function NewJobSheet({ prefillClientId, onClose }) {
+export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
   const { T } = useAppTheme();
   const toast = useToast();
   const isKeyboardFocused = useKeyboardFocus();
   const { services } = useServices();
   const sheetRef = useRef(null);
   useFocusTrap(sheetRef, true, onClose);
-  const hasPrefill = !!prefillClientId && prefillClientId !== 'null';
+  const hasPrefill = (!!prefillClientId && prefillClientId !== 'null') || !!prefillData;
   const [step, setStep] = useState(() => hasPrefill ? 2 : 1);
 
   // Fetch clients + jobs on mount
@@ -49,6 +49,7 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
   }, []);
 
   const [clientId, setClientId] = useState(() => {
+    if (prefillData?.client_id) return prefillData.client_id;
     if (prefillClientId === 'null') return null;
     return prefillClientId || null;
   });
@@ -72,16 +73,16 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
   }, [clientId, clientRows, clientJobs]);
 
   const { business } = useBusiness();
-  const [serviceId, setServiceId] = useState(null);
+  const [serviceId, setServiceId] = useState(prefillData?.service_id || null);
   const [date, setDate] = useState(todayISODate());
   const [time, setTime] = useState('10:00');
 
-  const [duration, setDuration] = useState(120);
-  const [durationTouched, setDurationTouched] = useState(false);
-  const [recurrence, setRecurrence] = useState(null);
+  const [duration, setDuration] = useState(prefillData?.estimated_hours ? prefillData.estimated_hours * 60 : 120);
+  const [durationTouched, setDurationTouched] = useState(!!prefillData?.estimated_hours);
+  const [recurrence, setRecurrence] = useState(prefillData?.recurrence || null);
   const [busy, setBusy] = useState(false);
   const [bookErr, setBookErr] = useState('');
-  const [bookingNotes, setBookingNotes] = useState('');
+  const [bookingNotes, setBookingNotes] = useState(prefillData?.job_notes || prefillData?.bookingNotes || '');
   const [takingChances, setTakingChances] = useState(false);
 
   const scheduledISO = useMemo(() => composeTorontoISO(date, time), [date, time]);
@@ -98,7 +99,8 @@ export default function NewJobSheet({ prefillClientId, onClose }) {
   const [lastClientRefId, setLastClientRefId] = useState(null);
   if (selectedClient && selectedClient.id !== lastClientRefId) {
     setLastClientRefId(selectedClient.id);
-    if (selectedClient.recurrence) setRecurrence(selectedClient.recurrence);
+    // Don't overwrite if we have specific prefillData for a duplication
+    if (!prefillData && selectedClient.recurrence) setRecurrence(selectedClient.recurrence);
   }
 
   const onPickService = async (id) => {

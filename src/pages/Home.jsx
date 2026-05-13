@@ -164,6 +164,23 @@ export default function Home() {
     return getWeekRange(baseDate);
   }, [today, weekOffset]);
 
+  const weekJobs = useMemo(() => {
+    if (!allJobs) return [];
+    return allJobs
+      .map(j => {
+        if (!j.scheduled_at) return null;
+        const start = new Date(j.scheduled_at);
+        if (isNaN(start.getTime())) return null;
+        const end = new Date(start.getTime() + (j.duration_est || 60) * 60000);
+        return { ...j, start, end };
+      })
+      .filter(j => {
+        if (!j || j.status === 'Cancelled') return false;
+        return weekDays.some(d => sameDay(j.start, d));
+      })
+      .sort((a, b) => a.start - b.start);
+  }, [allJobs, weekDays]);
+
   const firstName = useMemo(() => {
     try {
       if (business?.owner_name) return business.owner_name.split(' ')[0];
@@ -210,29 +227,8 @@ export default function Home() {
     }
   }, [firstName, persona, allDone]);
 
-  // Jobs for the remaining days of the week strip, grouped by day
-  const futureWeekGroups = useMemo(() => {
-    if (!allJobs) return [];
-    const groups = [];
-    weekDays.forEach(d => {
-      if (weekOffset === 0 && sameDay(d, today)) return;
-
-      const dayJobs = allJobs
-        .map(j => {
-          if (!j.scheduled_at) return null;
-          const start = new Date(j.scheduled_at);
-          if (isNaN(start.getTime())) return null;
-          const end = new Date(start.getTime() + (j.duration_est || 60) * 60000);
-          return { ...j, start, end };
-        })
-        .filter(j => j && sameDay(j.start, d) && j.status !== 'Cancelled')
-        .sort((a, b) => a.start - b.start);
-      if (dayJobs.length > 0) {
-        groups.push({ date: d, jobs: dayJobs });
-      }
-    });
-    return groups;
-  }, [allJobs, weekDays, weekOffset, today]);
+  const revenueToday = todayJobs.reduce((s, j) => s + Number(j.total || 0), 0);
+  const revenueWeek = weekJobs.reduce((s, j) => s + Number(j.total || 0), 0);
 
   const activeJob = todayJobs.find(j => j.status === 'Scheduled' && j.ai_context?.clock_in_time != null);
 
@@ -248,8 +244,6 @@ export default function Home() {
   const next = (activeJob && firstScheduled?.id === activeJob.id)
     ? todayJobs.find(j => j.status === 'Scheduled' && j.payment_status !== 'Paid' && j.id !== activeJob.id && j.end > now)
     : firstScheduled;
-  
-  const revenueToday = todayJobs.reduce((s, j) => s + Number(j.total || 0), 0);
 
   const isSelectedToday = selectedDate ? sameDay(selectedDate, today) : false;
 
@@ -278,6 +272,26 @@ export default function Home() {
   };
 
   const categorizedJobs = useMemo(() => {
+    if (!selectedDate) {
+      const needsAttention = [];
+      const upcomingThisWeek = [];
+      const completedThisWeek = [];
+
+      weekJobs.forEach(j => {
+        const isCompleted = j.status === 'Completed';
+        const isPaid = j.payment_status === 'Paid';
+
+        if (isCompleted && !isPaid) {
+          needsAttention.push(j);
+        } else if (isCompleted && isPaid) {
+          completedThisWeek.push(j);
+        } else if (j.status === 'Scheduled') {
+          upcomingThisWeek.push(j);
+        }
+      });
+      return { needsAttention, upcomingThisWeek, completedThisWeek };
+    }
+
     const incomplete = [];
     const upcoming = [];
     const done = [];
@@ -307,7 +321,7 @@ export default function Home() {
     });
 
     return { incomplete: unpaidFirst(incomplete), upcoming: unpaidFirst(upcoming), done: unpaidFirst(done) };
-  }, [todayJobs, activeJob, next, overdueScheduled, now]);
+  }, [selectedDate, weekJobs, todayJobs, activeJob, next, overdueScheduled, now]);
 
   useEffect(() => {
     return () => stopSpeaking();
@@ -374,7 +388,6 @@ export default function Home() {
     
     try {
       await updateJob(job.id, { additional_costs_json: newCosts });
-      notifyDataChanged();
     } catch {
       alert("Could not add cost.");
     }
@@ -408,30 +421,46 @@ export default function Home() {
         
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative' }}>
           <div style={{ flex: 1 }}>
-            <SectionLabel style={{ color: mode === 'dark' ? T.pinkLabel : T.pink, marginBottom: 5 }}>
-              ✦ Command Brief · {dateBrief(today)}
-            </SectionLabel>
-            <Title style={{ fontSize: 22, fontWeight: 500, letterSpacing: '-0.5px', color: mode === 'dark' ? 'white' : T.ink, lineHeight: 1.15, marginBottom: 4 }}>
-              {timeBasedGreeting}
-            </Title>
-            <Text style={{ fontSize: 13, color: T.inkMuted, fontWeight: 500 }}>
-              {briefingMsg}
-            </Text>
+            {!selectedDate ? (
+              <>
+                <SectionLabel style={{ color: mode === 'dark' ? T.pinkLabel : T.pink, marginBottom: 5 }}>
+                  ✦ WEEKLY SUMMARY
+                </SectionLabel>
+                <Title style={{ fontSize: 22, fontWeight: 500, letterSpacing: '-0.5px', color: mode === 'dark' ? 'white' : T.ink, lineHeight: 1.15, marginBottom: 4 }}>
+                  Your week at a glance
+                </Title>
+                <Text style={{ fontSize: 13, color: T.inkMuted, fontWeight: 500 }}>
+                  {weekJobs.length} jobs scheduled this week
+                </Text>
+              </>
+            ) : (
+              <>
+                <SectionLabel style={{ color: mode === 'dark' ? T.pinkLabel : T.pink, marginBottom: 5 }}>
+                  ✦ Command Brief · {dateBrief(selectedDate)}
+                </SectionLabel>
+                <Title style={{ fontSize: 22, fontWeight: 500, letterSpacing: '-0.5px', color: mode === 'dark' ? 'white' : T.ink, lineHeight: 1.15, marginBottom: 4 }}>
+                  {isSelectedToday ? timeBasedGreeting : dateBrief(selectedDate)}
+                </Title>
+                <Text style={{ fontSize: 13, color: T.inkMuted, fontWeight: 500 }}>
+                  {isSelectedToday ? briefingMsg : `${selectedDateJobs.length} jobs scheduled`}
+                </Text>
+              </>
+            )}
           </div>
 
-          {!allDone && todayJobs.length > 0 && (
-            <div style={{ textAlign: 'right', flexShrink: 0 }}>
-              <div 
-                onClick={openDetail}
-                style={{ cursor: 'pointer', padding: '4px 0' }}
-              >
-                <Text style={{ fontSize: 18, fontWeight: 600, color: mode === 'dark' ? 'white' : T.pink }}>
-                  {privacyOn ? '•••' : `$${revenueToday.toFixed(0)}`}
-                </Text>
-                <Caption style={{ fontWeight: 700, color: mode === 'dark' ? T.pinkLabel : T.pink, textTransform: 'uppercase' }}>Done</Caption>
-              </div>
+          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+            <div 
+              onClick={openDetail}
+              style={{ cursor: 'pointer', padding: '4px 0' }}
+            >
+              <Text style={{ fontSize: 18, fontWeight: 600, color: mode === 'dark' ? 'white' : T.pink }}>
+                {privacyOn ? '•••' : `$${(!selectedDate ? revenueWeek : revenueToday).toFixed(0)}`}
+              </Text>
+              <Caption style={{ fontWeight: 700, color: mode === 'dark' ? T.pinkLabel : T.pink, textTransform: 'uppercase' }}>
+                {!selectedDate ? 'Projected' : 'Revenue'}
+              </Caption>
             </div>
-          )}
+          </div>
         </div>
       </div>
 
@@ -492,7 +521,40 @@ export default function Home() {
           })}
         </div>
 
-        {(isSelectedToday || !selectedDate) ? (
+        {!selectedDate ? (
+          <div style={{ paddingBottom: 40 }}>
+            {categorizedJobs.needsAttention.length > 0 && (
+              <div style={{ marginBottom: 24 }}>
+                <SectionLabel color="#F59E0B">✦ Needs Attention · Unpaid</SectionLabel>
+                {categorizedJobs.needsAttention.map(j => (
+                  <JobCard key={j.id} job={j} T={T} onClick={() => openJob(j.id)} />
+                ))}
+              </div>
+            )}
+
+            {categorizedJobs.upcomingThisWeek.length > 0 && (
+              <div style={{ marginBottom: 24 }}>
+                <SectionLabel>Upcoming This Week</SectionLabel>
+                {categorizedJobs.upcomingThisWeek.map(j => (
+                  <JobCard key={j.id} job={j} T={T} onClick={() => openJob(j.id)} />
+                ))}
+              </div>
+            )}
+
+            {categorizedJobs.completedThisWeek.length > 0 && (
+              <div style={{ marginBottom: 24 }}>
+                <SectionLabel>Completed This Week</SectionLabel>
+                {categorizedJobs.completedThisWeek.map(j => (
+                  <JobCard key={j.id} job={j} T={T} onClick={() => openJob(j.id)} />
+                ))}
+              </div>
+            )}
+
+            {weekJobs.length === 0 && (
+              <EmptyState allDone={false} T={T} persona={persona} />
+            )}
+          </div>
+        ) : isSelectedToday ? (
           <>
             {/* Mission Critical Alert: Tight Gap */}
             {tightGap && (
@@ -660,7 +722,7 @@ export default function Home() {
           </>
         ) : (
           <div style={{ marginBottom: 24 }}>
-            <SectionLabel>{selectedDate ? dateBrief(selectedDate) : 'Schedule'}</SectionLabel>
+            <SectionLabel>{dateBrief(selectedDate)}</SectionLabel>
             {selectedDateJobs.length === 0 ? (
               <EmptyState allDone={false} T={T} persona={persona} />
             ) : (
@@ -670,22 +732,6 @@ export default function Home() {
                 </Swipeable>
               ))
             )}
-          </div>
-        )}
-
-        {/* Weekly Summary (Rest of week) */}
-        {futureWeekGroups.length > 0 && !selectedDate && (
-          <div style={{ marginTop: 12, paddingBottom: 40 }}>
-            {futureWeekGroups.map(group => (
-              <div key={group.date.toISOString()} style={{ marginBottom: 24 }}>
-                <SectionLabel style={{ marginTop: 16 }}>{dateBrief(group.date)}</SectionLabel>
-                {group.jobs.map(j => (
-                  <Swipeable key={j.id} onSwipeLeft={() => handleDeleteJob(j.id)}>
-                    <JobCard job={j} T={T} onClick={() => openJob(j.id)} />
-                  </Swipeable>
-                ))}
-              </div>
-            ))}
           </div>
         )}
       </div>

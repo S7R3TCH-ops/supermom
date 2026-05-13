@@ -227,8 +227,10 @@ export default function Home() {
     }
   }, [firstName, persona, allDone]);
 
-  const revenueToday = todayJobs.reduce((s, j) => s + Number(j.total || 0), 0);
-  const revenueWeek = weekJobs.reduce((s, j) => s + Number(j.total || 0), 0);
+  const displayRevenue = useMemo(() => {
+    const jobs = selectedDate ? selectedDateJobs : weekJobs;
+    return jobs.reduce((s, j) => s + Number(j.total || 0), 0);
+  }, [selectedDate, selectedDateJobs, weekJobs]);
 
   const activeJob = todayJobs.find(j => j.status === 'Scheduled' && j.ai_context?.clock_in_time != null);
 
@@ -454,7 +456,7 @@ export default function Home() {
               style={{ cursor: 'pointer', padding: '4px 0' }}
             >
               <Text style={{ fontSize: 18, fontWeight: 600, color: mode === 'dark' ? 'white' : T.pink }}>
-                {privacyOn ? '•••' : `$${(!selectedDate ? revenueWeek : revenueToday).toFixed(0)}`}
+                {privacyOn ? '•••' : `$${displayRevenue.toFixed(0)}`}
               </Text>
               <Caption style={{ fontWeight: 700, color: mode === 'dark' ? T.pinkLabel : T.pink, textTransform: 'uppercase' }}>
                 {!selectedDate ? 'Projected' : 'Revenue'}

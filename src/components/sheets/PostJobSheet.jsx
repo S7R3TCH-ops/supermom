@@ -304,7 +304,7 @@ export default function PostJobSheet({ jobId, onClose }) {
           {/* Section 3: Amount & Method */}
           {payStatus !== 'unpaid' && !isPaidRecord && (
             <div style={{ background: T.card, padding: 16, borderRadius: 16, border: `1px solid ${T.cardBorder}` }}>
-              <SectionLabel>Payment Method & Amount</SectionLabel>
+              <SectionLabel>{alreadyPaid > 0 ? 'Remaining Balance' : 'Payment Method & Amount'}</SectionLabel>
               <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
                 {['Cash', 'e-Transfer'].map(m => (
                   <button
@@ -322,13 +322,33 @@ export default function PostJobSheet({ jobId, onClose }) {
                   </button>
                 ))}
               </div>
+              {alreadyPaid > 0 && (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  background: 'rgba(245,158,11,0.10)',
+                  border: '1px solid rgba(245,158,11,0.35)',
+                  borderRadius: 10,
+                  padding: '8px 12px',
+                  marginBottom: 10,
+                }}>
+                  <span style={{ fontSize: 14 }}>✓</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#92400E' }}>
+                    Pre-paid: ${alreadyPaid.toFixed(2)}
+                  </span>
+                  <span style={{ fontSize: 11, color: '#B45309', marginLeft: 'auto' }}>
+                    of ${(alreadyPaid + (parseFloat(amount) || 0)).toFixed(2)} total
+                  </span>
+                </div>
+              )}
               <div style={{ position: 'relative' }}>
                 <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: T.inkMuted, fontSize: 16, fontWeight: 600 }}>$</span>
                 <input
                   type="number"
                   value={amount}
                   onChange={e => setAmount(e.target.value)}
-                  placeholder="0.00"
+                  placeholder={alreadyPaid > 0 ? `Remaining: $${Math.max(0, liveTotal - alreadyPaid).toFixed(2)}` : '0.00'}
                   style={{
                     width: '100%', padding: '12px 14px 12px 30px', borderRadius: 12,
                     background: T.bg, border: `1px solid ${T.cardBorder}`,
@@ -337,7 +357,11 @@ export default function PostJobSheet({ jobId, onClose }) {
                 />
               </div>
               <div style={{ fontSize: 10, color: T.inkMuted, marginTop: 8, textAlign: 'center', fontWeight: 500 }}>
-                {payStatus === 'paid' ? 'Full amount for this job' : 'Partial amount being paid today'}
+                {alreadyPaid > 0
+                  ? `Balance after pre-payment of $${alreadyPaid.toFixed(2)}`
+                  : payStatus === 'paid'
+                    ? 'Full amount for this job'
+                    : 'Partial amount being paid today'}
               </div>
             </div>
           )}

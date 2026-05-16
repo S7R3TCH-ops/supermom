@@ -1,4 +1,5 @@
-import { useMemo, useEffect, useState } from 'react';
+import { useMemo, useEffect, useState, useCallback, useRef } from 'react';
+import { supabase } from '../lib/supabase';
 import { useAppTheme } from '../context/AppThemeContext';
 import { Title, Subheading, Text, Caption, SectionLabel } from '../components/ui/typography';
 import { useJobs, useBusiness, notifyDataChanged } from '../data/useData';
@@ -6,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { useJobDetailSheet } from '../context/JobDetailSheetContext';
 import { usePostJobSheet } from '../context/PostJobSheetContext';
 import { useFinanceDetailSheet } from '../context/FinanceDetailSheetContext';
+import { useNewJobSheet } from '../context/NewJobSheetContext';
 import { generateCommandBrief, speakBrief, stopSpeaking } from '../data/ai';
 import { updateDailyRoutes } from '../lib/maps';
 import { getPersistentDailyMessage, getTimeBasedGreeting } from '../lib/greetings';
@@ -14,6 +16,7 @@ import { useGeofence } from '../context/GeofenceContext';
 import { EmptyActivity, NoResults } from '../components/ui/Illustrations';
 import { useKeyboardFocus } from '../hooks/useKeyboardFocus';
 import Swipeable from '../components/ui/Swipeable';
+import WeekStrip from '../components/ui/WeekStrip';
 
 function sameDay(a, b) {
   return a.getFullYear() === b.getFullYear()
@@ -23,14 +26,27 @@ function sameDay(a, b) {
 
 function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
 
+/**
+ * Returns an array of 7 Date objects representing the Monday-Sunday week containing the given date.
+ */
 function getWeekRange(date) {
   const d = new Date(date);
   const day = d.getDay(); // 0 (Sun) to 6 (Sat)
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+  // Monday is day 1. If day is 0 (Sun), we need to go back 6 days.
+  // Otherwise, we go back (day - 1) days.
+  const diff = d.getDate() - (day === 0 ? 6 : day - 1);
   const mon = new Date(d.setDate(diff));
   mon.setHours(0,0,0,0);
-  const days = Array.from({ length: 7 }, (_, i) => addDays(mon, i));
-  return days;
+  return Array.from({ length: 7 }, (_, i) => addDays(mon, i));
+}
+
+function getWeekLabel(weekDays) {
+  const first = weekDays[0];
+  const last = weekDays[6];
+  if (first.getMonth() === last.getMonth()) {
+    return `${first.toLocaleDateString('en-US', { month: 'long' })} ${first.getDate()}–${last.getDate()}`;
+  }
+  return `${first.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${last.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
 }
 
 function fmtTime12(d) {
@@ -40,51 +56,222 @@ function fmtTime12(d) {
   return { time: m === 0 ? `${hh}:00` : `${hh}:${m.toString().padStart(2,'0')}`, period: ap };
 }
 
+function fmtTimeRange(start, end) {
+  const s = fmtTime12(start);
+  const e = fmtTime12(end);
+  return s.period === e.period
+    ? `${s.time} – ${e.time} ${e.period}`
+    : `${s.time} ${s.period} – ${e.time} ${e.period}`;
+}
+
 function dateBrief(d) {
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
-function JobCard({ job: j, T, onClick }) {
+function computeTotal(j) {
+  // toDisplayJob strips raw fields — always read from j.raw when available
+  // flat_rate stores the $/hr rate for Hourly jobs (NewJobSheet never writes hourly_rate)
+  const src = j.raw || j;
+  let base = 0;
+
+  if (src.pricing_type === 'Hourly') {
+    const rate = Number(src.hourly_rate || src.flat_rate || 0);
+    const hours = Number(src.actual_duration || src.estimated_hours || 0);
+    base = (rate > 0 && hours > 0) ? rate * hours : Number(src.total_amount || 0);
+  } else {
+    base = Number(src.total_amount || src.flat_rate || 0);
+  }
+
+  return base + Number(src.additional_cost || 0) + Number(src.hst_amount || 0);
+}
+
+
+function JobCard({ job: j, T, onClick, onDuplicate, paid = 0, total = 0, privacyOn = false }) {
   const isCompleted = j.status === 'Completed';
   const isPaid = j.payment_status === 'Paid';
+  const isPartial = j.payment_status === 'Partial';
   const isUnpaid = isCompleted && !isPaid;
-  const startTime = fmtTime12(j.start);
-  const endTime = fmtTime12(j.end);
 
-  const urgencyColor = isUnpaid ? '#F59E0B' : isCompleted ? '#22C55E' : '#3B82F6';
-  const urgencyBg = isUnpaid ? 'rgba(245,158,11,0.08)' : isCompleted ? 'rgba(34,197,94,0.08)' : 'rgba(59,130,246,0.08)';
-  const statusLabel = isUnpaid ? 'UNPAID' : isCompleted ? 'PAID ✓' : 'SCHEDULED';
+  const urgencyColor = isUnpaid ? '#F59E0B' : isCompleted ? '#16A34A' : T.pink;
+  const urgencyBg = isUnpaid ? 'rgba(245,158,11,0.12)' : isCompleted ? 'rgba(22,163,74,0.08)' : T.pinkGlow;
+  const statusLabel = isPartial ? 'PARTIAL' : isUnpaid ? 'UNPAID' : isCompleted ? 'PAID ✓' : 'SCHEDULED';
 
+  const remaining = isPaid ? 0 : Math.max(0, total - paid);
+  const showPaymentInfo = isCompleted || total > 0;
+  const metaColor = T.inkSub || '#795548';
+  const timeRange = fmtTimeRange(j.start, j.end);
+  const dateLabel = dateBrief(j.start);
+
+  if (isCompleted) {
+    // ── Compact completed card ─────────────────────────────────────────
+    return (
+      <div
+        onClick={onClick}
+        style={{
+          background: urgencyBg,
+          border: `1.5px solid ${urgencyColor}`,
+          borderLeft: `5px solid ${urgencyColor}`,
+          borderRadius: 14,
+          marginBottom: 9,
+          cursor: 'pointer',
+          padding: '10px 14px',
+        }}
+      >
+        {/* Row 1: client name + amount · STATUS */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+          <div style={{
+            fontFamily: T.serif,
+            fontSize: 17,
+            fontWeight: 600,
+            color: T.ink,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            letterSpacing: '-0.3px',
+            flex: 1,
+          }}>
+            {j.client_name}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+            {showPaymentInfo && !privacyOn && total > 0 && (
+              <span style={{
+                fontFamily: T.serif,
+                fontSize: 14,
+                fontWeight: 600,
+                color: urgencyColor,
+                letterSpacing: '-0.3px',
+                fontVariantNumeric: 'tabular-nums',
+              }}>
+                ${total.toFixed(0)}
+              </span>
+            )}
+            <span style={{
+              fontSize: 10,
+              fontWeight: 800,
+              color: urgencyColor,
+              textTransform: 'uppercase',
+              background: `${urgencyColor}22`,
+              padding: '3px 8px',
+              borderRadius: 5,
+              letterSpacing: '0.3px',
+            }}>
+              {statusLabel}
+            </span>
+            {onDuplicate && (
+              <button
+                onClick={e => { e.stopPropagation(); onDuplicate(j); }}
+                style={{ background: 'none', border: 'none', padding: '0 2px', color: urgencyColor, fontSize: 14, fontWeight: 900, cursor: 'pointer', lineHeight: 1, opacity: 0.7 }}
+                title="Rebook this job"
+              >
+                ↻
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Row 2: date · time inline, service */}
+        <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: metaColor }}>
+            {dateLabel} · {timeRange}
+          </span>
+          <span style={{ fontSize: 10, color: metaColor, opacity: 0.4 }}>·</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: urgencyColor, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+            {j.service_name}
+          </span>
+        </div>
+
+        {/* Row 3: owing amount (only if something still owed) */}
+        {remaining > 0 && (
+          <div style={{ marginTop: 4 }}>
+            <span style={{ color: T.pink, fontSize: 13, fontWeight: 800, letterSpacing: '-0.2px' }}>
+              {privacyOn ? '•••' : paid > 0 ? `$${paid.toFixed(0)} paid · $${remaining.toFixed(0)} owing` : `$${total.toFixed(0)} owing`}
+            </span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── Scheduled / upcoming card (full layout with time header) ──────────
   return (
     <div
       onClick={onClick}
       style={{
-        background: T.card,
-        border: `1.5px solid ${urgencyColor}`,
-        borderLeft: `5px solid ${urgencyColor}`,
-        borderRadius: 14,
-        padding: '12px 14px',
-        marginBottom: 10,
+        background: urgencyBg,
+        border: `2px solid ${urgencyColor}`,
+        borderLeft: `6px solid ${urgencyColor}`,
+        borderRadius: 16,
+        marginBottom: 12,
         cursor: 'pointer',
-        backgroundColor: urgencyBg,
+        boxShadow: '0 4px 12px rgba(0,0,0,0.04)',
+        overflow: 'hidden',
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: T.ink, marginBottom: 2 }}>{j.client_name}</div>
-          <div style={{ fontSize: 12, fontWeight: 600, color: urgencyColor }}>{j.service_name}</div>
-          <div style={{ fontSize: 10, color: T.inkMuted, marginTop: 4 }}>
-            {isCompleted ? 'Actual' : 'Est'}: {isCompleted ? (j.actual_duration || j.estimated_hours || 0) : (j.estimated_hours || 0)}h
-            {j.address && <span> · 📍{j.address.split(',')[0]}</span>}
-          </div>
+      {/* Time header — full width, top of card */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: '10px 16px 8px',
+        borderBottom: `1px solid ${urgencyColor}30`,
+      }}>
+        <div style={{
+          fontFamily: 'monospace',
+          fontSize: 22,
+          fontWeight: 900,
+          color: urgencyColor,
+          letterSpacing: '-0.5px',
+          lineHeight: 1,
+        }}>
+          {timeRange}
         </div>
-        <div style={{ textAlign: 'right', flexShrink: 0 }}>
-          <div style={{ fontSize: 15, fontWeight: 800, color: T.pink }}>
-            {startTime.time}<span style={{ fontSize: 11 }}>{startTime.period}</span>
-          </div>
-          <div style={{ fontSize: 12, color: T.inkMuted }}>–{endTime.time}<span style={{ fontSize: 10 }}>{endTime.period}</span></div>
-          <div style={{ marginTop: 4, fontSize: 9, fontWeight: 800, color: urgencyColor, textTransform: 'uppercase', background: `${urgencyColor}20`, padding: '2px 6px', borderRadius: 4 }}>{statusLabel}</div>
+        <div style={{
+          fontSize: 10,
+          fontWeight: 800,
+          color: urgencyColor,
+          textTransform: 'uppercase',
+          background: `${urgencyColor}22`,
+          padding: '4px 9px',
+          borderRadius: 6,
+          letterSpacing: '0.4px',
+        }}>
+          {statusLabel}
         </div>
+      </div>
+
+      {/* Card body */}
+      <div style={{ padding: '10px 16px 12px' }}>
+        <div style={{ fontFamily: T.serif, fontSize: 19, fontWeight: 600, color: T.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.4px', marginBottom: 1 }}>
+          {j.client_name}
+        </div>
+        <div style={{ fontSize: 11, fontWeight: 600, color: metaColor, marginBottom: 4 }}>
+          {dateLabel}
+        </div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: urgencyColor, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>
+          {j.service_name}
+        </div>
+        <div style={{ fontSize: 12, fontWeight: 600, color: metaColor, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
+          <span>Est: {j.raw?.estimated_hours || 0}h</span>
+          {showPaymentInfo && (
+            <>
+              <span style={{ opacity: 0.4 }}>·</span>
+              {remaining > 0 ? (
+                <span style={{ color: T.pink, fontSize: 13, fontWeight: 800, letterSpacing: '-0.2px' }}>
+                  {privacyOn ? '•••' : paid > 0 ? `$${paid.toFixed(0)} paid · $${remaining.toFixed(0)} owing` : `$${total.toFixed(0)} owing`}
+                </span>
+              ) : (
+                <span style={{ color: urgencyColor }}>
+                  {privacyOn ? '•••' : `$${total.toFixed(0)} total`}
+                </span>
+              )}
+            </>
+          )}
+        </div>
+        {j.address && (
+          <div style={{ fontSize: 11, color: metaColor, marginTop: 4, opacity: 0.7, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            📍 {j.address}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -118,12 +305,71 @@ const EmptyState = ({ allDone, T, persona }) => {
   );
 };
 
+function UpcomingCard({ job: j, T, onClick, total = 0, privacyOn = false }) {
+  const BLUE = '#1565C0';
+  const timeRange = fmtTimeRange(j.start, j.end);
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        background: 'rgba(21,101,192,0.07)',
+        border: `2px solid ${BLUE}`,
+        borderLeft: `6px solid ${BLUE}`,
+        borderRadius: 14,
+        marginBottom: 10,
+        cursor: 'pointer',
+        overflow: 'hidden',
+      }}
+    >
+      {/* Time header */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: '9px 14px 7px',
+        borderBottom: `1px solid ${BLUE}25`,
+      }}>
+        <div style={{ fontFamily: 'monospace', fontSize: 20, fontWeight: 900, color: BLUE, letterSpacing: '-0.5px', lineHeight: 1 }}>
+          {timeRange}
+        </div>
+        <div style={{ fontSize: 9, fontWeight: 800, color: BLUE, textTransform: 'uppercase', background: `${BLUE}18`, padding: '3px 8px', borderRadius: 5, letterSpacing: '0.4px' }}>
+          UPCOMING
+        </div>
+      </div>
+
+      {/* Body */}
+      <div style={{ padding: '8px 14px 10px' }}>
+        <div style={{ fontFamily: T.serif, fontSize: 17, fontWeight: 600, color: T.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 1 }}>
+          {j.client_name}
+        </div>
+        <div style={{ fontSize: 10, fontWeight: 600, color: BLUE, opacity: 0.7, marginBottom: 3 }}>
+          {dateBrief(j.start)}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: BLUE, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+            {j.service_name}
+          </div>
+          {total > 0 && (
+            <>
+              <span style={{ fontSize: 10, color: BLUE, opacity: 0.4 }}>·</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: BLUE }}>
+                {privacyOn ? '•••' : `$${total.toFixed(0)}`}
+              </span>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const themeCtx = useAppTheme();
   const jobsCtx = useJobs();
   const detailSheet = useJobDetailSheet();
   const postJobSheet = usePostJobSheet();
   const financeSheet = useFinanceDetailSheet();
+  const newJobSheet = useNewJobSheet();
   const authCtx = useAuth();
   const { handleClockOut } = useGeofence();
   const bizCtx = useBusiness();
@@ -133,8 +379,12 @@ export default function Home() {
 
   // Use a stable reference for "today"
   const [today] = useState(() => new Date());
-  const [selectedDate, setSelectedDate] = useState(null);
-  const [weekOffset, setWeekOffset] = useState(0);
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const t = new Date();
+    t.setHours(0, 0, 0, 0);
+    return t;
+  });
+  const [weekStart, setWeekStart] = useState(() => getWeekRange(today)[0]);
   const [isSpeaking, setIsSpeaking] = useState(false);
 
   // Live clock — re-evaluates which job owns the spotlight each minute
@@ -151,18 +401,7 @@ export default function Home() {
   
   const persona = business?.ai_profile?.style || 'professional';
   
-  const briefingMsg = useMemo(() => {
-    try {
-      return getPersistentDailyMessage('briefing', persona);
-    } catch {
-      return "Ready for the day.";
-    }
-  }, [persona]);
-
-  const weekDays = useMemo(() => {
-    const baseDate = addDays(today, weekOffset * 7);
-    return getWeekRange(baseDate);
-  }, [today, weekOffset]);
+  const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
 
   const weekJobs = useMemo(() => {
     if (!allJobs) return [];
@@ -227,18 +466,14 @@ export default function Home() {
     }
   }, [firstName, persona, allDone]);
 
+  const isSelectedToday = sameDay(selectedDate, today);
+
   const displayRevenue = useMemo(() => {
-    const jobs = selectedDate ? selectedDateJobs : weekJobs;
-    return jobs.reduce((s, j) => s + Number(j.total || 0), 0);
-  }, [selectedDate, selectedDateJobs, weekJobs]);
+    const jobs = isSelectedToday ? todayJobs : selectedDate ? selectedDateJobs : weekJobs;
+    return jobs.reduce((s, j) => s + computeTotal(j), 0);
+  }, [isSelectedToday, selectedDate, todayJobs, selectedDateJobs, weekJobs]);
 
   const activeJob = todayJobs.find(j => j.status === 'Scheduled' && j.ai_context?.clock_in_time != null);
-
-  const overdueScheduled = todayJobs.filter(j =>
-    j.status === 'Scheduled' &&
-    j.end <= now &&
-    j.id !== activeJob?.id
-  );
 
   const firstScheduled = todayJobs.find(j =>
     j.status === 'Scheduled' && j.payment_status !== 'Paid' && j.end > now
@@ -247,7 +482,118 @@ export default function Home() {
     ? todayJobs.find(j => j.status === 'Scheduled' && j.payment_status !== 'Paid' && j.id !== activeJob.id && j.end > now)
     : firstScheduled;
 
-  const isSelectedToday = selectedDate ? sameDay(selectedDate, today) : false;
+  const attentionItems = useMemo(() => {
+    if (!allJobs) return [];
+    return allJobs
+      .map(j => {
+        if (!j.scheduled_at) return null;
+        const start = new Date(j.scheduled_at);
+        if (isNaN(start.getTime())) return null;
+        const end = new Date(start.getTime() + (j.duration_est || 60) * 60000);
+        return { ...j, start, end };
+      })
+      .filter(j => {
+        if (!j || j.status === 'Cancelled') return false;
+        const isPast = j.end < now;
+        const needsWrap = j.status !== 'Completed';
+        const needsPay = j.status === 'Completed' && j.payment_status !== 'Paid';
+        return isPast && (needsWrap || needsPay);
+      })
+      .sort((a, b) => a.start - b.start);
+  }, [allJobs, now]);
+
+  const briefingMsg = useMemo(() => {
+    if (!isSelectedToday) return `${selectedDateJobs.length} jobs scheduled`;
+    
+    if (allDone) {
+      return "Mission accomplished. Time to go be fabulous somewhere else!";
+    }
+    
+    if (activeJob) {
+      const remainingCount = todayJobs.filter(j => j.status === 'Scheduled' && j.id !== activeJob.id).length;
+      return `In the zone! ${remainingCount > 0 ? `${remainingCount} more boss moves` : 'Almost done'} for today.`;
+    }
+    
+    if (next) {
+      const minsToStart = Math.round((next.start - now) / 60000);
+      const jobsRemaining = todayJobs.filter(j => j.status === 'Scheduled' && j.payment_status !== 'Paid').length;
+      const countStr = jobsRemaining > 1 ? ` (${jobsRemaining - 1} more to go)` : '';
+      
+      if (minsToStart <= 0) return `Suit up! Your next mission is starting now.${countStr}`;
+      if (minsToStart < 60) return `T-minus ${minsToStart} mins until you save the day again.${countStr}`;
+      
+      const timeStr = fmtTime12(next.start);
+      return `Deep breaths. Next mission at ${timeStr.time}${timeStr.period}.${countStr}`;
+    }
+    
+    if (attentionItems.length > 0) {
+      return `${attentionItems.length} job${attentionItems.length > 1 ? 's are' : ' is'} giving you the side-eye. Time to wrap up!`;
+    }
+    
+    try {
+      return getPersistentDailyMessage('briefing', persona);
+    } catch {
+      return "Ready for the day.";
+    }
+  }, [isSelectedToday, selectedDateJobs.length, allDone, activeJob, next, now, todayJobs, attentionItems.length, persona]);
+
+  const staleAttentionItems = useMemo(() => {
+    const cutoff = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+    return attentionItems.filter(j => j.end < cutoff);
+  }, [attentionItems, now]);
+
+  const completedPaidThisWeek = useMemo(() => {
+    return weekJobs
+      .filter(j => j.status === 'Completed' && j.payment_status === 'Paid')
+      .sort((a, b) => b.start - a.start);
+  }, [weekJobs]);
+
+  const [paymentMap, setPaymentMap] = useState({});
+  useEffect(() => {
+    const jobIds = [...new Set([
+      ...weekJobs.map(j => j.id),
+      ...todayJobs.map(j => j.id),
+      ...attentionItems.map(j => j.id)
+    ])];
+    
+    let alive = true;
+    const fetchPayments = async () => {
+      if (!jobIds.length) {
+        if (alive) setPaymentMap(p => Object.keys(p).length === 0 ? p : {});
+        return;
+      }
+      const { data } = await supabase
+        .from('payments')
+        .select('job_id, amount')
+        .in('job_id', jobIds)
+        .eq('is_void', false);
+      
+      if (alive) {
+        const map = {};
+        (data ?? []).forEach(p => { map[p.job_id] = (map[p.job_id] || 0) + Number(p.amount); });
+        setPaymentMap(map);
+      }
+    };
+
+    fetchPayments();
+    return () => { alive = false; };
+  }, [weekJobs, todayJobs, attentionItems]);
+
+  const todayUpcoming = useMemo(() => {
+    return todayJobs.filter(j =>
+      j.id !== activeJob?.id &&
+      j.id !== next?.id &&
+      j.start >= now &&
+      j.status === 'Scheduled'
+    );
+  }, [todayJobs, activeJob, next, now]);
+
+  const attentionRef = useRef(null);
+
+  const nextUpLabel = useMemo(() => {
+    if (!selectedDate || isSelectedToday || !next) return null;
+    return `Next Up Today: ${fmtTime12(next.start).time}${fmtTime12(next.start).period} @ ${next.client_name}`;
+  }, [selectedDate, isSelectedToday, next]);
 
   const handleDeleteJob = async (jobId) => {
     if (!window.confirm('Delete this job?')) return;
@@ -257,6 +603,16 @@ export default function Home() {
     } catch {
       alert('Could not delete job.');
     }
+  };
+
+  const handleDuplicateJob = (job) => {
+    newJobSheet.openWithPrefill({
+      client_id: job.client_id,
+      service_id: job.service_id,
+      estimated_hours: job.estimated_hours,
+      job_notes: job.job_notes,
+      recurrence: job.recurrence,
+    });
   };
 
   const handleReadAloud = (e) => {
@@ -273,57 +629,6 @@ export default function Home() {
     }
   };
 
-  const categorizedJobs = useMemo(() => {
-    if (!selectedDate) {
-      const needsAttention = [];
-      const upcomingThisWeek = [];
-      const completedThisWeek = [];
-
-      weekJobs.forEach(j => {
-        const isCompleted = j.status === 'Completed';
-        const isPaid = j.payment_status === 'Paid';
-
-        if (isCompleted && !isPaid) {
-          needsAttention.push(j);
-        } else if (isCompleted && isPaid) {
-          completedThisWeek.push(j);
-        } else if (j.status === 'Scheduled') {
-          upcomingThisWeek.push(j);
-        }
-      });
-      return { needsAttention, upcomingThisWeek, completedThisWeek };
-    }
-
-    const incomplete = [];
-    const upcoming = [];
-    const done = [];
-    const overdueIds = new Set(overdueScheduled.map(j => j.id));
-
-    todayJobs.forEach(j => {
-      if (j.id === activeJob?.id) return;
-      if (j.id === next?.id) return;
-      if (overdueIds.has(j.id)) return;
-
-      const isCompleted = j.status === 'Completed';
-      const isPast = j.end < now;
-
-      if (isCompleted) {
-        done.push(j);
-      } else if (isPast) {
-        incomplete.push(j);
-      } else {
-        upcoming.push(j);
-      }
-    });
-
-    const unpaidFirst = arr => [...arr].sort((a, b) => {
-      const aUnpaid = a.payment_status !== 'Paid' ? 0 : 1;
-      const bUnpaid = b.payment_status !== 'Paid' ? 0 : 1;
-      return aUnpaid - bUnpaid || a.start - b.start;
-    });
-
-    return { incomplete: unpaidFirst(incomplete), upcoming: unpaidFirst(upcoming), done: unpaidFirst(done) };
-  }, [selectedDate, weekJobs, todayJobs, activeJob, next, overdueScheduled, now]);
 
   useEffect(() => {
     return () => stopSpeaking();
@@ -355,6 +660,10 @@ export default function Home() {
   const openDetail = financeSheet?.open;
 
   const [isRefreshingTraffic, setIsRefreshingTraffic] = useState(false);
+
+  const handleWeekChange = useCallback((delta) => {
+    setWeekStart(prev => addDays(prev, delta * 7));
+  }, []);
 
   const handleRefreshTraffic = async (e) => {
     e.stopPropagation();
@@ -423,141 +732,110 @@ export default function Home() {
         
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative' }}>
           <div style={{ flex: 1 }}>
-            {!selectedDate ? (
-              <>
-                <SectionLabel style={{ color: mode === 'dark' ? T.pinkLabel : T.pink, marginBottom: 5 }}>
-                  ✦ WEEKLY SUMMARY
-                </SectionLabel>
-                <Title style={{ fontSize: 22, fontWeight: 500, letterSpacing: '-0.5px', color: mode === 'dark' ? 'white' : T.ink, lineHeight: 1.15, marginBottom: 4 }}>
-                  Your week at a glance
-                </Title>
-                <Text style={{ fontSize: 13, color: T.inkMuted, fontWeight: 500 }}>
-                  {weekJobs.length} jobs scheduled this week
-                </Text>
-              </>
-            ) : (
+            {isSelectedToday ? (
               <>
                 <SectionLabel style={{ color: mode === 'dark' ? T.pinkLabel : T.pink, marginBottom: 5 }}>
                   ✦ Command Brief · {dateBrief(selectedDate)}
                 </SectionLabel>
-                <Title style={{ fontSize: 22, fontWeight: 500, letterSpacing: '-0.5px', color: mode === 'dark' ? 'white' : T.ink, lineHeight: 1.15, marginBottom: 4 }}>
-                  {isSelectedToday ? timeBasedGreeting : dateBrief(selectedDate)}
+                <Title style={{ fontSize: 24, fontWeight: 500, letterSpacing: '-0.5px', color: mode === 'dark' ? 'white' : T.ink, lineHeight: 1.15, marginBottom: 4 }}>
+                  {timeBasedGreeting}
                 </Title>
-                <Text style={{ fontSize: 13, color: T.inkMuted, fontWeight: 500 }}>
-                  {isSelectedToday ? briefingMsg : `${selectedDateJobs.length} jobs scheduled`}
+                <Text style={{ fontSize: 14, color: T.inkSub, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {isSelectedToday && (
+                    <span style={{ 
+                      width: 8, 
+                      height: 8, 
+                      borderRadius: '50%', 
+                      background: allDone ? '#16A34A' : (activeJob || (next && Math.round((next.start - now) / 60000) < 60)) ? '#F59E0B' : '#64748B',
+                      flexShrink: 0
+                    }} />
+                  )}
+                  {briefingMsg}
+                </Text>
+              </>
+            ) : (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 5 }}>
+                  <SectionLabel style={{ color: mode === 'dark' ? T.pinkLabel : T.pink, margin: 0 }}>
+                    ✦ WEEKLY SUMMARY
+                  </SectionLabel>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    <button onClick={() => handleWeekChange(-1)} style={{ background: 'rgba(233,30,106,0.1)', border: 'none', borderRadius: 4, width: 22, height: 22, color: T.pink, fontSize: 14, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
+                    <button onClick={() => handleWeekChange(1)} style={{ background: 'rgba(233,30,106,0.1)', border: 'none', borderRadius: 4, width: 22, height: 22, color: T.pink, fontSize: 14, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
+                  </div>
+                </div>
+                <Title style={{ fontSize: 24, fontWeight: 500, letterSpacing: '-0.5px', color: mode === 'dark' ? 'white' : T.ink, lineHeight: 1.15, marginBottom: 4 }}>
+                  {getWeekLabel(weekDays)}
+                </Title>
+                <Text style={{ fontSize: 14, color: T.inkSub, fontWeight: 600 }}>
+                  {selectedDateJobs.length} jobs scheduled
                 </Text>
               </>
             )}
           </div>
 
           <div style={{ textAlign: 'right', flexShrink: 0 }}>
-            <div 
+            <div
               onClick={openDetail}
-              style={{ cursor: 'pointer', padding: '4px 0' }}
+              style={{ cursor: 'pointer', padding: '4px 0 4px 12px' }}
             >
-              <Text style={{ fontSize: 18, fontWeight: 600, color: mode === 'dark' ? 'white' : T.pink }}>
+              <div style={{
+                fontFamily: T.serif,
+                fontSize: 30,
+                fontWeight: 600,
+                letterSpacing: '-1px',
+                lineHeight: 1,
+                color: mode === 'dark' ? 'rgba(255,255,255,0.88)' : T.ink,
+                fontVariantNumeric: 'tabular-nums',
+              }}>
                 {privacyOn ? '•••' : `$${displayRevenue.toFixed(0)}`}
-              </Text>
-              <Caption style={{ fontWeight: 700, color: mode === 'dark' ? T.pinkLabel : T.pink, textTransform: 'uppercase' }}>
-                {!selectedDate ? 'Projected' : 'Revenue'}
-              </Caption>
+              </div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: mode === 'dark' ? T.pinkLabel : T.pink, textTransform: 'uppercase', letterSpacing: '0.6px', marginTop: 3 }}>
+                {isSelectedToday ? 'Projected' : 'Revenue'}
+              </div>
             </div>
           </div>
         </div>
+
+        <WeekStrip
+          weekStart={weekStart}
+          selectedDate={selectedDate}
+          today={today}
+          allJobs={allJobs}
+          onWeekChange={handleWeekChange}
+          onDaySelect={setSelectedDate}
+          T={T}
+          mode={mode}
+          variant="calendar"
+        />
       </div>
 
       <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '16px 14px' }}>
-        {/* 7-Day Week Grid */}
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(7, 1fr)', 
-          gap: 6, 
-          marginBottom: 20,
-          background: T.card,
-          padding: '8px',
-          borderRadius: 16,
-          border: `1px solid ${T.cardBorder}`
-        }}>
-          {weekDays.map(d => {
-            const isToday = sameDay(d, today);
-            const isSelected = selectedDate && sameDay(d, selectedDate);
-            const dayJobs = (allJobs || []).filter(j => sameDay(new Date(j.scheduled_at), d));
-            return (
-              <div
-                key={d.toISOString()}
-                onClick={() => { 
-                  if (isSelected) {
-                    setSelectedDate(null);
-                  } else {
-                    setSelectedDate(d); 
-                    setWeekOffset(0); 
-                  }
-                }}
-                style={{
-                  height: 52, borderRadius: 10,
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                  background: isSelected ? T.pink : 'white',
-                  border: isSelected ? `1.5px solid ${T.pink}` : `1.5px solid transparent`,
-                  cursor: 'pointer', position: 'relative',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                <div style={{ fontSize: 8, fontWeight: 700, color: isSelected ? 'white' : T.inkMuted, textTransform: 'uppercase' }}>
-                  {d.toLocaleDateString('en-US', { weekday: 'short' })}
-                </div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: isSelected ? 'white' : T.ink }}>
-                  {d.getDate()}
-                </div>
-                {dayJobs.length > 0 && (
-                  <div style={{ position: 'absolute', bottom: 4, display: 'flex', gap: 2 }}>
-                    {dayJobs.slice(0, 3).map((_, i) => (
-                      <div key={i} style={{ width: 3, height: 3, borderRadius: '50%', background: isSelected ? 'white' : T.pink }} />
-                    ))}
-                  </div>
-                )}
-                {isToday && !isSelected && (
-                   <div style={{ position: 'absolute', top: 2, right: 2, width: 4, height: 4, borderRadius: '50%', background: T.pink }} />
-                )}
-              </div>
-            );
-          })}
-        </div>
 
-        {!selectedDate ? (
-          <div style={{ paddingBottom: 40 }}>
-            {categorizedJobs.needsAttention.length > 0 && (
-              <div style={{ marginBottom: 24 }}>
-                <SectionLabel color="#F59E0B">✦ Needs Attention · Unpaid</SectionLabel>
-                {categorizedJobs.needsAttention.map(j => (
-                  <JobCard key={j.id} job={j} T={T} onClick={() => openJob(j.id)} />
-                ))}
-              </div>
-            )}
-
-            {categorizedJobs.upcomingThisWeek.length > 0 && (
-              <div style={{ marginBottom: 24 }}>
-                <SectionLabel>Upcoming This Week</SectionLabel>
-                {categorizedJobs.upcomingThisWeek.map(j => (
-                  <JobCard key={j.id} job={j} T={T} onClick={() => openJob(j.id)} />
-                ))}
-              </div>
-            )}
-
-            {categorizedJobs.completedThisWeek.length > 0 && (
-              <div style={{ marginBottom: 24 }}>
-                <SectionLabel>Completed This Week</SectionLabel>
-                {categorizedJobs.completedThisWeek.map(j => (
-                  <JobCard key={j.id} job={j} T={T} onClick={() => openJob(j.id)} />
-                ))}
-              </div>
-            )}
-
-            {weekJobs.length === 0 && (
-              <EmptyState allDone={false} T={T} persona={persona} />
-            )}
+        {/* Mini Spotlight Label */}
+        {nextUpLabel && (
+          <div style={{ marginBottom: 16, textAlign: 'center' }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: T.pink, background: T.pinkTint, padding: '3px 10px', borderRadius: 8, textTransform: 'uppercase' }}>
+              ✦ {nextUpLabel}
+            </span>
           </div>
-        ) : isSelectedToday ? (
+        )}
+
+        {isSelectedToday ? (
           <>
+            {staleAttentionItems.length > 0 && (
+              <div
+                onClick={() => attentionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                style={{ background: '#FEF3C7', border: '1.5px solid #F59E0B', borderRadius: 12, padding: '10px 14px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}
+              >
+                <span style={{ fontSize: 18 }}>⚠️</span>
+                <div style={{ flex: 1, fontSize: 13, fontWeight: 700, color: '#92400E' }}>
+                  {staleAttentionItems.length} job{staleAttentionItems.length > 1 ? 's' : ''} need{staleAttentionItems.length === 1 ? 's' : ''} your attention
+                </div>
+                <span style={{ fontSize: 12, color: '#B45309', fontWeight: 700 }}>↓ View</span>
+              </div>
+            )}
+
             {/* Mission Critical Alert: Tight Gap */}
             {tightGap && (
               <div style={{ background: '#FFF7ED', border: '1.5px solid #FED7AA', borderRadius: 14, padding: 12, marginBottom: 16, display: 'flex', gap: 12, alignItems: 'center' }}>
@@ -622,103 +900,211 @@ export default function Home() {
                 </div>
               </div>
             ) : next ? (
-              <div style={{ marginBottom: 24 }}>
-                <SectionLabel color={T.pink}>✦ MISSION READY · START NOW</SectionLabel>
-                <div 
-                  onClick={() => openJob(next.id)}
-                  style={{ 
-                    background: mode === 'dark' ? '#1C1C1E' : 'white', 
-                    border: `1.5px solid ${mode === 'dark' ? 'rgba(233,30,106,0.32)' : T.cardBorder}`, 
-                    borderRadius: 14, 
-                    padding: '16px', 
-                    marginBottom: 12, 
-                    cursor: 'pointer', 
-                    position: 'relative',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: T.pink, textTransform: 'uppercase' }}>Next Mission</div>
-                        <button 
+              <div style={{ marginBottom: 20 }}>
+                {(() => {
+                  const DEEP_ROSE = '#B5004E';
+                  const DEEP_ROSE_GLOW = 'rgba(181,0,78,0.18)';
+                  const DEEP_ROSE_TINT = mode === 'dark' ? 'rgba(181,0,78,0.12)' : '#FFF0F4';
+                  return (
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                        <div style={{ fontSize: 13, fontWeight: 800, color: DEEP_ROSE, textTransform: 'uppercase', letterSpacing: '0.8px' }}>✦ Next Up</div>
+                        <button
                           onClick={handleReadAloud}
-                          style={{ background: isSpeaking ? T.pink : 'none', border: `1px solid ${T.pink}`, borderRadius: 4, padding: '1px 6px', color: isSpeaking ? 'white' : T.pink, fontSize: 8, fontWeight: 800, cursor: 'pointer' }}
+                          style={{ background: isSpeaking ? DEEP_ROSE : 'none', border: `1.5px solid ${DEEP_ROSE}`, borderRadius: 8, padding: '6px 13px', color: isSpeaking ? 'white' : DEEP_ROSE, fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
                         >
-                          {isSpeaking ? 'STOP ⏹' : 'READ ALOUD 🔊'}
+                          {isSpeaking ? '⏹ Stop' : '🔊 Read Brief'}
                         </button>
                       </div>
-                      <Title style={{ fontSize: 18, color: T.ink }}>{next.client_name}</Title>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <Text style={{ fontSize: 16, fontWeight: 900, color: T.ink }}>{fmtTime12(next.start).time}</Text>
-                      <Caption style={{ fontWeight: 700, color: T.inkMuted }}>{fmtTime12(next.start).period}</Caption>
-                    </div>
-                  </div>
-
-                  {next.ai_context?.drive_to && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, padding: '8px 10px', background: T.pinkTint, borderRadius: 10 }}>
-                      <span style={{ fontSize: 14 }}>🚗</span>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: T.pink, textTransform: 'uppercase' }}>Traffic Update</div>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: T.ink }}>{next.ai_context.drive_to.duration} to destination</div>
-                      </div>
-                      <button 
-                        onClick={handleRefreshTraffic}
-                        disabled={isRefreshingTraffic}
-                        style={{ background: 'none', border: 'none', color: T.pink, cursor: 'pointer', padding: 4 }}
+                      <div
+                        onClick={() => openJob(next.id)}
+                        style={{
+                          background: mode === 'dark' ? 'linear-gradient(135deg,#1a0008 0%,#200010 100%)' : 'linear-gradient(135deg,#FFF0F4 0%,#fff 60%)',
+                          border: `2.5px solid ${DEEP_ROSE}`,
+                          borderLeft: `6px solid ${DEEP_ROSE}`,
+                          borderRadius: 18,
+                          padding: '18px 18px 14px',
+                          cursor: 'pointer',
+                          position: 'relative',
+                          overflow: 'hidden',
+                          boxShadow: `0 8px 28px ${DEEP_ROSE_GLOW}, 0 2px 8px rgba(0,0,0,0.08)`,
+                        }}
                       >
-                        {isRefreshingTraffic ? '...' : '↻'}
-                      </button>
-                    </div>
-                  )}
+                        <div style={{ position: 'absolute', top: -30, right: -20, width: 120, height: 120, borderRadius: '50%', background: `radial-gradient(circle,${DEEP_ROSE_GLOW} 0%,transparent 70%)`, pointerEvents: 'none' }} />
 
-                  <MissionIntel prepNote={next.prep_note || next.client_access_json || next.client_prefs_json} T={T} theme={T} />
-                  
-                  <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                    {next.address && (
-                      <button onClick={e => { e.stopPropagation(); window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(next.address)}`, '_blank'); }} style={{ flex: 1, padding: '10px', borderRadius: 10, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.ink, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>NAVIGATE</button>
-                    )}
-                    <button onClick={(e) => { e.stopPropagation(); handleClockOut(next.id); /* using handleClockOut as a proxy for START */ }} style={{ flex: 1, padding: '10px', borderRadius: 10, background: T.pink, color: 'white', border: 'none', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>START NOW</button>
-                  </div>
-                </div>
+                        {(() => {
+                          const startFmt = fmtTime12(next.start);
+                          const endFmt = fmtTime12(next.end);
+                          const sameAMPM = startFmt.period === endFmt.period;
+                          const timeRange = sameAMPM
+                            ? `${startFmt.time} – ${endFmt.time}${endFmt.period}`
+                            : `${startFmt.time}${startFmt.period} – ${endFmt.time}${endFmt.period}`;
+                          const minsToStart = Math.round((next.start - now) / 60000);
+                          const isNowWindow = now >= next.start && now < next.end;
+                          const timingColor = isNowWindow ? '#E91E6A' : minsToStart <= 15 ? '#EF4444' : minsToStart <= 60 ? '#F59E0B' : '#16A34A';
+                          const timingLabel = isNowWindow ? '🔴 Happening now' : minsToStart > 0 ? `Starts in ${minsToStart}m` : null;
+                          return (
+                            <>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4, position: 'relative' }}>
+                                <div style={{ flex: 1, minWidth: 0, paddingRight: 10 }}>
+                                  <div style={{ fontFamily: T.serif, fontSize: 26, fontWeight: 700, color: T.ink, lineHeight: 1.1, letterSpacing: '-0.5px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {next.client_name}
+                                  </div>
+                                  <div style={{ fontSize: 13, fontWeight: 700, color: DEEP_ROSE, textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: 3 }}>
+                                    {next.service_name}
+                                  </div>
+                                </div>
+                                <div style={{ flexShrink: 0, textAlign: 'right' }}>
+                                  <div style={{ fontSize: 17, fontWeight: 900, color: DEEP_ROSE, fontFamily: 'monospace', letterSpacing: '-0.5px', lineHeight: 1.2, whiteSpace: 'nowrap' }}>
+                                    {timeRange}
+                                  </div>
+                                </div>
+                              </div>
+                              {timingLabel && (
+                                <div style={{ marginBottom: 8 }}>
+                                  <span style={{ fontSize: 10, fontWeight: 800, color: timingColor, background: `${timingColor}18`, padding: '3px 8px', borderRadius: 6, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                                    {timingLabel}
+                                  </span>
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, padding: '7px 10px', background: DEEP_ROSE_TINT, borderRadius: 10 }}>
+                          <span style={{ fontSize: 13 }}>🚗</span>
+                          <div style={{ flex: 1, fontSize: 12, fontWeight: 600, color: T.ink }}>
+                            {next.ai_context?.drive_to?.duration
+                              ? `${next.ai_context.drive_to.duration} to destination`
+                              : next.address
+                                ? 'Calculating drive time…'
+                                : 'No address on file'}
+                          </div>
+                          {next.ai_context?.drive_to && (
+                            <button onClick={e => { e.stopPropagation(); handleRefreshTraffic(e); }} disabled={isRefreshingTraffic} style={{ background: 'none', border: 'none', color: DEEP_ROSE, cursor: 'pointer', fontSize: 14, padding: 2 }}>
+                              {isRefreshingTraffic ? '…' : '↻'}
+                            </button>
+                          )}
+                        </div>
+
+                        {next.job_notes && (
+                          <div style={{ background: mode === 'dark' ? 'rgba(181,0,78,0.08)' : 'rgba(181,0,78,0.05)', borderRadius: 10, padding: '8px 12px', marginBottom: 10, borderLeft: `3px solid ${DEEP_ROSE}` }}>
+                            <div style={{ fontSize: 9, fontWeight: 900, color: DEEP_ROSE, textTransform: 'uppercase', marginBottom: 3 }}>📌 JOB NOTES</div>
+                            <div style={{ fontSize: 11, color: T.inkMuted, lineHeight: 1.4 }}>{next.job_notes}</div>
+                          </div>
+                        )}
+
+                        <MissionIntel prepNote={next.prep_note || next.client_access_json || next.client_prefs_json} T={T} theme={T} />
+
+                        <div style={{ display: 'flex', gap: 8, marginTop: 12, paddingTop: 12, borderTop: `1px solid ${T.cardBorder}`, position: 'relative' }}>
+                          {next.address && (
+                            <button onClick={e => { e.stopPropagation(); window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(next.address)}`, '_blank'); }} style={{ flex: 1, padding: '11px', borderRadius: 10, background: T.card, border: `1px solid ${DEEP_ROSE}`, color: DEEP_ROSE, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>NAVIGATE</button>
+                          )}
+                          <button onClick={e => { e.stopPropagation(); handleClockOut(next.id); }} style={{ flex: 2, padding: '11px', borderRadius: 10, background: DEEP_ROSE, color: 'white', border: 'none', fontSize: 12, fontWeight: 800, cursor: 'pointer', letterSpacing: '0.5px' }}>START NOW</button>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             ) : null}
 
-            {categorizedJobs.incomplete.length > 0 && (
-              <div style={{ marginBottom: 24 }}>
-                <SectionLabel color="#F59E0B">✦ Incomplete Missions · Needs Update</SectionLabel>
-                {categorizedJobs.incomplete.map(j => (
-                  <Swipeable key={j.id} onSwipeLeft={() => handleDeleteJob(j.id)}>
-                    <JobCard job={j} T={T} onClick={() => openJob(j.id)} />
-                  </Swipeable>
+            {todayUpcoming.length > 0 && (
+              <div style={{ marginBottom: 16 }}>
+                <SectionLabel style={{ color: '#1565C0', marginBottom: 8 }}>COMING UP TODAY</SectionLabel>
+                {todayUpcoming.map(j => (
+                  <UpcomingCard 
+                    key={j.id} 
+                    job={j} 
+                    T={T} 
+                    onClick={() => openJob(j.id)} 
+                    total={computeTotal(j)}
+                    privacyOn={privacyOn}
+                  />
                 ))}
               </div>
             )}
 
-            <div style={{ marginBottom: 24 }}>
-              {categorizedJobs.upcoming.length > 0 && (
-                <>
-                  <SectionLabel>Upcoming Today</SectionLabel>
-                  {categorizedJobs.upcoming.map(j => (
-                    <Swipeable key={j.id} onSwipeLeft={() => handleDeleteJob(j.id)}>
-                      <JobCard job={j} T={T} onClick={() => openJob(j.id)} />
-                    </Swipeable>
-                  ))}
-                </>
-              )}
-            </div>
+            {attentionItems.length > 0 && (
+              <div ref={attentionRef} style={{ marginBottom: 24 }}>
+                <SectionLabel color="#F59E0B">⚠️ Needs Attention</SectionLabel>
+                {attentionItems.map(j => {
+                  const needsWrap = j.status !== 'Completed';
+                  const startTime = fmtTime12(j.start);
+                  const paid = paymentMap[j.id] || 0;
+                  const total = computeTotal(j);
+                  const remaining = Math.max(0, total - paid);
+                  const isPartial = j.payment_status === 'Partial';
 
-            {categorizedJobs.done.length > 0 && (
+                  return (
+                    <div
+                      key={j.id}
+                      style={{
+                        background: mode === 'dark' ? 'rgba(245,158,11,0.08)' : '#FFFBEB',
+                        border: '2px solid #F59E0B',
+                        borderLeft: '6px solid #F59E0B',
+                        borderRadius: 16,
+                        padding: '14px 16px',
+                        marginBottom: 10,
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontFamily: T.serif, fontSize: 18, fontWeight: 600, color: T.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {j.client_name}
+                          </div>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: '#B45309', textTransform: 'uppercase', marginTop: 2 }}>
+                            {j.service_name}
+                          </div>
+                          <div style={{ fontSize: 11, color: '#92400E', marginTop: 4 }}>
+                            {j.start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · {startTime.time}{startTime.period}
+                          </div>
+                          <div style={{ fontSize: 11, fontWeight: 700, marginTop: 5, display: 'flex', alignItems: 'center', gap: 4 }}>
+                            {isPartial && <span style={{ fontSize: 10, background: 'rgba(245,158,11,0.15)', padding: '2px 6px', borderRadius: 4, fontWeight: 800, textTransform: 'uppercase', color: '#92400E' }}>Partial</span>}
+                            {privacyOn ? (
+                              <span style={{ color: '#D97706' }}>•••</span>
+                            ) : remaining > 0 ? (
+                              <span style={{ color: T.pink, fontSize: 13, fontWeight: 800, letterSpacing: '-0.2px' }}>
+                                {paid > 0 ? `$${paid.toFixed(0)} paid · $${remaining.toFixed(0)} owing` : `$${total.toFixed(0)} owing`}
+                              </span>
+                            ) : (
+                              <span style={{ color: '#D97706' }}>{`$${total.toFixed(0)} total`}</span>
+                            )}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => openPostJob(j.id)}
+                          style={{ background: '#F59E0B', color: 'white', border: 'none', borderRadius: 10, padding: '9px 14px', fontSize: 11, fontWeight: 800, cursor: 'pointer', flexShrink: 0, marginLeft: 10 }}
+                        >
+                          {needsWrap ? 'WRAP UP' : isPartial ? 'COLLECT' : 'PAY'}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+
+            {completedPaidThisWeek.length > 0 && (
               <div style={{ marginBottom: 24 }}>
-                <SectionLabel>Missions Accomplished · Today</SectionLabel>
-                {categorizedJobs.done.map(j => (
-                  <JobCard key={j.id} job={j} T={T} onClick={() => openJob(j.id)} />
+                <SectionLabel color="#16A34A">✓ DONE THIS WEEK</SectionLabel>
+                {completedPaidThisWeek.map(j => (
+                  <JobCard 
+                    key={j.id} 
+                    job={j} 
+                    T={T} 
+                    onClick={() => openJob(j.id)} 
+                    onDuplicate={handleDuplicateJob} 
+                    paid={paymentMap[j.id]}
+                    total={computeTotal(j)}
+                    privacyOn={privacyOn}
+                  />
                 ))}
               </div>
             )}
 
-            {!activeJob && !next && categorizedJobs.upcoming.length === 0 && categorizedJobs.incomplete.length === 0 && (
+            {!activeJob && !next && todayUpcoming.length === 0 && attentionItems.length === 0 && completedPaidThisWeek.length === 0 && (
               <EmptyState allDone={allDone} T={T} persona={persona} />
             )}
           </>
@@ -729,8 +1115,16 @@ export default function Home() {
               <EmptyState allDone={false} T={T} persona={persona} />
             ) : (
               selectedDateJobs.map(j => (
-                <Swipeable key={j.id} onSwipeLeft={() => handleDeleteJob(j.id)}>
-                  <JobCard job={j} T={T} onClick={() => openJob(j.id)} />
+                <Swipeable key={j.id} onDelete={() => handleDeleteJob(j.id)}>
+                  <JobCard 
+                    job={j} 
+                    T={T} 
+                    onClick={() => openJob(j.id)} 
+                    onDuplicate={handleDuplicateJob} 
+                    paid={paymentMap[j.id]}
+                    total={computeTotal(j)}
+                    privacyOn={privacyOn}
+                  />
                 </Swipeable>
               ))
             )}
@@ -738,7 +1132,7 @@ export default function Home() {
         )}
       </div>
 
-      <div style={{ height: isKeyboardFocused ? 260 : 0, transition: 'height 0.2s ease-out' }} />
+      <div style={{ height: isKeyboardFocused ? 80 : 0, transition: 'height 0.2s ease-out' }} />
     </div>
   );
 }

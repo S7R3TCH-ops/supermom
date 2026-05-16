@@ -9,6 +9,7 @@ import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { supabase } from '../../lib/supabase';
 import GrabBar from '../ui/GrabBar';
 import FinancialMathBreakdown from '../ui/FinancialMathBreakdown';
+import { useSwipeToDismiss } from '../../hooks/useSwipeToDismiss';
 
 export default function PostJobSheet({ jobId, onClose }) {
   const { T, mode } = useAppTheme();
@@ -29,12 +30,14 @@ export default function PostJobSheet({ jobId, onClose }) {
   const [done, setDone] = useState(false);
   const [showThankYou, setShowThankYou] = useState(false);
   const [invoiceId, setInvoiceId] = useState(null);
+  const [jobPayments, setJobPayments] = useState([]);
   const [costs, setCosts] = useState([{ amount: '', description: '' }]);
   const [showHoursPrompt, setShowHoursPrompt] = useState(false);
   const [pendingAdjustedAmt, setPendingAdjustedAmt] = useState(null);
   // Track whether this is the first time actualMinutes was set by job load
   // so we don't overwrite the pre-filled amount on mount
   const hoursInitialized = useRef(false);
+  const { panelRef: swipePanelRef, scrollRef: swipeScrollRef, handlers: swipeHandlers } = useSwipeToDismiss(onClose);
 
   // Derived state defined early to satisfy linter and simplify logic
   const totalAmt = parseFloat(job?.total_amount ?? job?.flat_rate ?? 0);
@@ -50,6 +53,24 @@ export default function PostJobSheet({ jobId, onClose }) {
     return Math.round((liveTotalBase + addlTotal) * 100) / 100;
   }, [isHourly, hourlyRate, actualMinutes, totalAmt, costs]);
 
+  const liveBreakdownForm = useMemo(() => {
+    if (!job) return null;
+    return {
+      pricing_type: job.pricing_type,
+      estimated_hours: actualMinutes / 60,
+      hourly_rate: isHourly ? hourlyRate : undefined,
+      total_amount: isHourly ? undefined : totalAmt,
+      additional_costs_json: costs
+        .filter(c => parseFloat(c.amount) > 0)
+        .map(c => ({ amount: parseFloat(c.amount), description: c.description })),
+    };
+  }, [job, actualMinutes, isHourly, hourlyRate, totalAmt, costs]);
+
+  const alreadyPaid = useMemo(
+    () => jobPayments.reduce((s, p) => s + Number(p.amount), 0),
+    [jobPayments]
+  );
+
   useEffect(() => {
     if (!jobId) return;
     let alive = true;
@@ -57,28 +78,38 @@ export default function PostJobSheet({ jobId, onClose }) {
     fetchJobById(jobId)
       .then(j => { 
         if (alive) { 
-          setJob(j); 
+          setJob(j);
           setJobNotes(j?.completion_notes || '');
-          const fullTotal = Number(j?.total_amount ?? j?.flat_rate ?? 0);
-          // For partial-paid jobs, pre-fill the remaining balance instead of full total
-          if (j?.payment_status === 'Partial') {
-            supabase
-              .from('payments')
-              .select('amount')
-              .eq('job_id', jobId)
-              .eq('is_void', false)
-              .then(({ data: pays }) => {
-                const alreadyPaid = (pays ?? []).reduce((s, p) => s + Number(p.amount), 0);
-                const remaining = Math.round(Math.max(0, fullTotal - alreadyPaid) * 100) / 100;
+          // Compute true total: flat_rate stores $/hr for Hourly jobs
+          const srcRate = Number(j?.flat_rate || j?.hourly_rate || 0);
+          const srcHours = Number(j?.actual_duration || j?.estimated_hours || 0);
+          const baseTotal = (j?.pricing_type === 'Hourly' && srcRate > 0)
+            ? srcRate * srcHours
+            : Number(j?.total_amount || j?.flat_rate || 0);
+          const fullTotal = Math.round((baseTotal + Number(j?.additional_cost || 0) + Number(j?.hst_amount || 0)) * 100) / 100;
+          // Always fetch payment history; use it to pre-fill remaining balance for partial jobs
+          supabase
+            .from('payments')
+            .select('amount, payment_date, payment_method')
+            .eq('job_id', jobId)
+            .eq('is_void', false)
+            .order('payment_date', { ascending: true })
+            .then(({ data: pays }) => {
+              const records = pays ?? [];
+              setJobPayments(records);
+              const paid = records.reduce((s, p) => s + Number(p.amount), 0);
+              if (j?.payment_status === 'Partial') {
+                setPayStatus('partial');
+                const remaining = Math.round(Math.max(0, fullTotal - paid) * 100) / 100;
                 setAmount(String(remaining > 0 ? remaining : fullTotal));
-              })
-              .catch(() => setAmount(String(fullTotal)));
-          } else {
-            setAmount(String(fullTotal));
-          }
+              } else {
+                setAmount(String(fullTotal));
+              }
+            })
+            .catch(() => setAmount(String(fullTotal)));
           // Round to nearest 30-min increment
-          const srcHours = j?.actual_duration || j?.estimated_hours || 1;
-          const rawMin = Math.round(srcHours * 60);
+          const initHours = j?.actual_duration || j?.estimated_hours || 1;
+          const rawMin = Math.round(initHours * 60);
           const snapped = Math.max(30, Math.round(rawMin / 30) * 30);
           setActualMinutes(snapped);
           setCosts([{ amount: '', description: '' }]);
@@ -191,14 +222,14 @@ export default function PostJobSheet({ jobId, onClose }) {
         @keyframes pjFade { from { opacity: 0; } to { opacity: 1; } }
         @keyframes pjSlide { from { transform: translateY(100%); } to { transform: translateY(0); } }
       `}</style>
-      <div style={{
+      <div ref={swipePanelRef} {...swipeHandlers} style={{
         background: T.bg, width: '100%', maxWidth: 500, margin: '0 auto',
         height: '92svh', borderTopLeftRadius: 28, borderTopRightRadius: 28,
         display: 'flex', flexDirection: 'column', overflow: 'hidden',
         animation: 'pjSlide 300ms cubic-bezier(0.16, 1, 0.3, 1)',
         boxShadow: '0 -8px 40px rgba(0,0,0,0.4)',
       }}>
-        <GrabBar />
+        <GrabBar onDismiss={onClose} />
 
         {/* Header with Live Total */}
         <div style={{ padding: '16px 20px', borderBottom: `1px solid ${T.cardBorder}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: T.bg }}>
@@ -208,11 +239,16 @@ export default function PostJobSheet({ jobId, onClose }) {
               {loading ? 'Loading...' : job?.client_name || 'Done!'}
             </div>
           </div>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 22, fontWeight: 900, color: T.pink, fontFamily: T.font }}>
-              ${liveTotal.toFixed(2)}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: 22, fontWeight: 900, color: T.pink, fontFamily: T.font }}>
+                ${liveTotal.toFixed(2)}
+              </div>
+              <div style={{ fontSize: 9, fontWeight: 700, color: T.inkMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Live Total</div>
             </div>
-            <div style={{ fontSize: 9, fontWeight: 700, color: T.inkMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Live Total</div>
+            <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(0,0,0,0.07)', border: '1.5px solid rgba(0,0,0,0.08)', color: T.ink, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+            </button>
           </div>
         </div>
 
@@ -222,18 +258,9 @@ export default function PostJobSheet({ jobId, onClose }) {
           <div style={{ padding: 40, textAlign: 'center', color: '#EF4444' }}>{fetchErr}</div>
         ) : (
           <>
-          <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+          <div ref={swipeScrollRef} className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
           
-          <FinancialMathBreakdown 
-            job={job}
-            actualMinutes={actualMinutes}
-            costs={costs}
-            business={business}
-            T={T}
-            mode={mode}
-          />
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20, marginTop: 24 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           
           {/* Section 1: Duration Adjustment */}
           <div>
@@ -371,6 +398,16 @@ export default function PostJobSheet({ jobId, onClose }) {
           />
           </div>
 
+          {/* Financial Breakdown */}
+          <FinancialMathBreakdown
+            job={job}
+            liveForm={liveBreakdownForm}
+            payments={jobPayments}
+            business={business}
+            T={T}
+            mode={mode}
+          />
+
           {/* Invoice Link if exists */}
           {invoiceId && (
             <div style={{ background: T.pinkTint, padding: '12px 16px', borderRadius: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -401,13 +438,14 @@ export default function PostJobSheet({ jobId, onClose }) {
         <div style={{ position: 'absolute', inset: 0, zIndex: 70, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
           <div style={{ background: T.card, borderRadius: 20, padding: 24, width: '100%', maxWidth: 320, textAlign: 'center' }}>
             <div style={{ fontSize: 32, marginBottom: 16 }}>⏱️</div>
-            <Title style={{ fontSize: 18, marginBottom: 8 }}>Adjust Total?</Title>
-            <Text style={{ fontSize: 14, color: T.inkMuted, marginBottom: 20 }}>
+            <div style={{ fontSize: 18, fontWeight: 700, color: T.ink, marginBottom: 8 }}>Adjust Total?</div>
+            <div style={{ fontSize: 14, color: T.inkMuted, marginBottom: 20 }}>
               You logged {fmtMins(actualMinutes)}, which changes the total to <strong>${pendingAdjustedAmt}</strong>. Update the payment amount to match?
-            </Text>
+            </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <button onClick={() => { setShowHoursPrompt(false); handleLogPayment(pendingAdjustedAmt); }} style={{ width: '100%', padding: '12px', borderRadius: 12, background: T.pink, color: 'white', border: 'none', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Yes, update amount</button>
-              <button onClick={() => { setShowHoursPrompt(false); handleLogPayment(null); }} style={{ width: '100%', padding: '12px', borderRadius: 12, background: 'transparent', border: `1.5px solid ${T.cardBorder}`, color: T.ink, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>No, keep original</button>
+              <button onClick={() => { setShowHoursPrompt(false); handleLogPayment(parseFloat(amount) || 0); }} style={{ width: '100%', padding: '12px', borderRadius: 12, background: 'transparent', border: `1.5px solid ${T.cardBorder}`, color: T.ink, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>No, keep original</button>
+              <button onClick={() => setShowHoursPrompt(false)} style={{ width: '100%', padding: '10px', borderRadius: 12, background: 'transparent', border: 'none', color: T.inkMuted, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Cancel</button>
             </div>
           </div>
         </div>

@@ -141,12 +141,15 @@ export default function PostJobSheet({ jobId, onClose }) {
       hoursInitialized.current = true;
       return;
     }
-    if (!job || !isHourly) return;
-    if (payStatus !== 'partial') {
+    if (!job) return;
+    if (alreadyPaid > 0) {
+      const remaining = Math.max(0, Math.round((liveTotal - alreadyPaid) * 100) / 100);
+      Promise.resolve().then(() => setAmount(String(remaining)));
+    } else if (isHourly && payStatus !== 'partial') {
       Promise.resolve().then(() => setAmount(String(Math.round(liveTotal * 100) / 100)));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [actualMinutes, liveTotal, isHourly]);
+  }, [actualMinutes, liveTotal, isHourly, alreadyPaid]);
 
   async function handleLogPayment(overrideAmt = null) {
     if (!job) return;

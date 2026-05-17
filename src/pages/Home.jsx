@@ -237,14 +237,8 @@ function JobCard({ job: j, T, onClick, onDuplicate, paid = 0, total = 0, privacy
           </span>
         </div>
 
-        {/* Row 3: owing amount (only if something still owed) */}
-        {remaining > 0 && (
-          <div style={{ marginTop: 4 }}>
-            <span style={{ color: T.pink, fontSize: 13, fontWeight: 800, letterSpacing: '-0.2px' }}>
-              {privacyOn ? '•••' : paid > 0 ? `$${paid.toFixed(0)} paid · $${remaining.toFixed(0)} owing` : `$${total.toFixed(0)} owing`}
-            </span>
-          </div>
-        )}
+        {/* Row 3: color-coded payment breakdown */}
+        {remaining > 0 && renderPaymentBreakdown({ j, paid, total, privacyOn, T, metaColor })}
       </div>
     );
   }

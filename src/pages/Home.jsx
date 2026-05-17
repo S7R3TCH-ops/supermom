@@ -303,21 +303,31 @@ function JobCard({ job: j, T, onClick, onDuplicate, paid = 0, total = 0, privacy
         </div>
         <div style={{ fontSize: 12, fontWeight: 600, color: metaColor, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
           <span>Est: {j.raw?.estimated_hours || 0}h</span>
-          {showPaymentInfo && (
+          {showPaymentInfo && remaining === 0 && total > 0 && (
             <>
               <span style={{ opacity: 0.4 }}>·</span>
-              {remaining > 0 ? (
-                <span style={{ color: T.pink, fontSize: 13, fontWeight: 800, letterSpacing: '-0.2px' }}>
-                  {privacyOn ? '•••' : paid > 0 ? `$${paid.toFixed(0)} paid · $${remaining.toFixed(0)} owing` : `$${total.toFixed(0)} owing`}
-                </span>
-              ) : (
-                <span style={{ color: urgencyColor }}>
-                  {privacyOn ? '•••' : `$${total.toFixed(0)} total`}
-                </span>
-              )}
+              <span style={{ color: paid > 0 ? '#16A34A' : urgencyColor, fontVariantNumeric: 'tabular-nums' }}>
+                {privacyOn ? '•••' : paid > 0 ? `$${total.toFixed(0)} pre-paid` : `$${total.toFixed(0)} total`}
+              </span>
             </>
           )}
         </div>
+        {showPaymentInfo && remaining > 0 && renderPaymentBreakdown({ j, paid, total, privacyOn, T, metaColor })}
+        {j.job_notes ? (
+          <div style={{
+            fontSize: 11,
+            color: metaColor,
+            fontStyle: 'italic',
+            marginTop: 4,
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+            lineHeight: 1.4,
+          }}>
+            {j.job_notes}
+          </div>
+        ) : null}
         {j.address && (
           <div style={{ fontSize: 11, color: metaColor, marginTop: 4, opacity: 0.7, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             📍 {j.address}

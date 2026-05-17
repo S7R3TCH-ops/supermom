@@ -1111,8 +1111,6 @@ export default function Home() {
                   const paid = paymentMap[j.id] || 0;
                   const total = computeTotal(j);
                   const remaining = Math.max(0, total - paid);
-                  const isPartial = j.payment_status === 'Partial';
-
                   return (
                     <div
                       key={j.id}
@@ -1136,24 +1134,18 @@ export default function Home() {
                           <div style={{ fontSize: 11, color: '#92400E', marginTop: 4 }}>
                             {j.start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · {startTime.time}{startTime.period}
                           </div>
-                          <div style={{ fontSize: 11, fontWeight: 700, marginTop: 5, display: 'flex', alignItems: 'center', gap: 4 }}>
-                            {isPartial && <span style={{ fontSize: 10, background: 'rgba(245,158,11,0.15)', padding: '2px 6px', borderRadius: 4, fontWeight: 800, textTransform: 'uppercase', color: '#92400E' }}>Partial</span>}
-                            {privacyOn ? (
-                              <span style={{ color: '#D97706' }}>•••</span>
-                            ) : remaining > 0 ? (
-                              <span style={{ color: T.pink, fontSize: 13, fontWeight: 800, letterSpacing: '-0.2px' }}>
-                                {paid > 0 ? `$${paid.toFixed(0)} paid · $${remaining.toFixed(0)} owing` : `$${total.toFixed(0)} owing`}
-                              </span>
-                            ) : (
-                              <span style={{ color: '#D97706' }}>{`$${total.toFixed(0)} total`}</span>
-                            )}
+                          <div style={{ marginTop: 5 }}>
+                            {remaining > 0
+                              ? renderPaymentBreakdown({ j, paid, total, privacyOn, T, metaColor: '#92400E' })
+                              : <span style={{ fontSize: 12, color: '#D97706', fontWeight: 700 }}>${total.toFixed(0)} total</span>
+                            }
                           </div>
                         </div>
                         <button
                           onClick={() => openPostJob(j.id)}
                           style={{ background: '#F59E0B', color: 'white', border: 'none', borderRadius: 10, padding: '9px 14px', fontSize: 11, fontWeight: 800, cursor: 'pointer', flexShrink: 0, marginLeft: 10 }}
                         >
-                          {needsWrap ? 'WRAP UP' : isPartial ? 'COLLECT' : 'PAY'}
+                          {needsWrap ? 'WRAP UP' : remaining > 0 ? 'COLLECT' : 'PAY'}
                         </button>
                       </div>
                     </div>

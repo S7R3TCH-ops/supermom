@@ -366,7 +366,7 @@ const EmptyState = ({ allDone, T, persona }) => {
   );
 };
 
-function UpcomingCard({ job: j, T, onClick, total = 0, privacyOn = false }) {
+function UpcomingCard({ job: j, T, onClick, total = 0, paid = 0, privacyOn = false }) {
   const BLUE = '#1565C0';
   const timeRange = fmtTimeRange(j.start, j.end);
   return (
@@ -435,6 +435,7 @@ function UpcomingCard({ job: j, T, onClick, total = 0, privacyOn = false }) {
             {j.job_notes}
           </div>
         ) : null}
+        {paid > 0 && total > 0 && renderPaymentBreakdown({ j, paid, total, privacyOn, T, metaColor: BLUE })}
       </div>
     </div>
   );
@@ -1090,12 +1091,13 @@ export default function Home() {
               <div style={{ marginBottom: 16 }}>
                 <SectionLabel style={{ color: '#1565C0', marginBottom: 8 }}>COMING UP TODAY</SectionLabel>
                 {todayUpcoming.map(j => (
-                  <UpcomingCard 
-                    key={j.id} 
-                    job={j} 
-                    T={T} 
-                    onClick={() => openJob(j.id)} 
+                  <UpcomingCard
+                    key={j.id}
+                    job={j}
+                    T={T}
+                    onClick={() => openJob(j.id)}
                     total={computeTotal(j)}
+                    paid={paymentMap[j.id] || 0}
                     privacyOn={privacyOn}
                   />
                 ))}
@@ -1145,7 +1147,7 @@ export default function Home() {
                           onClick={() => openPostJob(j.id)}
                           style={{ background: '#F59E0B', color: 'white', border: 'none', borderRadius: 10, padding: '9px 14px', fontSize: 11, fontWeight: 800, cursor: 'pointer', flexShrink: 0, marginLeft: 10 }}
                         >
-                          {needsWrap ? 'WRAP UP' : remaining > 0 ? 'COLLECT' : 'PAY'}
+                          {needsWrap ? 'WRAP UP' : remaining > 0 ? 'COLLECT' : 'VIEW'}
                         </button>
                       </div>
                     </div>
@@ -1159,13 +1161,13 @@ export default function Home() {
               <div style={{ marginBottom: 24 }}>
                 <SectionLabel color="#16A34A">✓ DONE THIS WEEK</SectionLabel>
                 {completedPaidThisWeek.map(j => (
-                  <JobCard 
-                    key={j.id} 
-                    job={j} 
-                    T={T} 
-                    onClick={() => openJob(j.id)} 
-                    onDuplicate={handleDuplicateJob} 
-                    paid={paymentMap[j.id]}
+                  <JobCard
+                    key={j.id}
+                    job={j}
+                    T={T}
+                    onClick={() => openJob(j.id)}
+                    onDuplicate={handleDuplicateJob}
+                    paid={paymentMap[j.id] || 0}
                     total={computeTotal(j)}
                     privacyOn={privacyOn}
                   />
@@ -1185,12 +1187,12 @@ export default function Home() {
             ) : (
               selectedDateJobs.map(j => (
                 <Swipeable key={j.id} onDelete={() => handleDeleteJob(j.id)}>
-                  <JobCard 
-                    job={j} 
-                    T={T} 
-                    onClick={() => openJob(j.id)} 
-                    onDuplicate={handleDuplicateJob} 
-                    paid={paymentMap[j.id]}
+                  <JobCard
+                    job={j}
+                    T={T}
+                    onClick={() => openJob(j.id)}
+                    onDuplicate={handleDuplicateJob}
+                    paid={paymentMap[j.id] || 0}
                     total={computeTotal(j)}
                     privacyOn={privacyOn}
                   />

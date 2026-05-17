@@ -105,7 +105,7 @@ function renderPaymentBreakdown({ j, paid, total, privacyOn, T, metaColor }) {
   }
 
   const isHourly = src.pricing_type === 'Hourly';
-  const rate = Number(src.flat_rate || 0);
+  const rate = Number(src.hourly_rate || src.flat_rate || 0);
   const hours = Number(src.actual_duration || src.estimated_hours || 0);
   const additionalCost = Number(src.additional_cost || 0);
   const hst = Number(src.hst_amount || 0);
@@ -131,7 +131,7 @@ function renderPaymentBreakdown({ j, paid, total, privacyOn, T, metaColor }) {
             <span style={{ fontSize: 13, fontWeight: 800, color: '#16A34A', letterSpacing: '-0.2px', fontVariantNumeric: 'tabular-nums' }}>
               ${paid.toFixed(0)} paid
             </span>
-            <span style={{ color: metaColor, opacity: 0.4, fontSize: 12 }}>.</span>
+            <span style={{ color: metaColor, opacity: 0.4, fontSize: 12 }}>·</span>
           </>
         )}
         <span style={{ fontSize: 13, fontWeight: 800, color: T.pink, letterSpacing: '-0.2px', fontVariantNumeric: 'tabular-nums' }}>

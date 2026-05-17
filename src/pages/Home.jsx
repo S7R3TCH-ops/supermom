@@ -419,6 +419,22 @@ function UpcomingCard({ job: j, T, onClick, total = 0, privacyOn = false }) {
             </>
           )}
         </div>
+        {j.job_notes ? (
+          <div style={{
+            fontSize: 11,
+            color: BLUE,
+            opacity: 0.7,
+            fontStyle: 'italic',
+            marginTop: 4,
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+            lineHeight: 1.4,
+          }}>
+            {j.job_notes}
+          </div>
+        ) : null}
       </div>
     </div>
   );

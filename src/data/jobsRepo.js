@@ -6,6 +6,8 @@
 import { supabase } from '../lib/supabase';
 import { getCurrentBusinessId } from './currentBusiness';
 import { generateInvoiceForJob } from './invoicesRepo';
+import { composeTorontoISO as _composeTorontoISO } from '../lib/dateUtils';
+export { composeTorontoISO } from '../lib/dateUtils';
 
 function assertWrote(data, op) {
   const rows = Array.isArray(data) ? data : (data ? [data] : []);
@@ -378,11 +380,13 @@ export async function recordPayment(jobId, amount, method = 'Cash', paymentStatu
     }
   }
 
-  // Automatically generate invoice if completed
-  try {
-    await generateInvoiceForJob(jobId);
-  } catch (invErr) {
-    console.error('Auto Invoice Generation Error:', invErr);
+  // Auto-generate invoice only when fully paid
+  if (status === 'Paid') {
+    try {
+      await generateInvoiceForJob(jobId);
+    } catch (invErr) {
+      console.error('Auto Invoice Generation Error:', invErr);
+    }
   }
 
   triggerLearningEnrichment(job.client_id);
@@ -407,44 +411,9 @@ function addMonthsToDateStr(dateStr, months) {
 // The DB stores scheduled_date + scheduled_time separately.
 function decorateJob(j) {
   if (!j) return j;
-  const iso = composeTorontoISO(j.scheduled_date, j.scheduled_time);
+  const iso = _composeTorontoISO(j.scheduled_date, j.scheduled_time);
   const durationMin = j.estimated_hours != null ? Math.round(Number(j.estimated_hours) * 60) : null;
   return { ...j, scheduled_at: iso, duration_est: durationMin };
-}
-
-export function composeTorontoISO(dateStr, timeStr) {
-  if (!dateStr) return null;
-  
-  // Ensure we have a valid HH:mm format, stripping any seconds if present
-  let t = '00:00';
-  if (timeStr && typeof timeStr === 'string') {
-    const parts = timeStr.split(':');
-    if (parts.length >= 2) {
-      t = `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`;
-    }
-  }
-
-  const [year, month, day] = dateStr.split('-').map(Number);
-  if (isNaN(year) || isNaN(month) || isNaN(day)) return null;
-
-  try {
-    const dstStart = nthSunday(year, 3, 2);  // 2nd Sunday in March
-    const dstEnd   = nthSunday(year, 11, 1); // 1st Sunday in November
-    const date  = new Date(Date.UTC(year, month - 1, day));
-    const start = new Date(Date.UTC(year, 2,  dstStart));
-    const end   = new Date(Date.UTC(year, 10, dstEnd));
-    const isDST = date >= start && date < end;
-    return `${dateStr}T${t}:00${isDST ? '-04:00' : '-05:00'}`;
-  } catch (e) {
-    console.error('Error composing ISO date:', e);
-    return null;
-  }
-}
-
-function nthSunday(year, month, n) {
-  const first = new Date(Date.UTC(year, month - 1, 1)).getUTCDay(); // 0=Sun
-  const offset = first === 0 ? 0 : 7 - first;
-  return 1 + offset + (n - 1) * 7;
 }
 
 // Returns jobs within `windowMinutes` of the given scheduled_at ISO string.

@@ -3,6 +3,7 @@ import { useAppTheme } from '../../context/AppThemeContext';
 import { SectionLabel } from '../ui/typography';
 import { fetchJobById, recordPayment } from '../../data/jobsRepo';
 import { notifyDataChanged, useBusiness } from '../../data/useData';
+import { computeJobTotal } from '../../lib/financialMath';
 import { useToast } from '../../context/ToastContext';
 import ThankYouDraftSheet from './ThankYouDraftSheet';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
@@ -32,8 +33,6 @@ export default function PostJobSheet({ jobId, onClose }) {
   const [invoiceId, setInvoiceId] = useState(null);
   const [jobPayments, setJobPayments] = useState([]);
   const [costs, setCosts] = useState([{ amount: '', description: '' }]);
-  const [showHoursPrompt, setShowHoursPrompt] = useState(false);
-  const [pendingAdjustedAmt, setPendingAdjustedAmt] = useState(null);
   // Track whether this is the first time actualMinutes was set by job load
   // so we don't overwrite the pre-filled amount on mount
   const hoursInitialized = useRef(false);
@@ -50,8 +49,9 @@ export default function PostJobSheet({ jobId, onClose }) {
   const liveTotal = useMemo(() => {
     const liveTotalBase = isHourly ? hourlyRate * (actualMinutes / 60) : totalAmt;
     const addlTotal = costs.reduce((s, c) => s + (parseFloat(c.amount) || 0), 0);
-    return Math.round((liveTotalBase + addlTotal) * 100) / 100;
-  }, [isHourly, hourlyRate, actualMinutes, totalAmt, costs]);
+    const hstAmt = Number(job?.hst_amount || 0);
+    return Math.round((liveTotalBase + addlTotal + hstAmt) * 100) / 100;
+  }, [isHourly, hourlyRate, actualMinutes, totalAmt, costs, job]);
 
   const liveBreakdownForm = useMemo(() => {
     if (!job) return null;
@@ -80,13 +80,7 @@ export default function PostJobSheet({ jobId, onClose }) {
         if (alive) { 
           setJob(j);
           setJobNotes(j?.completion_notes || '');
-          // Compute true total: flat_rate stores $/hr for Hourly jobs
-          const srcRate = Number(j?.flat_rate || j?.hourly_rate || 0);
-          const srcHours = Number(j?.actual_duration || j?.estimated_hours || 0);
-          const baseTotal = (j?.pricing_type === 'Hourly' && srcRate > 0)
-            ? srcRate * srcHours
-            : Number(j?.total_amount || j?.flat_rate || 0);
-          const fullTotal = Math.round((baseTotal + Number(j?.additional_cost || 0) + Number(j?.hst_amount || 0)) * 100) / 100;
+          const fullTotal = Math.round(computeJobTotal(j) * 100) / 100;
           // Always fetch payment history; use it to pre-fill remaining balance for partial jobs
           supabase
             .from('payments')
@@ -151,7 +145,7 @@ export default function PostJobSheet({ jobId, onClose }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actualMinutes, liveTotal, isHourly, alreadyPaid]);
 
-  async function handleLogPayment(overrideAmt = null) {
+  async function handleLogPayment() {
     if (!job) return;
     const jobDate = new Date(job.scheduled_date + 'T00:00:00');
     const today = new Date();
@@ -163,21 +157,9 @@ export default function PostJobSheet({ jobId, onClose }) {
 
     const totalDuration = actualMinutes / 60;
 
-    // Hourly job — if actual hours differ from estimated, prompt to adjust amount
-    if (overrideAmt === null && job.pricing_type === 'Hourly' && job.estimated_hours && totalDuration !== job.estimated_hours) {
-      const hRate = job.estimated_hours > 0 ? (parseFloat(amount) || 0) / job.estimated_hours : 0;
-      const adjusted = Math.round(hRate * totalDuration * 100) / 100;
-      if (Math.abs(adjusted - (parseFloat(amount) || 0)) > 0.5) {
-        setPendingAdjustedAmt(adjusted);
-        setShowHoursPrompt(true);
-        return;
-      }
-    }
-
     setBusy(true);
     try {
-      const baseAmt = overrideAmt !== null ? overrideAmt : (parseFloat(amount) || 0);
-      const paidAmt = payStatus === 'paid' ? baseAmt : payStatus === 'partial' ? (parseFloat(amount) || 0) : 0;
+      const paidAmt = payStatus === 'paid' ? (parseFloat(amount) || 0) : payStatus === 'partial' ? (parseFloat(amount) || 0) : 0;
       const ps = payStatus === 'paid' ? 'Paid' : payStatus === 'partial' ? 'Partial' : '';
 
       const validCosts = costs
@@ -458,24 +440,6 @@ export default function PostJobSheet({ jobId, onClose }) {
           </button>
         </div>
         </>
-      )}
-
-      {/* Hours Mismatch Prompt */}
-      {showHoursPrompt && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 70, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <div style={{ background: T.card, borderRadius: 20, padding: 24, width: '100%', maxWidth: 320, textAlign: 'center' }}>
-            <div style={{ fontSize: 32, marginBottom: 16 }}>⏱️</div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: T.ink, marginBottom: 8 }}>Adjust Total?</div>
-            <div style={{ fontSize: 14, color: T.inkMuted, marginBottom: 20 }}>
-              You logged {fmtMins(actualMinutes)}, which changes the total to <strong>${pendingAdjustedAmt}</strong>. Update the payment amount to match?
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <button onClick={() => { setShowHoursPrompt(false); handleLogPayment(pendingAdjustedAmt); }} style={{ width: '100%', padding: '12px', borderRadius: 12, background: T.pink, color: 'white', border: 'none', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Yes, update amount</button>
-              <button onClick={() => { setShowHoursPrompt(false); handleLogPayment(parseFloat(amount) || 0); }} style={{ width: '100%', padding: '12px', borderRadius: 12, background: 'transparent', border: `1.5px solid ${T.cardBorder}`, color: T.ink, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>No, keep original</button>
-              <button onClick={() => setShowHoursPrompt(false)} style={{ width: '100%', padding: '10px', borderRadius: 12, background: 'transparent', border: 'none', color: T.inkMuted, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Cancel</button>
-            </div>
-          </div>
-        </div>
       )}
 
       </div>

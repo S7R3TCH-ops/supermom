@@ -98,11 +98,26 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 ---
 
-## Current version: 0.6.0
+## Current version: 0.6.2
 
 All core features are live. The app is in active use by Sandra.
 
-### Recent changes (v0.6.0 — May 17, 2026)
+### Recent changes (v0.6.2 — May 18, 2026)
+- **Codebase refactor** — pure extraction, zero behavior changes. `Home.jsx` trimmed from 1285 → 769 lines.
+  - `src/lib/dateUtils.js` — `sameDay`, `addDays`, `getWeekRange`, `fmtTime12`, `fmtTimeRange`, `dateBrief`, `composeTorontoISO` (DST logic replaced with `Intl.DateTimeFormat` / `America/Toronto`)
+  - `src/lib/financialMath.js` — `computeJobTotal()` single source of truth; PostJobSheet and Home.jsx both import from here
+  - `src/lib/briefingMessages.js` — `getBriefingMessage()` pure function
+  - `src/components/cards/` — `JobCard`, `UpcomingCard`, `EmptyState`, `LiveTimer`, `MissionIntel`, `PaymentBreakdown`
+  - `jobsRepo.js` re-exports `composeTorontoISO` from `dateUtils` for backward compat with `NewJobSheet`
+
+### Previous (v0.6.1 — May 18, 2026)
+- **PostJobSheet hours prompt removed** — the "Adjust Total?" dialog was double-scaling the amount (back-calculated rate × new hours on an amount already updated to the new hours). The sync effect handles this correctly; prompt was stale dead code.
+- **`liveTotal` now includes `hst_amount`** — PostJobSheet was inconsistent: `fullTotal` init included HST but `liveTotal` useMemo didn't. Now both include `job.hst_amount`.
+- **Invoice only auto-generated when fully paid** — `recordPayment` previously created invoices for partial/unpaid completions immediately; now gated on `status === 'Paid'`.
+- **Invoice uses actual completed total** — `generateInvoiceForJob` now computes `flat_rate × actual_duration + additional_cost + hst_amount` instead of reading stale `total_amount`. Also updates existing invoices on re-completion.
+- **InvoiceView rate column** — now reads `job.flat_rate` (the booked rate) instead of `biz.hourly_rate` (the business default).
+
+### Previous (v0.6.0 — May 17, 2026)
 - **Home card payment clarity** — color-coded payment display across all card types: green for paid/pre-paid, supermom pink for owing; hourly jobs show rate math (`$35/hr × 3h = $105`); flat rate labeled; job notes shown on upcoming and scheduled cards (2-line clamp); attention items use breakdown helper, PARTIAL badge removed
 
 ### Previous (v0.5.9 — May 16, 2026)
@@ -135,3 +150,4 @@ All core features are live. The app is in active use by Sandra.
 - [ ] Self-serve client booking link (Phase 2)
 - [ ] Offline mode (crashes if Supabase unreachable on first load)
 - [ ] Client engagement tools (AI follow-up / re-booking reminders)
+- [ ] **Sandra daily job briefing email** — Vercel Cron Job (daily, e.g. 7am Toronto) queries Supabase as service role, emails Sandra her day: today's + tomorrow's jobs with times/clients/estimates, plus any past jobs with outstanding payments. Use Resend for transactional email (free tier sufficient). This is a Phase 2 in-app feature, not a remote agent — needs live DB access.

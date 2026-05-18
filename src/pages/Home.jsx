@@ -10,436 +10,20 @@ import { useFinanceDetailSheet } from '../context/FinanceDetailSheetContext';
 import { useNewJobSheet } from '../context/NewJobSheetContext';
 import { generateCommandBrief, speakBrief, stopSpeaking } from '../data/ai';
 import { updateDailyRoutes } from '../lib/maps';
-import { getPersistentDailyMessage, getTimeBasedGreeting } from '../lib/greetings';
+import { getBriefingMessage } from '../lib/briefingMessages';
 import { softDeleteJob, updateJob } from '../data/jobsRepo';
 import { useGeofence } from '../context/GeofenceContext';
-import { EmptyActivity, NoResults } from '../components/ui/Illustrations';
 import { useKeyboardFocus } from '../hooks/useKeyboardFocus';
 import Swipeable from '../components/ui/Swipeable';
 import WeekStrip from '../components/ui/WeekStrip';
-
-function sameDay(a, b) {
-  return a.getFullYear() === b.getFullYear()
-    && a.getMonth() === b.getMonth()
-    && a.getDate() === b.getDate();
-}
-
-function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
-
-/**
- * Returns an array of 7 Date objects representing the Monday-Sunday week containing the given date.
- */
-function getWeekRange(date) {
-  const d = new Date(date);
-  const day = d.getDay(); // 0 (Sun) to 6 (Sat)
-  // Monday is day 1. If day is 0 (Sun), we need to go back 6 days.
-  // Otherwise, we go back (day - 1) days.
-  const diff = d.getDate() - (day === 0 ? 6 : day - 1);
-  const mon = new Date(d.setDate(diff));
-  mon.setHours(0,0,0,0);
-  return Array.from({ length: 7 }, (_, i) => addDays(mon, i));
-}
-
-function getWeekLabel(weekDays) {
-  const first = weekDays[0];
-  const last = weekDays[6];
-  if (first.getMonth() === last.getMonth()) {
-    return `${first.toLocaleDateString('en-US', { month: 'long' })} ${first.getDate()}–${last.getDate()}`;
-  }
-  return `${first.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${last.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
-}
-
-function fmtTime12(d) {
-  const h = d.getHours(), m = d.getMinutes();
-  const hh = ((h + 11) % 12) + 1;
-  const ap = h < 12 ? 'AM' : 'PM';
-  return { time: m === 0 ? `${hh}:00` : `${hh}:${m.toString().padStart(2,'0')}`, period: ap };
-}
-
-function fmtTimeRange(start, end) {
-  const s = fmtTime12(start);
-  const e = fmtTime12(end);
-  return s.period === e.period
-    ? `${s.time} – ${e.time} ${e.period}`
-    : `${s.time} ${s.period} – ${e.time} ${e.period}`;
-}
-
-function dateBrief(d) {
-  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-}
-
-function computeTotal(j) {
-  // toDisplayJob strips raw fields — always read from j.raw when available
-  // flat_rate stores the $/hr rate for Hourly jobs (NewJobSheet never writes hourly_rate)
-  const src = j.raw || j;
-  let base = 0;
-
-  if (src.pricing_type === 'Hourly') {
-    const rate = Number(src.hourly_rate || src.flat_rate || 0);
-    const hours = Number(src.actual_duration || src.estimated_hours || 0);
-    base = (rate > 0 && hours > 0) ? rate * hours : Number(src.total_amount || 0);
-  } else {
-    base = Number(src.total_amount || src.flat_rate || 0);
-  }
-
-  return base + Number(src.additional_cost || 0) + Number(src.hst_amount || 0);
-}
-
-function renderPaymentBreakdown({ j, paid, total, privacyOn, T, metaColor }) {
-  const src = j.raw || j;
-  const remaining = Math.max(0, total - (paid || 0));
-  if (remaining === 0) return null;
-
-  if (privacyOn) {
-    return (
-      <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
-        {(paid || 0) > 0 && (
-          <>
-            <span style={{ fontSize: 13, fontWeight: 800, color: '#16A34A', letterSpacing: '-0.2px', fontVariantNumeric: 'tabular-nums' }}>••• paid</span>
-            <span style={{ color: metaColor, opacity: 0.4, fontSize: 12 }}>·</span>
-          </>
-        )}
-        <span style={{ fontSize: 13, fontWeight: 800, color: T.pink, letterSpacing: '-0.2px', fontVariantNumeric: 'tabular-nums' }}>••• owing</span>
-      </div>
-    );
-  }
-
-  const isHourly = src.pricing_type === 'Hourly';
-  const rate = Number(src.hourly_rate || src.flat_rate || 0);
-  const hours = Number(src.actual_duration || src.estimated_hours || 0);
-  const additionalCost = Number(src.additional_cost || 0);
-  const hst = Number(src.hst_amount || 0);
-
-  const mathParts = [];
-  if (isHourly && rate > 0 && hours > 0) {
-    mathParts.push(`$${rate.toFixed(0)}/hr x ${hours}h`);
-  } else {
-    mathParts.push('Flat rate');
-  }
-  if (additionalCost > 0) mathParts.push(`+ $${additionalCost.toFixed(0)} costs`);
-  if (hst > 0) mathParts.push(`+ $${hst.toFixed(0)} HST`);
-  mathParts.push(`= $${total.toFixed(0)}`);
-
-  return (
-    <div style={{ marginTop: 4 }}>
-      <div style={{ fontSize: 11, color: metaColor, opacity: 0.8, marginBottom: 2, fontVariantNumeric: 'tabular-nums' }}>
-        {mathParts.join(' ')}
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        {(paid || 0) > 0 && (
-          <>
-            <span style={{ fontSize: 13, fontWeight: 800, color: '#16A34A', letterSpacing: '-0.2px', fontVariantNumeric: 'tabular-nums' }}>
-              ${paid.toFixed(0)} paid
-            </span>
-            <span style={{ color: metaColor, opacity: 0.4, fontSize: 12 }}>·</span>
-          </>
-        )}
-        <span style={{ fontSize: 13, fontWeight: 800, color: T.pink, letterSpacing: '-0.2px', fontVariantNumeric: 'tabular-nums' }}>
-          ${remaining.toFixed(0)} owing
-        </span>
-      </div>
-    </div>
-  );
-}
-
-
-function JobCard({ job: j, T, onClick, onDuplicate, paid = 0, total = 0, privacyOn = false }) {
-  const isCompleted = j.status === 'Completed';
-  const isPaid = j.payment_status === 'Paid';
-  const isPartial = j.payment_status === 'Partial';
-  const isUnpaid = isCompleted && !isPaid;
-
-  const urgencyColor = isUnpaid ? '#F59E0B' : isCompleted ? '#16A34A' : T.pink;
-  const urgencyBg = isUnpaid ? 'rgba(245,158,11,0.12)' : isCompleted ? 'rgba(22,163,74,0.08)' : T.pinkGlow;
-  const statusLabel = isPartial ? 'PARTIAL' : isUnpaid ? 'UNPAID' : isCompleted ? 'PAID ✓' : 'SCHEDULED';
-
-  const remaining = isPaid ? 0 : Math.max(0, total - paid);
-  const showPaymentInfo = isCompleted || total > 0;
-  const metaColor = T.inkSub || '#795548';
-  const timeRange = fmtTimeRange(j.start, j.end);
-  const dateLabel = dateBrief(j.start);
-
-  if (isCompleted) {
-    // ── Compact completed card ─────────────────────────────────────────
-    return (
-      <div
-        onClick={onClick}
-        style={{
-          background: urgencyBg,
-          border: `1.5px solid ${urgencyColor}`,
-          borderLeft: `5px solid ${urgencyColor}`,
-          borderRadius: 14,
-          marginBottom: 9,
-          cursor: 'pointer',
-          padding: '10px 14px',
-        }}
-      >
-        {/* Row 1: client name + amount · STATUS */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-          <div style={{
-            fontFamily: T.serif,
-            fontSize: 17,
-            fontWeight: 600,
-            color: T.ink,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            letterSpacing: '-0.3px',
-            flex: 1,
-          }}>
-            {j.client_name}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
-            {showPaymentInfo && !privacyOn && total > 0 && (
-              <span style={{
-                fontFamily: T.serif,
-                fontSize: 14,
-                fontWeight: 600,
-                color: urgencyColor,
-                letterSpacing: '-0.3px',
-                fontVariantNumeric: 'tabular-nums',
-              }}>
-                ${total.toFixed(0)}
-              </span>
-            )}
-            <span style={{
-              fontSize: 10,
-              fontWeight: 800,
-              color: urgencyColor,
-              textTransform: 'uppercase',
-              background: `${urgencyColor}22`,
-              padding: '3px 8px',
-              borderRadius: 5,
-              letterSpacing: '0.3px',
-            }}>
-              {statusLabel}
-            </span>
-            {onDuplicate && (
-              <button
-                onClick={e => { e.stopPropagation(); onDuplicate(j); }}
-                style={{ background: 'none', border: 'none', padding: '0 2px', color: urgencyColor, fontSize: 14, fontWeight: 900, cursor: 'pointer', lineHeight: 1, opacity: 0.7 }}
-                title="Rebook this job"
-              >
-                ↻
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Row 2: date · time inline, service */}
-        <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: metaColor }}>
-            {dateLabel} · {timeRange}
-          </span>
-          <span style={{ fontSize: 10, color: metaColor, opacity: 0.4 }}>·</span>
-          <span style={{ fontSize: 11, fontWeight: 700, color: urgencyColor, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-            {j.service_name}
-          </span>
-        </div>
-
-        {/* Row 3: color-coded payment breakdown */}
-        {remaining > 0 && renderPaymentBreakdown({ j, paid, total, privacyOn, T, metaColor })}
-      </div>
-    );
-  }
-
-  // ── Scheduled / upcoming card (full layout with time header) ──────────
-  return (
-    <div
-      onClick={onClick}
-      style={{
-        background: urgencyBg,
-        border: `2px solid ${urgencyColor}`,
-        borderLeft: `6px solid ${urgencyColor}`,
-        borderRadius: 16,
-        marginBottom: 12,
-        cursor: 'pointer',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.04)',
-        overflow: 'hidden',
-      }}
-    >
-      {/* Time header — full width, top of card */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: '10px 16px 8px',
-        borderBottom: `1px solid ${urgencyColor}30`,
-      }}>
-        <div style={{
-          fontFamily: 'monospace',
-          fontSize: 22,
-          fontWeight: 900,
-          color: urgencyColor,
-          letterSpacing: '-0.5px',
-          lineHeight: 1,
-        }}>
-          {timeRange}
-        </div>
-        <div style={{
-          fontSize: 10,
-          fontWeight: 800,
-          color: urgencyColor,
-          textTransform: 'uppercase',
-          background: `${urgencyColor}22`,
-          padding: '4px 9px',
-          borderRadius: 6,
-          letterSpacing: '0.4px',
-        }}>
-          {statusLabel}
-        </div>
-      </div>
-
-      {/* Card body */}
-      <div style={{ padding: '10px 16px 12px' }}>
-        <div style={{ fontFamily: T.serif, fontSize: 19, fontWeight: 600, color: T.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.4px', marginBottom: 1 }}>
-          {j.client_name}
-        </div>
-        <div style={{ fontSize: 11, fontWeight: 600, color: metaColor, marginBottom: 4 }}>
-          {dateLabel}
-        </div>
-        <div style={{ fontSize: 13, fontWeight: 700, color: urgencyColor, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>
-          {j.service_name}
-        </div>
-        <div style={{ fontSize: 12, fontWeight: 600, color: metaColor, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
-          <span>Est: {j.raw?.estimated_hours || 0}h</span>
-          {showPaymentInfo && remaining === 0 && total > 0 && (
-            <>
-              <span style={{ opacity: 0.4 }}>·</span>
-              <span style={{ color: paid > 0 ? '#16A34A' : urgencyColor, fontVariantNumeric: 'tabular-nums' }}>
-                {privacyOn ? '•••' : paid > 0 ? `$${total.toFixed(0)} pre-paid` : `$${total.toFixed(0)} total`}
-              </span>
-            </>
-          )}
-        </div>
-        {showPaymentInfo && remaining > 0 && renderPaymentBreakdown({ j, paid, total, privacyOn, T, metaColor })}
-        {j.job_notes ? (
-          <div style={{
-            fontSize: 11,
-            color: metaColor,
-            fontStyle: 'italic',
-            marginTop: 4,
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
-            lineHeight: 1.4,
-          }}>
-            {j.job_notes}
-          </div>
-        ) : null}
-        {j.address && (
-          <div style={{ fontSize: 11, color: metaColor, marginTop: 4, opacity: 0.7, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            📍 {j.address}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-const EmptyState = ({ allDone, T, persona }) => {
-  const messages = {
-    casual: {
-      allDone: "Nice work, you're all set!",
-      notDone: "Nothing on the list today. Chill time?"
-    },
-    professional: {
-      allDone: "Mission Accomplished!",
-      notDone: "Schedule clear."
-    },
-    coach: {
-      allDone: "Solid hustle today!",
-      notDone: "The board is clean. Time to recharge!"
-    }
-  };
-
-  const style = persona?.toLowerCase() || 'professional';
-  const msgSet = messages[style] || messages.professional;
-  const msg = allDone ? msgSet.allDone : msgSet.notDone;
-
-  return (
-    <div style={{ padding: '60px 20px', textAlign: 'center', opacity: 0.9 }}>
-      <EmptyActivity size={100} />
-      <div style={{ marginTop: 16, fontFamily: T.font, fontSize: 13, color: T.inkMuted }}>{msg}</div>
-    </div>
-  );
-};
-
-function UpcomingCard({ job: j, T, onClick, total = 0, paid = 0, privacyOn = false }) {
-  const BLUE = '#1565C0';
-  const timeRange = fmtTimeRange(j.start, j.end);
-  return (
-    <div
-      onClick={onClick}
-      style={{
-        background: 'rgba(21,101,192,0.07)',
-        border: `2px solid ${BLUE}`,
-        borderLeft: `6px solid ${BLUE}`,
-        borderRadius: 14,
-        marginBottom: 10,
-        cursor: 'pointer',
-        overflow: 'hidden',
-      }}
-    >
-      {/* Time header */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: '9px 14px 7px',
-        borderBottom: `1px solid ${BLUE}25`,
-      }}>
-        <div style={{ fontFamily: 'monospace', fontSize: 20, fontWeight: 900, color: BLUE, letterSpacing: '-0.5px', lineHeight: 1 }}>
-          {timeRange}
-        </div>
-        <div style={{ fontSize: 9, fontWeight: 800, color: BLUE, textTransform: 'uppercase', background: `${BLUE}18`, padding: '3px 8px', borderRadius: 5, letterSpacing: '0.4px' }}>
-          UPCOMING
-        </div>
-      </div>
-
-      {/* Body */}
-      <div style={{ padding: '8px 14px 10px' }}>
-        <div style={{ fontFamily: T.serif, fontSize: 17, fontWeight: 600, color: T.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 1 }}>
-          {j.client_name}
-        </div>
-        <div style={{ fontSize: 10, fontWeight: 600, color: BLUE, opacity: 0.7, marginBottom: 3 }}>
-          {dateBrief(j.start)}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: BLUE, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-            {j.service_name}
-          </div>
-          {total > 0 && (
-            <>
-              <span style={{ fontSize: 10, color: BLUE, opacity: 0.4 }}>·</span>
-              <span style={{ fontSize: 11, fontWeight: 600, color: BLUE }}>
-                {privacyOn ? '•••' : `$${total.toFixed(0)}`}
-              </span>
-            </>
-          )}
-        </div>
-        {j.job_notes ? (
-          <div style={{
-            fontSize: 11,
-            color: BLUE,
-            opacity: 0.7,
-            fontStyle: 'italic',
-            marginTop: 4,
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
-            lineHeight: 1.4,
-          }}>
-            {j.job_notes}
-          </div>
-        ) : null}
-        {paid > 0 && total > 0 && renderPaymentBreakdown({ j, paid, total, privacyOn, T, metaColor: BLUE })}
-      </div>
-    </div>
-  );
-}
+import { sameDay, addDays, getWeekRange, getWeekLabel, fmtTime12, fmtTimeRange, dateBrief } from '../lib/dateUtils';
+import { computeJobTotal } from '../lib/financialMath';
+import JobCard from '../components/cards/JobCard';
+import UpcomingCard from '../components/cards/UpcomingCard';
+import EmptyState from '../components/cards/EmptyState';
+import LiveTimer from '../components/cards/LiveTimer';
+import MissionIntel from '../components/cards/MissionIntel';
+import PaymentBreakdown from '../components/cards/PaymentBreakdown';
 
 export default function Home() {
   const themeCtx = useAppTheme();
@@ -536,19 +120,11 @@ export default function Home() {
 
   const allDone = todayJobs.length > 0 && !todayJobs.some(j => j.status === 'Scheduled' || j.payment_status !== 'Paid');
 
-  const timeBasedGreeting = useMemo(() => {
-    try {
-      return getTimeBasedGreeting(firstName, persona, !allDone);
-    } catch {
-      return `Hello, ${firstName}!`;
-    }
-  }, [firstName, persona, allDone]);
-
   const isSelectedToday = sameDay(selectedDate, today);
 
   const displayRevenue = useMemo(() => {
     const jobs = isSelectedToday ? todayJobs : selectedDate ? selectedDateJobs : weekJobs;
-    return jobs.reduce((s, j) => s + computeTotal(j), 0);
+    return jobs.reduce((s, j) => s + computeJobTotal(j), 0);
   }, [isSelectedToday, selectedDate, todayJobs, selectedDateJobs, weekJobs]);
 
   const activeJob = todayJobs.find(j => j.status === 'Scheduled' && j.ai_context?.clock_in_time != null);
@@ -580,40 +156,18 @@ export default function Home() {
       .sort((a, b) => a.start - b.start);
   }, [allJobs, now]);
 
-  const briefingMsg = useMemo(() => {
-    if (!isSelectedToday) return `${selectedDateJobs.length} jobs scheduled`;
-    
-    if (allDone) {
-      return "Mission accomplished. Time to go be fabulous somewhere else!";
-    }
-    
-    if (activeJob) {
-      const remainingCount = todayJobs.filter(j => j.status === 'Scheduled' && j.id !== activeJob.id).length;
-      return `In the zone! ${remainingCount > 0 ? `${remainingCount} more boss moves` : 'Almost done'} for today.`;
-    }
-    
-    if (next) {
-      const minsToStart = Math.round((next.start - now) / 60000);
-      const jobsRemaining = todayJobs.filter(j => j.status === 'Scheduled' && j.payment_status !== 'Paid').length;
-      const countStr = jobsRemaining > 1 ? ` (${jobsRemaining - 1} more to go)` : '';
-      
-      if (minsToStart <= 0) return `Suit up! Your next mission is starting now.${countStr}`;
-      if (minsToStart < 60) return `T-minus ${minsToStart} mins until you save the day again.${countStr}`;
-      
-      const timeStr = fmtTime12(next.start);
-      return `Deep breaths. Next mission at ${timeStr.time}${timeStr.period}.${countStr}`;
-    }
-    
-    if (attentionItems.length > 0) {
-      return `${attentionItems.length} job${attentionItems.length > 1 ? 's are' : ' is'} giving you the side-eye. Time to wrap up!`;
-    }
-    
-    try {
-      return getPersistentDailyMessage('briefing', persona);
-    } catch {
-      return "Ready for the day.";
-    }
-  }, [isSelectedToday, selectedDateJobs.length, allDone, activeJob, next, now, todayJobs, attentionItems.length, persona]);
+  const briefingMsg = useMemo(() => getBriefingMessage({
+    isSelectedToday,
+    selectedDateJobCount: selectedDateJobs.length,
+    allDone,
+    activeJob,
+    next,
+    now,
+    todayJobs,
+    attentionItemCount: attentionItems.length,
+    persona,
+    firstName,
+  }), [isSelectedToday, selectedDateJobs.length, allDone, activeJob, next, now, todayJobs, attentionItems.length, persona, firstName]);
 
   const staleAttentionItems = useMemo(() => {
     const cutoff = new Date(now.getTime() - 48 * 60 * 60 * 1000);
@@ -812,24 +366,29 @@ export default function Home() {
           <div style={{ flex: 1 }}>
             {isSelectedToday ? (
               <>
-                <SectionLabel style={{ color: mode === 'dark' ? T.pinkLabel : T.pink, marginBottom: 5 }}>
+                <SectionLabel style={{ color: mode === 'dark' ? T.pinkLabel : T.pink, marginBottom: 8 }}>
                   ✦ Command Brief · {dateBrief(selectedDate)}
                 </SectionLabel>
-                <Title style={{ fontSize: 24, fontWeight: 500, letterSpacing: '-0.5px', color: mode === 'dark' ? 'white' : T.ink, lineHeight: 1.15, marginBottom: 4 }}>
-                  {timeBasedGreeting}
-                </Title>
-                <Text style={{ fontSize: 14, color: T.inkSub, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  {isSelectedToday && (
-                    <span style={{ 
-                      width: 8, 
-                      height: 8, 
-                      borderRadius: '50%', 
-                      background: allDone ? '#16A34A' : (activeJob || (next && Math.round((next.start - now) / 60000) < 60)) ? '#F59E0B' : '#64748B',
-                      flexShrink: 0
-                    }} />
-                  )}
-                  {briefingMsg}
-                </Text>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 9, marginTop: 2 }}>
+                  <span style={{
+                    width: 7,
+                    height: 7,
+                    borderRadius: '50%',
+                    background: allDone ? '#16A34A' : (activeJob || (next && Math.round((next.start - now) / 60000) < 60)) ? '#F59E0B' : '#64748B',
+                    flexShrink: 0,
+                    marginTop: 7,
+                  }} />
+                  <div style={{
+                    fontFamily: T.serif,
+                    fontSize: 21,
+                    fontWeight: 500,
+                    letterSpacing: '-0.3px',
+                    color: mode === 'dark' ? 'white' : T.ink,
+                    lineHeight: 1.3,
+                  }}>
+                    {briefingMsg}
+                  </div>
+                </div>
               </>
             ) : (
               <>
@@ -1096,7 +655,7 @@ export default function Home() {
                     job={j}
                     T={T}
                     onClick={() => openJob(j.id)}
-                    total={computeTotal(j)}
+                    total={computeJobTotal(j)}
                     paid={paymentMap[j.id] || 0}
                     privacyOn={privacyOn}
                   />
@@ -1111,7 +670,7 @@ export default function Home() {
                   const needsWrap = j.status !== 'Completed';
                   const startTime = fmtTime12(j.start);
                   const paid = paymentMap[j.id] || 0;
-                  const total = computeTotal(j);
+                  const total = computeJobTotal(j);
                   const remaining = Math.max(0, total - paid);
                   return (
                     <div
@@ -1138,7 +697,7 @@ export default function Home() {
                           </div>
                           <div style={{ marginTop: 5 }}>
                             {remaining > 0
-                              ? renderPaymentBreakdown({ j, paid, total, privacyOn, T, metaColor: '#92400E' })
+                              ? <PaymentBreakdown j={j} paid={paid} total={total} privacyOn={privacyOn} T={T} metaColor="#92400E" />
                               : <span style={{ fontSize: 12, color: '#D97706', fontWeight: 700 }}>${total.toFixed(0)} total</span>
                             }
                           </div>
@@ -1168,7 +727,7 @@ export default function Home() {
                     onClick={() => openJob(j.id)}
                     onDuplicate={handleDuplicateJob}
                     paid={paymentMap[j.id] || 0}
-                    total={computeTotal(j)}
+                    total={computeJobTotal(j)}
                     privacyOn={privacyOn}
                   />
                 ))}
@@ -1193,7 +752,7 @@ export default function Home() {
                     onClick={() => openJob(j.id)}
                     onDuplicate={handleDuplicateJob}
                     paid={paymentMap[j.id] || 0}
-                    total={computeTotal(j)}
+                    total={computeJobTotal(j)}
                     privacyOn={privacyOn}
                   />
                 </Swipeable>
@@ -1208,52 +767,3 @@ export default function Home() {
   );
 }
 
-function LiveTimer({ startTime }) {
-  const [elapsed, setElapsed] = useState('');
-
-  useEffect(() => {
-    if (!startTime) return;
-    
-    const update = () => {
-      const start = new Date(startTime);
-      const now = new Date();
-      const diff = Math.max(0, now - start);
-      
-      const hh = Math.floor(diff / 3600000);
-      const mm = Math.floor((diff % 3600000) / 60000);
-      const ss = Math.floor((diff % 60000) / 1000);
-      
-      setElapsed(`${hh.toString().padStart(2, '0')}:${mm.toString().padStart(2, '0')}:${ss.toString().padStart(2, '0')}`);
-    };
-
-    update();
-    const id = setInterval(update, 1000);
-    return () => clearInterval(id);
-  }, [startTime]);
-
-  if (!startTime) return null;
-
-  return (
-    <div style={{ fontSize: 32, fontWeight: 900, fontFamily: 'monospace', letterSpacing: -1, margin: '8px 0 12px' }}>
-      {elapsed}
-    </div>
-  );
-}
-
-function MissionIntel({ prepNote, T, theme }) {
-  if (!prepNote) return null;
-  return (
-    <div style={{ 
-      background: theme.bgSecondary || 'rgba(0,0,0,0.03)', 
-      borderRadius: 12, 
-      padding: '10px 12px', 
-      borderLeft: `3px solid ${theme.accent || T.pink}`,
-      marginBottom: 10
-    }}>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-        <span style={{ fontSize: 9, fontWeight: 900, color: theme.accent || T.pink, flexShrink: 0 }}>✦ MISSION INTEL</span>
-        <span style={{ fontSize: 11, color: T.inkMuted, lineHeight: 1.4, fontWeight: 500 }}>{prepNote}</span>
-      </div>
-    </div>
-  );
-}

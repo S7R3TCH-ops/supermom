@@ -6,6 +6,7 @@
 import { supabase } from '../lib/supabase';
 import { getCurrentBusinessId } from './currentBusiness';
 import { generateInvoiceForJob } from './invoicesRepo';
+import { computeJobTotal } from '../lib/financialMath';
 import { composeTorontoISO as _composeTorontoISO } from '../lib/dateUtils';
 export { composeTorontoISO } from '../lib/dateUtils';
 
@@ -290,6 +291,46 @@ export async function softDeleteJob(id, seriesAction = 'this') {
   return decorateJob(data[0]);
 }
 
+export async function cancelJob(id, reason) {
+  const businessId = await getCurrentBusinessId();
+  const { data: current } = await supabase
+    .from('jobs')
+    .select('ai_context')
+    .eq('id', id)
+    .eq('business_id', businessId)
+    .single();
+
+  const { data, error } = await supabase
+    .from('jobs')
+    .update({
+      job_status: 'Cancelled',
+      updated_at: new Date().toISOString(),
+      ai_context: {
+        ...(current?.ai_context || {}),
+        cancellation_reason: reason,
+        cancelled_at: new Date().toISOString(),
+      },
+    })
+    .eq('id', id)
+    .eq('business_id', businessId)
+    .select()
+    .single();
+  if (error) throw error;
+  assertWrote(data, 'cancelJob');
+  return decorateJob(data);
+}
+
+export async function archiveClientJobs(clientId) {
+  const businessId = await getCurrentBusinessId();
+  const { error } = await supabase
+    .from('jobs')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('client_id', clientId)
+    .eq('business_id', businessId)
+    .is('deleted_at', null);
+  if (error) throw error;
+}
+
 export async function recordPayment(jobId, amount, method = 'Cash', paymentStatus = null, duration = null, jobNotes = null, additionalCosts = [], completionNotes = null) {
   const businessId = await getCurrentBusinessId();
 
@@ -329,7 +370,7 @@ export async function recordPayment(jobId, amount, method = 'Cash', paymentStatu
       .eq('job_id', jobId)
       .eq('is_void', false);
     const paid = (existingPayments ?? []).reduce((s, p) => s + Number(p.amount), 0);
-    const total = Number(job.total_amount || 0) + Number(job.additional_cost || 0) + Number(job.hst_amount || 0);
+    const total = computeJobTotal(job);
     status = paid >= total && paid > 0 ? 'Paid' : paid > 0 ? 'Partial' : '';
   }
 

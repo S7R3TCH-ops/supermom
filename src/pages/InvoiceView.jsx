@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { fetchInvoiceById } from '../data/invoicesRepo';
 import { getSignedUrl } from '../lib/storage';
 import { useAppTheme } from '../context/AppThemeContext';
+import { computeJobFinancials } from '../lib/financialMath';
 
 function formatDate(dateStr) {
   if (!dateStr) return '';
@@ -44,6 +45,12 @@ export default function InvoiceView() {
   const biz = invoice.businesses || {};
   const client = invoice.clients || {};
   const job = invoice.invoice_jobs?.[0]?.jobs || {};
+
+  const financials = financialsMemo(job, biz);
+  
+  function financialsMemo(j, b) {
+    return computeJobFinancials(j, b);
+  }
 
   const handlePrint = () => {
     window.print();
@@ -134,46 +141,45 @@ export default function InvoiceView() {
                 <div style={{ fontSize: 11, color: '#666', marginTop: 4 }}>{formatDate(job.scheduled_date)}</div>
               </td>
               <td style={{ textAlign: 'center', padding: '20px 15px' }}>
-                {job.pricing_type === 'Hourly' ? `$${Number(job.flat_rate || biz.hourly_rate || 40).toFixed(2)}/hr` : '—'}
+                {financials.isHourly ? `$${financials.rate.toFixed(2)}/hr` : '—'}
               </td>
               <td style={{ textAlign: 'center', padding: '20px 15px' }}>
-                {job.pricing_type === 'Hourly' ? `${(job.actual_duration || job.estimated_hours || 0).toFixed(1)} hrs` : '1'}
+                {financials.isHourly ? `${financials.hours.toFixed(1)} hrs` : '1'}
               </td>
               <td style={{ textAlign: 'right', padding: '20px 15px', fontWeight: 500 }}>
-                ${Number(invoice.total_amount).toFixed(2)}
+                ${financials.subtotal.toFixed(2)}
               </td>
             </tr>
-            {(() => {
-              const items = Array.isArray(job.additional_costs_json) && job.additional_costs_json.length > 0
-                ? job.additional_costs_json.filter(c => Number(c.amount) > 0)
-                : (Number(job.additional_cost) > 0 ? [{ amount: job.additional_cost, description: job.additional_cost_notes || 'Additional Costs' }] : []);
-              return items.map((item, idx) => (
-                <tr key={idx} style={{ borderBottom: '1px solid #eee' }}>
-                  <td style={{ padding: '12px 15px' }}>
-                    <div style={{ fontWeight: 500 }}>{item.description || 'Additional Cost'}</div>
-                  </td>
-                  <td colSpan={2} style={{ textAlign: 'center', padding: '12px 15px' }}>—</td>
-                  <td style={{ textAlign: 'right', padding: '12px 15px', fontWeight: 500 }}>
-                    ${Number(item.amount).toFixed(2)}
-                  </td>
-                </tr>
-              ));
-            })()}
+            {financials.activeCosts.map((item, idx) => (
+              <tr key={idx} style={{ borderBottom: '1px solid #eee' }}>
+                <td style={{ padding: '12px 15px' }}>
+                  <div style={{ fontWeight: 500 }}>{item.description || 'Additional Cost'}</div>
+                </td>
+                <td colSpan={2} style={{ textAlign: 'center', padding: '12px 15px' }}>—</td>
+                <td style={{ textAlign: 'right', padding: '12px 15px', fontWeight: 500 }}>
+                  ${Number(item.amount).toFixed(2)}
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
 
         {/* Totals */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 60 }}>
           <div style={{ width: 300 }}>
-            {Number(job.additional_cost) > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 15px', fontSize: 13 }}>
+              <div>Subtotal</div>
+              <div>${(financials.subtotal + financials.additionalTotal).toFixed(2)}</div>
+            </div>
+            {financials.taxAmount > 0 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 15px', fontSize: 13 }}>
-                <div>Services</div>
-                <div>${Number(invoice.total_amount).toFixed(2)}</div>
+                <div>HST ({(financials.taxRate * 100).toFixed(0)}%)</div>
+                <div>${financials.taxAmount.toFixed(2)}</div>
               </div>
             )}
             <div style={{ background: '#EAE2D8', padding: '12px 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '1px' }}>TOTAL</div>
-              <div className="fraunces" style={{ fontSize: 20, fontWeight: 600 }}>${(Number(invoice.total_amount) + Number(job.additional_cost || 0)).toFixed(2)}</div>
+              <div className="fraunces" style={{ fontSize: 20, fontWeight: 600 }}>${financials.total.toFixed(2)}</div>
             </div>
           </div>
         </div>

@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { computeJobFinancials } from '../../lib/financialMath';
 
 /**
  * A standard, transparent math breakdown component for Supermom.
@@ -14,65 +15,7 @@ import { useMemo } from 'react';
  */
 export default function FinancialMathBreakdown({ job, business, liveForm, payments, T, mode, compact = false }) {
   const data = useMemo(() => {
-    // 1. Resolve Pricing Type
-    const pricingType = liveForm?.pricing_type ?? job?.pricing_type ?? 'Hourly';
-    const isHourly = pricingType === 'Hourly';
-
-    // 2. Resolve Hours
-    // If completed, use actual_duration. If not, use estimated_hours.
-    // If editing, use the live form value.
-    const rawHours = liveForm?.estimated_hours ?? (job?.job_status === 'Completed' ? job?.actual_duration : job?.estimated_hours) ?? 0;
-    const hoursNum = Number(rawHours);
-    const hours = isNaN(hoursNum) ? 0 : hoursNum;
-
-    // 3. Resolve Rate
-    const rawRate = liveForm?.hourly_rate ?? job?.flat_rate ?? business?.hourly_rate ?? 60;
-    const rateNum = Number(rawRate);
-    const rate = isNaN(rateNum) ? 60 : rateNum;
-
-    // 4. Resolve Base Amount (Subtotal before costs/taxes)
-    let subtotal = 0;
-    if (isHourly) {
-      subtotal = hours * rate;
-    } else {
-      const flat = liveForm?.flat_rate ?? liveForm?.total_amount ?? job?.flat_rate ?? job?.total_amount ?? 0;
-      const flatNum = Number(flat);
-      subtotal = isNaN(flatNum) ? 0 : flatNum;
-    }
-
-    // 5. Additional Costs
-    // liveForm costs are expected to be an array of { amount, description }
-    const formCosts = Array.isArray(liveForm?.additional_costs_json) 
-      ? liveForm.additional_costs_json 
-      : [];
-    const jobCosts = Array.isArray(job?.additional_costs_json)
-      ? job.additional_costs_json
-      : (Number(job?.additional_cost) > 0 ? [{ amount: job.additional_cost, description: job.additional_cost_notes }] : []);
-    
-    const activeCosts = liveForm ? formCosts : jobCosts;
-    const additionalTotal = activeCosts.reduce((s, c) => s + (Number(c.amount) || 0), 0);
-
-    // 6. Taxes
-    const taxEnabled = business?.tax_enabled ?? false;
-    const taxRate = Number(business?.hst_rate ?? 0.13);
-    const taxAmount = taxEnabled ? (subtotal + additionalTotal) * taxRate : 0;
-
-    // 7. Grand Total
-    const total = subtotal + additionalTotal + taxAmount;
-
-    return {
-      pricingType,
-      isHourly,
-      hours,
-      rate,
-      subtotal,
-      activeCosts,
-      additionalTotal,
-      taxEnabled,
-      taxAmount,
-      taxRate,
-      total
-    };
+    return computeJobFinancials(job, business, liveForm);
   }, [job, business, liveForm]);
 
   const { pricingType, isHourly, hours, rate, subtotal, activeCosts, additionalTotal, taxEnabled, taxAmount, taxRate, total } = data;

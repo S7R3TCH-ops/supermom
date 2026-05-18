@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { getCurrentBusinessId } from './currentBusiness';
+import { computeJobTotal } from '../lib/financialMath';
 
 /**
  * Generates a formal invoice for a job if one doesn't already exist.
@@ -25,12 +26,8 @@ export async function generateInvoiceForJob(jobId) {
 
   if (jobErr) throw jobErr;
 
-  // Compute actual total from job fields (total_amount is the booking estimate — never use it directly)
-  const isHourlyJob = job.pricing_type === 'Hourly';
-  const jobRate = Number(job.flat_rate || 0);
-  const jobDur = Number(job.actual_duration || job.estimated_hours || 0);
-  const baseAmt = isHourlyJob && jobRate > 0 ? jobRate * jobDur : Number(job.total_amount || 0);
-  const actualTotal = Math.round((baseAmt + Number(job.additional_cost || 0) + Number(job.hst_amount || 0)) * 100) / 100;
+  // Compute actual total using the central source of truth
+  const actualTotal = Math.round(computeJobTotal(job) * 100) / 100;
 
   if (existingLink) {
     await supabase.from('invoices')

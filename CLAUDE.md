@@ -97,9 +97,17 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 ---
 
-## Current version: 0.6.3
+## Current version: 0.6.4
 
 All core features are live. The app is in active use by Sandra.
+
+### Recent changes (v0.6.4 — May 18, 2026)
+- **Finance page — clickable tiles + drill-down** — All 4 stat tiles (Revenue, Expenses, Outstanding, Profit) now open a `FinanceDetailSheet` with the jobs/expenses that make up that number, filtered to the selected period.
+- **Finance page — period filtering** — Week/Month/Year/All selector now filters stat tiles, trend chart, and activity list together.
+- **Finance page — real trend chart** — Placeholder bar chart replaced with SVG area/line chart (revenue vs expenses) bucketed by day/week/month based on selected period.
+- **Finance page — correct hourly math** — All stat totals now use `computeJobFinancials()` instead of `total_amount` (fixes hourly jobs where rate × actual_duration ≠ booking estimate).
+- **FinanceDetailSheet — profit type** — New `type='profit'` renders Income section (green) + Expenses section (red) with net summary in sheet header.
+- **FinanceDetailSheet — expense rows** — Show `-$` amounts in red; category + notes + date.
 
 ### Recent changes (v0.6.3 — May 18, 2026)
 - **Financial math unification** — `computeJobFinancials()` in `financialMath.js` is now the single source of truth for ALL financial calculations. `FinancialMathBreakdown`, `invoicesRepo`, `jobsRepo` (payment status), `InvoiceView`, and `Home.jsx` all import from it. No inline math anywhere.

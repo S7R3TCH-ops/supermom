@@ -2,7 +2,8 @@ import { useEffect, useState, useRef } from 'react';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useKeyboardFocus } from '../../hooks/useKeyboardFocus';
-import { fetchJobById, updateJob, softDeleteJob } from '../../data/jobsRepo';
+import { fetchJobById, updateJob, softDeleteJob, cancelJob } from '../../data/jobsRepo';
+import { useAuth } from '../../context/AuthContext';
 import { notifyDataChanged, useBusiness, useServices } from '../../data/useData';
 import { useToast } from '../../context/ToastContext';
 import { usePostJobSheet } from '../../context/PostJobSheetContext';
@@ -68,6 +69,11 @@ export default function JobDetailSheet({ jobId, onClose }) {
   const [invoiceId, setInvoiceId] = useState(null);
   const [jobPayments, setJobPayments] = useState([]);
   const [prevJobId, setPrevJobId] = useState(jobId);
+  const { profile } = useAuth();
+  const isAdmin = profile?.role === 'admin' || profile?.role === 'superadmin';
+  const [showCancelForm, setShowCancelForm] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelBusy, setCancelBusy] = useState(false);
   const { panelRef: swipePanelRef, scrollRef: swipeScrollRef, handlers: swipeHandlers } = useSwipeToDismiss(onClose);
 
   if (jobId !== prevJobId) {
@@ -183,6 +189,18 @@ export default function JobDetailSheet({ jobId, onClose }) {
     } catch (e) { setMutErr(e.message || String(e)); setBusy(false); }
   }
 
+  async function handleCancel() {
+    if (!cancelReason.trim() || cancelReason.trim().length < 3) return;
+    setCancelBusy(true);
+    try {
+      await cancelJob(job.id, cancelReason.trim());
+      showToast('Booking cancelled');
+    } catch (e) {
+      setMutErr(e.message || String(e));
+      setCancelBusy(false);
+    }
+  }
+
   function onSeriesChoice(action) {
     if (pendingAction === 'save') saveEdit(action);
     else if (pendingAction === 'delete') deleteJob(action);
@@ -275,6 +293,13 @@ export default function JobDetailSheet({ jobId, onClose }) {
             invoiceId={invoiceId}
             jobPayments={jobPayments}
             scrollRef={swipeScrollRef}
+            isAdmin={isAdmin}
+            showCancelForm={showCancelForm}
+            cancelReason={cancelReason}
+            cancelBusy={cancelBusy}
+            onSetShowCancelForm={setShowCancelForm}
+            onSetCancelReason={setCancelReason}
+            onHandleCancel={handleCancel}
             onClose={onClose}
             onMarkComplete={markComplete}
             onMarkPaid={markPaid}
@@ -309,6 +334,9 @@ export default function JobDetailSheet({ jobId, onClose }) {
 function ReadMode({
   job, T, mode, business, isScheduled, isPaid, isCancelled,
   busy, confirm, mutErr, invoiceId, jobPayments, scrollRef,
+  isAdmin,
+  showCancelForm, cancelReason, cancelBusy,
+  onSetShowCancelForm, onSetCancelReason, onHandleCancel,
   onClose, onMarkComplete, onMarkPaid, onCancelConfirm, onConfirmDelete, onDismissConfirm, onEdit, onUpdate, onDeepPrep,
 }) {
   const statusC = STATUS_COLORS[job.job_status] || STATUS_COLORS.Scheduled;
@@ -398,12 +426,62 @@ function ReadMode({
         )}
       </div>
 
-      {!confirm && !isCancelled && (
+      {!confirm && (
         <div style={{ padding: '10px 14px 28px', borderTop: `1px solid ${T.cardBorder}`, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {isScheduled && <Btn onClick={onMarkComplete} disabled={busy} bg="#22C55E" color="white" T={T}>Mark Complete</Btn>}
-          {!isPaid && !isCancelled && <Btn onClick={onMarkPaid} disabled={busy} bg="#E91E6A" color="white" T={T}>Mark Paid</Btn>}
-          <Btn onClick={invoiceId ? () => { if (window.confirm('This job has an invoice. Editing may cause the invoice total to diverge. Continue?')) onEdit(); } : onEdit} bg={T.card} border={`1.5px solid ${T.cardBorder}`} color={T.ink} T={T}>Edit Job{invoiceId ? ' ⚠️' : ''}</Btn>
-          {isScheduled && <button onClick={onCancelConfirm} style={{ background: 'transparent', border: 'none', fontSize: 12.5, color: '#E91E6A', padding: '6px 0', cursor: 'pointer' }}>Delete Job</button>}
+          {!isCancelled && isScheduled && <Btn onClick={onMarkComplete} disabled={busy} bg="#22C55E" color="white" T={T}>Mark Complete</Btn>}
+          {!isCancelled && !isPaid && <Btn onClick={onMarkPaid} disabled={busy} bg="#E91E6A" color="white" T={T}>Mark Paid</Btn>}
+          {!isCancelled && (
+            <Btn
+              onClick={invoiceId ? () => { if (window.confirm('This job has an invoice. Editing may cause the invoice total to diverge. Continue?')) onEdit(); } : onEdit}
+              bg={T.card} border={`1.5px solid ${T.cardBorder}`} color={T.ink} T={T}
+            >
+              Edit Job{invoiceId ? ' ⚠️' : ''}
+            </Btn>
+          )}
+
+          {isScheduled && !showCancelForm && (
+            <button
+              onClick={() => onSetShowCancelForm(true)}
+              style={{ background: 'transparent', border: 'none', fontSize: 12.5, color: '#F59E0B', padding: '4px 0', cursor: 'pointer', fontFamily: T.font, fontWeight: 600 }}
+            >
+              Cancel Booking
+            </button>
+          )}
+          {showCancelForm && (
+            <div style={{ background: mode === 'dark' ? 'rgba(245,158,11,0.08)' : '#FFFBEB', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 12, padding: 12 }}>
+              <div style={{ fontFamily: T.font, fontSize: 11, fontWeight: 700, color: '#B45309', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.4px' }}>Reason for cancellation</div>
+              <textarea
+                value={cancelReason}
+                onChange={e => onSetCancelReason(e.target.value)}
+                placeholder="e.g. Client called to reschedule"
+                rows={2}
+                style={{ width: '100%', background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 8, padding: '8px 10px', fontFamily: T.font, fontSize: 12.5, color: T.ink, resize: 'none', outline: 'none', boxSizing: 'border-box' }}
+              />
+              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                <Btn onClick={() => { onSetShowCancelForm(false); onSetCancelReason(''); }} bg={T.card} border={`1px solid ${T.cardBorder}`} color={T.inkSub} T={T} style={{ flex: 1 }}>Never mind</Btn>
+                <Btn
+                  onClick={onHandleCancel}
+                  disabled={cancelBusy || cancelReason.trim().length < 3}
+                  bg="#B45309" color="white" T={T} style={{ flex: 1 }}
+                >
+                  {cancelBusy ? 'Cancelling…' : 'Cancel Booking'}
+                </Btn>
+              </div>
+            </div>
+          )}
+
+          {isAdmin && (
+            <>
+              <div style={{ height: 1, background: T.cardBorder, margin: '4px 0' }} />
+              <button
+                onClick={onCancelConfirm}
+                style={{ background: 'transparent', border: 'none', fontSize: 12, color: '#B01550', padding: '4px 0', cursor: 'pointer', fontFamily: T.font, fontWeight: 600, textAlign: 'left' }}
+              >
+                Delete Job (Admin)
+              </button>
+            </>
+          )}
+
           {invoiceId && (
             <div style={{ marginTop: 4, background: mode === 'dark' ? 'rgba(233,30,106,0.05)' : '#FFF0F7', borderRadius: 16, border: `1px solid ${T.pink}40`, padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: T.ink }}>Invoice Ready</div>

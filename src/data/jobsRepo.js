@@ -293,12 +293,13 @@ export async function softDeleteJob(id, seriesAction = 'this') {
 
 export async function cancelJob(id, reason) {
   const businessId = await getCurrentBusinessId();
-  const { data: current } = await supabase
+  const { data: current, error: fetchErr } = await supabase
     .from('jobs')
     .select('ai_context')
     .eq('id', id)
     .eq('business_id', businessId)
     .single();
+  if (fetchErr) throw fetchErr;
 
   const { data, error } = await supabase
     .from('jobs')

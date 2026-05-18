@@ -16,7 +16,7 @@ import { useGeofence } from '../context/GeofenceContext';
 import { useKeyboardFocus } from '../hooks/useKeyboardFocus';
 import Swipeable from '../components/ui/Swipeable';
 import WeekStrip from '../components/ui/WeekStrip';
-import { sameDay, addDays, getWeekRange, getWeekLabel, fmtTime12, fmtTimeRange, dateBrief } from '../lib/dateUtils';
+import { sameDay, addDays, getWeekRange, getWeekLabel, fmtTime12, dateBrief } from '../lib/dateUtils';
 import { computeJobTotal } from '../lib/financialMath';
 import JobCard from '../components/cards/JobCard';
 import UpcomingCard from '../components/cards/UpcomingCard';
@@ -48,6 +48,12 @@ export default function Home() {
   });
   const [weekStart, setWeekStart] = useState(() => getWeekRange(today)[0]);
   const [isSpeaking, setIsSpeaking] = useState(false);
+
+  const currentWeekStart = useMemo(() => getWeekRange(today)[0], [today]);
+  const isOffCurrentWeek = useMemo(
+    () => weekStart.toDateString() !== currentWeekStart.toDateString(),
+    [weekStart, currentWeekStart]
+  );
 
   // Live clock — re-evaluates which job owns the spotlight each minute
   const [now, setNow] = useState(() => new Date());
@@ -297,6 +303,13 @@ export default function Home() {
     setWeekStart(prev => addDays(prev, delta * 7));
   }, []);
 
+  const handleGoToToday = useCallback(() => {
+    const t = new Date();
+    t.setHours(0, 0, 0, 0);
+    setSelectedDate(t);
+    setWeekStart(getWeekRange(t)[0]);
+  }, []);
+
   const handleRefreshTraffic = async (e) => {
     e.stopPropagation();
     setIsRefreshingTraffic(true);
@@ -434,17 +447,40 @@ export default function Home() {
           </div>
         </div>
 
-        <WeekStrip
-          weekStart={weekStart}
-          selectedDate={selectedDate}
-          today={today}
-          allJobs={allJobs}
-          onWeekChange={handleWeekChange}
-          onDaySelect={setSelectedDate}
-          T={T}
-          mode={mode}
-          variant="calendar"
-        />
+        <div style={{ position: 'relative' }}>
+          {isOffCurrentWeek && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', paddingRight: 14, marginBottom: 4 }}>
+              <button
+                onClick={handleGoToToday}
+                style={{
+                  background: mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+                  border: `1px solid ${mode === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)'}`,
+                  borderRadius: 6,
+                  padding: '3px 9px',
+                  fontFamily: T.font,
+                  fontSize: 9,
+                  fontWeight: 700,
+                  color: mode === 'dark' ? 'white' : T.ink,
+                  cursor: 'pointer',
+                  letterSpacing: '0.3px',
+                }}
+              >
+                TODAY
+              </button>
+            </div>
+          )}
+          <WeekStrip
+            weekStart={weekStart}
+            selectedDate={selectedDate}
+            today={today}
+            allJobs={allJobs}
+            onWeekChange={handleWeekChange}
+            onDaySelect={setSelectedDate}
+            T={T}
+            mode={mode}
+            variant="calendar"
+          />
+        </div>
       </div>
 
       <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '16px 14px' }}>

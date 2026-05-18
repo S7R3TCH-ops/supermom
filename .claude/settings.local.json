@@ -40,7 +40,10 @@
       "Bash(cat playwright/.env)",
       "Bash(npm version *)",
       "Bash(git stash *)",
-      "Bash(git pull *)"
+      "Bash(git pull *)",
+      "Bash(npx eslint *)",
+      "Bash(not exist *)",
+      "Bash(npx --no-install eslint src/pages/Home.jsx --max-warnings=0)"
     ]
   }
 }

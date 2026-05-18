@@ -25,6 +25,7 @@
   --pink-tint:     #FFF0F7;   /* selected state backgrounds */
   --pink-border:   #FFD6E8;   /* ALL card borders, input borders */
   --pink-label:    #FF78B0;   /* labels/text on dark backgrounds */
+  --deep-rose:     #B5004E;   /* mission spotlight, Next Up cards (v1.5) */
 
   /* Charcoal (dark sections) */
   --plum-dark:     #1C1C1E;   /* hero sections, dark headers, FAB bg */
@@ -642,4 +643,4 @@ Profile view (dark plum hero — differentiates from pink banner):
 
 ---
 
-*Design System v1.4 (Updated by Gemini CLI) · April 2026 · Supermom for Hire*
+*Design System v1.5 (Updated by Gemini CLI) · May 2026 · Supermom for Hire*

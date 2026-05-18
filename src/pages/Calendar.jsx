@@ -6,6 +6,7 @@ import { useJobDetailSheet } from '../context/JobDetailSheetContext';
 import { useAuth } from '../context/AuthContext';
 import { EmptySchedule, NoResults } from '../components/ui/Illustrations';
 import Swipeable from '../components/ui/Swipeable';
+import WeekStrip from '../components/ui/WeekStrip';
 import { softDeleteJob } from '../data/jobsRepo';
 import { notifyDataChanged } from '../data/useData';
 
@@ -13,7 +14,6 @@ import { notifyDataChanged } from '../data/useData';
 const NOW = () => new Date();
 
 const VIEWS = ['Day', 'Week', 'Agenda'];
-const DOW = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
 function startOfWeek(d) {
   const x = new Date(d);
@@ -189,31 +189,18 @@ export default function Calendar() {
           </div>
         </div>
 
-        {/* 7-day strip — always visible; in Week view tapping a day switches to Day view */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 3, marginBottom: 9 }}>
-          {weekDays.map((d, i) => {
-            const isToday = sameDay(d, NOW());
-            const isSelected = view !== 'Week' && sameDay(d, selectedDay);
-            const jobsHere = allJobs.filter(j => sameDay(j.start, d));
-            const dots = Math.min(jobsHere.length, 3);
-            return (
-              <div key={i}
-                onClick={() => handlePickDay(d)}
-                style={{ textAlign: 'center', padding: '4px 2px 5px', borderRadius: 8,
-                  background: isSelected ? '#E91E6A' : (isToday && view === 'Week' ? 'rgba(233,30,106,0.2)' : (mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.3)')),
-                  border: isSelected ? 'none' : `1px solid ${mode === 'dark' ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)'}`,
-                  cursor: 'pointer' }}>
-                <div style={{ fontFamily: T.font, fontSize: 7.5, fontWeight: 700, letterSpacing: '0.3px', textTransform: 'uppercase', color: isSelected ? 'rgba(255,255,255,0.8)' : (isToday ? T.pink : T.inkMuted) }}>{DOW[i]}</div>
-                <div style={{ fontFamily: T.serif, fontSize: 13, fontWeight: 500, color: isSelected ? 'white' : (mode === 'dark' ? 'white' : T.ink), lineHeight: 1.2, marginTop: 2 }}>{d.getDate()}</div>
-                <div style={{ display: 'flex', gap: 2, justifyContent: 'center', marginTop: 2, minHeight: 3 }}>
-                  {Array.from({ length: dots }).map((_, k) => (
-                    <span key={k} style={{ width: 3, height: 3, borderRadius: '50%', background: isSelected ? 'rgba(255,255,255,0.7)' : T.pink, display: 'block' }} />
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        {/* 7-day strip — swipeable week carousel */}
+        <WeekStrip
+          weekStart={weekStart}
+          selectedDate={view !== 'Week' ? selectedDay : null}
+          today={NOW()}
+          allJobs={allJobs}
+          onWeekChange={(delta) => setWeekStart(prev => addDays(prev, delta * 7))}
+          onDaySelect={(d) => { if (d) handlePickDay(d); }}
+          T={T}
+          mode={mode}
+          variant="calendar"
+        />
 
         {/* View toggle */}
         <div style={{ display: 'flex', background: mode === 'dark' ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.04)', borderRadius: 9, padding: 3 }}>

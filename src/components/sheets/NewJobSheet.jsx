@@ -13,9 +13,29 @@ import { fetchSmartDurationEstimate } from '../../data/ai';
 import { useKeyboardFocus } from '../../hooks/useKeyboardFocus';
 import GrabBar from '../ui/GrabBar';
 import FinancialMathBreakdown from '../ui/FinancialMathBreakdown';
+import { useSwipeToDismiss } from '../../hooks/useSwipeToDismiss';
 
 function todayISODate() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Toronto' }).format(new Date());
+}
+
+// Format HH:MM → "10:30 AM"
+function fmtTime12(hhmm) {
+  if (!hhmm) return '';
+  const [h, m] = hhmm.split(':').map(Number);
+  const ampm = h < 12 ? 'AM' : 'PM';
+  const h12 = h % 12 || 12;
+  return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+}
+
+// Compute end time from start + duration minutes
+function addMinutes(hhmm, mins) {
+  if (!hhmm || !mins) return '';
+  const [h, m] = hhmm.split(':').map(Number);
+  const total = h * 60 + m + mins;
+  const eh = Math.floor(total / 60) % 24;
+  const em = total % 60;
+  return fmtTime12(`${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`);
 }
 
 export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
@@ -27,6 +47,7 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
   useFocusTrap(sheetRef, true, onClose);
   const hasPrefill = (!!prefillClientId && prefillClientId !== 'null') || !!prefillData;
   const [step, setStep] = useState(() => hasPrefill ? 2 : 1);
+  const { panelRef: swipePanelRef, scrollRef: swipeScrollRef, handlers: swipeHandlers } = useSwipeToDismiss(onClose);
 
   // Fetch clients + jobs on mount
   const [clientRows, setClientRows] = useState([]);
@@ -75,11 +96,13 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
   const { business } = useBusiness();
   const [serviceId, setServiceId] = useState(prefillData?.service_id || null);
   const [date, setDate] = useState(todayISODate());
-  const [time, setTime] = useState('10:00');
+  const [time, setTime] = useState(prefillData?.scheduled_time?.slice(0, 5) || '');
 
-  const [duration, setDuration] = useState(prefillData?.estimated_hours ? prefillData.estimated_hours * 60 : 120);
+  const [duration, setDuration] = useState(prefillData?.estimated_hours ? prefillData.estimated_hours * 60 : null);
   const [durationTouched, setDurationTouched] = useState(!!prefillData?.estimated_hours);
   const [recurrence, setRecurrence] = useState(prefillData?.recurrence || null);
+  const [additionalCosts, setAdditionalCosts] = useState([{ amount: '', description: '' }]);
+  const [customPrice, setCustomPrice] = useState(null);
   const [busy, setBusy] = useState(false);
   const [bookErr, setBookErr] = useState('');
   const [bookingNotes, setBookingNotes] = useState(prefillData?.job_notes || prefillData?.bookingNotes || '');
@@ -90,6 +113,18 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
     if (!scheduledISO) return [];
     return findConflicts(jobRows, scheduledISO, duration, 60);
   }, [jobRows, scheduledISO, duration]);
+
+  // Most common scheduled_time from this client's past jobs
+  const suggestedTime = useMemo(() => {
+    if (!clientJobs.length) return null;
+    const counts = {};
+    clientJobs.forEach(j => {
+      const t = j.scheduled_time?.slice(0, 5);
+      if (t) counts[t] = (counts[t] || 0) + 1;
+    });
+    const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+    return top && top[1] >= 2 ? top[0] : null; // only suggest if seen 2+ times
+  }, [clientJobs]);
 
   const [aiDuration, setAiDuration] = useState(null);
   const [aiEstimateLoading, setAiEstimateLoading] = useState(false);
@@ -105,6 +140,8 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
 
   const onPickService = async (id) => {
     setServiceId(id);
+    setCustomPrice(null);
+    setAdditionalCosts([{ amount: '', description: '' }]);
     const svc = services.find(s => s.id === id);
     if (!svc) return;
 
@@ -139,6 +176,10 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
       setBookErr('Client and Service are required.');
       return;
     }
+    if (!duration) {
+      setBookErr('Please set an estimated duration.');
+      return;
+    }
     if (conflicts.length > 0 && !takingChances) {
       setBookErr("Please confirm you're taking chances!");
       return;
@@ -146,14 +187,35 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
 
     setBusy(true); setBookErr('');
     try {
+      const svc = services.find(s => s.id === serviceId);
+      const pricingType = svc?.pricing_type || 'Flat';
+      const defaultRate = svc?.use_business_default
+        ? (business?.hourly_rate || 0)
+        : (Number(svc?.default_price) || 0);
+      const serviceRate = customPrice !== null ? Number(customPrice) : defaultRate;
+      const estimatedHours = duration / 60;
+      const totalAmount = pricingType === 'Hourly'
+        ? serviceRate * estimatedHours
+        : serviceRate;
+
+      const validCosts = additionalCosts
+        .filter(c => parseFloat(c.amount) > 0)
+        .map(c => ({ amount: parseFloat(c.amount), description: c.description }));
+
       const payload = {
         client_id: clientId,
         service_id: serviceId,
+        service_name: svc?.name,
         scheduled_date: date,
         scheduled_time: time,
-        estimated_hours: duration / 60,
-        recurrence: recurrence,
+        estimated_hours: estimatedHours,
+        pricing_type: pricingType,
+        flat_rate: serviceRate,
+        total_amount: totalAmount,
         job_notes: bookingNotes,
+        additional_costs_json: validCosts,
+        additional_cost: validCosts.reduce((s, c) => s + c.amount, 0),
+        ...(recurrence ? { ai_context: { recurrence_rule: recurrence } } : {}),
       };
       await createJob(payload);
       notifyDataChanged();
@@ -177,14 +239,14 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
         @keyframes njFade { from { opacity: 0; } to { opacity: 1; } }
         @keyframes njSlide { from { transform: translateY(100%); } to { transform: translateY(0); } }
       `}</style>
-      <div style={{
+      <div ref={swipePanelRef} {...swipeHandlers} style={{
         background: T.bg, width: '100%', maxWidth: 500, margin: '0 auto',
         height: '92svh', borderTopLeftRadius: 28, borderTopRightRadius: 28,
         display: 'flex', flexDirection: 'column', overflow: 'hidden',
         animation: 'njSlide 300ms cubic-bezier(0.16, 1, 0.3, 1)',
         boxShadow: '0 -8px 40px rgba(0,0,0,0.4)',
       }}>
-        <GrabBar />
+        <GrabBar onDismiss={onClose} />
 
         {/* Header */}
         <div style={{ padding: '16px 20px', borderBottom: `1px solid ${T.cardBorder}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -194,10 +256,17 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
               {step === 1 ? 'Who is it for?' : step === 2 ? 'Mission Details' : 'Review & Confirm'}
             </div>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, color: T.inkMuted, cursor: 'pointer' }}>×</button>
+          <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(0,0,0,0.07)', border: `1.5px solid rgba(0,0,0,0.08)`, color: T.ink, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+          </button>
         </div>
 
-        <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+        <div ref={swipeScrollRef} className="sm-scroll" style={{ 
+          flex: 1, 
+          overflowY: 'auto', 
+          padding: `20px 20px ${isKeyboardFocused ? '140px' : '20px'}`,
+          transition: 'padding-bottom 0.2s ease-out'
+        }}>
           {step === 1 ? (
             <Step1Who 
               clients={clientRows} 
@@ -224,7 +293,12 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
               aiDuration={aiDuration}
               aiLoading={aiEstimateLoading}
               aiReason={aiEstimateReason}
+              suggestedTime={suggestedTime}
               business={business}
+              customPrice={customPrice}
+              setCustomPrice={setCustomPrice}
+              additionalCosts={additionalCosts}
+              setAdditionalCosts={setAdditionalCosts}
               T={T}
             />
           ) : (
@@ -241,6 +315,8 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
               conflicts={conflicts}
               takingChances={takingChances}
               setTakingChances={setTakingChances}
+              customPrice={customPrice}
+              additionalCosts={additionalCosts}
               T={T}
             />
           )}
@@ -252,10 +328,10 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
             <button onClick={() => setStep(step - 1)} style={{ flex: 1, background: 'transparent', border: `1.5px solid ${T.cardBorder}`, color: T.inkMuted, borderRadius: 12, padding: '12px 0', fontFamily: T.font, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Back</button>
           )}
           <button 
-            onClick={step === 1 ? (clientId ? () => setStep(2) : () => {}) : step === 2 ? () => setStep(3) : handleBook} 
-            disabled={busy || (step === 1 && !clientId) || (step === 2 && !serviceId)} 
-            style={{ 
-              flex: 2, background: (busy || (step === 1 && !clientId) || (step === 2 && !serviceId)) ? T.pinkTint : '#E91E6A', 
+            onClick={step === 1 ? (clientId ? () => setStep(2) : () => {}) : step === 2 ? () => setStep(3) : handleBook}
+            disabled={busy || (step === 1 && !clientId) || (step === 2 && (!serviceId || !duration || !time))}
+            style={{
+              flex: 2, background: (busy || (step === 1 && !clientId) || (step === 2 && (!serviceId || !duration || !time))) ? T.pinkTint : '#E91E6A', 
               color: 'white', border: 'none', borderRadius: 12, padding: '12px 0', 
               fontFamily: T.font, fontSize: 13, fontWeight: 700, cursor: 'pointer', 
               boxShadow: '0 4px 12px rgba(233,30,106,0.3)' 
@@ -266,11 +342,18 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
         </div>
         
         {bookErr && <div style={{ padding: '0 20px 10px', color: '#EF4444', fontSize: 11, textAlign: 'center' }}>{bookErr}</div>}
-        
-        <div style={{ height: isKeyboardFocused ? 260 : 0, transition: 'height 0.2s ease-out' }} />
       </div>
 
-      <NewClientSheet isOpen={showNewClient} onClose={() => setShowNewClient(false)} />
+      {showNewClient && (
+        <NewClientSheet
+          onClose={() => setShowNewClient(false)}
+          onCreated={(c) => {
+            setClientId(c.id);
+            setShowNewClient(false);
+            setStep(2);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -327,57 +410,98 @@ function Step1Who({ clients, onPick, onNew, T }) {
   );
 }
 
-function Step2What({ 
-  selectedClient, services, serviceId, onPickService, 
-  date, setDate, time, setTime, duration, setDuration, 
+function fmtMins(min) {
+  const h = min / 60;
+  if (h === 0.5) return '½ hr';
+  if (h % 1 === 0.5) return `${Math.floor(h)}½ hrs`;
+  if (h === 1) return '1 hr';
+  return `${h} hrs`;
+}
+
+function Step2What({
+  selectedClient, services, serviceId, onPickService,
+  date, setDate, time, setTime, duration, setDuration,
   recurrence, setRecurrence, notes, setNotes,
-  aiDuration, aiLoading, aiReason,
-  business, T
+  aiDuration, aiLoading, aiReason, suggestedTime,
+  business, customPrice, setCustomPrice, additionalCosts, setAdditionalCosts, T
 }) {
+  const selectedSvc = services.find(s => s.id === serviceId);
+  const defaultRate = selectedSvc
+    ? (selectedSvc.use_business_default ? (business?.hourly_rate || 0) : (Number(selectedSvc.default_price) || 0))
+    : 0;
+  const effectiveRate = customPrice !== null && customPrice !== '' ? Number(customPrice) : defaultRate;
+
+  const liveBreakdown = selectedSvc ? {
+    pricing_type: selectedSvc.pricing_type || 'Hourly',
+    flat_rate: effectiveRate,
+    estimated_hours: (duration || 0) / 60,
+    hourly_rate: effectiveRate,
+    additional_costs_json: additionalCosts
+      .filter(c => parseFloat(c.amount) > 0)
+      .map(c => ({ amount: parseFloat(c.amount), description: c.description })),
+  } : null;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* Client Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px', background: T.card, borderRadius: 16, border: `1px solid ${T.cardBorder}` }}>
         <div style={{ width: 40, height: 40, borderRadius: '50%', background: T.pink, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700 }}>
-          {selectedClient?.firstName?.[0]}
+          {selectedClient?.name?.[0]}
         </div>
         <div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: T.ink }}>{selectedClient?.firstName} {selectedClient?.lastName}</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: T.ink }}>{selectedClient?.name}</div>
           <div style={{ fontSize: 11, color: T.inkMuted }}>{selectedClient?.address || 'No address'}</div>
         </div>
       </div>
 
-      <FinancialMathBreakdown
-        job={{
-          pricing_type: services.find(s => s.id === serviceId)?.pricing_type || 'Hourly',
-          flat_rate: services.find(s => s.id === serviceId)?.use_business_default ? business?.hourly_rate : (services.find(s => s.id === serviceId)?.default_price || 0),
-          estimated_hours: duration / 60
-        }}
-        actualMinutes={duration}
-        business={business}
-        T={T}
-      />
-
       {/* Service Selection */}
       <div>
-      <SectionLabel>Service</SectionLabel>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-        {services.map(s => (
-          <div 
-            key={s.id} 
-            onClick={() => onPickService(s.id)}
-            style={{ 
-              padding: '10px', borderRadius: 12, 
-              background: serviceId === s.id ? T.pinkTint : T.card, 
-              border: `1.5px solid ${serviceId === s.id ? T.pink : T.cardBorder}`,
-              cursor: 'pointer', textAlign: 'center'
-            }}
-          >
-            <div style={{ fontSize: 13, fontWeight: 700, color: serviceId === s.id ? T.pink : T.ink }}>{s.name}</div>
-            <div style={{ fontSize: 9, color: T.inkMuted }}>{s.pricing_type}</div>
+        <SectionLabel>Service</SectionLabel>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          {services.map(s => {
+            const svcRate = s.use_business_default
+              ? (business?.hourly_rate || 0)
+              : (Number(s.default_price) || 0);
+            const rateLabel = s.pricing_type === 'Hourly' ? `$${svcRate}/hr` : `$${svcRate} flat`;
+            return (
+              <div
+                key={s.id}
+                onClick={() => onPickService(s.id)}
+                style={{
+                  padding: '10px 10px 8px', borderRadius: 12,
+                  background: serviceId === s.id ? T.pinkTint : T.card,
+                  border: `1.5px solid ${serviceId === s.id ? T.pink : T.cardBorder}`,
+                  cursor: 'pointer', textAlign: 'center'
+                }}
+              >
+                <div style={{ fontSize: 13, fontWeight: 700, color: serviceId === s.id ? T.pink : T.ink }}>{s.name}</div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: serviceId === s.id ? T.pink : T.inkMuted, marginTop: 2 }}>{rateLabel}</div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Custom price override */}
+        {serviceId && (
+          <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ flex: 1, position: 'relative' }}>
+              <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: T.inkMuted, fontSize: 13 }}>$</span>
+              <input
+                type="number"
+                value={customPrice ?? ''}
+                onChange={e => setCustomPrice(e.target.value === '' ? null : e.target.value)}
+                placeholder={`Custom price (default: $${defaultRate})`}
+                style={{ width: '100%', padding: '10px 12px 10px 26px', borderRadius: 10, background: T.card, border: `1px solid ${customPrice !== null ? T.pink : T.cardBorder}`, color: T.ink, fontSize: 13, outline: 'none' }}
+              />
+            </div>
+            {customPrice !== null && (
+              <button onClick={() => setCustomPrice(null)} style={{ background: 'none', border: 'none', color: T.inkMuted, fontSize: 11, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>Reset</button>
+            )}
           </div>
-        ))}
-      </div>
+        )}
+        {serviceId && customPrice !== null && (
+          <div style={{ fontSize: 10, color: T.pink, marginTop: 4, paddingLeft: 2 }}>Custom price active for this job only</div>
+        )}
       </div>
 
       {/* Date & Time */}
@@ -388,74 +512,141 @@ function Step2What({
         </div>
         <div>
           <SectionLabel>Time</SectionLabel>
-          <input type="time" value={time} onChange={e => setTime(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: 12, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.ink, fontSize: 14, outline: 'none' }} />
+          <input type="time" value={time} onChange={e => setTime(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: 12, background: T.card, border: `1px solid ${time ? T.cardBorder : T.pink}`, color: T.ink, fontSize: 14, outline: 'none' }} />
+          {suggestedTime && !time && (
+            <button
+              onClick={() => setTime(suggestedTime)}
+              style={{ marginTop: 6, background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+            >
+              <span style={{ fontSize: 10, color: T.pink, fontWeight: 700 }}>Usually {fmtTime12(suggestedTime)}</span>
+              <span style={{ fontSize: 10, color: T.inkMuted }}>— tap to use</span>
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Duration Slider */}
+      {/* Duration Stepper */}
       <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-        <SectionLabel style={{ marginBottom: 0 }}>Duration</SectionLabel>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <SectionLabel style={{ marginBottom: 0 }}>Estimated Duration</SectionLabel>
           {aiLoading ? (
             <span style={{ fontSize: 10, color: T.pink, fontWeight: 600 }}>Calculating…</span>
-          ) : aiDuration ? (
+          ) : aiDuration && duration ? (
             <div style={{ fontSize: 10, color: '#059669', background: '#D1FAE5', padding: '2px 8px', borderRadius: 10, fontWeight: 700 }}>AI Suggested</div>
           ) : null}
-          <div style={{ fontSize: 14, fontWeight: 800, color: T.pink }}>{(duration / 60).toFixed(1)} hrs</div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button
+            onClick={() => setDuration(d => Math.max(30, (d || 30) - 30))}
+            style={{ width: 44, height: 44, borderRadius: 12, border: `1.5px solid ${T.cardBorder}`, background: T.card, color: T.ink, fontSize: 20, fontWeight: 600, cursor: 'pointer' }}
+          >–</button>
+          <div style={{ flex: 1, textAlign: 'center', background: T.card, border: `1.5px solid ${duration ? T.cardBorder : T.pink}`, borderRadius: 12, padding: '10px 0' }}>
+            {duration
+              ? <div style={{ fontSize: 16, fontWeight: 700, color: T.pink }}>{fmtMins(duration)}</div>
+              : <div style={{ fontSize: 13, fontWeight: 500, color: T.inkMuted }}>Tap + to set duration</div>
+            }
+          </div>
+          <button
+            onClick={() => setDuration(d => (d || 0) + 30)}
+            style={{ width: 44, height: 44, borderRadius: 12, border: `1.5px solid ${T.cardBorder}`, background: T.card, color: T.ink, fontSize: 20, fontWeight: 600, cursor: 'pointer' }}
+          >+</button>
+        </div>
+        {aiReason && (
+          <div style={{ marginTop: 8, padding: '8px 10px', background: 'rgba(233,30,106,0.05)', borderLeft: `3px solid ${T.pink}`, fontSize: 11, color: T.inkMuted, fontStyle: 'italic' }}>
+            "{aiReason}"
+          </div>
+        )}
+      </div>
+
+      {/* Additional Costs */}
+      <div>
+        <SectionLabel>Additional Costs</SectionLabel>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {additionalCosts.map((c, i) => (
+            <div key={i} style={{ display: 'flex', gap: 8 }}>
+              <div style={{ position: 'relative', width: 90 }}>
+                <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: T.inkMuted, fontSize: 12 }}>$</span>
+                <input
+                  type="number"
+                  value={c.amount}
+                  onChange={e => {
+                    const next = [...additionalCosts];
+                    next[i] = { ...next[i], amount: e.target.value };
+                    setAdditionalCosts(next);
+                  }}
+                  placeholder="0"
+                  style={{ width: '100%', padding: '10px 10px 10px 22px', borderRadius: 10, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.ink, fontSize: 13, outline: 'none' }}
+                />
+              </div>
+              <input
+                value={c.description}
+                onChange={e => {
+                  const next = [...additionalCosts];
+                  next[i] = { ...next[i], description: e.target.value };
+                  setAdditionalCosts(next);
+                }}
+                placeholder="e.g. Supplies, Parking"
+                style={{ flex: 1, padding: '10px 12px', borderRadius: 10, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.ink, fontSize: 13, outline: 'none' }}
+              />
+              {additionalCosts.length > 1 && (
+                <button onClick={() => setAdditionalCosts(additionalCosts.filter((_, idx) => idx !== i))} style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 18, cursor: 'pointer' }}>×</button>
+              )}
+            </div>
+          ))}
+          <button
+            onClick={() => setAdditionalCosts([...additionalCosts, { amount: '', description: '' }])}
+            style={{ background: 'none', border: 'none', color: T.pink, fontSize: 11, fontWeight: 700, cursor: 'pointer', alignSelf: 'flex-start', padding: '4px 0' }}
+          >
+            + ADD ANOTHER COST
+          </button>
         </div>
       </div>
-      
-      <input 
-        type="range" min="30" max="480" step="30" 
-        value={duration} 
-        onChange={e => setDuration(parseInt(e.target.value))} 
-        style={{ width: '100%', accentColor: T.pink }}
-      />
-      
-      {aiReason && (
-        <div style={{ marginTop: 8, padding: '8px 10px', background: 'rgba(233,30,106,0.05)', borderLeft: `3px solid ${T.pink}`, fontSize: 11, color: T.inkMuted, fontStyle: 'italic' }}>
-          "{aiReason}"
-        </div>
+
+      {/* Live Financial Breakdown */}
+      {liveBreakdown && (
+        <FinancialMathBreakdown
+          liveForm={liveBreakdown}
+          business={business}
+          T={T}
+        />
       )}
-      </div>
 
       {/* Recurrence */}
       <div>
-      <SectionLabel>Recurrence</SectionLabel>
-      <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
-        {[
-          { id: null, label: 'Once' },
-          { id: 'Weekly', label: 'Weekly' },
-          { id: 'Bi-weekly', label: 'Every 2 wks' },
-          { id: 'Monthly', label: 'Monthly' },
-        ].map(r => (
-          <button
-            key={String(r.id)}
-            onClick={() => setRecurrence(r.id)}
-            style={{
-              padding: '8px 14px', borderRadius: 10, whiteSpace: 'nowrap',
-              background: recurrence === r.id ? T.pink : T.card,
-              border: `1px solid ${recurrence === r.id ? T.pink : T.cardBorder}`,
-              color: recurrence === r.id ? 'white' : T.ink,
-              fontSize: 12, fontWeight: 600, cursor: 'pointer'
-            }}
-          >
-            {r.label}
-          </button>
-        ))}
-      </div>
+        <SectionLabel>Recurrence</SectionLabel>
+        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
+          {[
+            { id: null, label: 'Once' },
+            { id: 'Weekly', label: 'Weekly' },
+            { id: 'Bi-weekly', label: 'Every 2 wks' },
+            { id: 'Monthly', label: 'Monthly' },
+          ].map(r => (
+            <button
+              key={String(r.id)}
+              onClick={() => setRecurrence(r.id)}
+              style={{
+                padding: '8px 14px', borderRadius: 10, whiteSpace: 'nowrap',
+                background: recurrence === r.id ? T.pink : T.card,
+                border: `1px solid ${recurrence === r.id ? T.pink : T.cardBorder}`,
+                color: recurrence === r.id ? 'white' : T.ink,
+                fontSize: 12, fontWeight: 600, cursor: 'pointer'
+              }}
+            >
+              {r.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Notes */}
       <div>
-      <SectionLabel>Notes for this job</SectionLabel>
-      <textarea 
-        placeholder="Specific instructions for this visit..." 
-        value={notes}
-        onChange={e => setNotes(e.target.value)}
-        style={{ width: '100%', height: 80, padding: '12px', borderRadius: 12, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.ink, fontSize: 13, outline: 'none', resize: 'none', fontFamily: T.font }} 
-      />
+        <SectionLabel>Notes for this job</SectionLabel>
+        <textarea
+          placeholder="Specific instructions for this visit..."
+          value={notes}
+          onChange={e => setNotes(e.target.value)}
+          style={{ width: '100%', height: 80, padding: '12px', borderRadius: 12, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.ink, fontSize: 13, outline: 'none', resize: 'none', fontFamily: T.font }}
+        />
       </div>
 
       <div style={{ height: 20 }} />
@@ -463,13 +654,32 @@ function Step2What({
   );
 }
 
-function Step3Review({ 
-  selectedClient, services, serviceId, 
-  date, time, duration, recurrence, notes, 
-  business, conflicts = [], takingChances, setTakingChances, T 
+function Step3Review({
+  selectedClient, services, serviceId,
+  date, time, duration, recurrence, notes,
+  business, conflicts = [], takingChances, setTakingChances,
+  customPrice, additionalCosts, T
 }) {
   const service = services.find(s => s.id === serviceId);
   const hasConflict = conflicts.length > 0;
+
+  const startFmt = fmtTime12(time);
+  const endFmt = addMinutes(time, duration);
+
+  const defaultRate = service
+    ? (service.use_business_default ? (business?.hourly_rate || 0) : (Number(service.default_price) || 0))
+    : 0;
+  const effectiveRate = customPrice !== null && customPrice !== '' ? Number(customPrice) : defaultRate;
+
+  const liveBreakdown = service ? {
+    pricing_type: service.pricing_type || 'Hourly',
+    flat_rate: effectiveRate,
+    estimated_hours: (duration || 0) / 60,
+    hourly_rate: effectiveRate,
+    additional_costs_json: (additionalCosts || [])
+      .filter(c => parseFloat(c.amount) > 0)
+      .map(c => ({ amount: parseFloat(c.amount), description: c.description })),
+  } : null;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -488,27 +698,33 @@ function Step3Review({
         {/* Radial glow */}
         <div style={{ position: 'absolute', top: -40, right: -20, width: 140, height: 140, borderRadius: '50%', background: `radial-gradient(circle,rgba(233,30,106,.22) 0%,transparent 70%)`, pointerEvents: 'none' }} />
         
+        {/* Client + Service stacked */}
         <div style={{ position: 'relative' }}>
-          <div style={{ fontSize: 10, color: 'var(--pink-label)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '1.2px', marginBottom: 2 }}>Client</div>
-          <div style={{ fontFamily: T.serif, fontSize: 19, fontWeight: 500, color: 'white' }}>{selectedClient?.firstName} {selectedClient?.lastName}</div>
+          <div style={{ fontSize: 10, color: 'var(--pink-label)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '1.2px', marginBottom: 4 }}>Booking For</div>
+          <div style={{ fontFamily: T.serif, fontSize: 20, fontWeight: 600, color: 'white', lineHeight: 1.2 }}>{selectedClient?.name}</div>
+          <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 400, color: 'rgba(255,255,255,0.7)', marginTop: 3 }}>{service?.name}</div>
         </div>
+
+        {/* Date + time range on one row */}
         <div style={{ position: 'relative' }}>
-          <div style={{ fontSize: 10, color: 'var(--pink-label)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '1.2px', marginBottom: 2 }}>Mission</div>
-          <div style={{ fontFamily: T.serif, fontSize: 19, fontWeight: 500, color: 'white' }}>{service?.name}</div>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, position: 'relative' }}>
-          <div>
-            <div style={{ fontSize: 10, color: 'var(--pink-label)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '1.2px', marginBottom: 2 }}>Date</div>
-            <div style={{ fontFamily: T.serif, fontSize: 16, fontWeight: 500, color: 'white' }}>{date}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 10, color: 'var(--pink-label)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '1.2px', marginBottom: 2 }}>Time</div>
-            <div style={{ fontFamily: T.serif, fontSize: 16, fontWeight: 500, color: 'white' }}>{time}</div>
+          <div style={{ fontSize: 10, color: 'var(--pink-label)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '1.2px', marginBottom: 4 }}>When</div>
+          <div style={{ fontFamily: T.serif, fontSize: 16, fontWeight: 500, color: 'white' }}>{date}</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'white', marginTop: 3, letterSpacing: '0.2px' }}>
+            {startFmt}{endFmt ? <span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 400 }}> – </span> : ''}{endFmt}
           </div>
         </div>
+
+        {/* Recurrence */}
         <div style={{ position: 'relative' }}>
           <div style={{ fontSize: 10, color: 'var(--pink-label)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '1.2px', marginBottom: 2 }}>Recurrence</div>
-          <div style={{ fontFamily: T.serif, fontSize: 16, fontWeight: 500, color: 'white' }}>{recurrence || 'One-time'}</div>
+          <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 500, color: 'white' }}>{recurrence || 'One-time'}</div>
+        </div>
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'rgba(255,255,255,0.06)', borderRadius: 10 }}>
+          <span style={{ fontSize: 16 }}>🚗</span>
+          <div>
+            <div style={{ fontSize: 10, color: 'var(--pink-label)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '1.2px', marginBottom: 1 }}>Drive to {selectedClient?.raw?.first_name || selectedClient?.name}</div>
+            <div style={{ fontFamily: T.serif, fontSize: 14, fontWeight: 500, color: 'rgba(255,255,255,0.5)', fontStyle: 'italic' }}>Maps not connected yet</div>
+          </div>
         </div>
       </div>
 
@@ -545,16 +761,13 @@ function Step3Review({
         </div>
       )}
 
-      <FinancialMathBreakdown
-        job={{
-          pricing_type: service?.pricing_type || 'Hourly',
-          flat_rate: service?.use_business_default ? business?.hourly_rate : (service?.default_price || 0),
-          estimated_hours: duration / 60
-        }}
-        actualMinutes={duration}
-        business={business}
-        T={T}
-      />
+      {liveBreakdown && (
+        <FinancialMathBreakdown
+          liveForm={liveBreakdown}
+          business={business}
+          T={T}
+        />
+      )}
       
       {notes && (
         <div>

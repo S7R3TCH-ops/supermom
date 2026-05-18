@@ -13,6 +13,7 @@ import PrepNoteSheet from '../sheets/PrepNoteSheet';
 import { supabase } from '../../lib/supabase';
 import GrabBar from '../ui/GrabBar';
 import FinancialMathBreakdown from '../ui/FinancialMathBreakdown';
+import { useSwipeToDismiss } from '../../hooks/useSwipeToDismiss';
 
 const STATUS_COLORS = {
   Scheduled: { bg: 'rgba(59,130,246,0.12)',   color: '#3B82F6', border: 'rgba(59,130,246,0.25)' },
@@ -65,7 +66,9 @@ export default function JobDetailSheet({ jobId, onClose }) {
   const [pendingAction, setPendingAction] = useState(null);
   const [showDeepPrep, setShowDeepPrep] = useState(false);
   const [invoiceId, setInvoiceId] = useState(null);
+  const [jobPayments, setJobPayments] = useState([]);
   const [prevJobId, setPrevJobId] = useState(jobId);
+  const { panelRef: swipePanelRef, scrollRef: swipeScrollRef, handlers: swipeHandlers } = useSwipeToDismiss(onClose);
 
   if (jobId !== prevJobId) {
     setPrevJobId(jobId);
@@ -77,10 +80,10 @@ export default function JobDetailSheet({ jobId, onClose }) {
     if (!jobId) return;
     let alive = true;
     fetchJobById(jobId)
-      .then(j => { 
-        if (alive) { 
-          setJob(j); 
-          setLoading(false); 
+      .then(j => {
+        if (alive) {
+          setJob(j);
+          setLoading(false);
           supabase
             .from('invoice_jobs')
             .select('invoice_id')
@@ -89,7 +92,14 @@ export default function JobDetailSheet({ jobId, onClose }) {
             .then(({ data }) => {
               if (data && alive) setInvoiceId(data.invoice_id);
             });
-        } 
+          supabase
+            .from('payments')
+            .select('amount, payment_date, payment_method')
+            .eq('job_id', jobId)
+            .eq('is_void', false)
+            .order('payment_date', { ascending: true })
+            .then(({ data }) => { if (alive) setJobPayments(data ?? []); });
+        }
       })
       .catch(e => { if (alive) { setError(e.message || String(e)); setLoading(false); } });
     return () => { alive = false; };
@@ -225,7 +235,9 @@ export default function JobDetailSheet({ jobId, onClose }) {
       `}</style>
 
       <div
+        ref={swipePanelRef}
         onClick={e => e.stopPropagation()}
+        {...swipeHandlers}
         style={{
           background: T.bg, color: T.ink,
           borderRadius: '18px 18px 0 0',
@@ -261,6 +273,8 @@ export default function JobDetailSheet({ jobId, onClose }) {
             isScheduled={isScheduled} isPaid={isPaid} isCancelled={isCancelled}
             busy={busy} confirm={confirm} mutErr={mutErr}
             invoiceId={invoiceId}
+            jobPayments={jobPayments}
+            scrollRef={swipeScrollRef}
             onClose={onClose}
             onMarkComplete={markComplete}
             onMarkPaid={markPaid}
@@ -294,7 +308,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
 /* ============= READ MODE ============= */
 function ReadMode({
   job, T, mode, business, isScheduled, isPaid, isCancelled,
-  busy, confirm, mutErr, invoiceId,
+  busy, confirm, mutErr, invoiceId, jobPayments, scrollRef,
   onClose, onMarkComplete, onMarkPaid, onCancelConfirm, onConfirmDelete, onDismissConfirm, onEdit, onUpdate, onDeepPrep,
 }) {
   const statusC = STATUS_COLORS[job.job_status] || STATUS_COLORS.Scheduled;
@@ -316,14 +330,15 @@ function ReadMode({
         <div style={{ position: 'absolute', top: -40, right: -20, width: 140, height: 140, borderRadius: '50%', background: `radial-gradient(circle,${T.pinkGlow} 0%,transparent 70%)`, pointerEvents: 'none' }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4, position: 'relative' }}>
           <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', color: mode === 'dark' ? '#FF78B0' : T.pink }}>{job.service_name || 'Job'}</div>
-          <button onClick={onClose} style={{ 
-            width: 28, height: 28, borderRadius: 8, 
-            background: mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)', 
-            border: `1px solid ${mode === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.05)'}`, 
-            color: mode === 'dark' ? 'rgba(255,255,255,0.7)' : T.inkMuted, 
-            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' 
+          <button onClick={onClose} style={{
+            width: 32, height: 32, borderRadius: '50%',
+            background: mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.07)',
+            border: `1.5px solid ${mode === 'dark' ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.08)'}`,
+            color: mode === 'dark' ? 'rgba(255,255,255,0.85)' : T.ink,
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0,
           }}>
-            <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
           </button>
         </div>
         <div style={{ fontFamily: T.serif, fontSize: 22, fontWeight: 500, color: mode === 'dark' ? 'white' : T.ink, marginBottom: 6, position: 'relative' }}>{job.client_name || 'Unknown'}</div>
@@ -346,7 +361,7 @@ function ReadMode({
         </div>
       </div>
 
-      <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '12px 14px 4px' }}>
+      <div ref={scrollRef} className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '12px 14px 4px' }}>
         <PrepNoteCard job={job} T={T} business={business} onDeepPrep={onDeepPrep} />
         
         <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', marginBottom: 8, color: T.pink }}>Mission Vitals</div>
@@ -356,7 +371,7 @@ function ReadMode({
           <Row T={T} label="Pricing" value={job.pricing_type || '—'} last />
         </InfoCard>
 
-        <FinancialMathBreakdown job={job} business={business} T={T} mode={mode} />
+        <FinancialMathBreakdown job={job} business={business} payments={jobPayments} T={T} mode={mode} />
 
         {job.job_notes && (
           <InfoCard T={T}>
@@ -387,7 +402,7 @@ function ReadMode({
         <div style={{ padding: '10px 14px 28px', borderTop: `1px solid ${T.cardBorder}`, display: 'flex', flexDirection: 'column', gap: 8 }}>
           {isScheduled && <Btn onClick={onMarkComplete} disabled={busy} bg="#22C55E" color="white" T={T}>Mark Complete</Btn>}
           {!isPaid && !isCancelled && <Btn onClick={onMarkPaid} disabled={busy} bg="#E91E6A" color="white" T={T}>Mark Paid</Btn>}
-          <Btn onClick={onEdit} bg={T.card} border={`1.5px solid ${T.cardBorder}`} color={T.ink} T={T}>Edit Job</Btn>
+          <Btn onClick={invoiceId ? () => { if (window.confirm('This job has an invoice. Editing may cause the invoice total to diverge. Continue?')) onEdit(); } : onEdit} bg={T.card} border={`1.5px solid ${T.cardBorder}`} color={T.ink} T={T}>Edit Job{invoiceId ? ' ⚠️' : ''}</Btn>
           {isScheduled && <button onClick={onCancelConfirm} style={{ background: 'transparent', border: 'none', fontSize: 12.5, color: '#E91E6A', padding: '6px 0', cursor: 'pointer' }}>Delete Job</button>}
           {invoiceId && (
             <div style={{ marginTop: 4, background: mode === 'dark' ? 'rgba(233,30,106,0.05)' : '#FFF0F7', borderRadius: 16, border: `1px solid ${T.pink}40`, padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

@@ -138,6 +138,16 @@ button {
   -webkit-tap-highlight-color: transparent; /* Remove the grey box on tap in iOS/Chrome */
 }
 
+@keyframes slideInRight {
+  from { transform: translateX(30px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideInLeft {
+  from { transform: translateX(-30px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
 button:active, 
 .tappable:active {
   transform: scale(0.97);

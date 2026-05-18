@@ -294,7 +294,7 @@ export async function recordPayment(jobId, amount, method = 'Cash', paymentStatu
   // 1. Get job info (we need client_id, total_amount, and service_id for learning)
   const { data: job, error: getErr } = await supabase
     .from('jobs')
-    .select('client_id, business_id, total_amount, service_id')
+    .select('client_id, business_id, total_amount, additional_cost, hst_amount, service_id')
     .eq('id', jobId)
     .eq('business_id', businessId)
     .single();
@@ -327,7 +327,7 @@ export async function recordPayment(jobId, amount, method = 'Cash', paymentStatu
       .eq('job_id', jobId)
       .eq('is_void', false);
     const paid = (existingPayments ?? []).reduce((s, p) => s + Number(p.amount), 0);
-    const total = Number(job.total_amount || 0);
+    const total = Number(job.total_amount || 0) + Number(job.additional_cost || 0) + Number(job.hst_amount || 0);
     status = paid >= total && paid > 0 ? 'Paid' : paid > 0 ? 'Partial' : '';
   }
 

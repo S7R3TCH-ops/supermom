@@ -1,13 +1,23 @@
 import { useState, useEffect } from 'react';
 
-/**
- * Returns true if an input, textarea, or select is currently focused.
- * Useful for adjusting UI layout when the mobile keyboard is likely visible.
- */
 export function useKeyboardFocus() {
   const [isFocused, setIsFocused] = useState(false);
 
   useEffect(() => {
+    const vv = window.visualViewport;
+
+    if (vv) {
+      const fullHeight = vv.height;
+
+      const handleResize = () => {
+        setIsFocused(vv.height < fullHeight - 100);
+      };
+
+      vv.addEventListener('resize', handleResize);
+      return () => vv.removeEventListener('resize', handleResize);
+    }
+
+    // Fallback for non-iOS: focus events
     const handleFocusIn = (e) => {
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) {
         setIsFocused(true);
@@ -15,7 +25,6 @@ export function useKeyboardFocus() {
     };
 
     const handleFocusOut = () => {
-      // Small timeout to prevent flicker during focus transition
       setTimeout(() => {
         if (!['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) {
           setIsFocused(false);

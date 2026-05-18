@@ -80,21 +80,25 @@ export default function Clients() {
   const { clients, loading, error, refresh } = useClients();
   const handleClientPress = useCallback((id) => navigate(`/clients/${id}`), [navigate]);
 
-  const filtered = useMemo(() => clients.filter(c => {
-    // Search filter
-    if (search) {
-      const s = search.toLowerCase();
-      const match = c.name.toLowerCase().includes(s) || c.address.toLowerCase().includes(s);
-      if (!match) return false;
-    }
+  const filtered = useMemo(() => {
+    const res = clients.filter(c => {
+      // Search filter
+      if (search) {
+        const s = search.toLowerCase();
+        const match = c.name.toLowerCase().includes(s) || c.address.toLowerCase().includes(s);
+        if (!match) return false;
+      }
 
-    // Category filter
-    if (filter === 'Owes $') return c.owed;
-    if (filter === 'VIP') return c.vip;
-    if (filter === 'Active') return c.last !== '—';
-    if (filter === 'Leads') return c.tags.includes('Lead');
-    return true;
-  }), [clients, filter, search]);
+      // Category filter
+      if (filter === 'Owes $') return c.owed;
+      if (filter === 'VIP') return c.vip;
+      if (filter === 'Active') return c.last !== '—';
+      if (filter === 'Leads') return c.tags.includes('Lead');
+      return true;
+    });
+
+    return res.sort((a, b) => a.name.localeCompare(b.name));
+  }, [clients, filter, search]);
 
   const totalOwed = clients.reduce((s, c) => s + (c.owed ? Number((c.amt || '$0').replace(/[^0-9.]/g, '')) : 0), 0);
   const vipCount = clients.filter(c => c.vip).length;
@@ -132,19 +136,27 @@ export default function Clients() {
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: 12 }}>
           {[
-            { n: String(clients.length), l: 'Total' },
-            { n: privacyOn ? '•••' : `$${totalOwed.toFixed(0)}`, l: 'Outstanding' },
-            { n: String(vipCount), l: 'VIP' },
-          ].map(s => (
-            <div key={s.l} style={{ 
-              background: mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.4)', 
-              border: `1px solid ${mode === 'dark' ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.05)'}`, 
-              borderRadius: 9, padding: '7px 5px', textAlign: 'center' 
-            }}>
-              <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 500, color: mode === 'dark' ? 'white' : T.ink, letterSpacing: '-0.3px' }}>{s.n}</div>
-              <div style={{ fontFamily: T.font, fontSize: 8, fontWeight: 600, color: mode === 'dark' ? 'rgba(255,255,255,0.38)' : T.inkMuted, letterSpacing: '0.4px', textTransform: 'uppercase', marginTop: 2 }}>{s.l}</div>
-            </div>
-          ))}
+            { n: String(clients.length), l: 'Total', f: 'All' },
+            { n: privacyOn ? '•••' : `$${totalOwed.toFixed(0)}`, l: 'Outstanding', f: 'Owes $' },
+            { n: String(vipCount), l: 'VIP', f: 'VIP' },
+          ].map(s => {
+            const isActive = filter === s.f;
+            return (
+              <div 
+                key={s.l} 
+                onClick={() => setFilter(s.f)}
+                style={{ 
+                  background: isActive ? T.pinkGlow : (mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.4)'), 
+                  border: `1px solid ${isActive ? T.pink : (mode === 'dark' ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.05)')}`, 
+                  borderRadius: 9, padding: '7px 5px', textAlign: 'center', cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 500, color: isActive ? T.pink : (mode === 'dark' ? 'white' : T.ink), letterSpacing: '-0.3px' }}>{s.n}</div>
+                <div style={{ fontFamily: T.font, fontSize: 8, fontWeight: 600, color: isActive ? T.pink : (mode === 'dark' ? 'rgba(255,255,255,0.38)' : T.inkMuted), letterSpacing: '0.4px', textTransform: 'uppercase', marginTop: 2 }}>{s.l}</div>
+              </div>
+            );
+          })}
         </div>
 
         <div style={{ 

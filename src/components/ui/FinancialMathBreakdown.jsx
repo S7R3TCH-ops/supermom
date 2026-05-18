@@ -12,7 +12,7 @@ import { useMemo } from 'react';
  * @param {string} props.mode - 'light' | 'dark'
  * @param {boolean} props.compact - If true, shows a more condensed version
  */
-export default function FinancialMathBreakdown({ job, business, liveForm, T, mode, compact = false }) {
+export default function FinancialMathBreakdown({ job, business, liveForm, payments, T, mode, compact = false }) {
   const data = useMemo(() => {
     // 1. Resolve Pricing Type
     const pricingType = liveForm?.pricing_type ?? job?.pricing_type ?? 'Hourly';
@@ -26,7 +26,7 @@ export default function FinancialMathBreakdown({ job, business, liveForm, T, mod
     const hours = isNaN(hoursNum) ? 0 : hoursNum;
 
     // 3. Resolve Rate
-    const rawRate = liveForm?.hourly_rate ?? job?.hourly_rate ?? business?.hourly_rate ?? 60;
+    const rawRate = liveForm?.hourly_rate ?? job?.flat_rate ?? business?.hourly_rate ?? 60;
     const rateNum = Number(rawRate);
     const rate = isNaN(rateNum) ? 60 : rateNum;
 
@@ -67,6 +67,7 @@ export default function FinancialMathBreakdown({ job, business, liveForm, T, mod
       rate,
       subtotal,
       activeCosts,
+      additionalTotal,
       taxEnabled,
       taxAmount,
       taxRate,
@@ -74,7 +75,7 @@ export default function FinancialMathBreakdown({ job, business, liveForm, T, mod
     };
   }, [job, business, liveForm]);
 
-  const { pricingType, isHourly, hours, rate, subtotal, activeCosts, taxEnabled, taxAmount, taxRate, total } = data;
+  const { pricingType, isHourly, hours, rate, subtotal, activeCosts, additionalTotal, taxEnabled, taxAmount, taxRate, total } = data;
 
   const rowStyle = { display: 'flex', justifyContent: 'space-between', padding: '4px 0', alignItems: 'baseline' };
   const labelStyle = { fontSize: compact ? 10 : 11, color: T.inkMuted, fontWeight: 500 };
@@ -112,13 +113,23 @@ export default function FinancialMathBreakdown({ job, business, liveForm, T, mod
         )
       ))}
 
-      {/* Tax */}
-      {taxEnabled && (
-        <div style={rowStyle}>
-          <span style={labelStyle}>+ Tax ({ (taxRate * 100).toFixed(0) }%)</span>
-          <span style={valueStyle}>${taxAmount.toFixed(2)}</span>
+      {/* Subtotal (shown when there are additional costs) */}
+      {additionalTotal > 0 && (
+        <div style={{ ...rowStyle, borderTop: `1px solid ${T.cardBorder}`, marginTop: 4, paddingTop: 6 }}>
+          <span style={{ ...labelStyle, fontWeight: 700, color: T.ink }}>Subtotal</span>
+          <span style={{ ...valueStyle, fontWeight: 700 }}>${(subtotal + additionalTotal).toFixed(2)}</span>
         </div>
       )}
+
+      {/* HST — always shown */}
+      <div style={rowStyle}>
+        <span style={{ ...labelStyle, color: taxEnabled && taxAmount > 0 ? T.ink : T.inkMuted }}>
+          HST ({(taxRate * 100).toFixed(0)}%)
+        </span>
+        <span style={{ ...valueStyle, color: taxEnabled && taxAmount > 0 ? T.ink : T.inkMuted }}>
+          ${taxAmount.toFixed(2)}
+        </span>
+      </div>
 
       {/* Divider */}
       <div style={{ height: 1, background: T.cardBorder, margin: '8px 0' }} />
@@ -128,6 +139,45 @@ export default function FinancialMathBreakdown({ job, business, liveForm, T, mod
         <span style={{ ...labelStyle, color: T.ink, fontWeight: 700 }}>TOTAL AMOUNT</span>
         <span style={totalStyle}>${total.toFixed(2)}</span>
       </div>
+
+      {/* Payment History */}
+      {Array.isArray(payments) && payments.length > 0 && (() => {
+        const totalPaid = payments.reduce((s, p) => s + Number(p.amount), 0);
+        const remaining = Math.max(0, total - totalPaid);
+        return (
+          <>
+            <div style={{ height: 1, background: T.cardBorder, margin: '10px 0 6px' }} />
+            <div style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', color: T.inkMuted, letterSpacing: '0.5px', marginBottom: 6 }}>
+              💳 Payments
+            </div>
+            {payments.map((p, i) => {
+              const d = p.payment_date ? new Date(p.payment_date + 'T12:00:00') : null;
+              const dateStr = d ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—';
+              return (
+                <div key={i} style={rowStyle}>
+                  <span style={labelStyle}>{dateStr} · {p.payment_method || 'Cash'}</span>
+                  <span style={{ ...valueStyle, color: '#16A34A' }}>−${Number(p.amount).toFixed(2)}</span>
+                </div>
+              );
+            })}
+            <div style={{ height: 1, background: T.cardBorder, margin: '6px 0' }} />
+            <div style={{ ...rowStyle, padding: 0 }}>
+              <span style={{ ...labelStyle, color: T.ink, fontWeight: 700 }}>
+                {remaining > 0 ? 'REMAINING' : 'BALANCE'}
+              </span>
+              <span style={{
+                fontSize: compact ? 16 : 18,
+                fontWeight: 700,
+                fontFamily: T.serif,
+                fontVariantNumeric: 'tabular-nums',
+                color: remaining > 0 ? '#E91E6A' : '#16A34A',
+              }}>
+                {remaining > 0 ? `$${remaining.toFixed(2)}` : 'PAID ✓'}
+              </span>
+            </div>
+          </>
+        );
+      })()}
     </div>
   );
 }

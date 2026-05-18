@@ -16,10 +16,6 @@ export async function generateInvoiceForJob(jobId) {
     .eq('business_id', businessId)
     .maybeSingle();
 
-  if (existingLink) {
-    return existingLink.invoice_id;
-  }
-
   // 2. Fetch job details
   const { data: job, error: jobErr } = await supabase
     .from('jobs')
@@ -28,6 +24,20 @@ export async function generateInvoiceForJob(jobId) {
     .single();
 
   if (jobErr) throw jobErr;
+
+  // Compute actual total from job fields (total_amount is the booking estimate — never use it directly)
+  const isHourlyJob = job.pricing_type === 'Hourly';
+  const jobRate = Number(job.flat_rate || 0);
+  const jobDur = Number(job.actual_duration || job.estimated_hours || 0);
+  const baseAmt = isHourlyJob && jobRate > 0 ? jobRate * jobDur : Number(job.total_amount || 0);
+  const actualTotal = Math.round((baseAmt + Number(job.additional_cost || 0) + Number(job.hst_amount || 0)) * 100) / 100;
+
+  if (existingLink) {
+    await supabase.from('invoices')
+      .update({ total_amount: actualTotal })
+      .eq('id', existingLink.invoice_id);
+    return existingLink.invoice_id;
+  }
 
   // 3. Generate invoice number (YYYY-XXX)
   const year = new Date().getFullYear();
@@ -61,7 +71,7 @@ export async function generateInvoiceForJob(jobId) {
       invoice_number: invoiceNumber,
       invoice_date: job.scheduled_date,
       due_date: dueDate,
-      total_amount: job.total_amount || 0,
+      total_amount: actualTotal,
       status: job.payment_status === 'Paid' ? 'Paid' : 'Draft',
     })
     .select()

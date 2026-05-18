@@ -134,7 +134,7 @@ export default function InvoiceView() {
                 <div style={{ fontSize: 11, color: '#666', marginTop: 4 }}>{formatDate(job.scheduled_date)}</div>
               </td>
               <td style={{ textAlign: 'center', padding: '20px 15px' }}>
-                {job.pricing_type === 'Hourly' ? `$${Number(biz.hourly_rate || 40).toFixed(2)}/hr` : '—'}
+                {job.pricing_type === 'Hourly' ? `$${Number(job.flat_rate || biz.hourly_rate || 40).toFixed(2)}/hr` : '—'}
               </td>
               <td style={{ textAlign: 'center', padding: '20px 15px' }}>
                 {job.pricing_type === 'Hourly' ? `${(job.actual_duration || job.estimated_hours || 0).toFixed(1)} hrs` : '1'}

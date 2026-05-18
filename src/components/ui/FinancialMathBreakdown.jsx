@@ -35,7 +35,7 @@ export default function FinancialMathBreakdown({ job, business, liveForm, paymen
     if (isHourly) {
       subtotal = hours * rate;
     } else {
-      const flat = liveForm?.total_amount ?? job?.flat_rate ?? job?.total_amount ?? 0;
+      const flat = liveForm?.flat_rate ?? liveForm?.total_amount ?? job?.flat_rate ?? job?.total_amount ?? 0;
       const flatNum = Number(flat);
       subtotal = isNaN(flatNum) ? 0 : flatNum;
     }

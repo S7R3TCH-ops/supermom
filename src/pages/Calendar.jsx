@@ -114,7 +114,7 @@ export default function Calendar() {
     () => allJobs.filter(j => sameDay(j.start, selectedDay)),
     [allJobs, selectedDay]
   );
-  const conflicts = useMemo(() => findSameDayConflicts(selectedDayJobs), [selectedDayJobs]);
+  const conflicts = useMemo(() => findSameDayConflicts(selectedDayJobs.filter(j => !j.isCancelled)), [selectedDayJobs]);
   const nextUpcoming = useMemo(
     () => allJobs.find(j => j.start >= NOW() && j.status === 'Scheduled'),
     [allJobs]

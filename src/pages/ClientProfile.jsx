@@ -8,7 +8,9 @@ import { useToast } from '../context/ToastContext';
 import AmtCell from '../components/ui/AmtCell';
 import { Title, Subheading, Text, Caption, SectionLabel } from '../components/ui/typography';
 import { useClient, notifyDataChanged } from '../data/useData';
-import { simulateAILearning, updateClient } from '../data/clientsRepo';
+import { simulateAILearning, updateClient, softDeleteClient } from '../data/clientsRepo';
+import { archiveClientJobs } from '../data/jobsRepo';
+import { useAuth } from '../context/AuthContext';
 import { EmptyActivity, EmptySchedule } from '../components/ui/Illustrations';
 
 function formatPhone(p) {
@@ -31,6 +33,12 @@ export default function ClientProfile() {
   const [isSavingAi, setIsSavingAi] = useState(false);
   const [isEditingIntel, setIsEditingIntel] = useState(false);
   const [intelDraft, setIntelDraft] = useState({});
+
+  const { profile } = useAuth();
+  const isAdmin = profile?.role === 'admin' || profile?.role === 'superadmin';
+  const [dangerOpen, setDangerOpen] = useState(false);
+  const [archiveConfirm, setArchiveConfirm] = useState(false);
+  const [archiveBusy, setArchiveBusy] = useState(false);
 
   const handleSimulateFuture = async () => {
     setIsSavingAi(true);
@@ -78,6 +86,20 @@ export default function ClientProfile() {
       toast.error('Failed to save. Please try again.');
     } finally {
       setIsSavingAi(false);
+    }
+  };
+
+  const handleArchive = async () => {
+    setArchiveBusy(true);
+    try {
+      await archiveClientJobs(id);
+      await softDeleteClient(id);
+      notifyDataChanged();
+      navigate('/clients');
+    } catch (err) {
+      console.error('Archive failed:', err);
+      toast.error('Archive failed. Please try again.');
+      setArchiveBusy(false);
     }
   };
 
@@ -504,6 +526,69 @@ export default function ClientProfile() {
             }}>View all {client.history.length} jobs →</button>
           )}
         </div>
+
+        {/* Admin Danger Zone */}
+        {isAdmin && (
+          <div style={{ margin: '8px 0 12px' }}>
+            <button
+              onClick={() => setDangerOpen(d => !d)}
+              style={{
+                width: '100%', background: 'transparent', border: `1px solid ${T.cardBorder}`,
+                borderRadius: 10, padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                cursor: 'pointer', fontFamily: T.font, fontSize: 11, fontWeight: 600, color: T.inkMuted,
+              }}
+            >
+              <span>Admin Actions</span>
+              <span style={{ fontSize: 10, transition: 'transform 0.2s', display: 'inline-block', transform: dangerOpen ? 'rotate(180deg)' : 'none' }}>▾</span>
+            </button>
+
+            {dangerOpen && (
+              <div style={{ marginTop: 6, background: mode === 'dark' ? 'rgba(176,21,80,0.08)' : '#FFF5F7', border: '1px solid rgba(176,21,80,0.25)', borderRadius: 10, padding: 12 }}>
+                {!archiveConfirm ? (
+                  <>
+                    <div style={{ fontFamily: T.font, fontSize: 11, color: '#9B0D3A', marginBottom: 10, lineHeight: 1.5 }}>
+                      Archiving removes this client and all their jobs from all views. This cannot be undone from the app.
+                    </div>
+                    <button
+                      onClick={() => setArchiveConfirm(true)}
+                      style={{
+                        width: '100%', background: '#B01550', border: 'none', borderRadius: 9,
+                        padding: '10px 0', fontFamily: T.font, fontSize: 13, fontWeight: 700, color: 'white', cursor: 'pointer',
+                      }}
+                    >
+                      Archive Client &amp; All Jobs
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ fontFamily: T.font, fontSize: 12.5, fontWeight: 600, color: T.ink, marginBottom: 6 }}>
+                      Archive <span style={{ fontFamily: T.serif }}>{client.name}</span> and {client.stats.jobsTotal} job{client.stats.jobsTotal !== 1 ? 's' : ''}?
+                    </div>
+                    <div style={{ fontFamily: T.font, fontSize: 11, color: T.inkMuted, marginBottom: 10 }}>
+                      They will disappear from all views immediately.
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button
+                        onClick={() => setArchiveConfirm(false)}
+                        disabled={archiveBusy}
+                        style={{ flex: 1, background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 9, padding: '9px 0', fontFamily: T.font, fontSize: 12.5, fontWeight: 600, color: T.inkSub, cursor: 'pointer' }}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleArchive}
+                        disabled={archiveBusy}
+                        style={{ flex: 1, background: '#B01550', border: 'none', borderRadius: 9, padding: '9px 0', fontFamily: T.font, fontSize: 12.5, fontWeight: 700, color: 'white', cursor: archiveBusy ? 'not-allowed' : 'default', opacity: archiveBusy ? 0.7 : 1 }}
+                      >
+                        {archiveBusy ? 'Archiving…' : 'Archive Everything'}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         <div style={{ height: 8 }} />
       </div>

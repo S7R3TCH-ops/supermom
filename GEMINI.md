@@ -90,17 +90,6 @@ After the v0.6.2 refactor, these symbols moved. The old locations no longer exis
 
 ---
 
-## Home Hero Banner — how it works now (May 18, 2026)
-
-The large "Good morning, Sandra!" Title was removed. The live `briefingMsg` is now the only headline in the today view, rendered in Fraunces 21px / weight 500.
-
-- **Time-of-day:** morning / afternoon / evening branches produce different wording for each job state (active, countdown, done, gap, etc.)
-- **Address system:** daily-seeded hash (date + firstName) picks either the real name or a nickname (Boss, Hero, Champ, Legend, Captain) — ~40% nickname, 60% name, consistent all day
-- **Status dot:** `alignItems: flex-start` with `marginTop` on the dot — dot sits at cap-height, correct when text wraps to 2 lines
-- **Font rule:** always `T.serif` (Fraunces) + weight 500 for this hero slot. Never Inter.
-
----
-
 ## Next priorities
 
 1. **Sandra user testing** — gather live friction points from real use; v0.6.0+ has significant UI changes to verify on her iPhone

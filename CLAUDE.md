@@ -97,17 +97,26 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 ---
 
-## Current version: 0.6.2
+## Current version: 0.6.3
 
 All core features are live. The app is in active use by Sandra.
 
+### Recent changes (v0.6.3 — May 18, 2026)
+- **Financial math unification** — `computeJobFinancials()` in `financialMath.js` is now the single source of truth for ALL financial calculations. `FinancialMathBreakdown`, `invoicesRepo`, `jobsRepo` (payment status), `InvoiceView`, and `Home.jsx` all import from it. No inline math anywhere.
+- **Job cancellation** — Any user can cancel a Scheduled job with a required reason. Status → `Cancelled`, reason stored in `ai_context.cancellation_reason`. Cancelled jobs remain visible in Calendar (grey treatment) and Client profile history with reason shown.
+- **Admin delete** — Admins (`profile.role === 'admin'`) see a "Delete Job (Admin)" option in JobDetailSheet (soft-delete, disappears from all views).
+- **Admin archive client** — Admins see a collapsible "Admin Actions" danger zone at the bottom of ClientProfile. Two-tap confirmation archives client + all their jobs (soft-delete cascade).
+- **Calendar dynamic timeline** — Day view `startH`/`endH` computed from actual jobs (1hr padding), not hardcoded 6AM–10PM. No job ever clipped off-screen.
+- **Home Today pill** — Conditional "TODAY" button appears above WeekStrip when the user has scrolled to a non-current week. Snaps back to today on tap.
+- **New repo functions**: `cancelJob(id, reason)` and `archiveClientJobs(clientId)` in `jobsRepo.js`.
+
 ### Recent changes (v0.6.2 — May 18, 2026)
 - **Codebase refactor** — pure extraction, zero behavior changes. `Home.jsx` trimmed from 1285 → 769 lines.
-  - `src/lib/dateUtils.js` — `sameDay`, `addDays`, `getWeekRange`, `fmtTime12`, `fmtTimeRange`, `dateBrief`, `composeTorontoISO` (DST logic replaced with `Intl.DateTimeFormat` / `America/Toronto`)
-  - `src/lib/financialMath.js` — `computeJobTotal()` single source of truth; PostJobSheet and Home.jsx both import from here
+  - `src/lib/dateUtils.js` — `sameDay`, `addDays`, `getWeekRange`, `fmtTime12`, `fmtTimeRange`, `dateBrief`, `composeTorontoISO`
+  - `src/lib/financialMath.js` — `computeJobTotal()` / `computeJobFinancials()` single source of truth
   - `src/lib/briefingMessages.js` — `getBriefingMessage()` pure function
   - `src/components/cards/` — `JobCard`, `UpcomingCard`, `EmptyState`, `LiveTimer`, `MissionIntel`, `PaymentBreakdown`
-  - `jobsRepo.js` re-exports `composeTorontoISO` from `dateUtils` for backward compat with `NewJobSheet`
+  - `jobsRepo.js` re-exports `composeTorontoISO` from `dateUtils` for backward compat
 
 ---
 

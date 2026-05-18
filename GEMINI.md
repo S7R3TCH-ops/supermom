@@ -55,47 +55,47 @@ After the v0.6.2 refactor, these symbols moved. The old locations no longer exis
 
 ---
 
-## Current State (v0.6.2 — May 18, 2026)
+## Current State (v0.6.3 — May 18, 2026)
 
 | Feature | Status |
 |---|---|
 | Auth (login / forgot password) | ✅ Live |
-| Home — schedule, revenue, week strip | ✅ Live — payment clarity overhaul (v0.6.0) |
-| Home hero banner text | ✅ Live — live briefing message promoted to hero; Fraunces serif; time-of-day + nickname system (May 18) |
-| Calendar — Day/Week/Agenda | ✅ Live |
+| Home — schedule, revenue, week strip | ✅ Live — Today pill when off-week (v0.6.3) |
+| Home hero banner text | ✅ Live — Fraunces serif; time-of-day + nickname system |
+| Calendar — Day/Week/Agenda | ✅ Live — dynamic timeline bounds, cancelled jobs shown grey (v0.6.3) |
+| Job cancellation (all users) | ✅ Live — cancel with required reason; status → Cancelled; shown in history (v0.6.3) |
+| Job delete (admin only) | ✅ Live — "Delete Job (Admin)" in JobDetailSheet; soft-delete (v0.6.3) |
+| Client archive (admin only) | ✅ Live — danger zone in ClientProfile; cascades to all jobs (v0.6.3) |
+| Financial math unification | ✅ Live — computeJobFinancials single source of truth everywhere (v0.6.3) |
 | Clients list + profile | ✅ Live — A-Z sort; interactive hero stat filters |
 | Finance — mark paid, expenses, CSV export | ✅ Live |
 | New Job sheet | ✅ Live — stepper duration, service rates, custom price, additional costs |
-| New Job flat rate breakdown | ✅ Fixed — liveForm.flat_rate now correctly read by FinancialMathBreakdown (May 18) |
-| Job Detail sheet | ✅ Live — payment history in financial summary (v0.5.9) |
-| Post-job / Wrap-up sheet | ✅ Live — hours prompt removed, liveTotal includes HST (v0.6.1) |
-| Financial Math Breakdown | ✅ Live — shows payment history + remaining balance (v0.5.9) |
-| Home card payment display | ✅ Live — green paid, pink owing, rate math, job notes on upcoming cards (v0.6.0) |
-| Automated Invoicing | ✅ Live — uses actual total, only created when Paid, rate from flat_rate (v0.6.1) |
+| Job Detail sheet | ✅ Live — payment history in financial summary |
+| Post-job / Wrap-up sheet | ✅ Live — hours prompt removed, liveTotal includes HST |
+| Financial Math Breakdown | ✅ Live — shows payment history + remaining balance |
+| Automated Invoicing | ✅ Live — actual total, only on Paid, rate from flat_rate |
 | AI Prep Notes + Duration Estimator | ✅ Live |
-| AI Thank-you / Receipt sheet | ✅ Live |
 | Recurrence series editor | ✅ Live — this / future / all |
 | GCal Sync | ✅ Live |
 | Drive time / mileage | ✅ Live |
 | Geofence / auto-timer | ✅ Live |
 | Super Admin + Viewpoint switching | ✅ Live |
 | Dark mode toggle | ✅ Live |
-| Onboarding flow | ✅ Live |
 | Swipe-to-dismiss sheets | ✅ Live |
 | Privacy toggle | ✅ Live |
 | Storage (photos + voice notes) | ✅ Live |
-| Conflict detection | ✅ Live |
-| Haptic feedback | ✅ Live |
+| Conflict detection | ✅ Live — cancelled jobs excluded from conflict input (v0.6.3) |
 | Code-split bundle | ✅ Live |
 
 ---
 
 ## Next priorities
 
-1. **Sandra user testing** — gather live friction points from real use; v0.6.0+ has significant UI changes to verify on her iPhone
-2. **Hero layout stability** — prevent layout jumps when navigating week strip days
-3. **Client engagement tools** — AI-suggested follow-ups and re-booking reminders
-4. **Offline mode** — app crashes if Supabase unreachable on initial load
-5. **Credential rotation** — DB password + GitHub token were in a public repo commit; may still need rotation (check memory file)
+1. **Sandra user testing** — gather live friction points from real use; test cancellation flow and Today pill on her iPhone
+2. **WeekView cancelled job treatment** — currently shows pink/green based on paid status; should go grey for cancelled (minor oversight from v0.6.3)
+3. **Daily job briefing email** — Vercel Cron (7am Toronto), Resend for transactional email; today + tomorrow jobs, outstanding payments (Phase 2, parked)
+4. **Client engagement tools** — AI-suggested follow-ups and re-booking reminders
+5. **Offline mode** — app crashes if Supabase unreachable on initial load
+6. **Credential rotation** — DB password + GitHub token were in a public repo commit; may still need rotation (check memory file)
 
-(Updated by Claude Code — May 18, 2026 — v0.6.2 refactor)
+(Updated by Claude Code — May 18, 2026 — v0.6.3)

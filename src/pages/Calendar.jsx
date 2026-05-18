@@ -55,22 +55,25 @@ function fmtDateHead(d) {
 // { ...job, client: { name, init, color, address }, service: { label }, start, end, color, paid }
 function enrichDisplayJobs(displayJobs, clientLookup) {
   return displayJobs
-    .filter(j => j.status !== 'Cancelled')
+    .filter(j => j.status !== 'Deleted')
     .map(j => {
       const c = clientLookup[j.client_id];
       const start = new Date(j.scheduled_at);
       const end = new Date(start.getTime() + (j.duration_est || 0) * 60000);
       const paid = j.payment_status === 'Paid';
       const isUnpaidCompleted = j.status === 'Completed' && !paid;
-      
-      // High-glance coloring: Amber for Unpaid, Green for Paid, Pink for Scheduled
-      const color = isUnpaidCompleted ? '#F59E0B' : paid ? '#22C55E' : '#E91E6A';
-      
+      const isCancelled = j.status === 'Cancelled';
+
+      // High-glance coloring: Grey for Cancelled, Amber for Unpaid, Green for Paid, Pink for Scheduled
+      const color = isCancelled
+        ? '#9CA3AF'
+        : isUnpaidCompleted ? '#F59E0B' : paid ? '#22C55E' : '#E91E6A';
+
       return {
         ...j,
         client: c ? { name: c.name, init: c.init, color: c.color, address: c.address } : null,
         service: { label: j.service_name || '—' },
-        start, end, color, paid, isUnpaidCompleted
+        start, end, color, paid, isUnpaidCompleted, isCancelled
       };
     })
     .filter(j => !Number.isNaN(j.start.getTime()))
@@ -251,7 +254,13 @@ export default function Calendar() {
 /* ------------------------------ DAY VIEW ------------------------------ */
 
 function DayView({ T, mode, privacyOn, selectedDay, todayJobs, nextUpcoming, onJobPress, firstName }) {
-  const slotH = 50, startH = 6, endH = 22;
+  const slotH = 50;
+  const startH = todayJobs.length > 0
+    ? Math.max(5, Math.floor(Math.min(...todayJobs.map(j => j.start.getHours() + j.start.getMinutes() / 60))) - 1)
+    : 6;
+  const endH = todayJobs.length > 0
+    ? Math.min(23, Math.ceil(Math.max(...todayJobs.map(j => j.end.getHours() + j.end.getMinutes() / 60))) + 1)
+    : 22;
   const hours = Array.from({ length: endH - startH + 1 }, (_, i) => startH + i);
 
   const isToday = sameDay(selectedDay, NOW());
@@ -301,11 +310,13 @@ function DayView({ T, mode, privacyOn, selectedDay, todayJobs, nextUpcoming, onJ
           const endDec   = j.end.getHours()   + j.end.getMinutes() / 60;
           const top = (startDec - startH) * slotH + 2;
           const h   = (endDec - startDec) * slotH - 4;
-          const bg = j.isUnpaidCompleted
-            ? (mode === 'dark' ? 'rgba(245,158,11,0.15)' : '#FEF3C7')
-            : j.paid
-              ? (mode === 'dark' ? 'rgba(34,197,94,0.1)'  : '#F0FFF5')
-              : (mode === 'dark' ? 'rgba(233,30,106,0.12)' : '#FFF0F7');
+          const bg = j.isCancelled
+            ? (mode === 'dark' ? 'rgba(156,163,175,0.1)' : '#F3F4F6')
+            : j.isUnpaidCompleted
+              ? (mode === 'dark' ? 'rgba(245,158,11,0.15)' : '#FEF3C7')
+              : j.paid
+                ? (mode === 'dark' ? 'rgba(34,197,94,0.1)'  : '#F0FFF5')
+                : (mode === 'dark' ? 'rgba(233,30,106,0.12)' : '#FFF0F7');
           return (
             <div key={j.id} onClick={() => onJobPress(j.id)} style={{ position: 'absolute', top, left: 43, right: 0, height: h, background: bg, border: `1.5px solid ${j.color}35`, borderLeft: `3px solid ${j.color}`, borderRadius: 9, padding: '6px 9px', overflow: 'hidden', cursor: 'pointer' }}>
               <div style={{ fontFamily: T.serif, fontSize: 12, fontWeight: 500, color: j.color, letterSpacing: '-0.2px' }}>{j.service?.label}</div>
@@ -533,26 +544,37 @@ function AgendaView({ T, mode, privacyOn, allJobs, nextUpcoming, onJobPress, fir
 const AgendaCard = memo(function AgendaCard({ T, mode, privacyOn, job, isNext, conflict, onPress }) {
   const paid = job.paid;
   const isUnpaidCompleted = job.isUnpaidCompleted;
-  
-  const border = conflict 
-    ? '#F59E0B' 
-    : isUnpaidCompleted 
-      ? '#F59E0B' 
-      : (isNext ? '#E91E6A' : (paid ? '#86EFAC' : T.cardBorder));
-  
-  const bg = isUnpaidCompleted
-    ? (mode === 'dark' ? 'rgba(245,158,11,0.1)' : '#FEF3C7')
-    : paid
-      ? (mode === 'dark' ? 'rgba(34,197,94,0.08)' : '#F0FFF5')
-      : (isNext
-          ? (mode === 'dark' ? 'rgba(233,30,106,0.1)' : '#FFF0F7')
-          : T.card);
+  const isCancelled = job.isCancelled;
+
+  const border = conflict
+    ? '#F59E0B'
+    : isCancelled
+      ? '#D1D5DB'
+      : isUnpaidCompleted
+        ? '#F59E0B'
+        : (isNext ? '#E91E6A' : (paid ? '#86EFAC' : T.cardBorder));
+
+  const bg = isCancelled
+    ? (mode === 'dark' ? 'rgba(156,163,175,0.08)' : '#F9FAFB')
+    : isUnpaidCompleted
+      ? (mode === 'dark' ? 'rgba(245,158,11,0.1)' : '#FEF3C7')
+      : paid
+        ? (mode === 'dark' ? 'rgba(34,197,94,0.08)' : '#F0FFF5')
+        : (isNext
+            ? (mode === 'dark' ? 'rgba(233,30,106,0.1)' : '#FFF0F7')
+            : T.card);
 
   const badges = [];
-  if (isNext) badges.push({ text: 'NEXT UP', bg: '#E91E6A', fg: 'white' });
-  if (paid)   badges.push({ text: 'PAID ✓', bg: '#DCFCE7', fg: '#14532D' });
-  else if (isUnpaidCompleted) badges.push({ text: 'UNPAID', bg: '#F59E0B', fg: 'white' });
-  else        badges.push({ text: 'UNPAID', bg: '#FFE0EC', fg: '#9B0D3A' });
+  if (isCancelled) {
+    badges.push({ text: 'CANCELLED', bg: '#F3F4F6', fg: '#6B7280' });
+  } else if (isNext) {
+    badges.push({ text: 'NEXT UP', bg: '#E91E6A', fg: 'white' });
+  }
+  if (!isCancelled) {
+    if (paid)   badges.push({ text: 'PAID ✓', bg: '#DCFCE7', fg: '#14532D' });
+    else if (isUnpaidCompleted) badges.push({ text: 'UNPAID', bg: '#F59E0B', fg: 'white' });
+    else        badges.push({ text: 'UNPAID', bg: '#FFE0EC', fg: '#9B0D3A' });
+  }
   
   if (job.status === 'Completed' && !job.actual_duration) {
     badges.push({ text: '⚠ HOURS NEEDED', bg: '#FEF3C7', fg: '#B45309' });
@@ -612,6 +634,11 @@ const AgendaCard = memo(function AgendaCard({ T, mode, privacyOn, job, isNext, c
           }}>{b.text}</span>
         ))}
       </div>
+      {isCancelled && job.ai_context?.cancellation_reason && (
+        <div style={{ fontFamily: T.font, fontSize: 10.5, color: T.inkMuted, marginTop: 4, fontStyle: 'italic' }}>
+          Reason: {job.ai_context.cancellation_reason}
+        </div>
+      )}
     </div>
   );
 });

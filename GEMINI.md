@@ -26,6 +26,17 @@ State: "I am incrementing the version to [X] as per GEMINI.md" before doing so.
 
 `docs/gemini-import-map.md` — mandatory before touching imports, renaming functions, or running cleanup. Lists canonical symbol locations. A refactor in May 2026 (Phase 25) broke 11 imports and had to be repaired by Claude Code. Do not repeat.
 
+### Canonical symbol locations (updated v0.6.2)
+After the v0.6.2 refactor, these symbols moved. The old locations no longer exist:
+
+| Symbol | Old location | New location |
+|---|---|---|
+| `sameDay`, `addDays`, `getWeekRange`, `fmtTime12`, `fmtTimeRange`, `dateBrief` | `src/pages/Home.jsx` | `src/lib/dateUtils.js` |
+| `composeTorontoISO` | `src/data/jobsRepo.js` (defined) | `src/lib/dateUtils.js` (defined); `jobsRepo.js` re-exports for compat |
+| `computeJobTotal` (was `computeTotal`) | `src/pages/Home.jsx` | `src/lib/financialMath.js` |
+| `getBriefingMessage` (was inline useMemo) | `src/pages/Home.jsx` | `src/lib/briefingMessages.js` |
+| `JobCard`, `UpcomingCard`, `EmptyState`, `LiveTimer`, `MissionIntel`, `PaymentBreakdown` | `src/pages/Home.jsx` | `src/components/cards/` |
+
 ---
 
 ## Technical Context
@@ -44,21 +55,23 @@ State: "I am incrementing the version to [X] as per GEMINI.md" before doing so.
 
 ---
 
-## Current State (v0.6.0 — May 17, 2026)
+## Current State (v0.6.2 — May 18, 2026)
 
 | Feature | Status |
 |---|---|
 | Auth (login / forgot password) | ✅ Live |
 | Home — schedule, revenue, week strip | ✅ Live — payment clarity overhaul (v0.6.0) |
+| Home hero banner text | ✅ Live — live briefing message promoted to hero; Fraunces serif; time-of-day + nickname system (May 18) |
 | Calendar — Day/Week/Agenda | ✅ Live |
 | Clients list + profile | ✅ Live — A-Z sort; interactive hero stat filters |
 | Finance — mark paid, expenses, CSV export | ✅ Live |
 | New Job sheet | ✅ Live — stepper duration, service rates, custom price, additional costs |
+| New Job flat rate breakdown | ✅ Fixed — liveForm.flat_rate now correctly read by FinancialMathBreakdown (May 18) |
 | Job Detail sheet | ✅ Live — payment history in financial summary (v0.5.9) |
-| Post-job / Wrap-up sheet | ✅ Live — payment history + correct partial pre-fill (v0.5.9) |
+| Post-job / Wrap-up sheet | ✅ Live — hours prompt removed, liveTotal includes HST (v0.6.1) |
 | Financial Math Breakdown | ✅ Live — shows payment history + remaining balance (v0.5.9) |
 | Home card payment display | ✅ Live — green paid, pink owing, rate math, job notes on upcoming cards (v0.6.0) |
-| Automated Invoicing | ✅ Live — sequential numbering + public web view |
+| Automated Invoicing | ✅ Live — uses actual total, only created when Paid, rate from flat_rate (v0.6.1) |
 | AI Prep Notes + Duration Estimator | ✅ Live |
 | AI Thank-you / Receipt sheet | ✅ Live |
 | Recurrence series editor | ✅ Live — this / future / all |
@@ -77,12 +90,23 @@ State: "I am incrementing the version to [X] as per GEMINI.md" before doing so.
 
 ---
 
+## Home Hero Banner — how it works now (May 18, 2026)
+
+The large "Good morning, Sandra!" Title was removed. The live `briefingMsg` is now the only headline in the today view, rendered in Fraunces 21px / weight 500.
+
+- **Time-of-day:** morning / afternoon / evening branches produce different wording for each job state (active, countdown, done, gap, etc.)
+- **Address system:** daily-seeded hash (date + firstName) picks either the real name or a nickname (Boss, Hero, Champ, Legend, Captain) — ~40% nickname, 60% name, consistent all day
+- **Status dot:** `alignItems: flex-start` with `marginTop` on the dot — dot sits at cap-height, correct when text wraps to 2 lines
+- **Font rule:** always `T.serif` (Fraunces) + weight 500 for this hero slot. Never Inter.
+
+---
+
 ## Next priorities
 
-1. **Sandra user testing** — gather live friction points from real use; v0.6.0 has significant card UI changes to verify on her iPhone
+1. **Sandra user testing** — gather live friction points from real use; v0.6.0+ has significant UI changes to verify on her iPhone
 2. **Hero layout stability** — prevent layout jumps when navigating week strip days
 3. **Client engagement tools** — AI-suggested follow-ups and re-booking reminders
 4. **Offline mode** — app crashes if Supabase unreachable on initial load
 5. **Credential rotation** — DB password + GitHub token were in a public repo commit; may still need rotation (check memory file)
 
-(Updated by Claude Code — May 17, 2026)
+(Updated by Claude Code — May 18, 2026 — v0.6.2 refactor)

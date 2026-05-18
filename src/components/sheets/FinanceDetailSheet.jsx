@@ -4,12 +4,82 @@ import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useJobDetailSheet } from '../../context/JobDetailSheetContext';
 import AmtCell from '../ui/AmtCell';
 import GrabBar from '../ui/GrabBar';
+import { computeJobFinancials } from '../../lib/financialMath';
 
-function fmtShortDate(iso) {
-  if (!iso) return '';
-  const d = new Date(iso);
+function fmtShortDate(val) {
+  if (!val) return '';
+  if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val)) {
+    const [y, m, d] = val.split('-').map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+  const d = new Date(val);
   if (Number.isNaN(d.getTime())) return '';
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Toronto' });
+}
+
+function JobRow({ item, T, privacyOn, onTap }) {
+  const financials = computeJobFinancials(item);
+  const total = item.total ?? financials.total;
+  const isHourly = item.pricing_type === 'Hourly';
+  const hours = item.actual_duration || item.estimated_hours || 0;
+  const rate = item.flat_rate || 0;
+
+  return (
+    <div
+      onClick={() => onTap(item.id)}
+      style={{
+        background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 12,
+        padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10,
+        cursor: 'pointer',
+      }}
+    >
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 500, color: T.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {item.client_name}
+        </div>
+        <div style={{ fontFamily: T.font, fontSize: 11, color: T.inkSub, marginTop: 2 }}>
+          {fmtShortDate(item.scheduled_at)}{item.service_name ? ` · ${item.service_name}` : ''}
+        </div>
+        {(isHourly || Number(item.additional_cost) > 0) && (
+          <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, marginTop: 3, display: 'flex', gap: 6 }}>
+            {isHourly && rate > 0 && <span>{Number(hours) % 1 === 0 ? hours : Number(hours).toFixed(1)}h @ ${Number(rate).toFixed(0)}/hr</span>}
+            {Number(item.additional_cost) > 0 && <span>+ ${Number(item.additional_cost).toFixed(0)} costs</span>}
+          </div>
+        )}
+      </div>
+      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: T.ink, fontVariantNumeric: 'tabular-nums' }}>
+          {privacyOn ? '•••' : `$${Number(total).toFixed(0)}`}
+        </div>
+        <div style={{ fontSize: 9, fontWeight: 700, color: item.payment_status === 'Paid' ? '#22C55E' : item.payment_status === 'Partial' ? '#F59E0B' : '#E91E6A', textTransform: 'uppercase', marginTop: 2 }}>
+          {item.payment_status || 'Unpaid'}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ExpenseRow({ item, T, privacyOn }) {
+  return (
+    <div style={{
+      background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 12,
+      padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10,
+    }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontFamily: T.serif, fontSize: 14, fontWeight: 500, color: T.ink }}>
+          {item.category || item.description || 'Expense'}
+        </div>
+        <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, marginTop: 2 }}>
+          {fmtShortDate(item.expense_date || item.created_at)}
+          {item.notes ? ` · ${item.notes}` : ''}
+          {item.description && item.category && item.description !== item.category ? ` · ${item.description}` : ''}
+        </div>
+      </div>
+      <div style={{ fontSize: 14, fontWeight: 700, color: '#EF4444', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
+        {privacyOn ? '•••' : `-$${Number(item.amount || 0).toFixed(0)}`}
+      </div>
+    </div>
+  );
 }
 
 export default function FinanceDetailSheet({ title, items, type, onClose }) {
@@ -18,7 +88,26 @@ export default function FinanceDetailSheet({ title, items, type, onClose }) {
   useFocusTrap(sheetRef, true, onClose);
   const { openJob } = useJobDetailSheet();
 
-  const total = items.reduce((s, i) => s + Number(i.total || i.amount || 0), 0);
+  const handleJobTap = id => { onClose(); openJob(id); };
+
+  // Compute header summary
+  const summary = (() => {
+    if (type === 'jobs') {
+      const total = items.reduce((s, i) => s + Number(i.total || 0), 0);
+      return { line: `${items.length} job${items.length !== 1 ? 's' : ''}`, total, color: '#E91E6A' };
+    }
+    if (type === 'expenses') {
+      const total = items.reduce((s, i) => s + Number(i.amount || 0), 0);
+      return { line: `${items.length} expense${items.length !== 1 ? 's' : ''}`, total, color: '#6B7280' };
+    }
+    if (type === 'profit') {
+      const revenue = items.filter(i => i._itemType === 'revenue').reduce((s, i) => s + Number(i.total || 0), 0);
+      const expenses = items.filter(i => i._itemType === 'expense').reduce((s, i) => s + Number(i.amount || 0), 0);
+      const net = revenue - expenses;
+      return { revenue, expenses, net, color: net >= 0 ? '#10B981' : '#EF4444' };
+    }
+    return { line: `${items.length} item${items.length !== 1 ? 's' : ''}`, total: 0, color: T.pink };
+  })();
 
   return (
     <div ref={sheetRef} role="dialog" aria-modal="true" aria-label={title} style={{
@@ -31,30 +120,49 @@ export default function FinanceDetailSheet({ title, items, type, onClose }) {
         @keyframes njSlide { from { transform: translateY(100%); } to { transform: translateY(0); } }
       `}</style>
       <div onClick={onClose} style={{ flex: 1, minHeight: 40 }} />
-      
+
       <div onClick={e => e.stopPropagation()} style={{
         background: T.bg, color: T.ink,
         borderRadius: '24px 24px 0 0',
         boxShadow: '0 -10px 40px rgba(0,0,0,0.38)',
-        maxHeight: '85vh', display: 'flex', flexDirection: 'column',
+        maxHeight: '88vh', display: 'flex', flexDirection: 'column',
         animation: 'njSlide 260ms cubic-bezier(0.2,0.8,0.2,1)',
         border: `1px solid ${T.cardBorder}`, borderBottom: 'none',
       }}>
         <GrabBar onDismiss={onClose} />
 
         <div style={{ padding: '14px 18px 14px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', borderBottom: `1px solid ${T.cardBorder}` }}>
-          <div>
+          <div style={{ flex: 1 }}>
             <div style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '1.1px', textTransform: 'uppercase', color: '#FF78B0', marginBottom: 2 }}>✦ Details</div>
             <div style={{ fontFamily: T.serif, fontSize: 20, fontWeight: 500, letterSpacing: '-0.4px', color: T.ink }}>{title}</div>
-            <div style={{ fontFamily: T.font, fontSize: 11.5, color: T.inkMuted, marginTop: 4 }}>
-              {items.length} item{items.length !== 1 && 's'} · Total: {privacyOn ? '•••' : `$${total.toFixed(0)}`}
-            </div>
+
+            {type === 'profit' ? (
+              <div style={{ display: 'flex', gap: 12, marginTop: 6, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 10.5, fontWeight: 700, color: '#10B981' }}>
+                  {privacyOn ? '•••' : `+$${summary.revenue?.toFixed(0)}`} revenue
+                </span>
+                <span style={{ fontSize: 10.5, fontWeight: 700, color: '#EF4444' }}>
+                  {privacyOn ? '•••' : `-$${summary.expenses?.toFixed(0)}`} expenses
+                </span>
+                <span style={{ fontSize: 10.5, fontWeight: 700, color: summary.color }}>
+                  = {privacyOn ? '•••' : `$${summary.net?.toFixed(0)}`} net
+                </span>
+              </div>
+            ) : (
+              <div style={{ fontFamily: T.font, fontSize: 11.5, color: T.inkMuted, marginTop: 4 }}>
+                {summary.line} · Total:{' '}
+                <span style={{ color: summary.color, fontWeight: 700 }}>
+                  {privacyOn ? '•••' : `$${Number(summary.total).toFixed(0)}`}
+                </span>
+              </div>
+            )}
           </div>
+
           <button onClick={onClose} aria-label="Close" style={{
             width: 30, height: 30, borderRadius: 9,
             background: mode === 'dark' ? 'rgba(255,255,255,0.07)' : T.pinkTint,
             border: `1px solid ${T.cardBorder}`, color: T.inkSub, cursor: 'pointer', padding: 0,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
           }}>
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
@@ -64,69 +172,51 @@ export default function FinanceDetailSheet({ title, items, type, onClose }) {
 
         <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '14px 18px 24px' }}>
           {items.length === 0 ? (
-             <div style={{ padding: '24px 0', textAlign: 'center', color: T.inkMuted, fontFamily: T.font, fontSize: 13 }}>
-               No items found.
-             </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {items.map(item => {
-                if (type === 'jobs') {
-                  const amt = `$${Number(item.total || 0).toFixed(0)}`;
-                  const isHourly = item.pricing_type === 'Hourly';
-                  const rate = item.hourly_rate || (item.estimated_hours > 0 ? (item.total / item.estimated_hours) : 0);
-                  const hours = item.actual_duration || item.estimated_hours || 0;
-                  
-                  return (
-                    <div key={item.id} onClick={() => { onClose(); openJob(item.id); }} style={{
-                      background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 12,
-                      padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10,
-                      cursor: 'pointer'
-                    }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontFamily: T.serif, fontSize: 16, fontWeight: 500, color: T.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {item.client_name}
-                        </div>
-                        <div style={{ fontFamily: T.font, fontSize: 11, color: T.inkSub, marginTop: 2 }}>
-                          {fmtShortDate(item.scheduled_at)} · {item.service_name}
-                        </div>
-                        {(isHourly || item.additional_cost > 0) && (
-                          <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, marginTop: 4, display: 'flex', gap: 6 }}>
-                            {isHourly && <span>{hours % 1 === 0 ? hours : hours.toFixed(1)}h @ ${Number(rate).toFixed(0)}/hr</span>}
-                            {item.additional_cost > 0 && <span>+ ${Number(item.additional_cost).toFixed(0)} costs</span>}
-                          </div>
-                        )}
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <AmtCell amount={privacyOn ? '•••' : amt} size={16} />
-                        <div style={{ fontSize: 9, fontWeight: 700, color: item.payment_status === 'Paid' ? '#22C55E' : T.pink, textTransform: 'uppercase', marginTop: 2 }}>
-                          {item.payment_status || 'Unpaid'}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                } else if (type === 'expenses') {
-                  const amt = `$${Number(item.amount || 0).toFixed(0)}`;
-                  return (
-                    <div key={item.id} style={{
-                      background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 12,
-                      padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10
-                    }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontFamily: T.serif, fontSize: 14, fontWeight: 500, color: T.ink }}>
-                          {item.category}
-                        </div>
-                        <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, marginTop: 2 }}>
-                          {fmtShortDate(item.expense_date)} {item.notes && `· ${item.notes}`}
-                        </div>
-                      </div>
-                      <AmtCell amount={privacyOn ? '•••' : amt} size={14} />
-                    </div>
-                  );
-                }
-                return null;
-              })}
+            <div style={{ padding: '32px 0', textAlign: 'center', color: T.inkMuted, fontFamily: T.font, fontSize: 13 }}>
+              No items found.
             </div>
-          )}
+          ) : type === 'jobs' ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {items.map(item => (
+                <JobRow key={item.id} item={item} T={T} privacyOn={privacyOn} onTap={handleJobTap} />
+              ))}
+            </div>
+          ) : type === 'expenses' ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {items.map(item => (
+                <ExpenseRow key={item.id} item={item} T={T} privacyOn={privacyOn} />
+              ))}
+            </div>
+          ) : type === 'profit' ? (
+            <div>
+              {/* Revenue section */}
+              {items.filter(i => i._itemType === 'revenue').length > 0 && (
+                <>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#10B981', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>
+                    Income ({items.filter(i => i._itemType === 'revenue').length})
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
+                    {items.filter(i => i._itemType === 'revenue').map(item => (
+                      <JobRow key={item.id} item={item} T={T} privacyOn={privacyOn} onTap={handleJobTap} />
+                    ))}
+                  </div>
+                </>
+              )}
+              {/* Expenses section */}
+              {items.filter(i => i._itemType === 'expense').length > 0 && (
+                <>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#EF4444', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>
+                    Expenses ({items.filter(i => i._itemType === 'expense').length})
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {items.filter(i => i._itemType === 'expense').map(item => (
+                      <ExpenseRow key={item.id} item={item} T={T} privacyOn={privacyOn} />
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

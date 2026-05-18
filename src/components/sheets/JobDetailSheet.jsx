@@ -80,6 +80,8 @@ export default function JobDetailSheet({ jobId, onClose }) {
     setPrevJobId(jobId);
     setError(null);
     setLoading(true);
+    setShowCancelForm(false);
+    setCancelReason('');
   }
 
   useEffect(() => {

@@ -35,7 +35,7 @@ export default function ClientProfile() {
   const [intelDraft, setIntelDraft] = useState({});
 
   const { profile } = useAuth();
-  const isAdmin = profile?.role === 'admin' || profile?.role === 'superadmin';
+  const isAdmin = profile?.role === 'admin';
   const [dangerOpen, setDangerOpen] = useState(false);
   const [archiveConfirm, setArchiveConfirm] = useState(false);
   const [archiveBusy, setArchiveBusy] = useState(false);
@@ -562,7 +562,7 @@ export default function ClientProfile() {
                 ) : (
                   <>
                     <div style={{ fontFamily: T.font, fontSize: 12.5, fontWeight: 600, color: T.ink, marginBottom: 6 }}>
-                      Archive <span style={{ fontFamily: T.serif }}>{client.name}</span> and {client.stats.jobsTotal} job{client.stats.jobsTotal !== 1 ? 's' : ''}?
+                      Archive <span style={{ fontFamily: T.serif }}>{client.name}</span> and {client?.stats?.jobsTotal ?? 0} job{(client?.stats?.jobsTotal ?? 0) !== 1 ? 's' : ''}?
                     </div>
                     <div style={{ fontFamily: T.font, fontSize: 11, color: T.inkMuted, marginBottom: 10 }}>
                       They will disappear from all views immediately.

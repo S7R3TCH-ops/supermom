@@ -10,9 +10,7 @@ function dailyAddress(now, firstName) {
   return (Math.abs(h) % 10) < 4 ? NICKNAMES[Math.abs(h >> 2) % NICKNAMES.length] : firstName;
 }
 
-export function getBriefingMessage({ isSelectedToday, selectedDateJobCount, allDone, activeJob, next, now, todayJobs, attentionItemCount, persona, firstName }) {
-  if (!isSelectedToday) return `${selectedDateJobCount} jobs scheduled`;
-
+export function getBriefingMessage({ allDone, activeJob, next, now, todayJobs, attentionItemCount, persona, firstName }) {
   const hour = now.getHours();
   const isMorning = hour < 12;
   const isEvening = hour >= 17;

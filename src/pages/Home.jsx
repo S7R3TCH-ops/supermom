@@ -14,7 +14,6 @@ import { getBriefingMessage } from '../lib/briefingMessages';
 import { updateJob } from '../data/jobsRepo';
 import { useGeofence } from '../context/GeofenceContext';
 import { useKeyboardFocus } from '../hooks/useKeyboardFocus';
-import WeekStrip from '../components/ui/WeekStrip';
 import { sameDay, getWeekRange, fmtTime12, dateBrief } from '../lib/dateUtils';
 import { computeJobTotal } from '../lib/financialMath';
 import JobCard from '../components/cards/JobCard';

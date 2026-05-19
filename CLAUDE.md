@@ -97,9 +97,16 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 ---
 
-## Current version: 0.6.5
+## Current version: 0.6.6
 
 All core features are live. The app is in active use by Sandra.
+
+### Recent changes (v0.6.6 — May 19, 2026)
+- **Start/End time + Duration sync on Add/Edit Job** — Both NewJobSheet (Step 2) and JobDetailSheet (Edit mode) now show Start time, End time, and Duration controls that dynamically update each other. Start is always the anchor; changing End updates Duration (end − start); changing Duration updates End (start + duration). Minimum valid gap is 15 min.
+  - `NewJobSheet.jsx`: Date separated into its own row; Time row is now a Start → End two-column grid; Duration stepper remains and stays in sync.
+  - `JobDetailSheet.jsx`: Time field split into Start → End row; End time change writes back to `estimated_hours`; Est. hours field kept for direct numeric edit.
+  - Helpers added to both files: `toHHMMStr(startHHMM, mins)` → HH:MM string for `<input type="time">`; `diffMinutes(startHHMM, endHHMM)` → minute diff or null.
+- **Clients "Owes $" filter fix** — `toDisplayClient` in `selectors.js` now uses `computeJobTotal(j)` (correct hourly math) instead of `j.total_amount` (stale booking estimate), and treats `payment_status === null` as unpaid — so today's newly completed jobs now appear in the Owes $ filter.
 
 ### Recent changes (v0.6.5 — May 19, 2026)
 - **Home page redesign** — Replaced dual-mode Home (week browser + daily dashboard) with always-today action dashboard.

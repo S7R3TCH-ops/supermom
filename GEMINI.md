@@ -55,7 +55,7 @@ After the v0.6.2 refactor, these symbols moved. The old locations no longer exis
 
 ---
 
-## Current State (v0.6.5 — May 19, 2026)
+## Current State (v0.6.6 — May 19, 2026)
 
 | Feature | Status |
 |---|---|
@@ -67,12 +67,13 @@ After the v0.6.2 refactor, these symbols moved. The old locations no longer exis
 | Job delete (admin only) | ✅ Live — "Delete Job (Admin)" in JobDetailSheet; soft-delete (v0.6.3) |
 | Client archive (admin only) | ✅ Live — danger zone in ClientProfile; cascades to all jobs (v0.6.3) |
 | Financial math unification | ✅ Live — computeJobFinancials single source of truth everywhere (v0.6.3) |
-| Clients list + profile | ✅ Live — A-Z sort; interactive hero stat filters |
+| Clients list + profile | ✅ Live — A-Z sort; interactive hero stat filters; Owes $ filter fixed for null payment_status (v0.6.6) |
+| Clients "Owes $" filter | ✅ Live — uses computeJobTotal (correct hourly math); null payment_status treated as unpaid (v0.6.6) |
 | Finance — period filtering + drill-down tiles | ✅ Live — Week/Month/Year/All; all 4 tiles clickable; correct hourly math (v0.6.4) |
 | Finance — trend chart | ✅ Live — SVG area/line chart, revenue vs expenses, real data (v0.6.4) |
 | Finance — mark paid, expenses, CSV export | ✅ Live |
-| New Job sheet | ✅ Live — stepper duration, service rates, custom price, additional costs |
-| Job Detail sheet | ✅ Live — payment history in financial summary |
+| New Job sheet — Start/End/Duration sync | ✅ Live — Start → End row; duration stepper all in sync; start is anchor (v0.6.6) |
+| Job Detail sheet — Start/End/Duration sync | ✅ Live — Start → End row in edit mode; Est. hours synced with end time (v0.6.6) |
 | Post-job / Wrap-up sheet | ✅ Live — hours prompt removed, liveTotal includes HST |
 | Financial Math Breakdown | ✅ Live — shows payment history + remaining balance |
 | Automated Invoicing | ✅ Live — actual total, only on Paid, rate from flat_rate |
@@ -93,12 +94,11 @@ After the v0.6.2 refactor, these symbols moved. The old locations no longer exis
 
 ## Next priorities
 
-1. **Deploy v0.6.5** — push `main` to trigger Vercel auto-deploy; test Home redesign on Sandra's iPhone and Joel's Pixel
-2. **Sandra user testing** — gather live friction points from real use; test Finance drill-downs and period filtering
-3. **WeekView cancelled job treatment** — currently shows pink/green based on paid status; should go grey for cancelled (minor oversight from v0.6.3)
-4. **Daily job briefing email** — Vercel Cron (7am Toronto), Resend for transactional email; today + tomorrow jobs, outstanding payments (Phase 2, parked)
-5. **Client engagement tools** — AI-suggested follow-ups and re-booking reminders
-6. **Offline mode** — app crashes if Supabase unreachable on initial load
-7. **Credential rotation** — DB password + GitHub token were in a public repo commit; may still need rotation (check memory file)
+1. **Sandra user testing** — gather live friction points from real use; test new Start/End time UX on Sandra's iPhone
+2. **WeekView cancelled job treatment** — currently shows pink/green based on paid status; should go grey for cancelled (minor oversight from v0.6.3)
+3. **Daily job briefing email** — Vercel Cron (7am Toronto), Resend for transactional email; today + tomorrow jobs, outstanding payments (Phase 2, parked)
+4. **Client engagement tools** — AI-suggested follow-ups and re-booking reminders
+5. **Offline mode** — app crashes if Supabase unreachable on initial load
+6. **Credential rotation** — DB password + GitHub token were in a public repo commit; may still need rotation (check memory file)
 
-(Updated by Claude Code — May 19, 2026 — v0.6.5)
+(Updated by Claude Code — May 19, 2026 — v0.6.6)

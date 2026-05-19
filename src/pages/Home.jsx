@@ -334,51 +334,29 @@ export default function Home() {
         
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative' }}>
           <div style={{ flex: 1 }}>
-            {isSelectedToday ? (
-              <>
-                <SectionLabel style={{ color: mode === 'dark' ? T.pinkLabel : T.pink, marginBottom: 8 }}>
-                  ✦ Command Brief · {dateBrief(selectedDate)}
-                </SectionLabel>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 9, marginTop: 2 }}>
-                  <span style={{
-                    width: 7,
-                    height: 7,
-                    borderRadius: '50%',
-                    background: allDone ? '#16A34A' : (activeJob || (next && Math.round((next.start - now) / 60000) < 60)) ? '#F59E0B' : '#64748B',
-                    flexShrink: 0,
-                    marginTop: 7,
-                  }} />
-                  <div style={{
-                    fontFamily: T.serif,
-                    fontSize: 21,
-                    fontWeight: 500,
-                    letterSpacing: '-0.3px',
-                    color: mode === 'dark' ? 'white' : T.ink,
-                    lineHeight: 1.3,
-                  }}>
-                    {briefingMsg}
-                  </div>
-                </div>
-              </>
-            ) : (
-              <>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 5 }}>
-                  <SectionLabel style={{ color: mode === 'dark' ? T.pinkLabel : T.pink, margin: 0 }}>
-                    ✦ WEEKLY SUMMARY
-                  </SectionLabel>
-                  <div style={{ display: 'flex', gap: 4 }}>
-                    <button onClick={() => handleWeekChange(-1)} style={{ background: 'rgba(233,30,106,0.1)', border: 'none', borderRadius: 4, width: 22, height: 22, color: T.pink, fontSize: 14, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
-                    <button onClick={() => handleWeekChange(1)} style={{ background: 'rgba(233,30,106,0.1)', border: 'none', borderRadius: 4, width: 22, height: 22, color: T.pink, fontSize: 14, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
-                  </div>
-                </div>
-                <Title style={{ fontSize: 24, fontWeight: 500, letterSpacing: '-0.5px', color: mode === 'dark' ? 'white' : T.ink, lineHeight: 1.15, marginBottom: 4 }}>
-                  {getWeekLabel(weekDays)}
-                </Title>
-                <Text style={{ fontSize: 14, color: T.inkSub, fontWeight: 600 }}>
-                  {selectedDateJobs.length} jobs scheduled
-                </Text>
-              </>
-            )}
+            <SectionLabel style={{ color: mode === 'dark' ? T.pinkLabel : T.pink, marginBottom: 8 }}>
+              ✦ Command Brief · {dateBrief(today)}
+            </SectionLabel>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 9, marginTop: 2 }}>
+              <span style={{
+                width: 7,
+                height: 7,
+                borderRadius: '50%',
+                background: allDone ? '#16A34A' : (activeJob || (next && Math.round((next.start - now) / 60000) < 60)) ? '#F59E0B' : '#64748B',
+                flexShrink: 0,
+                marginTop: 7,
+              }} />
+              <div style={{
+                fontFamily: T.serif,
+                fontSize: 21,
+                fontWeight: 500,
+                letterSpacing: '-0.3px',
+                color: mode === 'dark' ? 'white' : T.ink,
+                lineHeight: 1.3,
+              }}>
+                {briefingMsg}
+              </div>
+            </div>
           </div>
 
           <div style={{ textAlign: 'right', flexShrink: 0 }}>
@@ -398,45 +376,10 @@ export default function Home() {
                 {privacyOn ? '•••' : `$${displayRevenue.toFixed(0)}`}
               </div>
               <div style={{ fontSize: 10, fontWeight: 700, color: mode === 'dark' ? T.pinkLabel : T.pink, textTransform: 'uppercase', letterSpacing: '0.6px', marginTop: 3 }}>
-                {isSelectedToday ? 'Projected' : 'Revenue'}
+                Projected
               </div>
             </div>
           </div>
-        </div>
-
-        <div style={{ position: 'relative' }}>
-          {isOffCurrentWeek && (
-            <div style={{ display: 'flex', justifyContent: 'flex-end', paddingRight: 14, marginBottom: 4 }}>
-              <button
-                onClick={handleGoToToday}
-                style={{
-                  background: mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
-                  border: `1px solid ${mode === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)'}`,
-                  borderRadius: 6,
-                  padding: '3px 9px',
-                  fontFamily: T.font,
-                  fontSize: 9,
-                  fontWeight: 700,
-                  color: mode === 'dark' ? 'white' : T.ink,
-                  cursor: 'pointer',
-                  letterSpacing: '0.3px',
-                }}
-              >
-                TODAY
-              </button>
-            </div>
-          )}
-          <WeekStrip
-            weekStart={weekStart}
-            selectedDate={selectedDate}
-            today={today}
-            allJobs={allJobs}
-            onWeekChange={handleWeekChange}
-            onDaySelect={setSelectedDate}
-            T={T}
-            mode={mode}
-            variant="calendar"
-          />
         </div>
       </div>
 

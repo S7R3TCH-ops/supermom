@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useState, useCallback, useRef } from 'react';
+import { useMemo, useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAppTheme } from '../context/AppThemeContext';
 import { Title, Subheading, Text, Caption, SectionLabel } from '../components/ui/typography';
@@ -11,12 +11,12 @@ import { useNewJobSheet } from '../context/NewJobSheetContext';
 import { generateCommandBrief, speakBrief, stopSpeaking } from '../data/ai';
 import { updateDailyRoutes } from '../lib/maps';
 import { getBriefingMessage } from '../lib/briefingMessages';
-import { softDeleteJob, updateJob } from '../data/jobsRepo';
+import { updateJob } from '../data/jobsRepo';
 import { useGeofence } from '../context/GeofenceContext';
 import { useKeyboardFocus } from '../hooks/useKeyboardFocus';
 import Swipeable from '../components/ui/Swipeable';
 import WeekStrip from '../components/ui/WeekStrip';
-import { sameDay, addDays, getWeekRange, getWeekLabel, fmtTime12, dateBrief } from '../lib/dateUtils';
+import { sameDay, getWeekRange, fmtTime12, dateBrief } from '../lib/dateUtils';
 import { computeJobTotal } from '../lib/financialMath';
 import JobCard from '../components/cards/JobCard';
 import UpcomingCard from '../components/cards/UpcomingCard';
@@ -37,23 +37,13 @@ export default function Home() {
   const bizCtx = useBusiness();
   const isKeyboardFocused = useKeyboardFocus();
 
-  const [runtimeError] = useState(null);
-
   // Use a stable reference for "today"
   const [today] = useState(() => new Date());
-  const [selectedDate, setSelectedDate] = useState(() => {
-    const t = new Date();
-    t.setHours(0, 0, 0, 0);
-    return t;
-  });
-  const [weekStart, setWeekStart] = useState(() => getWeekRange(today)[0]);
   const [isSpeaking, setIsSpeaking] = useState(false);
 
-  const currentWeekStart = useMemo(() => getWeekRange(today)[0], [today]);
-  const isOffCurrentWeek = useMemo(
-    () => weekStart.toDateString() !== currentWeekStart.toDateString(),
-    [weekStart, currentWeekStart]
-  );
+  const currentWeek = useMemo(() => getWeekRange(today), [today]);
+  const currentWeekStart = currentWeek[0];
+  const currentWeekEnd = currentWeek[6];
 
   // Live clock — re-evaluates which job owns the spotlight each minute
   const [now, setNow] = useState(() => new Date());
@@ -69,25 +59,6 @@ export default function Home() {
   
   const persona = business?.ai_profile?.style || 'professional';
   
-  const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
-
-  const weekJobs = useMemo(() => {
-    if (!allJobs) return [];
-    return allJobs
-      .map(j => {
-        if (!j.scheduled_at) return null;
-        const start = new Date(j.scheduled_at);
-        if (isNaN(start.getTime())) return null;
-        const end = new Date(start.getTime() + (j.duration_est || 60) * 60000);
-        return { ...j, start, end };
-      })
-      .filter(j => {
-        if (!j || j.status === 'Cancelled') return false;
-        return weekDays.some(d => sameDay(j.start, d));
-      })
-      .sort((a, b) => a.start - b.start);
-  }, [allJobs, weekDays]);
-
   const firstName = useMemo(() => {
     try {
       if (business?.owner_name) return business.owner_name.split(' ')[0];
@@ -110,28 +81,12 @@ export default function Home() {
       .sort((a, b) => a.start - b.start);
   }, [allJobs, today]);
 
-  const selectedDateJobs = useMemo(() => {
-    if (!allJobs || !selectedDate) return [];
-    return allJobs
-      .map(j => {
-        if (!j.scheduled_at) return null;
-        const start = new Date(j.scheduled_at);
-        if (isNaN(start.getTime())) return null;
-        const end = new Date(start.getTime() + (j.duration_est || 60) * 60000);
-        return { ...j, start, end };
-      })
-      .filter(j => j && sameDay(j.start, selectedDate) && j.status !== 'Cancelled')
-      .sort((a, b) => a.start - b.start);
-  }, [allJobs, selectedDate]);
-
   const allDone = todayJobs.length > 0 && !todayJobs.some(j => j.status === 'Scheduled' || j.payment_status !== 'Paid');
 
-  const isSelectedToday = sameDay(selectedDate, today);
-
-  const displayRevenue = useMemo(() => {
-    const jobs = isSelectedToday ? todayJobs : selectedDate ? selectedDateJobs : weekJobs;
-    return jobs.reduce((s, j) => s + computeJobTotal(j), 0);
-  }, [isSelectedToday, selectedDate, todayJobs, selectedDateJobs, weekJobs]);
+  const displayRevenue = useMemo(
+    () => todayJobs.reduce((s, j) => s + computeJobTotal(j), 0),
+    [todayJobs]
+  );
 
   const activeJob = todayJobs.find(j => j.status === 'Scheduled' && j.ai_context?.clock_in_time != null);
 
@@ -163,8 +118,6 @@ export default function Home() {
   }, [allJobs, now]);
 
   const briefingMsg = useMemo(() => getBriefingMessage({
-    isSelectedToday,
-    selectedDateJobCount: selectedDateJobs.length,
     allDone,
     activeJob,
     next,
@@ -173,7 +126,7 @@ export default function Home() {
     attentionItemCount: attentionItems.length,
     persona,
     firstName,
-  }), [isSelectedToday, selectedDateJobs.length, allDone, activeJob, next, now, todayJobs, attentionItems.length, persona, firstName]);
+  }), [allDone, activeJob, next, now, todayJobs, attentionItems.length, persona, firstName]);
 
   const staleAttentionItems = useMemo(() => {
     const cutoff = new Date(now.getTime() - 48 * 60 * 60 * 1000);
@@ -181,19 +134,55 @@ export default function Home() {
   }, [attentionItems, now]);
 
   const completedPaidThisWeek = useMemo(() => {
-    return weekJobs
-      .filter(j => j.status === 'Completed' && j.payment_status === 'Paid')
+    if (!allJobs) return [];
+    return allJobs
+      .map(j => {
+        if (!j.scheduled_at) return null;
+        const start = new Date(j.scheduled_at);
+        if (isNaN(start.getTime())) return null;
+        const end = new Date(start.getTime() + (j.duration_est || 60) * 60000);
+        return { ...j, start, end };
+      })
+      .filter(j =>
+        j &&
+        j.status === 'Completed' &&
+        j.payment_status === 'Paid' &&
+        j.start >= currentWeekStart &&
+        j.start <= currentWeekEnd
+      )
       .sort((a, b) => b.start - a.start);
-  }, [weekJobs]);
+  }, [allJobs, currentWeekStart, currentWeekEnd]);
+
+  const restOfWeekJobs = useMemo(() => {
+    if (!allJobs) return [];
+    const todayMidnight = new Date(today);
+    todayMidnight.setHours(23, 59, 59, 999);
+    return allJobs
+      .map(j => {
+        if (!j.scheduled_at) return null;
+        const start = new Date(j.scheduled_at);
+        if (isNaN(start.getTime())) return null;
+        const end = new Date(start.getTime() + (j.duration_est || 60) * 60000);
+        return { ...j, start, end };
+      })
+      .filter(j =>
+        j &&
+        j.status === 'Scheduled' &&
+        j.start > todayMidnight &&
+        j.start <= currentWeekEnd
+      )
+      .sort((a, b) => a.start - b.start);
+  }, [allJobs, today, currentWeekEnd]);
 
   const [paymentMap, setPaymentMap] = useState({});
   useEffect(() => {
     const jobIds = [...new Set([
-      ...weekJobs.map(j => j.id),
       ...todayJobs.map(j => j.id),
-      ...attentionItems.map(j => j.id)
+      ...attentionItems.map(j => j.id),
+      ...restOfWeekJobs.map(j => j.id),
+      ...completedPaidThisWeek.map(j => j.id),
     ])];
-    
+
     let alive = true;
     const fetchPayments = async () => {
       if (!jobIds.length) {
@@ -205,7 +194,7 @@ export default function Home() {
         .select('job_id, amount')
         .in('job_id', jobIds)
         .eq('is_void', false);
-      
+
       if (alive) {
         const map = {};
         (data ?? []).forEach(p => { map[p.job_id] = (map[p.job_id] || 0) + Number(p.amount); });
@@ -215,7 +204,7 @@ export default function Home() {
 
     fetchPayments();
     return () => { alive = false; };
-  }, [weekJobs, todayJobs, attentionItems]);
+  }, [todayJobs, attentionItems, restOfWeekJobs, completedPaidThisWeek]);
 
   const todayUpcoming = useMemo(() => {
     return todayJobs.filter(j =>
@@ -227,21 +216,6 @@ export default function Home() {
   }, [todayJobs, activeJob, next, now]);
 
   const attentionRef = useRef(null);
-
-  const nextUpLabel = useMemo(() => {
-    if (!selectedDate || isSelectedToday || !next) return null;
-    return `Next Up Today: ${fmtTime12(next.start).time}${fmtTime12(next.start).period} @ ${next.client_name}`;
-  }, [selectedDate, isSelectedToday, next]);
-
-  const handleDeleteJob = async (jobId) => {
-    if (!window.confirm('Delete this job?')) return;
-    try {
-      await softDeleteJob(jobId);
-      notifyDataChanged();
-    } catch {
-      alert('Could not delete job.');
-    }
-  };
 
   const handleDuplicateJob = (job) => {
     newJobSheet.openWithPrefill({
@@ -299,17 +273,6 @@ export default function Home() {
 
   const [isRefreshingTraffic, setIsRefreshingTraffic] = useState(false);
 
-  const handleWeekChange = useCallback((delta) => {
-    setWeekStart(prev => addDays(prev, delta * 7));
-  }, []);
-
-  const handleGoToToday = useCallback(() => {
-    const t = new Date();
-    t.setHours(0, 0, 0, 0);
-    setSelectedDate(t);
-    setWeekStart(getWeekRange(t)[0]);
-  }, []);
-
   const handleRefreshTraffic = async (e) => {
     e.stopPropagation();
     setIsRefreshingTraffic(true);
@@ -348,15 +311,6 @@ export default function Home() {
       alert("Could not add cost.");
     }
   };
-
-  if (runtimeError) {
-    return (
-      <div style={{ padding: 24, color: '#E91E6A', background: '#0A0A0A', height: '100svh' }}>
-        <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 12 }}>✦ Critical Error</div>
-        <div style={{ fontSize: 13, fontFamily: 'monospace', opacity: 0.8 }}>{runtimeError}</div>
-      </div>
-    );
-  }
 
   // Safety check for context
   if (!themeCtx || !jobsCtx || !authCtx) {

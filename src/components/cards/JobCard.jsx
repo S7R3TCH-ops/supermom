@@ -1,7 +1,7 @@
 import { fmtTimeRange, dateBrief } from '../../lib/dateUtils';
 import PaymentBreakdown from './PaymentBreakdown';
 
-export default function JobCard({ job: j, T, onClick, onDuplicate, paid = 0, total = 0, privacyOn = false }) {
+export default function JobCard({ job: j, T, onClick, onDuplicate, paid = 0, total = 0, privacyOn = false, subtle = false }) {
   const isCompleted = j.status === 'Completed';
   const isPaid = j.payment_status === 'Paid';
   const isPartial = j.payment_status === 'Partial';
@@ -22,13 +22,14 @@ export default function JobCard({ job: j, T, onClick, onDuplicate, paid = 0, tot
       <div
         onClick={onClick}
         style={{
-          background: urgencyBg,
-          border: `1.5px solid ${urgencyColor}`,
-          borderLeft: `5px solid ${urgencyColor}`,
+          background: subtle ? 'transparent' : urgencyBg,
+          border: subtle ? `1px solid ${T.cardBorder}` : `1.5px solid ${urgencyColor}`,
+          borderLeft: subtle ? `1px solid ${T.cardBorder}` : `5px solid ${urgencyColor}`,
           borderRadius: 14,
           marginBottom: 9,
           cursor: 'pointer',
           padding: '10px 14px',
+          opacity: subtle ? 0.6 : 1,
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>

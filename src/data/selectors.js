@@ -3,6 +3,8 @@
 // owed, amt, tags, note, etc.). Keeps DB schema clean while letting the UI
 // keep using fields like `c.init` and `c.color`.
 
+import { computeJobTotal } from '../lib/financialMath';
+
 const PALETTE = [
   '#E91E6A', '#8B5CF6', '#06B6D4', '#F59E0B', '#22C55E', '#EC4899',
   '#3B82F6', '#EF4444', '#14B8A6', '#A855F7',
@@ -50,9 +52,9 @@ export function toDisplayClient(row, jobs = []) {
   const nextJob = future[future.length - 1];
   const unpaidJobs = sorted.filter(j =>
     j?.job_status === 'Completed' &&
-    (j?.payment_status === '' || j?.payment_status === 'Partial')
+    (j?.payment_status == null || j?.payment_status === '' || j?.payment_status === 'Partial')
   );
-  const owedTotal = unpaidJobs.reduce((sum, j) => sum + Number(j?.total_amount || 0), 0);
+  const owedTotal = unpaidJobs.reduce((sum, j) => sum + computeJobTotal(j), 0);
   const lastService = lastJob?.service_name || nextJob?.service_name || '—';
 
   const recurrence = ai.recurrence ?? null;

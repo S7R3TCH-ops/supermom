@@ -55,12 +55,12 @@ After the v0.6.2 refactor, these symbols moved. The old locations no longer exis
 
 ---
 
-## Current State (v0.6.4 — May 18, 2026)
+## Current State (v0.6.5 — May 19, 2026)
 
 | Feature | Status |
 |---|---|
 | Auth (login / forgot password) | ✅ Live |
-| Home — schedule, revenue, week strip | ✅ Live — Today pill when off-week (v0.6.3) |
+| Home — always-today dashboard | ✅ Live — Command Brief hero; Today/Needs Action/Rest of Week/Done This Week sections (v0.6.5) |
 | Home hero banner text | ✅ Live — Fraunces serif; time-of-day + nickname system |
 | Calendar — Day/Week/Agenda | ✅ Live — dynamic timeline bounds, cancelled jobs shown grey (v0.6.3) |
 | Job cancellation (all users) | ✅ Live — cancel with required reason; status → Cancelled; shown in history (v0.6.3) |
@@ -93,11 +93,12 @@ After the v0.6.2 refactor, these symbols moved. The old locations no longer exis
 
 ## Next priorities
 
-1. **Sandra user testing** — gather live friction points from real use; test Finance drill-downs and period filtering on her iPhone
-2. **WeekView cancelled job treatment** — currently shows pink/green based on paid status; should go grey for cancelled (minor oversight from v0.6.3)
-3. **Daily job briefing email** — Vercel Cron (7am Toronto), Resend for transactional email; today + tomorrow jobs, outstanding payments (Phase 2, parked)
-4. **Client engagement tools** — AI-suggested follow-ups and re-booking reminders
-5. **Offline mode** — app crashes if Supabase unreachable on initial load
-6. **Credential rotation** — DB password + GitHub token were in a public repo commit; may still need rotation (check memory file)
+1. **Deploy v0.6.5** — push `main` to trigger Vercel auto-deploy; test Home redesign on Sandra's iPhone and Joel's Pixel
+2. **Sandra user testing** — gather live friction points from real use; test Finance drill-downs and period filtering
+3. **WeekView cancelled job treatment** — currently shows pink/green based on paid status; should go grey for cancelled (minor oversight from v0.6.3)
+4. **Daily job briefing email** — Vercel Cron (7am Toronto), Resend for transactional email; today + tomorrow jobs, outstanding payments (Phase 2, parked)
+5. **Client engagement tools** — AI-suggested follow-ups and re-booking reminders
+6. **Offline mode** — app crashes if Supabase unreachable on initial load
+7. **Credential rotation** — DB password + GitHub token were in a public repo commit; may still need rotation (check memory file)
 
-(Updated by Claude Code — May 18, 2026 — v0.6.4)
+(Updated by Claude Code — May 19, 2026 — v0.6.5)

@@ -97,9 +97,17 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 ---
 
-## Current version: 0.6.4
+## Current version: 0.6.5
 
 All core features are live. The app is in active use by Sandra.
+
+### Recent changes (v0.6.5 — May 19, 2026)
+- **Home page redesign** — Replaced dual-mode Home (week browser + daily dashboard) with always-today action dashboard.
+  - Hero: always-on Command Brief (date + briefing message + today's projected revenue). WeekStrip removed entirely.
+  - Body: Today (Active Job spotlight → Next Up → Coming Up Today) → Needs Action (carry-forward amber cards) → Rest of This Week (compact upcoming) → Done This Week (muted `subtle` JobCards).
+  - `briefingMessages.js`: removed `isSelectedToday` guard; function always anchors to real today.
+  - `Home.jsx`: stripped all week-nav state (`selectedDate`, `weekStart`, `weekDays`), added `restOfWeekJobs` derived list, removed `WeekStrip` import and unused handlers (`handleWeekChange`, `handleGoToToday`, `handleDeleteJob`).
+  - `JobCard`: added `subtle` prop — transparent bg, thin border, 0.6 opacity for Done This Week section.
 
 ### Recent changes (v0.6.4 — May 18, 2026)
 - **Finance page — clickable tiles + drill-down** — All 4 stat tiles (Revenue, Expenses, Outstanding, Profit) now open a `FinanceDetailSheet` with the jobs/expenses that make up that number, filtered to the selected period.

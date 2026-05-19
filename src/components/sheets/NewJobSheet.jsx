@@ -38,6 +38,26 @@ function addMinutes(hhmm, mins) {
   return fmtTime12(`${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`);
 }
 
+// Returns HH:MM string for use in <input type="time">
+function toHHMMStr(startHHMM, mins) {
+  if (!startHHMM || !mins) return '';
+  const [h, m] = startHHMM.split(':').map(Number);
+  const total = h * 60 + m + mins;
+  if (total <= 0) return '';
+  const eh = Math.floor(total / 60) % 24;
+  const em = total % 60;
+  return `${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`;
+}
+
+// Returns minute diff between two HH:MM strings (null if invalid or negative)
+function diffMinutes(startHHMM, endHHMM) {
+  if (!startHHMM || !endHHMM) return null;
+  const [sh, sm] = startHHMM.split(':').map(Number);
+  const [eh, em] = endHHMM.split(':').map(Number);
+  const diff = (eh * 60 + em) - (sh * 60 + sm);
+  return diff >= 15 ? diff : null;
+}
+
 export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
   const { T } = useAppTheme();
   const toast = useToast();
@@ -504,25 +524,44 @@ function Step2What({
         )}
       </div>
 
-      {/* Date & Time */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 12 }}>
-        <div>
-          <SectionLabel>When</SectionLabel>
-          <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: 12, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.ink, fontSize: 14, outline: 'none' }} />
+      {/* Date */}
+      <div>
+        <SectionLabel>When</SectionLabel>
+        <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: 12, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.ink, fontSize: 14, outline: 'none' }} />
+      </div>
+
+      {/* Start & End Time */}
+      <div>
+        <SectionLabel>Time</SectionLabel>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 18px 1fr', alignItems: 'end', gap: 4 }}>
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 600, color: T.inkMuted, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.4px' }}>Start</div>
+            <input type="time" value={time} onChange={e => setTime(e.target.value)} style={{ width: '100%', padding: '10px 8px', borderRadius: 12, background: T.card, border: `1.5px solid ${time ? T.cardBorder : T.pink}`, color: T.ink, fontSize: 14, outline: 'none' }} />
+          </div>
+          <div style={{ textAlign: 'center', color: T.inkMuted, fontSize: 13, paddingBottom: 10 }}>→</div>
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 600, color: T.inkMuted, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.4px' }}>End</div>
+            <input
+              type="time"
+              value={toHHMMStr(time, duration)}
+              disabled={!time}
+              onChange={e => {
+                const mins = diffMinutes(time, e.target.value);
+                if (mins != null) setDuration(mins);
+              }}
+              style={{ width: '100%', padding: '10px 8px', borderRadius: 12, background: T.card, border: `1.5px solid ${T.cardBorder}`, color: T.ink, fontSize: 14, outline: 'none', opacity: time ? 1 : 0.4 }}
+            />
+          </div>
         </div>
-        <div>
-          <SectionLabel>Time</SectionLabel>
-          <input type="time" value={time} onChange={e => setTime(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: 12, background: T.card, border: `1px solid ${time ? T.cardBorder : T.pink}`, color: T.ink, fontSize: 14, outline: 'none' }} />
-          {suggestedTime && !time && (
-            <button
-              onClick={() => setTime(suggestedTime)}
-              style={{ marginTop: 6, background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
-            >
-              <span style={{ fontSize: 10, color: T.pink, fontWeight: 700 }}>Usually {fmtTime12(suggestedTime)}</span>
-              <span style={{ fontSize: 10, color: T.inkMuted }}>— tap to use</span>
-            </button>
-          )}
-        </div>
+        {suggestedTime && !time && (
+          <button
+            onClick={() => setTime(suggestedTime)}
+            style={{ marginTop: 6, background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+          >
+            <span style={{ fontSize: 10, color: T.pink, fontWeight: 700 }}>Usually {fmtTime12(suggestedTime)}</span>
+            <span style={{ fontSize: 10, color: T.inkMuted }}>— tap to use</span>
+          </button>
+        )}
       </div>
 
       {/* Duration Stepper */}

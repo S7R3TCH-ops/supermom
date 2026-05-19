@@ -45,6 +45,21 @@ function calcEnd(timeStr, hours) {
   const hh = Math.floor(total / 60) % 24, mm = total % 60;
   return `${((hh + 11) % 12) + 1}:${mm.toString().padStart(2, '0')} ${hh < 12 ? 'AM' : 'PM'}`;
 }
+function toHHMMStr(startHHMM, mins) {
+  if (!startHHMM || !mins) return '';
+  const [h, m] = startHHMM.split(':').map(Number);
+  const total = h * 60 + m + mins;
+  if (total <= 0) return '';
+  const eh = Math.floor(total / 60) % 24, em = total % 60;
+  return `${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`;
+}
+function diffMinutes(startHHMM, endHHMM) {
+  if (!startHHMM || !endHHMM) return null;
+  const [sh, sm] = startHHMM.split(':').map(Number);
+  const [eh, em] = endHHMM.split(':').map(Number);
+  const diff = (eh * 60 + em) - (sh * 60 + sm);
+  return diff >= 15 ? diff : null;
+}
 
 /* ============= ROOT COMPONENT ============= */
 export default function JobDetailSheet({ jobId, onClose }) {
@@ -530,7 +545,28 @@ function EditMode({ job, form, setForm, services, business, T, mode, busy, showS
         transition: 'padding-bottom 0.2s ease-out'
       }}>
         <Field T={T} label="Date"><input type="date" value={form.scheduled_date} onChange={e => set('scheduled_date', e.target.value)} style={iStyle(T)} /></Field>
-        <Field T={T} label="Time"><input type="time" value={form.scheduled_time} onChange={e => set('scheduled_time', e.target.value)} style={iStyle(T)} /></Field>
+        <Field T={T} label="Time">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 18px 1fr', alignItems: 'end', gap: 4 }}>
+            <div>
+              <div style={{ fontSize: 9, fontWeight: 600, color: T.inkMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.4px' }}>Start</div>
+              <input type="time" value={form.scheduled_time} onChange={e => set('scheduled_time', e.target.value)} style={iStyle(T)} />
+            </div>
+            <div style={{ textAlign: 'center', color: T.inkMuted, fontSize: 13, paddingBottom: 9 }}>→</div>
+            <div>
+              <div style={{ fontSize: 9, fontWeight: 600, color: T.inkMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.4px' }}>End</div>
+              <input
+                type="time"
+                value={toHHMMStr(form.scheduled_time, Math.round(parseFloat(form.estimated_hours || 0) * 60))}
+                disabled={!form.scheduled_time}
+                onChange={e => {
+                  const mins = diffMinutes(form.scheduled_time, e.target.value);
+                  if (mins != null) { set('estimated_hours', (mins / 60).toFixed(2)); set('hoursTouched', true); }
+                }}
+                style={{ ...iStyle(T), opacity: form.scheduled_time ? 1 : 0.4 }}
+              />
+            </div>
+          </div>
+        </Field>
         <Field T={T} label="Service">
           <select value={form.service_id || ''} onChange={onPickService} style={{ ...iStyle(T), width: '100%' }}>
             <option value="">— select —</option>

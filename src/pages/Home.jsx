@@ -41,9 +41,12 @@ export default function Home() {
   const [today] = useState(() => new Date());
   const [isSpeaking, setIsSpeaking] = useState(false);
 
-  const currentWeek = useMemo(() => getWeekRange(today), [today]);
-  const currentWeekStart = currentWeek[0];
-  const currentWeekEnd = currentWeek[6];
+  const [currentWeekStart, currentWeekEnd] = useMemo(() => {
+    const week = getWeekRange(today);
+    const endOfSunday = new Date(week[6]);
+    endOfSunday.setHours(23, 59, 59, 999);
+    return [week[0], endOfSunday];
+  }, [today]);
 
   // Live clock — re-evaluates which job owns the spotlight each minute
   const [now, setNow] = useState(() => new Date());

@@ -1,11 +1,12 @@
 import { fmtTimeRange, dateBrief } from '../../lib/dateUtils';
 import PaymentBreakdown from './PaymentBreakdown';
-
-const BORDER = '#E91E6A';
-const BG = '#FFF0F7';
-const ACCENT = '#E91E6A';
+import { useAppTheme } from '../../context/AppThemeContext';
 
 export default function UpcomingCard({ job: j, T, onClick, total = 0, paid = 0, privacyOn = false }) {
+  const { mode } = useAppTheme();
+  const BORDER = T.pink;
+  const ACCENT = T.pink;
+  const BG = mode === 'dark' ? 'rgba(233,30,106,0.1)' : '#FFF0F7';
   const timeRange = j.start && j.end ? fmtTimeRange(j.start, j.end) : '—';
   const remaining = Math.max(0, total - paid);
 
@@ -14,7 +15,7 @@ export default function UpcomingCard({ job: j, T, onClick, total = 0, paid = 0, 
       onClick={onClick}
       style={{
         background: BG,
-        border: `1px solid ${BORDER}30`,
+        border: `1px solid ${BORDER}22`,
         borderLeft: `4px solid ${BORDER}`,
         borderRadius: 16,
         padding: '11px 14px 11px 12px',
@@ -39,7 +40,7 @@ export default function UpcomingCard({ job: j, T, onClick, total = 0, paid = 0, 
           <span style={{
             fontFamily: T.font, fontSize: 9, fontWeight: 800,
             textTransform: 'uppercase', letterSpacing: '0.3px',
-            background: `${ACCENT}20`, color: ACCENT,
+            background: `${ACCENT}22`, color: ACCENT,
             padding: '3px 7px', borderRadius: 4,
           }}>
             UPCOMING
@@ -61,7 +62,7 @@ export default function UpcomingCard({ job: j, T, onClick, total = 0, paid = 0, 
         <span style={{
           fontFamily: T.font, fontSize: 9, fontWeight: 700,
           textTransform: 'uppercase', letterSpacing: '0.4px',
-          background: `${ACCENT}15`, color: ACCENT,
+          background: `${ACCENT}18`, color: ACCENT,
           padding: '2px 7px', borderRadius: 4, flexShrink: 0,
         }}>
           {j.service_name}

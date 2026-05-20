@@ -9,6 +9,7 @@ import Swipeable from '../components/ui/Swipeable';
 import WeekStrip from '../components/ui/WeekStrip';
 import { softDeleteJob } from '../data/jobsRepo';
 import { notifyDataChanged } from '../data/useData';
+import { getNavigationUrl } from '../lib/maps';
 
 // Real "now" — was previously a hard-coded prototype anchor.
 const NOW = () => new Date();
@@ -338,8 +339,15 @@ function DayView({ T, mode, privacyOn, selectedDay, todayJobs, nextUpcoming, onJ
                 <div style={{ position: 'absolute', bottom: 5, right: 7, display: 'flex', alignItems: 'center', gap: 3 }}>
                   {!privacyOn && <span style={{ fontFamily: T.serif, fontSize: 11, fontWeight: 500, color: j.color }}>${j.total}</span>}
                   {privacyOn && <span style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, letterSpacing: '2px' }}>•••</span>}
-                  <span style={{ color: T.inkMuted, fontSize: 9 }}>·</span>
-                  <span style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, color: j.color, letterSpacing: '0.3px', cursor: 'pointer' }}>↗ Directions</span>
+                  {j.client?.address && (
+                    <>
+                      <span style={{ color: T.inkMuted, fontSize: 9 }}>·</span>
+                      <span
+                        onClick={(e) => { e.stopPropagation(); window.open(getNavigationUrl(j.client.address), '_blank'); }}
+                        style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, color: j.color, letterSpacing: '0.3px', cursor: 'pointer' }}
+                      >↗ Directions</span>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -624,7 +632,7 @@ const AgendaCard = memo(function AgendaCard({ T, mode, privacyOn, job, isNext, c
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 8 }}>
+      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 8, alignItems: 'center' }}>
         {badges.map((b, i) => (
           <span key={i} style={{
             fontFamily: T.font, fontSize: 9, fontWeight: 700,
@@ -633,6 +641,17 @@ const AgendaCard = memo(function AgendaCard({ T, mode, privacyOn, job, isNext, c
             background: b.bg, color: b.fg,
           }}>{b.text}</span>
         ))}
+        {job.client?.address && (
+          <button
+            onClick={(e) => { e.stopPropagation(); window.open(getNavigationUrl(job.client.address), '_blank'); }}
+            style={{
+              marginLeft: 'auto', fontFamily: T.font, fontSize: 9, fontWeight: 700,
+              letterSpacing: '0.4px', textTransform: 'uppercase',
+              padding: '2px 9px', borderRadius: 5, cursor: 'pointer',
+              background: 'transparent', border: `1px solid ${border}`, color: job.color,
+            }}
+          >↗ DIRECTIONS</button>
+        )}
       </div>
       {isCancelled && job.ai_context?.cancellation_reason && (
         <div style={{ fontFamily: T.font, fontSize: 10.5, color: T.inkMuted, marginTop: 4, fontStyle: 'italic' }}>

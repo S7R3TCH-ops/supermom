@@ -1,75 +1,93 @@
 import { fmtTimeRange, dateBrief } from '../../lib/dateUtils';
 import PaymentBreakdown from './PaymentBreakdown';
 
+const BORDER = '#E91E6A';
+const BG = '#FFF0F7';
+const ACCENT = '#E91E6A';
+
 export default function UpcomingCard({ job: j, T, onClick, total = 0, paid = 0, privacyOn = false }) {
-  const BLUE = '#1565C0';
-  const timeRange = fmtTimeRange(j.start, j.end);
+  const timeRange = j.start && j.end ? fmtTimeRange(j.start, j.end) : '—';
+  const remaining = Math.max(0, total - paid);
+
   return (
     <div
       onClick={onClick}
       style={{
-        background: 'rgba(21,101,192,0.07)',
-        border: `2px solid ${BLUE}`,
-        borderLeft: `6px solid ${BLUE}`,
-        borderRadius: 14,
-        marginBottom: 10,
+        background: BG,
+        border: `1px solid ${BORDER}30`,
+        borderLeft: `4px solid ${BORDER}`,
+        borderRadius: 16,
+        padding: '11px 14px 11px 12px',
+        marginBottom: 8,
         cursor: 'pointer',
-        overflow: 'hidden',
       }}
     >
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: '9px 14px 7px',
-        borderBottom: `1px solid ${BLUE}25`,
-      }}>
-        <div style={{ fontFamily: 'monospace', fontSize: 20, fontWeight: 900, color: BLUE, letterSpacing: '-0.5px', lineHeight: 1 }}>
+      {/* Row 1: time — amount + UPCOMING badge */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
+        <div style={{ fontFamily: T.font, fontSize: 13, fontWeight: 700, color: ACCENT }}>
           {timeRange}
         </div>
-        <div style={{ fontSize: 9, fontWeight: 800, color: BLUE, textTransform: 'uppercase', background: `${BLUE}18`, padding: '3px 8px', borderRadius: 5, letterSpacing: '0.4px' }}>
-          UPCOMING
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {total > 0 && (
+            <span style={{
+              fontFamily: T.serif, fontSize: 14, fontWeight: 500, color: ACCENT,
+              fontVariantNumeric: 'tabular-nums',
+            }}>
+              {privacyOn ? '•••' : `$${total.toFixed(0)}`}
+            </span>
+          )}
+          <span style={{
+            fontFamily: T.font, fontSize: 9, fontWeight: 800,
+            textTransform: 'uppercase', letterSpacing: '0.3px',
+            background: `${ACCENT}20`, color: ACCENT,
+            padding: '3px 7px', borderRadius: 4,
+          }}>
+            UPCOMING
+          </span>
         </div>
       </div>
 
-      <div style={{ padding: '8px 14px 10px' }}>
-        <div style={{ fontFamily: T.serif, fontSize: 17, fontWeight: 600, color: T.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 1 }}>
-          {j.client_name}
-        </div>
-        <div style={{ fontSize: 10, fontWeight: 600, color: BLUE, opacity: 0.7, marginBottom: 3 }}>
-          {dateBrief(j.start)}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: BLUE, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-            {j.service_name}
-          </div>
-          {total > 0 && (
-            <>
-              <span style={{ fontSize: 10, color: BLUE, opacity: 0.4 }}>·</span>
-              <span style={{ fontSize: 11, fontWeight: 600, color: BLUE }}>
-                {privacyOn ? '•••' : `$${total.toFixed(0)}`}
-              </span>
-            </>
-          )}
-        </div>
-        {j.job_notes ? (
-          <div style={{
-            fontSize: 11,
-            color: BLUE,
-            opacity: 0.7,
-            fontStyle: 'italic',
-            marginTop: 4,
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
-            lineHeight: 1.4,
-          }}>
-            {j.job_notes}
-          </div>
-        ) : null}
-        {paid > 0 && total > 0 && <PaymentBreakdown j={j} paid={paid} total={total} privacyOn={privacyOn} T={T} metaColor={BLUE} />}
+      {/* Row 2: client name */}
+      <div style={{
+        fontFamily: T.serif, fontSize: 16, fontWeight: 500, color: T.ink,
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        letterSpacing: '-0.3px', marginBottom: 4,
+      }}>
+        {j.client_name}
       </div>
+
+      {/* Row 3: service pill + date */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{
+          fontFamily: T.font, fontSize: 9, fontWeight: 700,
+          textTransform: 'uppercase', letterSpacing: '0.4px',
+          background: `${ACCENT}15`, color: ACCENT,
+          padding: '2px 7px', borderRadius: 4, flexShrink: 0,
+        }}>
+          {j.service_name}
+        </span>
+        <span style={{ fontFamily: T.font, fontSize: 10.5, fontWeight: 500, color: T.inkSub }}>
+          {dateBrief(j.start)}
+        </span>
+      </div>
+
+      {/* Row 4: payment breakdown for pre-paid jobs */}
+      {remaining > 0 && (
+        <div style={{ marginTop: 6 }}>
+          <PaymentBreakdown j={j} paid={paid} total={total} privacyOn={privacyOn} T={T} metaColor={ACCENT} />
+        </div>
+      )}
+
+      {/* Row 5: job notes */}
+      {j.job_notes && (
+        <div style={{
+          fontSize: 11, color: T.inkMuted, fontStyle: 'italic', marginTop: 5,
+          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+          overflow: 'hidden', lineHeight: 1.4,
+        }}>
+          {j.job_notes}
+        </div>
+      )}
     </div>
   );
 }

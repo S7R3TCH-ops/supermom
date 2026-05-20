@@ -454,7 +454,13 @@ function addMonthsToDateStr(dateStr, months) {
 function decorateJob(j) {
   if (!j) return j;
   const iso = _composeTorontoISO(j.scheduled_date, j.scheduled_time);
-  const durationMin = j.estimated_hours != null ? Math.round(Number(j.estimated_hours) * 60) : null;
+  // For completed jobs with a recorded actual_duration, use it so end times
+  // everywhere (Home, Calendar, overlap checker) reflect what actually happened.
+  const actualHrs = j.job_status === 'Completed' && Number(j.actual_duration) > 0
+    ? Number(j.actual_duration)
+    : null;
+  const durationHours = actualHrs ?? (j.estimated_hours != null ? Number(j.estimated_hours) : 0);
+  const durationMin = durationHours > 0 ? Math.round(durationHours * 60) : null;
   return { ...j, scheduled_at: iso, duration_est: durationMin };
 }
 

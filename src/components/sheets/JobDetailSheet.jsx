@@ -360,7 +360,10 @@ function ReadMode({
   const payKey  = job.payment_status || '';
   const payC    = PAY_COLORS[payKey] || PAY_COLORS[''];
   
-  const endTime = calcEnd(job.scheduled_time, job.estimated_hours);
+  const displayHours = (job.job_status === 'Completed' && Number(job.actual_duration) > 0)
+    ? Number(job.actual_duration)
+    : Number(job.estimated_hours || 0);
+  const endTime = calcEnd(job.scheduled_time, displayHours);
   const timeRange = job.scheduled_time ? `${fmtTime12(job.scheduled_time)}${endTime ? ` – ${endTime}` : ''}` : '—';
 
   return (

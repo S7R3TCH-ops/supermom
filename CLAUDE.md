@@ -97,9 +97,15 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 ---
 
-## Current version: 0.6.8
+## Current version: 0.7.0
 
 All core features are live. The app is in active use by Sandra.
+
+### Recent changes (v0.7.0 — May 19, 2026)
+- **Home card refresh** — Unified card anatomy across all Home sections. Left-border colour = state signal: amber (`#F59E0B` border / `#FEF3C7` bg) for Needs Action, pink (`#E91E6A`) for Coming Up Today, green (`#86EFAC` border / `#F0FFF5` bg) for Done This Week, soft pink-pale for Rest of Week. Removed all monospace fonts throughout — time displays now use Inter (`T.font`). UpcomingCard blue palette (`#1565C0`) fully replaced with on-brand pink. Section label colours fixed (COMING UP TODAY no longer cobalt blue, Needs Action uses dark amber `#78350F`). All dynamic features preserved: PaymentBreakdown, privacy mode, rebook button, status badges, notes, address. Dark mode support improved in UpcomingCard (uses `T.pink` and mode-aware bg).
+
+### Recent changes (v0.6.9 — May 19, 2026)
+- **Calendar Directions buttons** — Day view `↗ Directions` span is now a real tappable element: stops event propagation (no longer opens job detail), opens Google Maps `/dir/` URL. Hidden when job has no client address. Agenda view gets an `↗ DIRECTIONS` button pushed to the right end of the badge row, same behavior.
 
 ### Recent changes (v0.6.8 — May 19, 2026)
 - **Needs Action card — time display** — Now shows full start–end time range (e.g. `Mon, May 19 · 10:00 – 11:30 AM`) instead of start-only.

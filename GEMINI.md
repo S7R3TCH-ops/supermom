@@ -93,13 +93,14 @@ After the v0.6.2 refactor, these symbols moved. The old locations no longer exis
 | Storage (photos + voice notes) | ✅ Live |
 | Conflict detection | ✅ Live — cancelled jobs excluded (v0.6.3) |
 | Code-split bundle | ✅ Live |
+| Home card refresh — unified anatomy | ✅ Live — left-border state colours, no monospace, UpcomingCard pink, all dynamic features intact (v0.7.0) |
 
 ---
 
 ## Next priorities
 
-1. **Calendar/agenda direction buttons** — Plain "Directions" button (no Supermom Go animation) on Calendar day-view event cards and agenda list. Need to read `Calendar.jsx` before touching it.
-2. **Job card colour/branding refresh** — Cards need more visual pop in line with 2026 design palettes; Supermom brand should be more subtle (less literal superhero, more brand-forward). Planned but not started.
+1. ~~**Calendar/agenda direction buttons**~~ — ✅ Done (v0.6.9). Day view ↗ Directions wired up with stopPropagation + Maps URL; hidden when no address. Agenda card gets ↗ DIRECTIONS button pushed to badge row right.
+2. ~~**Job card colour/branding refresh**~~ — ✅ Done (v0.7.0). Unified anatomy, left-border state signal, design-system colours, monospace eliminated.
 3. **Workflow smoothness pass** — Swipeability and flow from client → job → finance; Joel has specific ideas to refine. Full brainstorm needed before implementation.
 4. **Past job creation block** — Jobs cannot be created in the past; block this in the UI (NewJobSheet date picker).
 5. **Delete from job/client detail** — No delete option exists when drilling into a job or client detail view. Add it for admin + appropriate user roles.
@@ -109,4 +110,4 @@ After the v0.6.2 refactor, these symbols moved. The old locations no longer exis
 9. **Offline mode** — crashes if Supabase unreachable on initial load.
 10. **Credential rotation** — DB password + GitHub token were in a public repo commit; check memory file.
 
-(Updated by Claude Code — May 19, 2026 — v0.6.8)
+(Updated by Claude Code — May 19, 2026 — v0.7.0)

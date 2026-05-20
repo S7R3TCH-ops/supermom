@@ -14,13 +14,13 @@ export default function JobCard({ job: j, T, onClick, onDuplicate, paid = 0, tot
     : isUnpaid || isPartial ? '#FEF3C7'
     : isPaid ? '#F0FFF5'
     : '#FFF0F7';
-  const accentColor = isUnpaid || isPartial ? '#B45309' : isPaid ? '#14532D' : '#E91E6A';
+  const accentColor = isUnpaid || isPartial ? '#78350F' : isPaid ? '#14532D' : '#E91E6A';
   const statusLabel = isPartial ? 'PARTIAL' : isUnpaid ? 'UNPAID' : isPaid ? 'PAID ✓' : 'SCHEDULED';
 
   const remaining = isPaid ? 0 : Math.max(0, total - paid);
   const showAmount = (isCompleted || total > 0) && total > 0;
-  const timeRange = fmtTimeRange(j.start, j.end);
-  const dateLabel = dateBrief(j.start);
+  const timeRange = j.start && j.end ? fmtTimeRange(j.start, j.end) : '—';
+  const dateLabel = j.start ? dateBrief(j.start) : '';
 
   return (
     <div
@@ -29,7 +29,7 @@ export default function JobCard({ job: j, T, onClick, onDuplicate, paid = 0, tot
         background: bgColor,
         border: `1px solid ${borderColor}30`,
         borderLeft: `4px solid ${borderColor}`,
-        borderRadius: 14,
+        borderRadius: 16,
         padding: '11px 14px 11px 12px',
         marginBottom: 8,
         cursor: 'pointer',

@@ -14,7 +14,7 @@ import { getBriefingMessage } from '../lib/briefingMessages';
 import { updateJob } from '../data/jobsRepo';
 import { useGeofence } from '../context/GeofenceContext';
 import { useKeyboardFocus } from '../hooks/useKeyboardFocus';
-import { sameDay, getWeekRange, fmtTime12, dateBrief } from '../lib/dateUtils';
+import { sameDay, getWeekRange, fmtTime12, fmtTimeRange, dateBrief } from '../lib/dateUtils';
 import { computeJobTotal } from '../lib/financialMath';
 import JobCard from '../components/cards/JobCard';
 import UpcomingCard from '../components/cards/UpcomingCard';
@@ -651,10 +651,13 @@ export default function Home() {
             <SectionLabel color="#F59E0B">Needs Action</SectionLabel>
             {attentionItems.map(j => {
               const needsWrap = j.status !== 'Completed';
-              const startTime = fmtTime12(j.start);
               const paid = paymentMap[j.id] || 0;
               const total = computeJobTotal(j);
               const remaining = Math.max(0, total - paid);
+              const src = j.raw || j;
+              const isHourly = src.pricing_type === 'Hourly';
+              const rate = Number(src.hourly_rate || src.flat_rate || 0);
+              const pricingLabel = isHourly ? `Hourly · $${rate.toFixed(0)}/hr` : 'Flat rate';
               return (
                 <div
                   key={j.id}
@@ -676,13 +679,29 @@ export default function Home() {
                         {j.service_name}
                       </div>
                       <div style={{ fontSize: 11, color: '#92400E', marginTop: 4 }}>
-                        {j.start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · {startTime.time}{startTime.period}
+                        {j.start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · {fmtTimeRange(j.start, j.end)}
                       </div>
-                      <div style={{ marginTop: 5 }}>
-                        {remaining > 0
-                          ? <PaymentBreakdown j={j} paid={paid} total={total} privacyOn={privacyOn} T={T} metaColor="#92400E" />
-                          : <span style={{ fontSize: 12, color: '#D97706', fontWeight: 700 }}>${total.toFixed(0)} total</span>
-                        }
+                      <div style={{ marginTop: 5, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <div style={{ fontSize: 10, color: '#92400E', opacity: 0.7, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                          {pricingLabel}
+                        </div>
+                        {privacyOn ? (
+                          <span style={{ fontSize: 13, fontWeight: 800, color: T.pink, letterSpacing: '-0.2px' }}>••• owing</span>
+                        ) : remaining > 0 ? (
+                          <div style={{ fontSize: 13, fontWeight: 700, fontVariantNumeric: 'tabular-nums', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 4 }}>
+                            {paid > 0 && (
+                              <>
+                                <span style={{ color: '#92400E', opacity: 0.7 }}>${total.toFixed(0)} total</span>
+                                <span style={{ color: '#92400E', opacity: 0.4 }}>·</span>
+                                <span style={{ color: '#16A34A' }}>${paid.toFixed(0)} paid</span>
+                                <span style={{ color: '#92400E', opacity: 0.4 }}>·</span>
+                              </>
+                            )}
+                            <span style={{ color: T.pink, fontWeight: 800 }}>${remaining.toFixed(0)} owing</span>
+                          </div>
+                        ) : (
+                          <span style={{ fontSize: 12, color: '#D97706', fontWeight: 700 }}>${total.toFixed(0)} total</span>
+                        )}
                       </div>
                     </div>
                     <button
@@ -703,8 +722,6 @@ export default function Home() {
           <div style={{ marginBottom: 24 }}>
             <SectionLabel style={{ color: T.inkSub, marginBottom: 8 }}>REST OF THIS WEEK</SectionLabel>
             {restOfWeekJobs.map(j => {
-              const startFmt = fmtTime12(j.start);
-              const endFmt = fmtTime12(j.end);
               const total = computeJobTotal(j);
               return (
                 <div
@@ -722,15 +739,12 @@ export default function Home() {
                     gap: 12,
                   }}
                 >
-                  <div style={{ flexShrink: 0, textAlign: 'center', minWidth: 56 }}>
-                    <div style={{ fontSize: 9.5, fontWeight: 700, color: T.inkSub, marginBottom: 3, whiteSpace: 'nowrap' }}>
+                  <div style={{ flexShrink: 0, textAlign: 'center', minWidth: 60 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: T.inkSub, marginBottom: 2, whiteSpace: 'nowrap' }}>
                       {j.start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                     </div>
-                    <div style={{ fontSize: 12, fontWeight: 900, color: T.pink, fontFamily: 'monospace', lineHeight: 1.1, whiteSpace: 'nowrap' }}>
-                      {startFmt.time}–{endFmt.time}
-                    </div>
-                    <div style={{ fontSize: 9, fontWeight: 700, color: T.pink, textTransform: 'uppercase' }}>
-                      {endFmt.period}
+                    <div style={{ fontSize: 13, fontWeight: 900, color: T.pink, fontFamily: 'monospace', lineHeight: 1.2, whiteSpace: 'nowrap' }}>
+                      {fmtTimeRange(j.start, j.end)}
                     </div>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>

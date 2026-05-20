@@ -55,7 +55,7 @@ After the v0.6.2 refactor, these symbols moved. The old locations no longer exis
 
 ---
 
-## Current State (v0.6.7 — May 19, 2026)
+## Current State (v0.6.8 — May 19, 2026)
 
 | Feature | Status |
 |---|---|
@@ -63,8 +63,10 @@ After the v0.6.2 refactor, these symbols moved. The old locations no longer exis
 | Home — always-today dashboard | ✅ Live — Command Brief hero; Today/Needs Action/Rest of Week/Done This Week sections (v0.6.5) |
 | Home hero banner text | ✅ Live — Fraunces serif; time-of-day + nickname system |
 | Home — tight-gap warning | ✅ Live — suppresses once job B has started (v0.6.7) |
-| Home — Rest of Week cards | ✅ Live — date above times; start–end time range; job notes shown (v0.6.7) |
+| Home — Needs Action cards | ✅ Live — full start–end time range; concise pricing label + clean amount/partial display (v0.6.8) |
+| Home — Rest of Week cards | ✅ Live — single-line fmtTimeRange, 13px prominent (v0.6.8) |
 | Home — Next Up card | ✅ Live — Est. total subtle badge; Supermom Go primary directions CTA with bolt animation (v0.6.7) |
+| End time accuracy app-wide | ✅ Live — decorateJob() uses actual_duration for completed jobs; fixes Home, Calendar, overlap checker, JobDetailSheet (v0.6.8) |
 | Calendar — Day/Week/Agenda | ✅ Live — dynamic timeline bounds, cancelled jobs shown grey (v0.6.3) |
 | Job cancellation (all users) | ✅ Live — cancel with required reason; status → Cancelled; shown in history (v0.6.3) |
 | Job delete (admin only) | ✅ Live — "Delete Job (Admin)" in JobDetailSheet; soft-delete (v0.6.3) |
@@ -107,4 +109,4 @@ After the v0.6.2 refactor, these symbols moved. The old locations no longer exis
 9. **Offline mode** — crashes if Supabase unreachable on initial load.
 10. **Credential rotation** — DB password + GitHub token were in a public repo commit; check memory file.
 
-(Updated by Claude Code — May 19, 2026 — v0.6.7)
+(Updated by Claude Code — May 19, 2026 — v0.6.8)

@@ -97,9 +97,15 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 ---
 
-## Current version: 0.6.7
+## Current version: 0.6.8
 
 All core features are live. The app is in active use by Sandra.
+
+### Recent changes (v0.6.8 — May 19, 2026)
+- **Needs Action card — time display** — Now shows full start–end time range (e.g. `Mon, May 19 · 10:00 – 11:30 AM`) instead of start-only.
+- **Needs Action card — payment display** — Replaced verbose math formula (`$35/hr × 3h + costs = $105`) with a compact pricing label (`HOURLY · $35/HR` or `FLAT RATE`) + clean amount block. No payment: `$65 owing`. Partial: `$105 total · $40 paid · $65 owing`.
+- **Rest of Week cards — time display** — Collapsed separate AM/PM row into a single `fmtTimeRange` line (e.g. `10:00 – 11:30 AM`); font bumped to 13px for more prominence.
+- **End time bug fix** — `decorateJob()` in `jobsRepo.js` now uses `actual_duration` (when recorded) instead of always `estimated_hours` to compute `duration_est`. This is the single source of truth for end times app-wide, so the fix propagates to: Home.jsx (all 4 useMemos), Calendar.jsx block widths, and the overlap conflict checker. `JobDetailSheet` read-only header had its own `calcEnd(scheduled_time, estimated_hours)` path — also fixed to prefer `actual_duration` for completed jobs.
 
 ### Recent changes (v0.6.7 — May 19, 2026)
 - **Super Admin viewpoint fix** — Switch-to-business now survives `window.location.reload()`. `setSuperOverride()` in `currentBusiness.js` writes to `sessionStorage` (`superViewId`); `getCurrentBusinessId()` and module init both read from it. `ViewpointContext` lazy-inits `viewingAsId`/`viewingAsName` from sessionStorage; `switchTo()` writes name (`superViewName`); `reset()` clears both keys. Rule: module-level vars reset on every reload — always persist cross-reload state to sessionStorage.

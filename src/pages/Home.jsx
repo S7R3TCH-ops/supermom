@@ -728,7 +728,7 @@ export default function Home() {
                   key={j.id}
                   onClick={() => openJob(j.id)}
                   style={{
-                    background: mode === 'dark' ? 'rgba(255,255,255,0.03)' : '#FFF9F5',
+                    background: mode === 'dark' ? T.card : '#FFF9F5',
                     border: `1px solid ${T.cardBorder}`,
                     borderLeft: '3px solid #FFD6E8',
                     borderRadius: 12,

@@ -1,104 +1,158 @@
-import { useMemo, useEffect, useState, useRef } from 'react';
-import { supabase } from '../lib/supabase';
-import { useAppTheme } from '../context/AppThemeContext';
-import { Title, Subheading, Text, Caption, SectionLabel } from '../components/ui/typography';
-import { useJobs, useBusiness, notifyDataChanged } from '../data/useData';
-import { useAuth } from '../context/AuthContext';
-import { useJobDetailSheet } from '../context/JobDetailSheetContext';
-import { usePostJobSheet } from '../context/PostJobSheetContext';
-import { useFinanceDetailSheet } from '../context/FinanceDetailSheetContext';
-import { useNewJobSheet } from '../context/NewJobSheetContext';
-import { generateCommandBrief, speakBrief, stopSpeaking } from '../data/ai';
-import { updateDailyRoutes } from '../lib/maps';
-import { getBriefingMessage } from '../lib/briefingMessages';
-import { updateJob } from '../data/jobsRepo';
-import { useGeofence } from '../context/GeofenceContext';
-import { useKeyboardFocus } from '../hooks/useKeyboardFocus';
-import { sameDay, getWeekRange, fmtTime12, dateBrief } from '../lib/dateUtils';
-import { computeJobTotal } from '../lib/financialMath';
-import JobCard from '../components/cards/JobCard';
-import UpcomingCard from '../components/cards/UpcomingCard';
-import EmptyState from '../components/cards/EmptyState';
-import LiveTimer from '../components/cards/LiveTimer';
-import MissionIntel from '../components/cards/MissionIntel';
-import PaymentBreakdown from '../components/cards/PaymentBreakdown';
+# Home Page Redesign Implementation Plan
 
-export default function Home() {
-  const themeCtx = useAppTheme();
-  const jobsCtx = useJobs();
-  const detailSheet = useJobDetailSheet();
-  const postJobSheet = usePostJobSheet();
-  const financeSheet = useFinanceDetailSheet();
-  const newJobSheet = useNewJobSheet();
-  const authCtx = useAuth();
-  const { handleClockOut } = useGeofence();
-  const bizCtx = useBusiness();
-  const isKeyboardFocused = useKeyboardFocus();
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Replace the dual-mode Home page (week browser + daily dashboard) with a focused, always-today action dashboard: Command Brief → Today → Needs Action → Rest of Week → Done This Week.
+
+**Architecture:** Remove all week-navigation state (`selectedDate`, `weekStart`, `weekDays`) and the `isSelectedToday` conditional branch. Add `restOfWeekJobs` derived list. The page is permanently anchored to the real `today`. `briefingMessages.js` loses its `isSelectedToday` guard. `JobCard` gains a `subtle` prop for the muted Done This Week treatment.
+
+**Tech Stack:** React (Vite), Tailwind-style inline CSS, Supabase via existing hooks, `src/lib/dateUtils.js` for date math.
+
+---
+
+## File Map
+
+| File | Change |
+|---|---|
+| `src/lib/briefingMessages.js` | Remove `isSelectedToday` guard + `selectedDateJobCount` param |
+| `src/pages/Home.jsx` | Strip week-nav state/handlers/imports; add `restOfWeekJobs`; simplify hero + body |
+| `src/components/cards/JobCard.jsx` | Add `subtle` prop for muted completed-job treatment |
+
+---
+
+## Task 1: Simplify `briefingMessages.js`
+
+**Files:**
+- Modify: `src/lib/briefingMessages.js`
+
+- [ ] **Step 1: Remove `isSelectedToday` from the function signature and body**
+
+Replace the entire file content with:
+
+```js
+import { fmtTime12 } from './dateUtils';
+import { getPersistentDailyMessage } from './greetings';
+
+const NICKNAMES = ['Boss', 'Hero', 'Champ', 'Legend', 'Captain'];
+
+function dailyAddress(now, firstName) {
+  const daySeed = now.toDateString() + firstName;
+  let h = 0;
+  for (let i = 0; i < daySeed.length; i++) { h = ((h << 5) - h) + daySeed.charCodeAt(i); h |= 0; }
+  return (Math.abs(h) % 10) < 4 ? NICKNAMES[Math.abs(h >> 2) % NICKNAMES.length] : firstName;
+}
+
+export function getBriefingMessage({ allDone, activeJob, next, now, todayJobs, attentionItemCount, persona, firstName }) {
+  const hour = now.getHours();
+  const isMorning = hour < 12;
+  const isEvening = hour >= 17;
+  const address = dailyAddress(now, firstName);
+
+  if (allDone) {
+    if (isMorning) return `Done already, ${address}? You're a morning superhero.`;
+    if (isEvening) return `Wrapped for the day. Go put your feet up, ${address}.`;
+    return "All wrapped up. Go enjoy the rest of your afternoon!";
+  }
+
+  if (activeJob) {
+    const remainingCount = todayJobs.filter(j => j.status === 'Scheduled' && j.id !== activeJob.id).length;
+    const moreStr = remainingCount > 0 ? `${remainingCount} more` : 'one more';
+    if (isMorning) return `In the zone! ${moreStr} boss ${remainingCount === 1 ? 'move' : 'moves'} before noon.`;
+    if (isEvening) return `Almost there — ${moreStr} and you're done for tonight.`;
+    return `Locked in. ${moreStr} to go this afternoon.`;
+  }
+
+  if (next) {
+    const minsToStart = Math.round((next.start - now) / 60000);
+    const jobsRemaining = todayJobs.filter(j => j.status === 'Scheduled' && j.payment_status !== 'Paid').length;
+    const countStr = jobsRemaining > 1 ? ` · ${jobsRemaining - 1} more after` : '';
+
+    if (minsToStart <= 0) {
+      if (isMorning) return `Suit up, ${address}! Your next mission is starting now.${countStr}`;
+      if (isEvening) return `Last push, ${address}! Starting right now.${countStr}`;
+      return `Time to go! Next mission is starting now.${countStr}`;
+    }
+
+    if (minsToStart < 60) {
+      if (isMorning) return `T-minus ${minsToStart} mins. Morning's moving fast.${countStr}`;
+      if (isEvening) return `T-minus ${minsToStart} mins — one more and you're free, ${address}.${countStr}`;
+      return `T-minus ${minsToStart} mins until you save the day again.${countStr}`;
+    }
+
+    const timeStr = fmtTime12(next.start);
+    const timeLabel = `${timeStr.time} ${timeStr.period}`;
+    if (isMorning) return `Deep breaths. Next mission at ${timeLabel}.${countStr}`;
+    if (isEvening) return `One more at ${timeLabel}. Enjoy the downtime.${countStr}`;
+    return `Enjoy the gap. Back at it by ${timeLabel}.${countStr}`;
+  }
+
+  if (attentionItemCount > 0) {
+    return `${attentionItemCount} job${attentionItemCount > 1 ? 's' : ''} need wrapping up. Let's tidy those out.`;
+  }
+
+  try {
+    return getPersistentDailyMessage('briefing', persona).replace(/{name}/g, address);
+  } catch {
+    return "Ready for the day.";
+  }
+}
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add src/lib/briefingMessages.js
+git commit -m "refactor: remove isSelectedToday from briefingMessages — home always anchored to today"
+```
+
+---
+
+## Task 2: Strip week-nav state and add new derived lists in Home.jsx
+
+**Files:**
+- Modify: `src/pages/Home.jsx` (lines 40–235)
+
+The goal here is to replace all the week-navigation state and derived data with the simpler always-today equivalents.
+
+- [ ] **Step 1: Replace the state block and all derived data (lines 40–235)**
+
+Find this block (starts at line 40, `const [runtimeError]...`, ends at line 218 closing `}, [weekJobs, todayJobs, attentionItems]);`):
+
+```js
+  const [runtimeError] = useState(null);
 
   // Use a stable reference for "today"
   const [today] = useState(() => new Date());
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const t = new Date();
+    t.setHours(0, 0, 0, 0);
+    return t;
+  });
+  const [weekStart, setWeekStart] = useState(() => getWeekRange(today)[0]);
   const [isSpeaking, setIsSpeaking] = useState(false);
 
-  const [currentWeekStart, currentWeekEnd] = useMemo(() => {
-    const week = getWeekRange(today);
-    const endOfSunday = new Date(week[6]);
-    endOfSunday.setHours(23, 59, 59, 999);
-    return [week[0], endOfSunday];
-  }, [today]);
-
-  // Live clock — re-evaluates which job owns the spotlight each minute
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 60000);
-    return () => clearInterval(id);
-  }, []);
-
-  const { T = {}, mode, privacyOn } = themeCtx || {};
-  const { jobs: allJobs, loading } = jobsCtx || {};
-  const { profile } = authCtx || {};
-  const { business } = bizCtx || {};
-  
-  const persona = business?.ai_profile?.style || 'professional';
-  
-  const firstName = useMemo(() => {
-    try {
-      if (business?.owner_name) return business.owner_name.split(' ')[0];
-      if (profile?.first_name) return profile.first_name;
-    } catch { /* ignore */ }
-    return 'there';
-  }, [business, profile]);
-
-  const todayJobs = useMemo(() => {
-    if (!allJobs) return [];
-    return allJobs
-      .map(j => {
-        if (!j.scheduled_at) return null;
-        const start = new Date(j.scheduled_at);
-        if (isNaN(start.getTime())) return null;
-        const end = new Date(start.getTime() + (j.duration_est || 60) * 60000);
-        return { ...j, start, end };
-      })
-      .filter(j => j && sameDay(j.start, today) && j.status !== 'Cancelled')
-      .sort((a, b) => a.start - b.start);
-  }, [allJobs, today]);
-
-  const allDone = todayJobs.length > 0 && !todayJobs.some(j => j.status === 'Scheduled' || j.payment_status !== 'Paid');
-
-  const displayRevenue = useMemo(
-    () => todayJobs.reduce((s, j) => s + computeJobTotal(j), 0),
-    [todayJobs]
+  const currentWeekStart = useMemo(() => getWeekRange(today)[0], [today]);
+  const isOffCurrentWeek = useMemo(
+    () => weekStart.toDateString() !== currentWeekStart.toDateString(),
+    [weekStart, currentWeekStart]
   );
+```
 
-  const activeJob = todayJobs.find(j => j.status === 'Scheduled' && j.ai_context?.clock_in_time != null);
+Replace with:
 
-  const firstScheduled = todayJobs.find(j =>
-    j.status === 'Scheduled' && j.payment_status !== 'Paid' && j.end > now
-  );
-  const next = (activeJob && firstScheduled?.id === activeJob.id)
-    ? todayJobs.find(j => j.status === 'Scheduled' && j.payment_status !== 'Paid' && j.id !== activeJob.id && j.end > now)
-    : firstScheduled;
+```js
+  const [today] = useState(() => new Date());
+  const [isSpeaking, setIsSpeaking] = useState(false);
+```
 
-  const attentionItems = useMemo(() => {
+- [ ] **Step 2: Replace `weekDays` + `weekJobs` with `currentWeek` derived data**
+
+Find and remove the `weekDays` and `weekJobs` useMemo blocks (lines 72–89):
+
+```js
+  const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
+
+  const weekJobs = useMemo(() => {
     if (!allJobs) return [];
     return allJobs
       .map(j => {
@@ -110,14 +164,82 @@ export default function Home() {
       })
       .filter(j => {
         if (!j || j.status === 'Cancelled') return false;
-        const isPast = j.end < now;
-        const needsWrap = j.status !== 'Completed';
-        const needsPay = j.status === 'Completed' && j.payment_status !== 'Paid';
-        return isPast && (needsWrap || needsPay);
+        return weekDays.some(d => sameDay(j.start, d));
       })
       .sort((a, b) => a.start - b.start);
-  }, [allJobs, now]);
+  }, [allJobs, weekDays]);
+```
 
+Replace with:
+
+```js
+  const currentWeek = useMemo(() => getWeekRange(today), [today]);
+  const currentWeekStart = currentWeek[0];
+  const currentWeekEnd = currentWeek[6];
+```
+
+- [ ] **Step 3: Remove `selectedDateJobs` and `isSelectedToday` (lines 113–134)**
+
+Find and remove:
+
+```js
+  const selectedDateJobs = useMemo(() => {
+    if (!allJobs || !selectedDate) return [];
+    return allJobs
+      .map(j => {
+        if (!j.scheduled_at) return null;
+        const start = new Date(j.scheduled_at);
+        if (isNaN(start.getTime())) return null;
+        const end = new Date(start.getTime() + (j.duration_est || 60) * 60000);
+        return { ...j, start, end };
+      })
+      .filter(j => j && sameDay(j.start, selectedDate) && j.status !== 'Cancelled')
+      .sort((a, b) => a.start - b.start);
+  }, [allJobs, selectedDate]);
+
+  const allDone = todayJobs.length > 0 && !todayJobs.some(j => j.status === 'Scheduled' || j.payment_status !== 'Paid');
+
+  const isSelectedToday = sameDay(selectedDate, today);
+
+  const displayRevenue = useMemo(() => {
+    const jobs = isSelectedToday ? todayJobs : selectedDate ? selectedDateJobs : weekJobs;
+    return jobs.reduce((s, j) => s + computeJobTotal(j), 0);
+  }, [isSelectedToday, selectedDate, todayJobs, selectedDateJobs, weekJobs]);
+```
+
+Replace with:
+
+```js
+  const allDone = todayJobs.length > 0 && !todayJobs.some(j => j.status === 'Scheduled' || j.payment_status !== 'Paid');
+
+  const displayRevenue = useMemo(
+    () => todayJobs.reduce((s, j) => s + computeJobTotal(j), 0),
+    [todayJobs]
+  );
+```
+
+- [ ] **Step 4: Update `briefingMsg` useMemo (line 165)**
+
+Find:
+
+```js
+  const briefingMsg = useMemo(() => getBriefingMessage({
+    isSelectedToday,
+    selectedDateJobCount: selectedDateJobs.length,
+    allDone,
+    activeJob,
+    next,
+    now,
+    todayJobs,
+    attentionItemCount: attentionItems.length,
+    persona,
+    firstName,
+  }), [isSelectedToday, selectedDateJobs.length, allDone, activeJob, next, now, todayJobs, attentionItems.length, persona, firstName]);
+```
+
+Replace with:
+
+```js
   const briefingMsg = useMemo(() => getBriefingMessage({
     allDone,
     activeJob,
@@ -128,12 +250,23 @@ export default function Home() {
     persona,
     firstName,
   }), [allDone, activeJob, next, now, todayJobs, attentionItems.length, persona, firstName]);
+```
 
-  const staleAttentionItems = useMemo(() => {
-    const cutoff = new Date(now.getTime() - 48 * 60 * 60 * 1000);
-    return attentionItems.filter(j => j.end < cutoff);
-  }, [attentionItems, now]);
+- [ ] **Step 5: Update `completedPaidThisWeek` to use current week directly (line 183)**
 
+Find:
+
+```js
+  const completedPaidThisWeek = useMemo(() => {
+    return weekJobs
+      .filter(j => j.status === 'Completed' && j.payment_status === 'Paid')
+      .sort((a, b) => b.start - a.start);
+  }, [weekJobs]);
+```
+
+Replace with:
+
+```js
   const completedPaidThisWeek = useMemo(() => {
     if (!allJobs) return [];
     return allJobs
@@ -153,7 +286,13 @@ export default function Home() {
       )
       .sort((a, b) => b.start - a.start);
   }, [allJobs, currentWeekStart, currentWeekEnd]);
+```
 
+- [ ] **Step 6: Add `restOfWeekJobs` derived list after `completedPaidThisWeek`**
+
+Insert immediately after the `completedPaidThisWeek` useMemo:
+
+```js
   const restOfWeekJobs = useMemo(() => {
     if (!allJobs) return [];
     const todayMidnight = new Date(today);
@@ -174,7 +313,19 @@ export default function Home() {
       )
       .sort((a, b) => a.start - b.start);
   }, [allJobs, today, currentWeekEnd]);
+```
 
+- [ ] **Step 7: Update `paymentMap` useEffect deps (line 190)**
+
+Find:
+
+```js
+  }, [weekJobs, todayJobs, attentionItems]);
+```
+
+And update the `jobIds` inside + the dep array:
+
+```js
   const [paymentMap, setPaymentMap] = useState({});
   useEffect(() => {
     const jobIds = [...new Set([
@@ -183,7 +334,7 @@ export default function Home() {
       ...restOfWeekJobs.map(j => j.id),
       ...completedPaidThisWeek.map(j => j.id),
     ])];
-
+    
     let alive = true;
     const fetchPayments = async () => {
       if (!jobIds.length) {
@@ -195,7 +346,7 @@ export default function Home() {
         .select('job_id, amount')
         .in('job_id', jobIds)
         .eq('is_void', false);
-
+      
       if (alive) {
         const map = {};
         (data ?? []).forEach(p => { map[p.job_id] = (map[p.job_id] || 0) + Number(p.amount); });
@@ -206,132 +357,63 @@ export default function Home() {
     fetchPayments();
     return () => { alive = false; };
   }, [todayJobs, attentionItems, restOfWeekJobs, completedPaidThisWeek]);
+```
 
-  const todayUpcoming = useMemo(() => {
-    return todayJobs.filter(j =>
-      j.id !== activeJob?.id &&
-      j.id !== next?.id &&
-      j.start >= now &&
-      j.status === 'Scheduled'
-    );
-  }, [todayJobs, activeJob, next, now]);
+- [ ] **Step 8: Remove unused handlers**
 
-  const attentionRef = useRef(null);
+Find and delete `handleWeekChange` and `handleGoToToday` (lines 302–311):
 
-  const handleDuplicateJob = (job) => {
-    newJobSheet.openWithPrefill({
-      client_id: job.client_id,
-      service_id: job.service_id,
-      estimated_hours: job.estimated_hours,
-      job_notes: job.job_notes,
-      recurrence: job.recurrence,
-    });
-  };
-
-  const handleReadAloud = (e) => {
-    e.stopPropagation();
-    if (isSpeaking) {
-      stopSpeaking();
-      setIsSpeaking(false);
-    } else {
-      const brief = generateCommandBrief(next, business);
-      if (brief?.speechText) {
-        setIsSpeaking(true);
-        speakBrief(brief.speechText, () => setIsSpeaking(false));
-      }
-    }
-  };
-
-
-  useEffect(() => {
-    return () => stopSpeaking();
+```js
+  const handleWeekChange = useCallback((delta) => {
+    setWeekStart(prev => addDays(prev, delta * 7));
   }, []);
 
-  const tightGap = (() => {
-    for (let i = 0; i < todayJobs.length - 1; i++) {
-      const a = todayJobs[i], b = todayJobs[i + 1];
-      const gapMin = Math.round((b.start - a.end) / 60000);
-      if (gapMin < 0) continue;
-      if (b.start <= now) continue;
-      const driveMin = Math.round((b.raw?.ai_context?.drive_to?.durationValue ?? 0) / 60);
-      const threshold = driveMin > 0 ? driveMin + 15 : 60;
-      if (gapMin < threshold) return { a, b, gapMin, driveMin };
-    }
-    return null;
-  })();
+  const handleGoToToday = useCallback(() => {
+    const t = new Date();
+    t.setHours(0, 0, 0, 0);
+    setSelectedDate(t);
+    setWeekStart(getWeekRange(t)[0]);
+  }, []);
+```
 
-  useEffect(() => {
-    if (!loading && todayJobs.length > 0) {
-      const needsUpdate = todayJobs.some(j => !j.ai_context?.drive_to);
-      if (needsUpdate) {
-        updateDailyRoutes(todayJobs.map(j => j.raw));
-      }
-    }
-  }, [todayJobs, loading]);
+Also find and delete `handleDeleteJob` (lines 236–244) and `nextUpLabel` (lines 231–234):
 
-  const openJob = detailSheet?.openJob;
-  const openPostJob = postJobSheet?.openPostJob;
-  const openDetail = financeSheet?.open;
+```js
+  const nextUpLabel = useMemo(() => {
+    if (!selectedDate || isSelectedToday || !next) return null;
+    return `Next Up Today: ${fmtTime12(next.start).time}${fmtTime12(next.start).period} @ ${next.client_name}`;
+  }, [selectedDate, isSelectedToday, next]);
 
-  const [isRefreshingTraffic, setIsRefreshingTraffic] = useState(false);
-  const [isGoLaunching, setIsGoLaunching] = useState(false);
-
-  const handleSupermomGo = (e) => {
-    e.stopPropagation();
-    if (!next?.address) return;
-    setIsGoLaunching(true);
-    setTimeout(() => {
-      window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(next.address)}`, '_blank');
-      setIsGoLaunching(false);
-    }, 650);
-  };
-
-  const handleRefreshTraffic = async (e) => {
-    e.stopPropagation();
-    setIsRefreshingTraffic(true);
+  const handleDeleteJob = async (jobId) => {
+    if (!window.confirm('Delete this job?')) return;
     try {
-      await updateDailyRoutes(todayJobs.map(j => j.raw));
+      await softDeleteJob(jobId);
       notifyDataChanged();
     } catch {
-      /* ignore */
-    } finally {
-      setIsRefreshingTraffic(false);
+      alert('Could not delete job.');
     }
   };
+```
 
-  const handleAddTime = async (job, mins = 30) => {
-    const currentHrs = job.estimated_hours || 0;
-    const newHrs = currentHrs + (mins / 60);
-    try {
-      await updateJob(job.id, { estimated_hours: newHrs });
-      notifyDataChanged();
-    } catch {
-      alert("Could not add time.");
-    }
-  };
+- [ ] **Step 9: Commit**
 
-  const handleAddQuickCost = async (job) => {
-    const amt = window.prompt("Amount to add ($)?");
-    if (!amt || isNaN(parseFloat(amt))) return;
-    const desc = window.prompt("What for?", "Supplies") || "Extra cost";
-    
-    const currentCosts = Array.isArray(job.additional_costs_json) ? job.additional_costs_json : [];
-    const newCosts = [...currentCosts, { amount: parseFloat(amt), description: desc }];
-    
-    try {
-      await updateJob(job.id, { additional_costs_json: newCosts });
-    } catch {
-      alert("Could not add cost.");
-    }
-  };
+```bash
+git add src/pages/Home.jsx
+git commit -m "refactor: strip week-nav state from Home — add restOfWeekJobs, simplify derived data"
+```
 
-  // Safety check for context
-  if (!themeCtx || !jobsCtx || !authCtx) {
-    return <div style={{ padding: 20, color: 'white' }}>Initializing context...</div>;
-  }
+---
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: T.bg, color: T.ink }}>
+## Task 3: Rewrite the hero section in Home.jsx
+
+**Files:**
+- Modify: `src/pages/Home.jsx` (the hero `<div>` block, approx lines 368–484)
+
+- [ ] **Step 1: Replace the entire hero block**
+
+Find the opening `{/* Hero */}` comment and its outer `<div>` all the way through the closing `</div>` that ends the WeekStrip container (line 484). Replace the entire block with:
+
+```jsx
       {/* Hero */}
       <div style={{ 
         background: T.hero, 
@@ -392,7 +474,27 @@ export default function Home() {
           </div>
         </div>
       </div>
+```
 
+- [ ] **Step 2: Commit**
+
+```bash
+git add src/pages/Home.jsx
+git commit -m "feat: simplify Home hero to always-on Command Brief, remove WeekStrip"
+```
+
+---
+
+## Task 4: Rewrite the body sections in Home.jsx
+
+**Files:**
+- Modify: `src/pages/Home.jsx` (the scrollable body, approx lines 486–799)
+
+- [ ] **Step 1: Replace the entire scrollable body**
+
+Find `<div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '16px 14px' }}>` and everything through `<div style={{ height: isKeyboardFocused ? 80 : 0, transition: 'height 0.2s ease-out' }} />` — replace it entirely with:
+
+```jsx
       <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '16px 14px' }}>
 
         {/* Stale attention banner */}
@@ -427,17 +529,17 @@ export default function Home() {
         {activeJob ? (
           <div style={{ marginBottom: 24 }}>
             <SectionLabel color={T.pink}>✦ MISSION ACTIVE · HAPPENING NOW</SectionLabel>
-            <div style={{
-              background: mode === 'dark' ? '#0D0D0D' : 'white',
-              border: `2px solid ${T.pink}`,
-              borderRadius: 18,
-              padding: '16px',
+            <div style={{ 
+              background: mode === 'dark' ? '#0D0D0D' : 'white', 
+              border: `2px solid ${T.pink}`, 
+              borderRadius: 18, 
+              padding: '16px', 
               boxShadow: '0 8px 24px rgba(233,30,106,0.2)',
               position: 'relative',
               overflow: 'hidden'
             }}>
               <div style={{ position: 'absolute', top: 12, right: 12, width: 8, height: 8, borderRadius: '50%', background: '#E91E6A', animation: 'pulse 2s infinite' }} />
-
+              
               <div onClick={() => openJob(activeJob.id)} style={{ cursor: 'pointer' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
                   <Title style={{ fontSize: 19, color: T.ink }}>{activeJob.client_name}</Title>
@@ -540,11 +642,6 @@ export default function Home() {
                               </span>
                             </div>
                           )}
-                          {!privacyOn && computeJobTotal(next) > 0 && (
-                            <div style={{ fontSize: 11, fontWeight: 600, color: DEEP_ROSE, opacity: 0.65, marginBottom: 6 }}>
-                              Est. ${computeJobTotal(next).toFixed(0)}
-                            </div>
-                          )}
                         </>
                       );
                     })()}
@@ -574,51 +671,11 @@ export default function Home() {
 
                     <MissionIntel prepNote={next.prep_note || next.client_access_json || next.client_prefs_json} T={T} theme={T} />
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12, paddingTop: 12, borderTop: `1px solid ${T.cardBorder}`, position: 'relative' }}>
+                    <div style={{ display: 'flex', gap: 8, marginTop: 12, paddingTop: 12, borderTop: `1px solid ${T.cardBorder}`, position: 'relative' }}>
                       {next.address && (
-                        <button
-                          onClick={handleSupermomGo}
-                          disabled={isGoLaunching}
-                          style={{
-                            width: '100%', padding: '13px', borderRadius: 12,
-                            background: isGoLaunching
-                              ? 'linear-gradient(90deg,#8B0E3F,#E91E6A,#FF78B0)'
-                              : `linear-gradient(90deg,${DEEP_ROSE},#E91E6A)`,
-                            color: 'white', border: 'none',
-                            fontSize: 14, fontWeight: 800, cursor: isGoLaunching ? 'default' : 'pointer',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                            transition: 'background 0.3s, transform 0.15s',
-                            transform: isGoLaunching ? 'scale(0.97)' : 'scale(1)',
-                            letterSpacing: '0.4px',
-                            boxShadow: isGoLaunching ? 'none' : '0 4px 16px rgba(233,30,106,0.35)',
-                          }}
-                        >
-                          <svg width="14" height="14" viewBox="0 0 48 46" fill="white"
-                            style={{
-                              transition: 'transform 0.4s ease, opacity 0.4s ease',
-                              transform: isGoLaunching ? 'translateX(6px) scale(1.3)' : 'translateX(0) scale(1)',
-                              opacity: isGoLaunching ? 0.5 : 1,
-                            }}
-                          >
-                            <path d="M25.946 44.938c-.664.845-2.021.375-2.021-.698V33.937a2.26 2.26 0 0 0-2.262-2.262H10.287c-.92 0-1.456-1.04-.92-1.788l7.48-10.471c1.07-1.497 0-3.578-1.842-3.578H1.237c-.92 0-1.456-1.04-.92-1.788L10.013.474c.214-.297.556-.474.92-.474h28.894c.92 0 1.456 1.04.92 1.788l-7.48 10.471c-1.07 1.498 0 3.579 1.842 3.579h11.377c.943 0 1.473 1.088.89 1.83L25.947 44.94z"/>
-                          </svg>
-                          <span style={{ transition: 'opacity 0.2s', opacity: isGoLaunching ? 0.7 : 1 }}>
-                            {isGoLaunching ? 'LAUNCHING…' : 'SUPERMOM GO'}
-                          </span>
-                        </button>
+                        <button onClick={e => { e.stopPropagation(); window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(next.address)}`, '_blank'); }} style={{ flex: 1, padding: '11px', borderRadius: 10, background: T.card, border: `1px solid ${DEEP_ROSE}`, color: DEEP_ROSE, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>NAVIGATE</button>
                       )}
-                      <button
-                        onClick={e => { e.stopPropagation(); handleClockOut(next.id); }}
-                        style={{
-                          width: '100%', padding: '11px', borderRadius: 12,
-                          background: next.address ? 'transparent' : DEEP_ROSE,
-                          border: next.address ? `1.5px solid ${DEEP_ROSE}` : 'none',
-                          color: next.address ? DEEP_ROSE : 'white',
-                          fontSize: 12, fontWeight: 700, cursor: 'pointer', letterSpacing: '0.4px',
-                        }}
-                      >
-                        START NOW
-                      </button>
+                      <button onClick={e => { e.stopPropagation(); handleClockOut(next.id); }} style={{ flex: 2, padding: '11px', borderRadius: 10, background: DEEP_ROSE, color: 'white', border: 'none', fontSize: 12, fontWeight: 800, cursor: 'pointer', letterSpacing: '0.5px' }}>START NOW</button>
                     </div>
                   </div>
                 </>
@@ -704,7 +761,6 @@ export default function Home() {
             <SectionLabel style={{ color: T.inkSub, marginBottom: 8 }}>REST OF THIS WEEK</SectionLabel>
             {restOfWeekJobs.map(j => {
               const startFmt = fmtTime12(j.start);
-              const endFmt = fmtTime12(j.end);
               const total = computeJobTotal(j);
               return (
                 <div
@@ -722,15 +778,11 @@ export default function Home() {
                     gap: 12,
                   }}
                 >
-                  <div style={{ flexShrink: 0, textAlign: 'center', minWidth: 56 }}>
-                    <div style={{ fontSize: 9.5, fontWeight: 700, color: T.inkSub, marginBottom: 3, whiteSpace: 'nowrap' }}>
+                  <div style={{ flexShrink: 0, textAlign: 'center', minWidth: 40 }}>
+                    <div style={{ fontSize: 13, fontWeight: 900, color: T.pink, fontFamily: 'monospace', lineHeight: 1.2 }}>{startFmt.time}</div>
+                    <div style={{ fontSize: 9, fontWeight: 700, color: T.pink, textTransform: 'uppercase' }}>{startFmt.period}</div>
+                    <div style={{ fontSize: 9, color: T.inkMuted, marginTop: 2, whiteSpace: 'nowrap' }}>
                       {j.start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                    </div>
-                    <div style={{ fontSize: 12, fontWeight: 900, color: T.pink, fontFamily: 'monospace', lineHeight: 1.1, whiteSpace: 'nowrap' }}>
-                      {startFmt.time}–{endFmt.time}
-                    </div>
-                    <div style={{ fontSize: 9, fontWeight: 700, color: T.pink, textTransform: 'uppercase' }}>
-                      {endFmt.period}
                     </div>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -740,15 +792,6 @@ export default function Home() {
                     <div style={{ fontSize: 11, fontWeight: 700, color: T.inkSub, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
                       {j.service_name}
                     </div>
-                    {j.job_notes && (
-                      <div style={{
-                        fontSize: 10, color: T.inkMuted, fontStyle: 'italic', marginTop: 2,
-                        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden', lineHeight: 1.35,
-                      }}>
-                        {j.job_notes}
-                      </div>
-                    )}
                   </div>
                   {!privacyOn && total > 0 && (
                     <div style={{ fontSize: 14, fontWeight: 700, color: T.inkSub, flexShrink: 0 }}>
@@ -761,7 +804,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* DONE THIS WEEK — subtle progress view */}
+        {/* DONE THIS WEEK — subtle, progress view */}
         {completedPaidThisWeek.length > 0 && (
           <div style={{ marginBottom: 24 }}>
             <SectionLabel color="#16A34A">✓ DONE THIS WEEK</SectionLabel>
@@ -789,7 +832,142 @@ export default function Home() {
       </div>
 
       <div style={{ height: isKeyboardFocused ? 80 : 0, transition: 'height 0.2s ease-out' }} />
-    </div>
-  );
-}
+```
 
+- [ ] **Step 2: Commit**
+
+```bash
+git add src/pages/Home.jsx
+git commit -m "feat: rewrite Home body — Today / Needs Action / Rest of Week / Done This Week sections"
+```
+
+---
+
+## Task 5: Add `subtle` prop to JobCard
+
+**Files:**
+- Modify: `src/components/cards/JobCard.jsx`
+
+- [ ] **Step 1: Add `subtle` to the function signature**
+
+Find:
+
+```js
+export default function JobCard({ job: j, T, onClick, onDuplicate, paid = 0, total = 0, privacyOn = false }) {
+```
+
+Replace with:
+
+```js
+export default function JobCard({ job: j, T, onClick, onDuplicate, paid = 0, total = 0, privacyOn = false, subtle = false }) {
+```
+
+- [ ] **Step 2: Apply subtle style in the `isCompleted` render path**
+
+Find the opening `<div>` of the `isCompleted` return (the one with `background: urgencyBg, border: ...`):
+
+```js
+      style={{
+          background: urgencyBg,
+          border: `1.5px solid ${urgencyColor}`,
+          borderLeft: `5px solid ${urgencyColor}`,
+          borderRadius: 14,
+          marginBottom: 9,
+          cursor: 'pointer',
+          padding: '10px 14px',
+        }}
+```
+
+Replace with:
+
+```js
+      style={{
+          background: subtle ? 'transparent' : urgencyBg,
+          border: subtle ? `1px solid ${T.cardBorder}` : `1.5px solid ${urgencyColor}`,
+          borderLeft: subtle ? `1px solid ${T.cardBorder}` : `5px solid ${urgencyColor}`,
+          borderRadius: 14,
+          marginBottom: 9,
+          cursor: 'pointer',
+          padding: '10px 14px',
+          opacity: subtle ? 0.6 : 1,
+        }}
+```
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add src/components/cards/JobCard.jsx
+git commit -m "feat: add subtle prop to JobCard for muted completed-job display"
+```
+
+---
+
+## Task 6: Clean up unused imports in Home.jsx
+
+**Files:**
+- Modify: `src/pages/Home.jsx` (lines 1–27)
+
+- [ ] **Step 1: Remove unused imports**
+
+Find the import block at the top of Home.jsx and update it:
+
+Remove these imports entirely:
+- `import WeekStrip from '../components/ui/WeekStrip';`
+- `import Swipeable from '../components/ui/Swipeable';`
+- `softDeleteJob` from the jobsRepo import (if `handleDeleteJob` was removed)
+
+Update the dateUtils import to remove `getWeekLabel` (keep `sameDay` — still used by `todayJobs`):
+
+Find:
+```js
+import { sameDay, addDays, getWeekRange, getWeekLabel, fmtTime12, dateBrief } from '../lib/dateUtils';
+```
+
+Replace with:
+```js
+import { sameDay, addDays, getWeekRange, fmtTime12, dateBrief } from '../lib/dateUtils';
+```
+
+Find:
+```js
+import { softDeleteJob, updateJob } from '../data/jobsRepo';
+```
+
+Replace with:
+```js
+import { updateJob } from '../data/jobsRepo';
+```
+
+- [ ] **Step 2: Verify no remaining references to removed items**
+
+Run:
+```bash
+grep -n "WeekStrip\|Swipeable\|getWeekLabel\|softDeleteJob\|selectedDate\|weekStart\|isOffCurrentWeek\|isSelectedToday\|handleWeekChange\|handleGoToToday\|handleDeleteJob\|nextUpLabel\|selectedDateJobs\|weekJobs\|weekDays" src/pages/Home.jsx
+```
+
+Expected output: no matches. If any appear, remove the remaining references.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add src/pages/Home.jsx
+git commit -m "chore: remove unused imports and dead code from Home after redesign"
+```
+
+---
+
+## Verification
+
+- [ ] `npm run dev` — open on 390px mobile viewport
+- [ ] Command Brief header shows today's date and live briefing message
+- [ ] Revenue ticker shows today's projected total; tapping opens finance detail sheet
+- [ ] Active job spotlight renders with LiveTimer and action buttons if a job is clocked in
+- [ ] Next Up card renders with timing countdown for the next scheduled job today
+- [ ] Coming Up Today list appears below Next Up for any additional today jobs
+- [ ] Needs Action shows amber cards for any past-end jobs that aren't fully closed
+- [ ] Stale attention banner scrolls to the Needs Action section when tapped
+- [ ] Rest of This Week shows compact cards for future scheduled jobs this week
+- [ ] Done This Week shows muted cards at the bottom for completed+paid this week
+- [ ] Empty state shows when there's nothing in any section
+- [ ] Navigate to Schedule page — week picker and agenda still work (regression check)
+- [ ] Dark mode: all sections render correctly with dark backgrounds

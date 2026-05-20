@@ -55,50 +55,56 @@ After the v0.6.2 refactor, these symbols moved. The old locations no longer exis
 
 ---
 
-## Current State (v0.6.6 — May 19, 2026)
+## Current State (v0.6.7 — May 19, 2026)
 
 | Feature | Status |
 |---|---|
 | Auth (login / forgot password) | ✅ Live |
 | Home — always-today dashboard | ✅ Live — Command Brief hero; Today/Needs Action/Rest of Week/Done This Week sections (v0.6.5) |
 | Home hero banner text | ✅ Live — Fraunces serif; time-of-day + nickname system |
+| Home — tight-gap warning | ✅ Live — suppresses once job B has started (v0.6.7) |
+| Home — Rest of Week cards | ✅ Live — date above times; start–end time range; job notes shown (v0.6.7) |
+| Home — Next Up card | ✅ Live — Est. total subtle badge; Supermom Go primary directions CTA with bolt animation (v0.6.7) |
 | Calendar — Day/Week/Agenda | ✅ Live — dynamic timeline bounds, cancelled jobs shown grey (v0.6.3) |
 | Job cancellation (all users) | ✅ Live — cancel with required reason; status → Cancelled; shown in history (v0.6.3) |
 | Job delete (admin only) | ✅ Live — "Delete Job (Admin)" in JobDetailSheet; soft-delete (v0.6.3) |
 | Client archive (admin only) | ✅ Live — danger zone in ClientProfile; cascades to all jobs (v0.6.3) |
 | Financial math unification | ✅ Live — computeJobFinancials single source of truth everywhere (v0.6.3) |
-| Clients list + profile | ✅ Live — A-Z sort; interactive hero stat filters; Owes $ filter fixed for null payment_status (v0.6.6) |
-| Clients "Owes $" filter | ✅ Live — uses computeJobTotal (correct hourly math); null payment_status treated as unpaid (v0.6.6) |
+| Clients list + profile | ✅ Live — A-Z sort; interactive hero stat filters; Owes $ filter fixed (v0.6.6) |
 | Finance — period filtering + drill-down tiles | ✅ Live — Week/Month/Year/All; all 4 tiles clickable; correct hourly math (v0.6.4) |
 | Finance — trend chart | ✅ Live — SVG area/line chart, revenue vs expenses, real data (v0.6.4) |
 | Finance — mark paid, expenses, CSV export | ✅ Live |
-| New Job sheet — Start/End/Duration sync | ✅ Live — Start → End row; duration stepper all in sync; start is anchor (v0.6.6) |
-| Job Detail sheet — Start/End/Duration sync | ✅ Live — Start → End row in edit mode; Est. hours synced with end time (v0.6.6) |
-| Post-job / Wrap-up sheet | ✅ Live — hours prompt removed, liveTotal includes HST |
-| Financial Math Breakdown | ✅ Live — shows payment history + remaining balance |
-| Automated Invoicing | ✅ Live — actual total, only on Paid, rate from flat_rate |
+| New Job sheet — Start/End/Duration sync | ✅ Live (v0.6.6) |
+| Job Detail sheet — Start/End/Duration sync | ✅ Live (v0.6.6) |
+| Post-job / Wrap-up sheet | ✅ Live |
+| Financial Math Breakdown | ✅ Live |
+| Automated Invoicing | ✅ Live |
 | AI Prep Notes + Duration Estimator | ✅ Live |
-| Recurrence series editor | ✅ Live — this / future / all |
+| Recurrence series editor | ✅ Live |
 | GCal Sync | ✅ Live |
 | Drive time / mileage | ✅ Live |
 | Geofence / auto-timer | ✅ Live |
-| Super Admin + Viewpoint switching | ✅ Live |
+| Super Admin + Viewpoint switching | ✅ Live — sessionStorage persistence fix (v0.6.7) |
 | Dark mode toggle | ✅ Live |
 | Swipe-to-dismiss sheets | ✅ Live |
 | Privacy toggle | ✅ Live |
 | Storage (photos + voice notes) | ✅ Live |
-| Conflict detection | ✅ Live — cancelled jobs excluded from conflict input (v0.6.3) |
+| Conflict detection | ✅ Live — cancelled jobs excluded (v0.6.3) |
 | Code-split bundle | ✅ Live |
 
 ---
 
 ## Next priorities
 
-1. **Sandra user testing** — gather live friction points from real use; test new Start/End time UX on Sandra's iPhone
-2. **WeekView cancelled job treatment** — currently shows pink/green based on paid status; should go grey for cancelled (minor oversight from v0.6.3)
-3. **Daily job briefing email** — Vercel Cron (7am Toronto), Resend for transactional email; today + tomorrow jobs, outstanding payments (Phase 2, parked)
-4. **Client engagement tools** — AI-suggested follow-ups and re-booking reminders
-5. **Offline mode** — app crashes if Supabase unreachable on initial load
-6. **Credential rotation** — DB password + GitHub token were in a public repo commit; may still need rotation (check memory file)
+1. **Calendar/agenda direction buttons** — Plain "Directions" button (no Supermom Go animation) on Calendar day-view event cards and agenda list. Need to read `Calendar.jsx` before touching it.
+2. **Job card colour/branding refresh** — Cards need more visual pop in line with 2026 design palettes; Supermom brand should be more subtle (less literal superhero, more brand-forward). Planned but not started.
+3. **Workflow smoothness pass** — Swipeability and flow from client → job → finance; Joel has specific ideas to refine. Full brainstorm needed before implementation.
+4. **Past job creation block** — Jobs cannot be created in the past; block this in the UI (NewJobSheet date picker).
+5. **Delete from job/client detail** — No delete option exists when drilling into a job or client detail view. Add it for admin + appropriate user roles.
+6. **WeekView cancelled job treatment** — Should go grey for cancelled; minor oversight from v0.6.3.
+7. **Daily job briefing email** — Vercel Cron (7am Toronto), Resend; Phase 2, parked.
+8. **Client engagement tools** — AI-suggested follow-ups and re-booking reminders.
+9. **Offline mode** — crashes if Supabase unreachable on initial load.
+10. **Credential rotation** — DB password + GitHub token were in a public repo commit; check memory file.
 
-(Updated by Claude Code — May 19, 2026 — v0.6.6)
+(Updated by Claude Code — May 19, 2026 — v0.6.7)

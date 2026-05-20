@@ -9,8 +9,8 @@ const ViewpointContext = createContext(null);
 export function ViewpointProvider({ children }) {
   const { profile } = useAuth();
   const [allBusinesses, setAllBusinesses] = useState([]);
-  const [viewingAsId, setViewingAsId] = useState(null);
-  const [viewingAsName, setViewingAsName] = useState(null);
+  const [viewingAsId, setViewingAsId] = useState(() => sessionStorage.getItem('superViewId'));
+  const [viewingAsName, setViewingAsName] = useState(() => sessionStorage.getItem('superViewName'));
 
   const isSuperAdmin = profile?.email === 'jlundie@gmail.com' || profile?.email === 'joel@supermom.io';
 
@@ -23,14 +23,18 @@ export function ViewpointProvider({ children }) {
   }, [isSuperAdmin]);
 
   const switchTo = (id, name) => {
+    sessionStorage.setItem('superViewId', id);
+    sessionStorage.setItem('superViewName', name);
     setViewingAsId(id);
     setViewingAsName(name);
     setSuperOverride(id);
     clearBusinessCache();
-    window.location.reload(); // Force full reload to ensure context propagates
+    window.location.reload();
   };
 
   const reset = () => {
+    sessionStorage.removeItem('superViewId');
+    sessionStorage.removeItem('superViewName');
     setViewingAsId(null);
     setViewingAsName(null);
     setSuperOverride(null);

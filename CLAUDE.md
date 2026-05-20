@@ -97,9 +97,17 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 ---
 
-## Current version: 0.6.6
+## Current version: 0.6.7
 
 All core features are live. The app is in active use by Sandra.
+
+### Recent changes (v0.6.7 — May 19, 2026)
+- **Super Admin viewpoint fix** — Switch-to-business now survives `window.location.reload()`. `setSuperOverride()` in `currentBusiness.js` writes to `sessionStorage` (`superViewId`); `getCurrentBusinessId()` and module init both read from it. `ViewpointContext` lazy-inits `viewingAsId`/`viewingAsName` from sessionStorage; `switchTo()` writes name (`superViewName`); `reset()` clears both keys. Rule: module-level vars reset on every reload — always persist cross-reload state to sessionStorage.
+- **Tight-gap transition warning** — Now suppressed once job B's start time has passed (`if (b.start <= now) continue` in `tightGap` loop). Warning only shows for future transitions.
+- **Rest of Week cards — improved time display** — Date moved above the time range and is slightly more prominent. Start AND end time now shown on one line (`10:00–11:30`). AM/PM tag below. `endFmt` computed alongside `startFmt` in the map.
+- **Rest of Week cards — job notes** — Job notes (2-line truncated, italic) now appear below the service name when present.
+- **Next Up card — subtle Est. total** — Job total shown as `Est. $XX` below the timing badge, muted opacity, respects privacy mode.
+- **Next Up card — Supermom Go button** — Directions CTA is now the full-width primary button. Shows the Supermom lightning bolt SVG inline + "SUPERMOM GO" text. On press: bolt animates right, text changes to "LAUNCHING…", gradient shifts pink→light-pink, then Google Maps opens after 650ms (`/dir/` API for turn-by-turn). START NOW demoted to secondary outline button below it. When no address on file, Supermom Go is absent and START NOW fills full width (solid).
 
 ### Recent changes (v0.6.6 — May 19, 2026)
 - **Start/End time + Duration sync on Add/Edit Job** — Both NewJobSheet (Step 2) and JobDetailSheet (Edit mode) now show Start time, End time, and Duration controls that dynamically update each other. Start is always the anchor; changing End updates Duration (end − start); changing Duration updates End (start + duration). Minimum valid gap is 15 min.

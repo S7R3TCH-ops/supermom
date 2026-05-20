@@ -6,16 +6,18 @@ import { supabase } from '../lib/supabase';
 
 let cachedBusinessId = null;
 let cachedAuthId = null;
-let superOverrideId = null;
+let superOverrideId = sessionStorage.getItem('superViewId') || null;
 
 export function setSuperOverride(id) {
   superOverrideId = id;
-  cachedBusinessId = null; // Flush cache
+  cachedBusinessId = null;
+  if (id) sessionStorage.setItem('superViewId', id);
+  else sessionStorage.removeItem('superViewId');
 }
 
 export async function getCurrentBusinessId() {
   // Super Admin Viewpoint Override
-  const overrideId = superOverrideId || window.__SUPER_VIEW_ID;
+  const overrideId = superOverrideId || sessionStorage.getItem('superViewId') || window.__SUPER_VIEW_ID;
   if (overrideId && overrideId !== 'null') return overrideId;
 
   const { data: { user }, error: authErr } = await supabase.auth.getUser();

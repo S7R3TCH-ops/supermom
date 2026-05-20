@@ -528,7 +528,7 @@ export default function Home() {
                               </div>
                             </div>
                             <div style={{ flexShrink: 0, textAlign: 'right' }}>
-                              <div style={{ fontSize: 17, fontWeight: 900, color: DEEP_ROSE, fontFamily: 'monospace', letterSpacing: '-0.5px', lineHeight: 1.2, whiteSpace: 'nowrap' }}>
+                              <div style={{ fontSize: 17, fontWeight: 900, color: DEEP_ROSE, fontFamily: T.font, letterSpacing: '-0.5px', lineHeight: 1.2, whiteSpace: 'nowrap' }}>
                                 {timeRange}
                               </div>
                             </div>
@@ -630,7 +630,7 @@ export default function Home() {
         {/* TODAY — Remaining jobs */}
         {todayUpcoming.length > 0 && (
           <div style={{ marginBottom: 16 }}>
-            <SectionLabel style={{ color: '#1565C0', marginBottom: 8 }}>COMING UP TODAY</SectionLabel>
+            <SectionLabel color={T.pink} style={{ marginBottom: 8 }}>COMING UP TODAY</SectionLabel>
             {todayUpcoming.map(j => (
               <UpcomingCard
                 key={j.id}
@@ -648,7 +648,7 @@ export default function Home() {
         {/* NEEDS ACTION — carry-forward from any past date */}
         {attentionItems.length > 0 && (
           <div ref={attentionRef} style={{ marginBottom: 24 }}>
-            <SectionLabel color="#F59E0B">Needs Action</SectionLabel>
+            <SectionLabel color="#78350F">Needs Action</SectionLabel>
             {attentionItems.map(j => {
               const needsWrap = j.status !== 'Completed';
               const paid = paymentMap[j.id] || 0;
@@ -728,10 +728,11 @@ export default function Home() {
                   key={j.id}
                   onClick={() => openJob(j.id)}
                   style={{
-                    background: mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                    background: mode === 'dark' ? 'rgba(255,255,255,0.03)' : '#FFF9F5',
                     border: `1px solid ${T.cardBorder}`,
+                    borderLeft: '3px solid #FFD6E8',
                     borderRadius: 12,
-                    padding: '10px 14px',
+                    padding: '10px 14px 10px 12px',
                     marginBottom: 8,
                     cursor: 'pointer',
                     display: 'flex',
@@ -743,12 +744,15 @@ export default function Home() {
                     <div style={{ fontSize: 10, fontWeight: 700, color: T.inkSub, marginBottom: 2, whiteSpace: 'nowrap' }}>
                       {j.start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                     </div>
-                    <div style={{ fontSize: 13, fontWeight: 900, color: T.pink, fontFamily: 'monospace', lineHeight: 1.2, whiteSpace: 'nowrap' }}>
+                    <div style={{ fontFamily: T.font, fontSize: 13, fontWeight: 700, color: T.pink, lineHeight: 1.2, whiteSpace: 'nowrap' }}>
                       {fmtTimeRange(j.start, j.end)}
                     </div>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 600, color: T.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div style={{
+                      fontFamily: T.serif, fontSize: 15, fontWeight: 500, color: T.ink,
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    }}>
                       {j.client_name}
                     </div>
                     <div style={{ fontSize: 11, fontWeight: 700, color: T.inkSub, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
@@ -765,7 +769,10 @@ export default function Home() {
                     )}
                   </div>
                   {!privacyOn && total > 0 && (
-                    <div style={{ fontSize: 14, fontWeight: 700, color: T.inkSub, flexShrink: 0 }}>
+                    <div style={{
+                      fontFamily: T.serif, fontSize: 14, fontWeight: 500,
+                      color: T.inkSub, flexShrink: 0, fontVariantNumeric: 'tabular-nums',
+                    }}>
                       ${total.toFixed(0)}
                     </div>
                   )}

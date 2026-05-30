@@ -75,6 +75,7 @@ export default function InvoiceView() {
   return (
     <div className="print-page" style={{ minHeight: '100svh', background: '#f9f9f9', padding: '20px 10px', fontFamily: 'var(--font-ui)' }}>
       <style>{`
+        @page { margin: 0; }
         @media print {
           body { background: white !important; padding: 0 !important; margin: 0 !important; }
           .no-print { display: none !important; }
@@ -85,7 +86,7 @@ export default function InvoiceView() {
             width: 100% !important;
             max-width: none !important;
             margin: 0 !important;
-            padding: 32px !important;
+            padding: 0.5in !important;
           }
           .table-wrap { overflow: visible !important; }
         }
@@ -146,7 +147,12 @@ export default function InvoiceView() {
             {emailLabel}
           </button>
           <button
-            onClick={() => window.print()}
+            onClick={() => {
+              const prev = document.title;
+              document.title = `${client.last_name || 'Client'}_Invoice_${invoice.invoice_number || 'Invoice'}`;
+              window.print();
+              document.title = prev;
+            }}
             style={{
               background: 'var(--pink)', color: 'white', border: 'none',
               padding: '8px 14px', borderRadius: 8, fontSize: 13, fontWeight: 700,
@@ -303,7 +309,7 @@ export default function InvoiceView() {
         {/* Thank you */}
         <div style={{ textAlign: 'center', paddingTop: 4 }}>
           <div className="inv-display" style={{ fontSize: 17, fontWeight: 500, color: '#777', fontStyle: 'italic' }}>
-            Thank you for your business!
+            Thank you for letting Supermom save the day.
           </div>
         </div>
 

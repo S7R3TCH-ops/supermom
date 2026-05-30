@@ -18,6 +18,7 @@
 - Node v24.14.1, npm 11, Git 2.54, GitHub CLI 2.92, VS Code — all working.
 - App runs at `http://localhost:8080` via `npm run dev`.
 - `.env` at repo root (gitignored) — contains `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY`. Gmail creds not yet added.
+- **Paste in CLI**: running inside tmux/screen — Shift+Enter won't work. Use `Ctrl+J` for newlines or backslash+Enter.
 
 ---
 
@@ -36,47 +37,47 @@
 | S7R3TCH-ops/supermom-crm | Legacy vanilla JS — NOT cloned, low priority |
 | S7R3TCH-ops/fetlife-auto-poster | Minxymomma project (cloned as `minxymomma`) |
 
-### Current version: 0.7.5 (May 30, 2026)
+### Current version: 0.8.1 (May 30, 2026)
 
 ---
 
 ## WHAT WE JUST FINISHED (this session — May 30, 2026)
 
-### MD file sync
-- Removed stale "⚠ Bugs found this session" block from CLAUDE.md (both were fixed in v0.7.5)
-- Updated HANDOFF from v0.7.2 → v0.7.5
+### Diagnosed why live site wasn't updated
+- v0.7.1 through v0.8.0 were all local-only — never committed or pushed. Session ended before commit step.
+- Committed and pushed everything as v0.8.0.
 
-### CS1–CS3 verification pass — PASSED
-Full Playwright-driven verification against live dev server (Sandra's viewpoint):
-- **CS1**: Partial payment flow confirmed end-to-end. Partial save → orange card → reopen → balance pre-filled correctly → "Save & Log Paid" button → job drops off Needs Action. Toasts: "Payment saved — balance owing." (partial) confirmed.
-- **CS2**: Card colors confirmed — unpaid=red, partial=orange with breakdown, Done This Week=green with PAID ✓ badge.
-- **CS3**: Subtotals on cards confirmed — Done This Week shows pre-HST amount. Needs Action shows full collection amount.
-- **Hero "collected"**: `$150 collected` line confirmed present and updating.
-- **Job edit time round-trip**: NOT tested via automation (completed job edit didn't expose time input). Joel checking manually on device.
+### Fixed Vercel build failure
+- v0.8.0 push triggered a build error: Vercel Hobby plan limits to 12 serverless functions. We had 13 after adding `api/email-invoice.js` in v0.7.2.
+- Fix: deleted `api/ai/thank-you-draft.js` and `src/components/sheets/ThankYouDraftSheet.jsx` — both fully orphaned after PostJobSheet dead-code removal in v0.8.0.
+- **Currently at exactly 12 functions. Adding any new API route = hits the limit again.**
 
-### Supabase businesses record
-- Updated to `sandra@supermom.com`, `(416) 738-0309`, Georgetown ON, `777616178 RT0001`
-- `sandra@supermom.com` is now Sandra's **canonical email** for everything (domain pending)
+### Invoice PDF polish (v0.8.1)
+- `@page { margin: 0 }` in print CSS → suppresses Chrome's date/time/URL header+footer from PDFs
+- Print button sets `document.title` to `LastName_Invoice_XXXX` before `window.print()` → PDF saves with clean filename
+- Thank-you line: "Thank you for letting Supermom save the day."
 
-### Sandra's canonical email established
-- `sandra@supermom.com` — Google Workspace on her custom domain (not yet live)
-- Replaces `supermomsforhire@gmail.com` everywhere: invoices, e-Transfer ref, Google Calendar OAuth, Gmail SMTP, Google Maps
-- When domain goes live: get Gmail App Password → add to .env + Vercel
+### Fixed `npm run dev` broken
+- `node_modules` was wiped by a failed `npm ci` during debugging. Ran `npm install` to restore.
 
 ---
 
 ## MUST DO NEXT — in priority order
 
 ### 1. Job edit time round-trip (Joel checking manually)
-Edit a future/scheduled job's time, save, confirm the displayed time didn't shift. If it did shift, the bug is in `JobDetailSheet` `saveEdit` composing the ISO string. Report back next session.
+Edit a future/scheduled job's time, save, confirm the displayed time didn't shift. If it did shift, the bug is in `JobDetailSheet` `saveEdit` composing the ISO string. Report back.
 
-### 2. Gmail App Password (blocked on domain)
+### 2. owedTotal for Partial clients
+`selectors.js` shows full job total instead of remaining balance for Partial clients. Fix: join payments table in `clientsRepo.js`, subtract `amount_paid` in `toDisplayClient`. Code-only, no SQL migration.
+
+### 3. Gmail App Password (blocked on domain)
 When `sandra@supermom.com` is live:
 - Google Account → Security → 2-Step Verification → App Passwords → Create → copy 16-char code
 - Add to `.env` + Vercel dashboard:
 ```
 GMAIL_USER=sandra@supermom.com
 GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx
+APP_BASE_URL=https://supermom-v2.vercel.app
 ```
 
 ---
@@ -85,9 +86,11 @@ GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx
 
 ### Immediate
 - [ ] Job edit time round-trip — Joel verifying manually (if broken, fix in JobDetailSheet)
+- [ ] owedTotal balance for Partial jobs — code-only fix in clientsRepo.js + toDisplayClient
 - [ ] Gmail App Password → waiting on sandra@supermom.com domain going live
 - [ ] 16 missing Vercel env vars — confirm nothing breaks as features are used
 - [ ] Credential rotation — DB password + GitHub token were in a public commit
+- ⚠ Vercel Hobby plan: exactly 12/12 serverless functions used. No room for new API routes without deleting one or upgrading.
 
 ### Laptop / environment
 - [ ] WSL2 cleanup: `sudo umount /mnt/recovery` → `exit` → `wsl --unmount`

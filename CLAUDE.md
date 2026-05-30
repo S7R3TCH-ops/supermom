@@ -100,9 +100,15 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 ---
 
-## Current version: 0.8.0
+## Current version: 0.8.1
 
 All core features are live. The app is in active use by Sandra.
+
+### Recent changes (v0.8.1 — May 30, 2026) — invoice PDF polish + Vercel fix
+- **Invoice PDF: no browser headers/footers** — `@page { margin: 0 }` eliminates Chrome's date/time/URL print header+footer area. Invoice box print padding bumped to `0.5in` to compensate.
+- **Invoice PDF: custom filename** — Print button temporarily sets `document.title` to `LastName_Invoice_XXXX` before `window.print()`, so "Save as PDF" pre-fills a clean filename.
+- **Invoice thank-you** — Updated from generic "Thank you for your business!" to "Thank you for letting Supermom save the day."
+- **Vercel 12-function limit fix** — `api/ai/thank-you-draft.js` and `src/components/sheets/ThankYouDraftSheet.jsx` deleted (both fully orphaned after v0.8.0 PostJobSheet cleanup). Serverless function count back to 12 (Hobby plan limit).
 
 ### Recent changes (v0.8.0 — May 30, 2026) — code review security + accuracy pass
 - **Security: XSS in invoice email** — `api/email-invoice.js` now escapes all user-supplied values (`clientName`, `bizName`, etc.) via `escapeHtml()` before HTML interpolation.
@@ -241,7 +247,6 @@ All core features are live. The app is in active use by Sandra.
 ## Parked / not building yet
 
 ### Immediate (next session) — in priority order
-- [ ] **Commit v0.8.0 code review fixes** — Joel testing on dev server first. ~20 files changed (security, payment accuracy, timezone, field names). All lint-clean.
 - [ ] **Job edit time round-trip** — Joel checking manually on device. If time shifts after save, fix is in `JobDetailSheet` `saveEdit` / `composeTorontoISO`.
 - [ ] **owedTotal balance for Partial jobs** — `selectors.js` shows full job total instead of remaining balance for Partial clients. Fix: join payments table in `clientsRepo.js` to get `amount_paid` per job, then subtract in `toDisplayClient`. No SQL migration needed — code only.
 - [ ] **Gmail App Password** — waiting on `sandra@supermom.com` domain going live. When ready: App Password → `GMAIL_USER` + `GMAIL_APP_PASSWORD` in `.env` + Vercel dashboard. Also add `APP_BASE_URL=https://supermom-v2.vercel.app` to Vercel env vars.
@@ -249,6 +254,8 @@ All core features are live. The app is in active use by Sandra.
 - [ ] **Credential rotation** — DB password + GitHub token were in a public commit. Should be rotated.
 - [x] **CS1–CS3 verification pass** — PASSED (May 30, 2026).
 - [x] **Supabase businesses record** — populated (May 30, 2026).
+
+> ⚠ **Vercel Hobby plan: 12 serverless function limit.** Currently at exactly 12 (`api/` files). Adding any new API route requires deleting one first, or upgrading to Pro.
 
 ### Laptop / dev environment
 - [ ] WSL2 cleanup — `sudo umount /mnt/recovery` → `exit` → `wsl --unmount`

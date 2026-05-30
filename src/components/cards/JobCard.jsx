@@ -1,20 +1,22 @@
 import { fmtTimeRange, dateBrief } from '../../lib/dateUtils';
 import PaymentBreakdown from './PaymentBreakdown';
 
-export default function JobCard({ job: j, T, onClick, onDuplicate, paid = 0, total = 0, privacyOn = false, subtle = false }) {
+export default function JobCard({ job: j, T, onClick, onDuplicate, paid = 0, total = 0, privacyOn = false, subtle = false, hstNote = false }) {
   const isCompleted = j.status === 'Completed';
   const isPaid = j.payment_status === 'Paid';
   const isPartial = j.payment_status === 'Partial';
   const isUnpaid = isCompleted && !isPaid;
 
   // State signal colours — all from design system
-  const borderColor = isUnpaid || isPartial ? '#F59E0B' : isPaid ? '#86EFAC' : '#E91E6A';
+  const isCompletedUnpaid = isUnpaid && !isPartial;
+  const borderColor = isPartial ? '#F97316' : isCompletedUnpaid ? '#EF4444' : isPaid ? '#86EFAC' : '#E91E6A';
   const bgColor = subtle
     ? 'transparent'
-    : isUnpaid || isPartial ? '#FEF3C7'
+    : isPartial ? '#FFF7ED'
+    : isCompletedUnpaid ? '#FEF2F2'
     : isPaid ? '#F0FFF5'
     : '#FFF0F7';
-  const accentColor = isUnpaid || isPartial ? '#78350F' : isPaid ? '#14532D' : '#E91E6A';
+  const accentColor = isPartial ? '#C2410C' : isCompletedUnpaid ? '#991B1B' : isPaid ? '#14532D' : '#E91E6A';
   const statusLabel = isPartial ? 'PARTIAL' : isUnpaid ? 'UNPAID' : isPaid ? 'PAID ✓' : 'SCHEDULED';
 
   const remaining = isPaid ? 0 : Math.max(0, total - paid);
@@ -48,6 +50,9 @@ export default function JobCard({ job: j, T, onClick, onDuplicate, paid = 0, tot
               fontVariantNumeric: 'tabular-nums',
             }}>
               {privacyOn ? '•••' : `$${total.toFixed(0)}`}
+              {!privacyOn && hstNote && (
+                <span style={{ fontSize: 8, fontWeight: 700, color: accentColor, opacity: 0.6, marginLeft: 2, fontFamily: T.font, textTransform: 'uppercase' }}> +HST</span>
+              )}
             </span>
           )}
           <span style={{

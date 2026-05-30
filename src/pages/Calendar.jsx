@@ -30,7 +30,14 @@ function addDays(d, n) {
   const x = new Date(d); x.setDate(x.getDate() + n); return x;
 }
 function fmtTime(d) {
-  const h = d.getHours(), m = d.getMinutes();
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Toronto',
+    hourCycle: 'h23',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).formatToParts(d);
+  const h = parseInt(parts.find(p => p.type === 'hour').value, 10);
+  const m = parseInt(parts.find(p => p.type === 'minute').value, 10);
   const hh = ((h + 11) % 12) + 1;
   const ap = h < 12 ? 'AM' : 'PM';
   return m === 0 ? `${hh}:00 ${ap}` : `${hh}:${m.toString().padStart(2,'0')} ${ap}`;

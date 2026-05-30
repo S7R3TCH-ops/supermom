@@ -46,12 +46,23 @@ export default function PostJobSheet({ jobId, onClose }) {
     return (Number(job.flat_rate) || (job.estimated_hours > 0 ? totalAmt / job.estimated_hours : totalAmt));
   }, [job, totalAmt]);
   
+  const liveSubtotal = useMemo(() => {
+    const base = isHourly ? hourlyRate * (actualMinutes / 60) : totalAmt;
+    const addl = costs.reduce((s, c) => s + (parseFloat(c.amount) || 0), 0);
+    return Math.round((base + addl) * 100) / 100;
+  }, [isHourly, hourlyRate, actualMinutes, totalAmt, costs]);
+
+  const liveHst = useMemo(() => {
+    if (!job) return 0;
+    if (business?.tax_enabled) {
+      return Math.round(liveSubtotal * Number(business?.hst_rate ?? 0.13) * 100) / 100;
+    }
+    return Math.round(Number(job?.hst_amount || 0) * 100) / 100;
+  }, [job, business, liveSubtotal]);
+
   const liveTotal = useMemo(() => {
-    const liveTotalBase = isHourly ? hourlyRate * (actualMinutes / 60) : totalAmt;
-    const addlTotal = costs.reduce((s, c) => s + (parseFloat(c.amount) || 0), 0);
-    const hstAmt = Number(job?.hst_amount || 0);
-    return Math.round((liveTotalBase + addlTotal + hstAmt) * 100) / 100;
-  }, [isHourly, hourlyRate, actualMinutes, totalAmt, costs, job]);
+    return Math.round((liveSubtotal + liveHst) * 100) / 100;
+  }, [liveSubtotal, liveHst]);
 
   const liveBreakdownForm = useMemo(() => {
     if (!job) return null;
@@ -93,7 +104,7 @@ export default function PostJobSheet({ jobId, onClose }) {
               setJobPayments(records);
               const paid = records.reduce((s, p) => s + Number(p.amount), 0);
               if (j?.payment_status === 'Partial') {
-                setPayStatus('partial');
+                setPayStatus('paid');
                 const remaining = Math.round(Math.max(0, fullTotal - paid) * 100) / 100;
                 setAmount(String(remaining > 0 ? remaining : fullTotal));
               } else {
@@ -160,7 +171,9 @@ export default function PostJobSheet({ jobId, onClose }) {
     setBusy(true);
     try {
       const paidAmt = payStatus === 'paid' ? (parseFloat(amount) || 0) : payStatus === 'partial' ? (parseFloat(amount) || 0) : 0;
-      const ps = payStatus === 'paid' ? 'Paid' : payStatus === 'partial' ? 'Partial' : '';
+      let ps = payStatus === 'paid' ? 'Paid' : payStatus === 'partial' ? 'Partial' : '';
+      if (ps === 'Paid' && alreadyPaid + paidAmt < liveTotal - 0.01) ps = 'Partial';
+      if (ps === 'Partial' && alreadyPaid + paidAmt >= liveTotal - 0.01) ps = 'Paid';
 
       const validCosts = costs
         .filter(c => parseFloat(c.amount) > 0)
@@ -176,7 +189,7 @@ export default function PostJobSheet({ jobId, onClose }) {
       if (data) setInvoiceId(data.invoice_id);
 
       notifyDataChanged();
-      toast.success(payStatus === 'paid' ? 'Payment recorded!' : 'Job marked complete!');
+      toast.success(ps === 'Paid' ? 'Job complete!' : ps === 'Partial' ? 'Payment saved — balance owing.' : 'Job updated.');
       setDone(true);
       setTimeout(onClose, 2500);
     } catch (e) {
@@ -226,10 +239,34 @@ export default function PostJobSheet({ jobId, onClose }) {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 22, fontWeight: 900, color: T.pink, fontFamily: T.font }}>
-                ${liveTotal.toFixed(2)}
-              </div>
-              <div style={{ fontSize: 9, fontWeight: 700, color: T.inkMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Live Total</div>
+              {alreadyPaid > 0 ? (
+                <>
+                  <div style={{ fontSize: 22, fontWeight: 900, color: T.pink, fontFamily: T.font }}>
+                    ${(liveTotal - alreadyPaid).toFixed(2)}
+                  </div>
+                  <div style={{ fontSize: 9, fontWeight: 700, color: T.inkMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Balance Due</div>
+                  <div style={{ fontSize: 9, color: T.inkMuted, marginTop: 1 }}>
+                    ${liveTotal.toFixed(2)} total · ${alreadyPaid.toFixed(2)} paid
+                  </div>
+                </>
+              ) : liveHst > 0 ? (
+                <>
+                  <div style={{ fontSize: 22, fontWeight: 900, color: T.pink, fontFamily: T.font }}>
+                    ${liveTotal.toFixed(2)}
+                  </div>
+                  <div style={{ fontSize: 9, fontWeight: 700, color: T.inkMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Total to Collect</div>
+                  <div style={{ fontSize: 9, color: T.inkMuted, marginTop: 1 }}>
+                    ${liveSubtotal.toFixed(2)} + ${liveHst.toFixed(2)} HST
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize: 22, fontWeight: 900, color: T.pink, fontFamily: T.font }}>
+                    ${liveTotal.toFixed(2)}
+                  </div>
+                  <div style={{ fontSize: 9, fontWeight: 700, color: T.inkMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Live Total</div>
+                </>
+              )}
             </div>
             <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(0,0,0,0.07)', border: '1.5px solid rgba(0,0,0,0.08)', color: T.ink, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
@@ -320,7 +357,7 @@ export default function PostJobSheet({ jobId, onClose }) {
                     Pre-paid: ${alreadyPaid.toFixed(2)}
                   </span>
                   <span style={{ fontSize: 11, color: '#B45309', marginLeft: 'auto' }}>
-                    of ${(alreadyPaid + (parseFloat(amount) || 0)).toFixed(2)} total
+                    of ${liveTotal.toFixed(2)} total
                   </span>
                 </div>
               )}

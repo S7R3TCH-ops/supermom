@@ -191,7 +191,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
         total_amount:    form.total_amount === '' ? null : Number(form.total_amount),
         ...(form.pricing_type === 'Flat'
           ? { flat_rate: form.total_amount === '' ? null : Number(form.total_amount), subtotal: form.total_amount === '' ? null : Number(form.total_amount) }
-          : { flat_rate: null, subtotal: null }),
+          : { flat_rate: Number(form.hourly_rate) || null }),
         estimated_hours: form.estimated_hours === '' ? null : Number(form.estimated_hours),
         job_notes:       form.job_notes || null,
         additional_costs_json: form.additional_costs_json || [],
@@ -231,7 +231,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
       : (estimatedHrs > 0 ? Math.round(storedTotal / estimatedHrs) : Number(business?.hourly_rate || 60));
     setForm({
       scheduled_date:  job.scheduled_date  || '',
-      scheduled_time:  job.scheduled_time  || '',
+      scheduled_time:  (job.scheduled_time || '').slice(0, 5),
       service_name:    job.service_name    || '',
       service_id:      job.service_id      || null,
       pricing_type:    job.pricing_type    || 'Flat',

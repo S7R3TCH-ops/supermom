@@ -335,10 +335,10 @@ export async function archiveClientJobs(clientId) {
 export async function recordPayment(jobId, amount, method = 'Cash', paymentStatus = null, duration = null, jobNotes = null, additionalCosts = [], completionNotes = null) {
   const businessId = await getCurrentBusinessId();
 
-  // 1. Get job info (we need client_id, total_amount, and service_id for learning)
+  // 1. Get job info (need full fields for computeJobTotal to work correctly on hourly jobs)
   const { data: job, error: getErr } = await supabase
     .from('jobs')
-    .select('client_id, business_id, total_amount, additional_cost, hst_amount, service_id')
+    .select('client_id, business_id, total_amount, additional_cost, hst_amount, service_id, flat_rate, pricing_type, actual_duration, estimated_hours, additional_costs_json, job_status')
     .eq('id', jobId)
     .eq('business_id', businessId)
     .single();
@@ -362,18 +362,15 @@ export async function recordPayment(jobId, amount, method = 'Cash', paymentStatu
     assertWrote(payData, 'recordPayment:insert');
   }
 
-  // 3. Derive payment status — use caller-supplied status if provided (e.g. Partial), else derive from payments sum
-  let status = paymentStatus;
-  if (!status) {
-    const { data: existingPayments } = await supabase
-      .from('payments')
-      .select('amount')
-      .eq('job_id', jobId)
-      .eq('is_void', false);
-    const paid = (existingPayments ?? []).reduce((s, p) => s + Number(p.amount), 0);
-    const total = computeJobTotal(job);
-    status = paid >= total && paid > 0 ? 'Paid' : paid > 0 ? 'Partial' : '';
-  }
+  // 3. Always derive status from DB payments sum — never trust caller-supplied value
+  const { data: existingPayments } = await supabase
+    .from('payments')
+    .select('amount')
+    .eq('job_id', jobId)
+    .eq('is_void', false);
+  const paid = (existingPayments ?? []).reduce((s, p) => s + Number(p.amount), 0);
+  const total = computeJobTotal(job);
+  let status = paid >= total - 0.01 && paid > 0 ? 'Paid' : paid > 0 ? 'Partial' : (amount > 0 ? 'Partial' : '');
 
   const validCosts = (additionalCosts || []).filter(c => Number(c.amount) > 0);
   const costSum = validCosts.reduce((s, c) => s + Number(c.amount), 0);

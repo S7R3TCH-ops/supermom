@@ -37,7 +37,7 @@ export default function LogoBar() {
     }}>
       {isTopLevel ? (
         <img
-          src="/branding/logo-final.png"
+          src="/branding/logo-banner.png"
           alt="Supermom for Hire"
           style={{ 
             height: 72, 

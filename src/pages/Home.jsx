@@ -15,7 +15,7 @@ import { updateJob } from '../data/jobsRepo';
 import { useGeofence } from '../context/GeofenceContext';
 import { useKeyboardFocus } from '../hooks/useKeyboardFocus';
 import { sameDay, getWeekRange, fmtTime12, fmtTimeRange, dateBrief } from '../lib/dateUtils';
-import { computeJobTotal } from '../lib/financialMath';
+import { computeJobTotal, computeJobSubtotal } from '../lib/financialMath';
 import JobCard from '../components/cards/JobCard';
 import UpcomingCard from '../components/cards/UpcomingCard';
 import EmptyState from '../components/cards/EmptyState';
@@ -85,7 +85,7 @@ export default function Home() {
   const allDone = todayJobs.length > 0 && !todayJobs.some(j => j.status === 'Scheduled' || j.payment_status !== 'Paid');
 
   const displayRevenue = useMemo(
-    () => todayJobs.reduce((s, j) => s + computeJobTotal(j), 0),
+    () => todayJobs.reduce((s, j) => s + computeJobSubtotal(j), 0),
     [todayJobs]
   );
 
@@ -113,7 +113,9 @@ export default function Home() {
         const isPast = j.end < now;
         const needsWrap = j.status !== 'Completed';
         const needsPay = j.status === 'Completed' && j.payment_status !== 'Paid';
-        return isPast && (needsWrap || needsPay);
+        // needsWrap: only show after scheduled end passes (don't surface future wrap-ups)
+        // needsPay: show immediately once completed regardless of scheduled end time
+        return (isPast && needsWrap) || needsPay;
       })
       .sort((a, b) => a.start - b.start);
   }, [allJobs, now]);
@@ -206,6 +208,17 @@ export default function Home() {
     fetchPayments();
     return () => { alive = false; };
   }, [todayJobs, attentionItems, restOfWeekJobs, completedPaidThisWeek]);
+
+  const collectedThisWeek = useMemo(() => {
+    if (!allJobs) return 0;
+    return allJobs
+      .filter(j => {
+        if (!j.scheduled_at) return false;
+        const start = new Date(j.scheduled_at);
+        return !isNaN(start.getTime()) && start >= currentWeekStart && start <= currentWeekEnd;
+      })
+      .reduce((s, j) => s + (paymentMap[j.id] || 0), 0);
+  }, [allJobs, paymentMap, currentWeekStart, currentWeekEnd]);
 
   const todayUpcoming = useMemo(() => {
     return todayJobs.filter(j =>
@@ -388,6 +401,11 @@ export default function Home() {
               <div style={{ fontSize: 10, fontWeight: 700, color: mode === 'dark' ? T.pinkLabel : T.pink, textTransform: 'uppercase', letterSpacing: '0.6px', marginTop: 3 }}>
                 Projected
               </div>
+              {collectedThisWeek > 0 && (
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#16A34A', marginTop: 3, letterSpacing: '0.3px' }}>
+                  {privacyOn ? '•••' : `$${collectedThisWeek.toFixed(0)}`} collected
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -540,9 +558,9 @@ export default function Home() {
                               </span>
                             </div>
                           )}
-                          {!privacyOn && computeJobTotal(next) > 0 && (
+                          {!privacyOn && computeJobSubtotal(next) > 0 && (
                             <div style={{ fontSize: 11, fontWeight: 600, color: DEEP_ROSE, opacity: 0.65, marginBottom: 6 }}>
-                              Est. ${computeJobTotal(next).toFixed(0)}
+                              Est. ${computeJobSubtotal(next).toFixed(0)}{computeJobTotal(next) > computeJobSubtotal(next) && <span style={{ fontSize: 8, fontWeight: 700, opacity: 0.7, marginLeft: 2 }}> +HST</span>}
                             </div>
                           )}
                         </>
@@ -637,9 +655,10 @@ export default function Home() {
                 job={j}
                 T={T}
                 onClick={() => openJob(j.id)}
-                total={computeJobTotal(j)}
+                total={computeJobSubtotal(j)}
                 paid={paymentMap[j.id] || 0}
                 privacyOn={privacyOn}
+                hstNote={computeJobTotal(j) > computeJobSubtotal(j)}
               />
             ))}
           </div>
@@ -658,13 +677,22 @@ export default function Home() {
               const isHourly = src.pricing_type === 'Hourly';
               const rate = Number(src.hourly_rate || src.flat_rate || 0);
               const pricingLabel = isHourly ? `Hourly · $${rate.toFixed(0)}/hr` : 'Flat rate';
+              const attnHstNote = computeJobTotal(j) > computeJobSubtotal(j);
+              const isAttnPartial = !needsWrap && j.payment_status === 'Partial';
+              const isAttnUnpaid = !needsWrap && !isAttnPartial;
+              const cardBorder = needsWrap ? '#F59E0B' : isAttnPartial ? '#F97316' : '#EF4444';
+              const cardBg = needsWrap
+                ? (mode === 'dark' ? 'rgba(245,158,11,0.08)' : '#FFFBEB')
+                : isAttnPartial
+                  ? (mode === 'dark' ? 'rgba(249,115,22,0.08)' : '#FFF7ED')
+                  : (mode === 'dark' ? 'rgba(239,68,68,0.08)' : '#FEF2F2');
               return (
                 <div
                   key={j.id}
                   style={{
-                    background: mode === 'dark' ? 'rgba(245,158,11,0.08)' : '#FFFBEB',
-                    border: '2px solid #F59E0B',
-                    borderLeft: '6px solid #F59E0B',
+                    background: cardBg,
+                    border: `2px solid ${cardBorder}`,
+                    borderLeft: `6px solid ${cardBorder}`,
                     borderRadius: 16,
                     padding: '14px 16px',
                     marginBottom: 10,
@@ -697,16 +725,16 @@ export default function Home() {
                                 <span style={{ color: '#92400E', opacity: 0.4 }}>·</span>
                               </>
                             )}
-                            <span style={{ color: T.pink, fontWeight: 800 }}>${remaining.toFixed(0)} owing</span>
+                            <span style={{ color: T.pink, fontWeight: 800 }}>${remaining.toFixed(0)} owing{attnHstNote && <span style={{ fontSize: 8, fontWeight: 600, opacity: 0.55, marginLeft: 3, fontFamily: T.font }}>(incl. HST)</span>}</span>
                           </div>
                         ) : (
-                          <span style={{ fontSize: 12, color: '#D97706', fontWeight: 700 }}>${total.toFixed(0)} total</span>
+                          <span style={{ fontSize: 12, color: '#D97706', fontWeight: 700 }}>${total.toFixed(0)} total{attnHstNote && <span style={{ fontSize: 8, fontWeight: 600, opacity: 0.55, marginLeft: 3, fontFamily: T.font }}>(incl. HST)</span>}</span>
                         )}
                       </div>
                     </div>
                     <button
                       onClick={() => openPostJob(j.id)}
-                      style={{ background: '#F59E0B', color: 'white', border: 'none', borderRadius: 10, padding: '9px 14px', fontSize: 11, fontWeight: 800, cursor: 'pointer', flexShrink: 0, marginLeft: 10 }}
+                      style={{ background: cardBorder, color: 'white', border: 'none', borderRadius: 10, padding: '9px 14px', fontSize: 11, fontWeight: 800, cursor: 'pointer', flexShrink: 0, marginLeft: 10 }}
                     >
                       {needsWrap ? 'WRAP UP' : remaining > 0 ? 'COLLECT' : 'VIEW'}
                     </button>
@@ -722,7 +750,8 @@ export default function Home() {
           <div style={{ marginBottom: 24 }}>
             <SectionLabel style={{ color: T.inkSub, marginBottom: 8 }}>REST OF THIS WEEK</SectionLabel>
             {restOfWeekJobs.map(j => {
-              const total = computeJobTotal(j);
+              const total = computeJobSubtotal(j);
+              const rowHstNote = computeJobTotal(j) > total;
               return (
                 <div
                   key={j.id}
@@ -773,7 +802,7 @@ export default function Home() {
                       fontFamily: T.serif, fontSize: 14, fontWeight: 500,
                       color: T.inkSub, flexShrink: 0, fontVariantNumeric: 'tabular-nums',
                     }}>
-                      ${total.toFixed(0)}
+                      ${total.toFixed(0)}{rowHstNote && <span style={{ fontSize: 8, fontWeight: 700, opacity: 0.6, marginLeft: 2, fontFamily: T.font, textTransform: 'uppercase' }}> +HST</span>}
                     </div>
                   )}
                 </div>
@@ -794,8 +823,9 @@ export default function Home() {
                 onClick={() => openJob(j.id)}
                 onDuplicate={handleDuplicateJob}
                 paid={paymentMap[j.id] || 0}
-                total={computeJobTotal(j)}
+                total={computeJobSubtotal(j)}
                 privacyOn={privacyOn}
+                hstNote={computeJobTotal(j) > computeJobSubtotal(j)}
                 subtle
               />
             ))}

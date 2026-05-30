@@ -2,7 +2,7 @@ import { fmtTimeRange, dateBrief } from '../../lib/dateUtils';
 import PaymentBreakdown from './PaymentBreakdown';
 import { useAppTheme } from '../../context/AppThemeContext';
 
-export default function UpcomingCard({ job: j, T, onClick, total = 0, paid = 0, privacyOn = false }) {
+export default function UpcomingCard({ job: j, T, onClick, total = 0, paid = 0, privacyOn = false, hstNote = false }) {
   const { mode } = useAppTheme();
   const BORDER = T.pink;
   const ACCENT = T.pink;
@@ -35,6 +35,9 @@ export default function UpcomingCard({ job: j, T, onClick, total = 0, paid = 0, 
               fontVariantNumeric: 'tabular-nums',
             }}>
               {privacyOn ? '•••' : `$${total.toFixed(0)}`}
+              {!privacyOn && hstNote && (
+                <span style={{ fontSize: 8, fontWeight: 700, color: ACCENT, opacity: 0.6, marginLeft: 2, fontFamily: T.font, textTransform: 'uppercase' }}> +HST</span>
+              )}
             </span>
           )}
           <span style={{

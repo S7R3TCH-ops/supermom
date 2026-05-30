@@ -29,7 +29,16 @@ export function getWeekLabel(weekDays) {
 }
 
 export function fmtTime12(d) {
-  const h = d.getHours(), m = d.getMinutes();
+  // Use Intl to extract hours/minutes in Toronto timezone, so display is correct
+  // regardless of the browser's local timezone setting.
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Toronto',
+    hourCycle: 'h23',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).formatToParts(d);
+  const h = parseInt(parts.find(p => p.type === 'hour').value, 10);
+  const m = parseInt(parts.find(p => p.type === 'minute').value, 10);
   const hh = ((h + 11) % 12) + 1;
   const ap = h < 12 ? 'AM' : 'PM';
   return { time: m === 0 ? `${hh}:00` : `${hh}:${m.toString().padStart(2, '0')}`, period: ap };

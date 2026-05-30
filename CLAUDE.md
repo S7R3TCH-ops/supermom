@@ -81,6 +81,9 @@ This is a **managed service product** — Sandra is the first user, but the arch
 - `additional_costs_json` is the array of cost items. `additional_cost` is a backward-compat scalar sum.
 - `toDisplayJob()` in `selectors.js` wraps the raw DB row — use `j.raw.fieldName` to access DB fields from display objects (e.g., in Home.jsx).
 - `payments` table is the source of truth for amounts collected. `job.payment_status` is a denormalized cache.
+- `computeJobTotal(job)` = subtotal + additional costs + HST. Use for collection math (what client owes).
+- `computeJobSubtotal(job)` = subtotal + additional costs (no HST). Use for card/revenue display (Sandra's earnings).
+- **Never trust caller-supplied `paymentStatus`** — `recordPayment` always re-derives from DB payments sum.
 
 ### RLS policy state (verified May 4, 2026)
 - All tables RLS-enabled. Two SECURITY DEFINER helpers: `is_admin()` and `my_business_id()`.
@@ -97,9 +100,76 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 ---
 
-## Current version: 0.7.0
+## Current version: 0.7.5
 
 All core features are live. The app is in active use by Sandra.
+
+### Recent changes (v0.7.5 — May 30, 2026)
+- **Time display timezone fix** — `fmtTime12` / `fmtTimeRange` in `dateUtils.js` now extract hours/minutes via `Intl.DateTimeFormat` with `timeZone: 'America/Toronto'` instead of `d.getHours()`. Prevents hour shift on machines not set to Eastern time. Same fix applied to Calendar.jsx local `fmtTime`. `JobDetailSheet` edit form now strips seconds from `job.scheduled_time` on open (`slice(0,5)`) so `<input type="time">` always gets clean `HH:mm`.
+- **Hourly rate preserved on job edit** — `saveEdit` in `JobDetailSheet` was writing `flat_rate: null` for Hourly jobs, wiping the $/hr rate from the DB. Now writes `flat_rate: Number(form.hourly_rate)`. `form.hourly_rate` is correctly initialized from `job.flat_rate` in `openEditMode`. Fixes inconsistent rate display in PostJobSheet, computeJobFinancials, and Needs Action cards after any edit.
+- **Toast message accuracy** — PostJobSheet wrap-up toast now uses `ps` (the validated post-save status) instead of `payStatus` (user's raw toggle): "Job complete!" for Paid, "Payment saved — balance owing." for Partial, "Job updated." for no-payment wrap.
+
+### Recent changes (v0.7.4 — May 29, 2026)
+- **HST-inclusive payment clarity** — `liveHst` in PostJobSheet now recomputes dynamically from `liveSubtotal × taxRate` when `business.tax_enabled` (was frozen at booking-time value; broke hourly+HST duration adjustments). Header when HST > 0 now shows `liveTotal` (HST-inclusive) as the big number with breakdown below — previously showed subtotal prominently which was backwards.
+- **"of $X total" context line fix** — Pre-payment context badge now shows `liveTotal` directly instead of the fluctuating `alreadyPaid + entered` value.
+- **Needs Action HST label fix** — Replaced misleading `+HST` note (implied HST was additional) with `(incl. HST)` parenthetical — `computeJobTotal` amounts already include HST.
+- **Partial→Paid auto-upgrade** — Three-part fix: (1) `recordPayment` SELECT now includes `job_status` so `computeJobFinancials` uses `actual_duration` (not `estimated_hours`) for completed hourly jobs — was the root cause of "partial stays partial even when fully paid"; (2) epsilon tolerance `paid >= total - 0.01` prevents float noise from blocking Paid status; (3) PostJobSheet `handleLogPayment` now upgrades `ps` from Partial→Paid when `alreadyPaid + paidAmt >= liveTotal - 0.01` (mirrors the existing downgrade check), so save button text and toast are correct.
+- **Home hero: collected this week** — Small green `$X collected` line added below "Projected" in the hero, showing sum of payments received for all jobs scheduled this week. Hidden when zero. Respects privacy mode.
+
+### ⚠ Bugs found this session — fix next
+- **Job edit time shift** — Editing a booked job changes the time after saving: the saved time appears a couple hours earlier than what was entered. Likely a timezone issue in how `JobDetailSheet` composes the time value for the DB (suspect `composeTorontoISO` or the time `<input>` writing UTC instead of Toronto local). **Priority: HIGH — affects live data.**
+- **Hourly rate inconsistency** — The hourly amount shown for a job is not consistent across views. Could be the `flat_rate` vs `hourly_rate` field confusion, or `computeJobFinancials` picking a different source depending on context. Needs systematic trace through all places that read/display the rate.
+
+### ⚠ Still pending — must do before email works
+Run this SQL in Supabase SQL Editor (Sandra's businesses record):
+```sql
+UPDATE businesses
+SET
+  phone      = '(416) 738-0309',
+  email      = 'supermomsforhire@gmail.com',
+  city       = 'Georgetown',
+  province   = 'ON',
+  hst_number = '777616178 RT0001'
+WHERE name ILIKE '%supermom%';
+```
+Add to `.env` and Vercel dashboard:
+```
+GMAIL_USER=supermomsforhire@gmail.com
+GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx   ← get from Sandra's Google account
+```
+Gmail App Password setup: Sandra's Gmail → Google Account → Security → 2-Step Verification (enable) → App Passwords → Create → copy 16-char code.
+
+### Recent changes (v0.7.3 — May 29, 2026)
+- **Payment accuracy (CS1)** — `recordPayment` in `jobsRepo.js` now always re-derives payment status from the DB payments sum; expanded job SELECT to include all fields needed by `computeJobTotal` (was missing `flat_rate`, `pricing_type`, `actual_duration` — would have marked every hourly job as `Paid` regardless of amount). Caller-supplied status is ignored.
+- **PostJobSheet wrap-up fixes** — Pre-save downgrade: if user picks "Paid" but `alreadyPaid + entered < total`, silently saves as `Partial`. Reopening a Partial job now defaults the payment toggle to "paid" (collecting the balance), not "partial".
+- **Job card visual states (CS2)** — Four-way color signal in `JobCard.jsx` and Needs Action inline cards: scheduled=pink, partial=orange (`#F97316`), unpaid=red (`#EF4444`), paid=green. Needs Action action button color follows same logic.
+- **Subtotal on cards (CS3)** — `computeJobSubtotal()` added to `financialMath.js`. All Home card display contexts (hero revenue, Next Up, Coming Up Today, Rest of Week, Done This Week) show pre-tax subtotal. Needs Action `remaining` math keeps `computeJobTotal` — client owes the full HST-inclusive amount. Invoices unchanged.
+- **Disappearing job fix** — `attentionItems` filter changed from `isPast && (needsWrap || needsPay)` to `(isPast && needsWrap) || needsPay`. Completed jobs needing payment now appear in Needs Action immediately, even if scheduled end time hasn't passed yet.
+- **PostJobSheet header redesign** — Three display modes: (1) `alreadyPaid > 0` → shows "Balance Due" (remaining) + `$X total · $Y paid` context; (2) HST job → shows subtotal + `+$H HST = $T total`; (3) normal → "Live Total" unchanged. `liveSubtotal` and `liveHst` derived values added alongside `liveTotal`.
+- **"+HST" indicator on cards** — `hstNote` prop added to `JobCard` and `UpcomingCard`. When `hst_amount > 0`, a small muted `+HST` label appears after the amount on all Home card sections. Not visible for Sandra's current jobs (all have `hst_amount = 0`) but plumbing is in place.
+
+### Recent changes (v0.7.2 — May 28, 2026)
+- **Invoice polish** — Logo 240px, flexbox-centred (works in PDF). Font system unified: Inter base, Fraunces (`.inv-display`) for business name, total, thank-you. Dead `useAppTheme` import removed.
+- **Invoice table** — Date promoted to its own first column. Additional cost rows now show a pink `ADDITIONAL COST` label above the description. Table wrapped in `overflow-x: auto` div for mobile scroll.
+- **Invoice line items clarity** — Hourly: subtext shows full equation (`$35.00/hr × 3.0 hrs = $105.00`). Flat rate: subtext says "Flat Rate". Columns: Date | Description | Rate/Hr | Hours | Amount.
+- **Email invoice** — New `api/email-invoice.js` (nodemailer + Gmail SMTP). "✉ Email to Client" button in invoice toolbar. Sends branded pink HTML email with "View Invoice" button → `/i/:id` URL. Graceful mock mode if `GMAIL_USER`/`GMAIL_APP_PASSWORD` env vars not set (UI testable without real creds).
+- **Logo split** — `public/branding/logo-banner.png` = app top bar (original 41KB file). `public/branding/logo-final.png` = invoice (492KB full logo). `LogoBar.jsx` and `PalettePreview.jsx` updated to use `logo-banner.png`.
+
+### Sandra's business contact details (confirmed)
+- Email: `supermomsforhire@gmail.com` (NOT `supermoms@gmail.com`)
+- Phone: `(416) 738-0309`
+- Location: Georgetown, ON (home-based — no street address on invoices)
+- HST #: `777616178 RT0001`
+
+### Invoice architecture
+- Public route: `/i/:id` — no auth required (shareable link)
+- `src/pages/InvoiceView.jsx` — renders web view + PDF via `window.print()`
+- `src/data/invoicesRepo.js` — `generateInvoiceForJob(jobId)`, `fetchInvoiceById(id)`, `fetchInvoices()`
+- `api/email-invoice.js` — nodemailer/Gmail SMTP. Env vars: `GMAIL_USER`, `GMAIL_APP_PASSWORD`
+- Logo files: `logo-banner.png` (app bar, 41KB) vs `logo-final.png` (invoice, 492KB) — never mix
+
+### Recent changes (v0.7.1 — May 28, 2026)
+- **Invoice overhaul** — Complete `InvoiceView.jsx` rewrite. Added: FROM block (business city/phone/email), HST # under business name, e-Transfer reference number, "Thank you for your business!" in Fraunces italic. Dates formatted as `May 27, 2026`. Logo fallback to `/branding/logo-final.png` when `businesses.logo_url` is null (removes fragile Supabase signed URL dependency for public links). `nodemailer` added to dependencies.
 
 ### Recent changes (v0.7.0 — May 19, 2026)
 - **Home card refresh** — Unified card anatomy across all Home sections. Left-border colour = state signal: amber (`#F59E0B` border / `#FEF3C7` bg) for Needs Action, pink (`#E91E6A`) for Coming Up Today, green (`#86EFAC` border / `#F0FFF5` bg) for Done This Week, soft pink-pale for Rest of Week. Removed all monospace fonts throughout — time displays now use Inter (`T.font`). UpcomingCard blue palette (`#1565C0`) fully replaced with on-brand pink. Section label colours fixed (COMING UP TODAY no longer cobalt blue, Needs Action uses dark amber `#78350F`). All dynamic features preserved: PaymentBreakdown, privacy mode, rebook button, status badges, notes, address. Dark mode support improved in UpcomingCard (uses `T.pink` and mode-aware bg).
@@ -175,7 +245,21 @@ All core features are live. The app is in active use by Sandra.
 
 ## Parked / not building yet
 
+### Immediate (next session) — in priority order
+- [ ] **CS1–CS3 full verification pass** — test end-to-end on real device: partial → reopen → collect balance → confirm Paid (green card); card color states (scheduled/partial/unpaid/paid); subtotal on cards; hero "collected" counter updates; toast says "Payment saved — balance owing." for partial, "Job complete!" for fully paid.
+- [ ] **Gmail App Password** — get from Sandra, add `GMAIL_USER` + `GMAIL_APP_PASSWORD` to `.env` and Vercel dashboard
+- [ ] **Supabase businesses record** — run the SQL under v0.7.4 above to populate phone/email/city/province/hst_number
+- [ ] **16 missing Vercel env vars** — only VITE_SUPABASE_ANON_KEY + VERCEL_OIDC_TOKEN pulled locally. Others likely Production-only on Vercel dashboard. Confirm nothing breaks as features are used.
+- [ ] **Credential rotation** — DB password + GitHub token were in a public commit. Should be rotated.
+
+### Laptop / dev environment
+- [ ] WSL2 cleanup — `sudo umount /mnt/recovery` → `exit` → `wsl --unmount`
+- [ ] GitHub repo rename: `supermom-v2` → `supermom` (cosmetic — affects Vercel project name + doc refs)
+- [ ] Full Windows format + clean reinstall (deferred — everything critical is on GitHub/Vercel)
+
+### Features — Phase 2
+- [ ] **Custom domain → swap email provider** — when Sandra's domain is live, swap `nodemailer` for `resend` and verify domain. `from` becomes `invoices@[domain]`. 5-min job.
+- [ ] **Sandra daily job briefing email** — Vercel Cron Job (daily 7am Toronto). Queries Supabase as service role, emails Sandra: today's + tomorrow's jobs with times/clients/estimates + any outstanding payments. Use Resend (free tier).
 - [ ] Self-serve client booking link (Phase 2)
 - [ ] Offline mode (crashes if Supabase unreachable on first load)
 - [ ] Client engagement tools (AI follow-up / re-booking reminders)
-- [ ] **Sandra daily job briefing email** — Vercel Cron Job (daily, e.g. 7am Toronto) queries Supabase as service role, emails Sandra her day: today's + tomorrow's jobs with times/clients/estimates, plus any past jobs with outstanding payments. Use Resend for transactional email (free tier sufficient). This is a Phase 2 in-app feature, not a remote agent — needs live DB access.

@@ -96,3 +96,11 @@ export function computeJobFinancials(job, business = null, liveForm = null) {
 export function computeJobTotal(job) {
   return computeJobFinancials(job).total;
 }
+
+/**
+ * Pre-tax subtotal (base + additional costs, no HST). Use on cards where HST isn't Sandra's revenue.
+ */
+export function computeJobSubtotal(job) {
+  const { subtotal, additionalTotal } = computeJobFinancials(job);
+  return subtotal + additionalTotal;
+}

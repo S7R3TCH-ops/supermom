@@ -60,7 +60,7 @@ function LogoBarMock() {
       flexShrink: 0,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-        <img src="/branding/logo-final.png" alt="Supermom for Hire" height="26" style={{ objectFit: 'contain' }} />
+        <img src="/branding/logo-banner.png" alt="Supermom for Hire" height="26" style={{ objectFit: 'contain' }} />
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <div style={{

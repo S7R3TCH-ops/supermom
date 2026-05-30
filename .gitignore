@@ -42,3 +42,4 @@ docs/*
 .worktrees/\
 !docs/minxymomma-dashboard.html
 !docs/.nojekyll
+.env*

@@ -1,198 +1,312 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { fetchInvoiceById } from '../data/invoicesRepo';
-import { getSignedUrl } from '../lib/storage';
-import { useAppTheme } from '../context/AppThemeContext';
 import { computeJobFinancials } from '../lib/financialMath';
+
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 function formatDate(dateStr) {
   if (!dateStr) return '';
   const [y, m, d] = dateStr.split('-');
-  return `${d}.${m}.${y}`;
+  return `${MONTHS[parseInt(m, 10) - 1]} ${parseInt(d, 10)}, ${y}`;
 }
+
+const LABEL = { fontSize: 10, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 8 };
 
 export default function InvoiceView() {
   const { id } = useParams();
-  const { T } = useAppTheme();
-  const [invoice, setInvoice] = useState(null);
-  const [logoUrl, setLogoUrl] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [invoice, setInvoice]       = useState(null);
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState(null);
+  const [emailState, setEmailState] = useState('idle');
 
   useEffect(() => {
-    async function load() {
-      try {
-        const data = await fetchInvoiceById(id);
-        setInvoice(data);
-        if (data.businesses?.logo_url) {
-          const url = await getSignedUrl(data.businesses.logo_url);
-          setLogoUrl(url);
-        }
-      } catch (err) {
-        console.error('Failed to load invoice:', err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
+    fetchInvoiceById(id)
+      .then(setInvoice)
+      .catch(err => { console.error('Failed to load invoice:', err); setError(err.message); })
+      .finally(() => setLoading(false));
   }, [id]);
 
-  if (loading) return <div style={{ padding: 40, textAlign: 'center', fontFamily: 'var(--font-ui)', color: 'var(--ink-muted)' }}>Loading Invoice...</div>;
-  if (error) return <div style={{ padding: 40, textAlign: 'center', fontFamily: 'var(--font-ui)', color: 'var(--red)' }}>Error: {error}</div>;
+  if (loading) return <div style={{ padding: 40, textAlign: 'center', fontFamily: 'var(--font-ui)', color: 'var(--ink-muted)' }}>Loading Invoice…</div>;
+  if (error)   return <div style={{ padding: 40, textAlign: 'center', fontFamily: 'var(--font-ui)', color: 'var(--red)' }}>Error: {error}</div>;
   if (!invoice) return <div style={{ padding: 40, textAlign: 'center', fontFamily: 'var(--font-ui)', color: 'var(--ink-muted)' }}>Invoice not found.</div>;
 
-  const biz = invoice.businesses || {};
-  const client = invoice.clients || {};
-  const job = invoice.invoice_jobs?.[0]?.jobs || {};
+  const biz    = invoice.businesses || {};
+  const client = invoice.clients    || {};
+  const job    = invoice.invoice_jobs?.[0]?.jobs || {};
 
-  const financials = financialsMemo(job, biz);
-  
-  function financialsMemo(j, b) {
-    return computeJobFinancials(j, b);
+  const financials = computeJobFinancials(job, biz);
+  const logoSrc    = biz.logo_url || '/branding/logo-final.png';
+  const bizCity    = [biz.city, biz.province].filter(Boolean).join(', ');
+  const clientCity = [client.city, client.province].filter(Boolean).join(', ');
+
+  async function handleEmail() {
+    if (!client.email) return;
+    setEmailState('sending');
+    try {
+      const res = await fetch('/api/email-invoice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          invoiceId: id,
+          clientEmail: client.email,
+          clientName: client.first_name,
+          invoiceNumber: invoice.invoice_number,
+          bizName: biz.name || 'Supermom for Hire',
+          bizEmail: biz.email,
+        }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      setEmailState('sent');
+      setTimeout(() => setEmailState('idle'), 4000);
+    } catch (e) {
+      console.error('Email error:', e);
+      setEmailState('error');
+      setTimeout(() => setEmailState('idle'), 4000);
+    }
   }
 
-  const handlePrint = () => {
-    window.print();
-  };
+  const emailLabel = emailState === 'sending' ? 'Sending…'
+    : emailState === 'sent'    ? '✓ Sent!'
+    : emailState === 'error'   ? '✗ Failed — retry'
+    : client.email             ? '✉ Email to Client'
+    : '✉ No Email on File';
 
   return (
-    <div style={{ minHeight: '100svh', background: '#f9f9f9', padding: '20px 10px' }}>
+    <div className="print-page" style={{ minHeight: '100svh', background: '#f9f9f9', padding: '20px 10px', fontFamily: 'var(--font-ui)' }}>
       <style>{`
         @media print {
-          body { background: white !important; padding: 0 !important; }
+          body { background: white !important; padding: 0 !important; margin: 0 !important; }
           .no-print { display: none !important; }
-          .invoice-box { box-shadow: none !important; border: none !important; width: 100% !important; max-width: none !important; padding: 0 !important; }
+          .print-page { background: white !important; padding: 0 !important; }
+          .invoice-box {
+            box-shadow: none !important;
+            border: none !important;
+            width: 100% !important;
+            max-width: none !important;
+            margin: 0 !important;
+            padding: 32px !important;
+          }
+          .table-wrap { overflow: visible !important; }
         }
         .invoice-box {
           background: white;
           max-width: 800px;
           margin: 0 auto;
-          padding: 40px;
+          padding: 44px;
           box-shadow: 0 10px 30px rgba(0,0,0,0.05);
           border: 1px solid #eee;
           font-family: var(--font-ui);
           color: #1a1a1a;
         }
-        .fraunces { font-family: var(--font-display); }
+        .inv-display { font-family: var(--font-display); }
+        .info-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr 1fr;
+          gap: 24px;
+          margin-bottom: 44px;
+          font-size: 13px;
+          line-height: 1.75;
+        }
+        .table-wrap {
+          width: 100%;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+          margin-bottom: 32px;
+        }
+        .table-wrap table {
+          width: 100%;
+          min-width: 520px;
+          border-collapse: collapse;
+        }
+        @media (max-width: 600px) {
+          .invoice-box { padding: 16px 12px; }
+          .info-grid { grid-template-columns: 1fr; gap: 18px; margin-bottom: 28px; font-size: 12px; }
+          .info-col-right { text-align: left !important; }
+          .invoice-meta { justify-content: flex-start !important; }
+        }
       `}</style>
 
-      <div className="no-print" style={{ maxWidth: 800, margin: '0 auto 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      {/* Toolbar */}
+      <div className="no-print" style={{ maxWidth: 800, margin: '0 auto 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         <div style={{ fontSize: 12, color: 'var(--ink-muted)', fontWeight: 600 }}>✦ PREVIEW</div>
-        <button 
-          onClick={handlePrint}
-          style={{ 
-            background: 'var(--pink)', color: 'white', border: 'none', 
-            padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700,
-            cursor: 'pointer', boxShadow: '0 4px 12px rgba(233,30,106,0.2)'
-          }}
-        >
-          Download PDF / Print
-        </button>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <button
+            onClick={handleEmail}
+            disabled={!client.email || emailState === 'sending'}
+            style={{
+              background: emailState === 'sent' ? '#16A34A' : 'white',
+              color: emailState === 'sent' ? 'white' : client.email ? 'var(--pink)' : '#bbb',
+              border: `1.5px solid ${emailState === 'sent' ? '#16A34A' : client.email ? 'var(--pink)' : '#ddd'}`,
+              padding: '8px 14px', borderRadius: 8, fontSize: 13, fontWeight: 700,
+              cursor: client.email && emailState === 'idle' ? 'pointer' : 'not-allowed',
+              transition: 'all 0.2s',
+            }}
+          >
+            {emailLabel}
+          </button>
+          <button
+            onClick={() => window.print()}
+            style={{
+              background: 'var(--pink)', color: 'white', border: 'none',
+              padding: '8px 14px', borderRadius: 8, fontSize: 13, fontWeight: 700,
+              cursor: 'pointer', boxShadow: '0 4px 12px rgba(233,30,106,0.2)',
+            }}
+          >
+            Download PDF / Print
+          </button>
+        </div>
       </div>
 
       <div className="invoice-box">
+
         {/* Header */}
-        <div style={{ textAlign: 'center', marginBottom: 60 }}>
-          {logoUrl ? (
-            <img src={logoUrl} alt="Logo" style={{ width: 100, height: 100, objectFit: 'contain', marginBottom: 20 }} />
-          ) : (
-            <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'var(--grad-pink)', margin: '0 auto 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 32 }}>🦸‍♀️</div>
-          )}
-          <h1 style={{ fontSize: 24, fontWeight: 500, letterSpacing: '2px', textTransform: 'uppercase', margin: 0 }}>
-            {biz.name || 'SUPERMOM FOR HIRE'}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', marginBottom: 40 }}>
+          <img
+            src={logoSrc}
+            alt={biz.name || 'Supermom for Hire'}
+            style={{ width: 240, height: 240, objectFit: 'contain', marginBottom: 4 }}
+            onError={e => { e.currentTarget.style.display = 'none'; }}
+          />
+          <h1 className="inv-display" style={{ fontSize: 28, fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 6px', color: '#1a1a1a' }}>
+            {biz.name || 'Supermom for Hire'}
           </h1>
+          {biz.hst_number && (
+            <div style={{ fontSize: 11, color: '#999', letterSpacing: '0.5px' }}>
+              HST # {biz.hst_number}
+            </div>
+          )}
         </div>
 
-        {/* Info Blocks */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 60, fontSize: 13, lineHeight: 1.6 }}>
+        {/* Info row */}
+        <div className="info-grid">
           <div>
-            <div style={{ fontWeight: 800, letterSpacing: '1px', marginBottom: 8 }}>ISSUED TO:</div>
-            <div style={{ fontWeight: 500 }}>{client.first_name} {client.last_name}</div>
-            <div>{client.address || ''}</div>
-            <div>{client.city || ''} {client.postal_code || ''}</div>
+            <div style={LABEL}>Issued to</div>
+            <div style={{ fontWeight: 600 }}>{client.first_name} {client.last_name}</div>
+            {clientCity && <div style={{ color: '#555' }}>{clientCity}</div>}
+            {client.email && <div style={{ color: '#888' }}>{client.email}</div>}
+            {client.phone && <div style={{ color: '#888' }}>{client.phone}</div>}
           </div>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '120px 100px', gap: '8px 16px', textAlign: 'left' }}>
-              <div style={{ fontWeight: 800, letterSpacing: '1px', textAlign: 'right' }}>INVOICE NO:</div>
-              <div style={{ fontWeight: 500 }}>{invoice.invoice_number}</div>
-              <div style={{ fontWeight: 800, letterSpacing: '1px', textAlign: 'right' }}>DATE:</div>
-              <div style={{ fontWeight: 500 }}>{formatDate(invoice.invoice_date)}</div>
-              <div style={{ fontWeight: 800, letterSpacing: '1px', textAlign: 'right' }}>DUE DATE:</div>
-              <div style={{ fontWeight: 500 }}>{formatDate(invoice.due_date)}</div>
+
+          <div>
+            <div style={LABEL}>From</div>
+            <div style={{ fontWeight: 600 }}>{biz.name || 'Supermom for Hire'}</div>
+            {bizCity && <div style={{ color: '#555' }}>{bizCity}</div>}
+            {biz.phone && <div style={{ color: '#888' }}>{biz.phone}</div>}
+            {biz.email && <div style={{ color: '#888' }}>{biz.email}</div>}
+          </div>
+
+          <div className="info-col-right" style={{ textAlign: 'right' }}>
+            <div style={{ ...LABEL, textAlign: 'right' }}>Invoice</div>
+            <div className="invoice-meta" style={{ display: 'grid', gridTemplateColumns: 'auto auto', gap: '5px 14px', justifyContent: 'end' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#aaa', textAlign: 'right', alignSelf: 'center' }}>NO</div>
+              <div style={{ fontWeight: 600 }}>{invoice.invoice_number}</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#aaa', textAlign: 'right', alignSelf: 'center' }}>DATE</div>
+              <div>{formatDate(invoice.invoice_date)}</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#aaa', textAlign: 'right', alignSelf: 'center' }}>DUE</div>
+              <div>{formatDate(invoice.due_date)}</div>
             </div>
           </div>
         </div>
 
-        {/* Table */}
-        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 40 }}>
-          <thead>
-            <tr style={{ background: '#EAE2D8', fontSize: 11, fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase' }}>
-              <th style={{ textAlign: 'left', padding: '12px 15px' }}>Description</th>
-              <th style={{ textAlign: 'center', padding: '12px 15px', width: 100 }}>Cost</th>
-              <th style={{ textAlign: 'center', padding: '12px 15px', width: 80 }}>Qty</th>
-              <th style={{ textAlign: 'right', padding: '12px 15px', width: 100 }}>Total</th>
-            </tr>
-          </thead>
-          <tbody style={{ fontSize: 13, lineHeight: 1.5 }}>
-            <tr style={{ borderBottom: '1px solid #eee' }}>
-              <td style={{ padding: '20px 15px' }}>
-                <div style={{ fontWeight: 500 }}>{job.service_name || 'Professional Services'}</div>
-                <div style={{ fontSize: 11, color: '#666', marginTop: 4 }}>{formatDate(job.scheduled_date)}</div>
-              </td>
-              <td style={{ textAlign: 'center', padding: '20px 15px' }}>
-                {financials.isHourly ? `$${financials.rate.toFixed(2)}/hr` : '—'}
-              </td>
-              <td style={{ textAlign: 'center', padding: '20px 15px' }}>
-                {financials.isHourly ? `${financials.hours.toFixed(1)} hrs` : '1'}
-              </td>
-              <td style={{ textAlign: 'right', padding: '20px 15px', fontWeight: 500 }}>
-                ${financials.subtotal.toFixed(2)}
-              </td>
-            </tr>
-            {financials.activeCosts.map((item, idx) => (
-              <tr key={idx} style={{ borderBottom: '1px solid #eee' }}>
-                <td style={{ padding: '12px 15px' }}>
-                  <div style={{ fontWeight: 500 }}>{item.description || 'Additional Cost'}</div>
+        {/* Line items — scrollable on mobile */}
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr style={{ background: '#EAE2D8', fontSize: 10, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#555' }}>
+                <th style={{ textAlign: 'left', padding: '12px 14px', width: 130 }}>Date</th>
+                <th style={{ textAlign: 'left', padding: '12px 14px' }}>Description</th>
+                <th style={{ textAlign: 'center', padding: '12px 14px', width: 85 }}>Rate / Hr</th>
+                <th style={{ textAlign: 'center', padding: '12px 14px', width: 75 }}>Hours</th>
+                <th style={{ textAlign: 'right', padding: '12px 14px', width: 100 }}>Amount</th>
+              </tr>
+            </thead>
+            <tbody style={{ fontSize: 13, lineHeight: 1.5 }}>
+
+              {/* Service row */}
+              <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
+                <td style={{ padding: '16px 14px', color: '#555', verticalAlign: 'top' }}>
+                  {job.scheduled_date ? formatDate(job.scheduled_date) : '—'}
                 </td>
-                <td colSpan={2} style={{ textAlign: 'center', padding: '12px 15px' }}>—</td>
-                <td style={{ textAlign: 'right', padding: '12px 15px', fontWeight: 500 }}>
-                  ${Number(item.amount).toFixed(2)}
+                <td style={{ padding: '16px 14px', verticalAlign: 'top' }}>
+                  <div style={{ fontWeight: 600 }}>{job.service_name || 'Professional Services'}</div>
+                  <div style={{ fontSize: 11, color: '#aaa', marginTop: 3 }}>
+                    {financials.isHourly
+                      ? `$${financials.rate.toFixed(2)}/hr × ${financials.hours.toFixed(1)} hrs = $${financials.subtotal.toFixed(2)}`
+                      : 'Flat Rate'}
+                  </div>
+                </td>
+                <td style={{ textAlign: 'center', padding: '16px 14px', color: '#555', verticalAlign: 'top' }}>
+                  {financials.isHourly ? `$${financials.rate.toFixed(2)}` : '—'}
+                </td>
+                <td style={{ textAlign: 'center', padding: '16px 14px', color: '#555', verticalAlign: 'top' }}>
+                  {financials.isHourly ? financials.hours.toFixed(1) : '—'}
+                </td>
+                <td style={{ textAlign: 'right', padding: '16px 14px', fontWeight: 600, verticalAlign: 'top' }}>
+                  ${financials.subtotal.toFixed(2)}
                 </td>
               </tr>
-            ))}
-          </tbody>
-        </table>
+
+              {/* Additional cost rows */}
+              {financials.activeCosts.map((item, idx) => (
+                <tr key={idx} style={{ borderBottom: '1px solid #f0f0f0', background: '#fafafa' }}>
+                  <td style={{ padding: '12px 14px', color: '#aaa', verticalAlign: 'top' }}>—</td>
+                  <td style={{ padding: '12px 14px', verticalAlign: 'top' }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, color: '#E91E6A', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: 2 }}>
+                      Additional Cost
+                    </div>
+                    <div style={{ fontWeight: 500, color: '#333' }}>
+                      {item.description || 'Miscellaneous'}
+                    </div>
+                  </td>
+                  <td style={{ textAlign: 'center', padding: '12px 14px', color: '#aaa', verticalAlign: 'top' }}>—</td>
+                  <td style={{ textAlign: 'center', padding: '12px 14px', color: '#aaa', verticalAlign: 'top' }}>—</td>
+                  <td style={{ textAlign: 'right', padding: '12px 14px', fontWeight: 500, verticalAlign: 'top' }}>
+                    ${Number(item.amount).toFixed(2)}
+                  </td>
+                </tr>
+              ))}
+
+            </tbody>
+          </table>
+        </div>
 
         {/* Totals */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 60 }}>
-          <div style={{ width: 300 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 15px', fontSize: 13 }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 44 }}>
+          <div style={{ width: 280 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 14px', fontSize: 13, color: '#555' }}>
               <div>Subtotal</div>
               <div>${(financials.subtotal + financials.additionalTotal).toFixed(2)}</div>
             </div>
             {financials.taxAmount > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 15px', fontSize: 13 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 14px', fontSize: 13, color: '#555' }}>
                 <div>HST ({(financials.taxRate * 100).toFixed(0)}%)</div>
                 <div>${financials.taxAmount.toFixed(2)}</div>
               </div>
             )}
-            <div style={{ background: '#EAE2D8', padding: '12px 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '1px' }}>TOTAL</div>
-              <div className="fraunces" style={{ fontSize: 20, fontWeight: 600 }}>${financials.total.toFixed(2)}</div>
+            <div style={{ background: '#EAE2D8', padding: '13px 14px', marginTop: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: 6 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#555' }}>Total Due</div>
+              <div className="inv-display" style={{ fontSize: 22, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>${financials.total.toFixed(2)}</div>
             </div>
           </div>
         </div>
 
-        {/* Payment & Thank You */}
-        <div style={{ textAlign: 'center', fontSize: 13, color: '#444' }}>
-          <div style={{ marginBottom: 60, fontWeight: 500 }}>
-            Please e-transfer to {biz.email || 'the operator'}
-          </div>
-          <div style={{ fontSize: 16, fontWeight: 800, letterSpacing: '2px', textTransform: 'uppercase', color: '#1a1a1a' }}>
-            Thank you for the opportunity to organize your home!
+        {/* Payment */}
+        <div style={{ borderTop: '1px solid #eee', paddingTop: 24, marginBottom: 28 }}>
+          <div style={LABEL}>Payment</div>
+          <div style={{ fontSize: 13, color: '#444', lineHeight: 1.8 }}>
+            e-Transfer to <strong>{biz.email || 'supermomsforhire@gmail.com'}</strong>
+            <div style={{ color: '#888', fontSize: 12 }}>Reference: Invoice #{invoice.invoice_number}</div>
           </div>
         </div>
+
+        {/* Thank you */}
+        <div style={{ textAlign: 'center', paddingTop: 4 }}>
+          <div className="inv-display" style={{ fontSize: 17, fontWeight: 500, color: '#777', fontStyle: 'italic' }}>
+            Thank you for your business!
+          </div>
+        </div>
+
       </div>
     </div>
   );

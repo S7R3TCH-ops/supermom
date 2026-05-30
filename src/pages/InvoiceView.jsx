@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { fetchInvoiceById } from '../data/invoicesRepo';
 import { computeJobFinancials } from '../lib/financialMath';
@@ -19,6 +19,26 @@ export default function InvoiceView() {
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState(null);
   const [emailState, setEmailState] = useState('idle');
+  const wrapRef = useRef(null);
+  const boxRef = useRef(null);
+  const [scale, setScale] = useState(1);
+  const [boxNaturalH, setBoxNaturalH] = useState(0);
+
+  useEffect(() => {
+    if (!invoice) return;
+    function measure() {
+      if (!wrapRef.current || !boxRef.current) return;
+      const w = wrapRef.current.offsetWidth;
+      const s = Math.min(1, w / 800);
+      setScale(s);
+      setBoxNaturalH(boxRef.current.scrollHeight);
+    }
+    const ro = new ResizeObserver(measure);
+    ro.observe(wrapRef.current);
+    ro.observe(boxRef.current);
+    requestAnimationFrame(measure);
+    return () => ro.disconnect();
+  }, [invoice]);
 
   useEffect(() => {
     fetchInvoiceById(id)
@@ -126,6 +146,10 @@ export default function InvoiceView() {
           .info-col-right { text-align: left !important; }
           .invoice-meta { justify-content: flex-start !important; }
         }
+        @media print {
+          .invoice-scale-wrap { height: auto !important; overflow: visible !important; }
+          .invoice-box { transform: none !important; width: 100% !important; max-width: none !important; }
+        }
       `}</style>
 
       {/* Toolbar */}
@@ -164,7 +188,8 @@ export default function InvoiceView() {
         </div>
       </div>
 
-      <div className="invoice-box">
+      <div ref={wrapRef} className="invoice-scale-wrap" style={{ overflow: 'hidden', height: scale < 1 && boxNaturalH ? boxNaturalH * scale : 'auto' }}>
+      <div ref={boxRef} className="invoice-box" style={scale < 1 ? { transform: `scale(${scale})`, transformOrigin: 'top left', width: 800, maxWidth: 'none' } : {}}>
 
         {/* Header */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', marginBottom: 40 }}>
@@ -314,6 +339,7 @@ export default function InvoiceView() {
         </div>
 
       </div>
+      </div>{/* end invoice-scale-wrap */}
     </div>
   );
 }

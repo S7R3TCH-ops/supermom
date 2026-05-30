@@ -19,6 +19,9 @@ export default function FinancialMathBreakdown({ job, business, liveForm, paymen
   }, [job, business, liveForm]);
 
   const { pricingType, isHourly, hours, rate, subtotal, activeCosts, additionalTotal, taxEnabled, taxAmount, taxRate, total } = data;
+  const workerPay = Number(job?.raw?.worker_pay ?? job?.worker_pay ?? 0);
+  const workerPaid = job?.raw?.worker_paid ?? job?.worker_paid ?? false;
+  const workerName = job?.raw?.worker_name ?? job?.worker_name ?? null;
 
   const rowStyle = { display: 'flex', justifyContent: 'space-between', padding: '4px 0', alignItems: 'baseline' };
   const labelStyle = { fontSize: compact ? 10 : 11, color: T.inkMuted, fontWeight: 500 };
@@ -121,6 +124,30 @@ export default function FinancialMathBreakdown({ job, business, liveForm, paymen
           </>
         );
       })()}
+
+      {/* Worker Pay — informational only, not client-facing */}
+      {workerPay > 0 && (
+        <>
+          <div style={{ height: 1, background: T.cardBorder, margin: '10px 0 6px' }} />
+          <div style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', color: T.inkMuted, letterSpacing: '0.5px', marginBottom: 6 }}>
+            👷 Worker Cost
+          </div>
+          <div style={{ ...rowStyle }}>
+            <span style={{ ...labelStyle }}>{workerName || 'Worker'}</span>
+            <span style={{ ...valueStyle, color: T.inkMuted }}>−${workerPay.toFixed(2)}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
+            <span style={{
+              fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.4px',
+              textTransform: 'uppercase', padding: '2px 7px', borderRadius: 4,
+              background: workerPaid ? 'rgba(34,197,94,0.15)' : 'rgba(245,158,11,0.15)',
+              color: workerPaid ? '#16A34A' : '#B45309',
+            }}>
+              {workerPaid ? 'Paid to Worker ✓' : 'Not Yet Paid'}
+            </span>
+          </div>
+        </>
+      )}
     </div>
   );
 }

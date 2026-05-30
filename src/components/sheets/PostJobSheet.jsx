@@ -3,7 +3,6 @@ import { useAppTheme } from '../../context/AppThemeContext';
 import { SectionLabel } from '../ui/typography';
 import { fetchJobById, recordPayment } from '../../data/jobsRepo';
 import { notifyDataChanged, useBusiness } from '../../data/useData';
-import { computeJobTotal } from '../../lib/financialMath';
 import { useToast } from '../../context/ToastContext';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { supabase } from '../../lib/supabase';
@@ -31,9 +30,7 @@ export default function PostJobSheet({ jobId, onClose }) {
   const [invoiceId, setInvoiceId] = useState(null);
   const [jobPayments, setJobPayments] = useState([]);
   const [costs, setCosts] = useState([{ amount: '', description: '' }]);
-  // Track whether this is the first time actualMinutes was set by job load
-  // so we don't overwrite the pre-filled amount on mount
-  const hoursInitialized = useRef(false);
+  const [workerPaid, setWorkerPaid] = useState(false);
   const { panelRef: swipePanelRef, scrollRef: swipeScrollRef, handlers: swipeHandlers } = useSwipeToDismiss(onClose);
 
   // Derived state defined early to satisfy linter and simplify logic
@@ -89,8 +86,7 @@ export default function PostJobSheet({ jobId, onClose }) {
         if (alive) { 
           setJob(j);
           setJobNotes(j?.completion_notes || '');
-          const fullTotal = Math.round(computeJobTotal(j) * 100) / 100;
-          // Always fetch payment history; use it to pre-fill remaining balance for partial jobs
+          setWorkerPaid(!!j?.worker_paid);
           supabase
             .from('payments')
             .select('amount, payment_date, payment_method')
@@ -98,18 +94,11 @@ export default function PostJobSheet({ jobId, onClose }) {
             .eq('is_void', false)
             .order('payment_date', { ascending: true })
             .then(({ data: pays }) => {
-              const records = pays ?? [];
-              setJobPayments(records);
-              const paid = records.reduce((s, p) => s + Number(p.amount), 0);
+              setJobPayments(pays ?? []);
               if (j?.payment_status === 'Partial') {
                 setPayStatus('paid');
-                const remaining = Math.round(Math.max(0, fullTotal - paid) * 100) / 100;
-                setAmount(String(remaining > 0 ? remaining : fullTotal));
-              } else {
-                setAmount(String(fullTotal));
               }
-            })
-            .catch(() => setAmount(String(fullTotal)));
+            });
           // Round to nearest 30-min increment
           const initHours = j?.actual_duration || j?.estimated_hours || 1;
           const rawMin = Math.round(initHours * 60);
@@ -137,22 +126,14 @@ export default function PostJobSheet({ jobId, onClose }) {
     return () => { alive = false; };
   }, [jobId]);
 
-  // When actual hours change after initial load, sync the payment amount (for non-partial status)
-  // so the input field stays consistent with the live total shown in the header
+  // Keep the payment amount field in sync with the live total (HST-inclusive).
+  // Whenever liveTotal, alreadyPaid, or payStatus changes, re-derive the default.
+  // 'partial' is skipped so the user can type a custom partial amount freely.
   useEffect(() => {
-    if (!hoursInitialized.current) {
-      hoursInitialized.current = true;
-      return;
-    }
-    if (!job) return;
-    if (alreadyPaid > 0) {
-      const remaining = Math.max(0, Math.round((liveTotal - alreadyPaid) * 100) / 100);
-      Promise.resolve().then(() => setAmount(String(remaining)));
-    } else if (isHourly && payStatus !== 'partial') {
-      Promise.resolve().then(() => setAmount(String(Math.round(liveTotal * 100) / 100)));
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [actualMinutes, liveTotal, isHourly, alreadyPaid]);
+    if (!job || payStatus === 'partial') return;
+    const balance = Math.max(0, Math.round((liveTotal - alreadyPaid) * 100) / 100);
+    setAmount(String(balance > 0 ? balance : liveTotal));
+  }, [liveTotal, alreadyPaid, payStatus, job]);
 
   async function handleLogPayment() {
     if (!job) return;
@@ -177,7 +158,7 @@ export default function PostJobSheet({ jobId, onClose }) {
         .filter(c => parseFloat(c.amount) > 0)
         .map(c => ({ amount: parseFloat(c.amount), description: c.description }));
 
-      await recordPayment(jobId, paidAmt, method, ps, totalDuration, null, validCosts, jobNotes);
+      await recordPayment(jobId, paidAmt, method, ps, totalDuration, null, validCosts, jobNotes, job?.worker_name ? workerPaid : null);
 
       const { data } = await supabase
         .from('invoice_jobs')
@@ -234,6 +215,11 @@ export default function PostJobSheet({ jobId, onClose }) {
             <div style={{ fontFamily: T.serif, fontSize: 20, fontWeight: 500, color: T.ink }}>
               {loading ? 'Loading...' : job?.client_name || 'Done!'}
             </div>
+            {!loading && job?.worker_name && (
+              <div style={{ fontSize: 11, color: T.inkMuted, marginTop: 3 }}>
+                {job.assignee_type === 'staff' ? '⭐ Staff:' : '👷 Worker:'} {job.worker_name}{job.worker_pay != null ? <span style={{ opacity: 0.7 }}> · ${Number(job.worker_pay).toFixed(0)} pay</span> : ''}
+              </div>
+            )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ textAlign: 'right' }}>
@@ -427,7 +413,32 @@ export default function PostJobSheet({ jobId, onClose }) {
           </div>
           </div>
 
-          {/* Section 5: Completion Notes */}
+          {/* Section 5: Worker Pay confirmation */}
+          {job?.worker_name && job?.worker_pay != null && (
+          <div style={{ background: T.card, padding: 14, borderRadius: 14, border: `1px solid ${T.cardBorder}` }}>
+            <SectionLabel style={{ marginBottom: 8 }}>Worker Pay</SectionLabel>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ fontFamily: T.font, fontSize: 13, color: T.ink }}>
+                {job.assignee_type === 'staff' ? '⭐' : '👷'} {job.worker_name}
+                <span style={{ color: T.inkMuted, marginLeft: 6 }}>· ${Number(job.worker_pay).toFixed(0)}</span>
+              </div>
+              <button
+                onClick={() => setWorkerPaid(p => !p)}
+                style={{
+                  background: workerPaid ? 'rgba(34,197,94,0.15)' : 'rgba(245,158,11,0.12)',
+                  border: `1.5px solid ${workerPaid ? '#22C55E' : '#F59E0B'}`,
+                  borderRadius: 8, padding: '5px 12px', cursor: 'pointer',
+                  fontFamily: T.font, fontSize: 11, fontWeight: 700,
+                  color: workerPaid ? '#16A34A' : '#B45309',
+                }}
+              >
+                {workerPaid ? 'Paid ✓' : 'Mark Paid'}
+              </button>
+            </div>
+          </div>
+          )}
+
+          {/* Section 6: Completion Notes */}
           <div>
           <SectionLabel>Post-Job Notes</SectionLabel>
           <textarea

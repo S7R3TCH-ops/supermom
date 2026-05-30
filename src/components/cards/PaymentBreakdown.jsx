@@ -1,6 +1,9 @@
-export default function PaymentBreakdown({ j, paid, total, privacyOn, T, metaColor }) {
+// grandTotal = HST-inclusive amount client owes; total = subtotal shown on card.
+// If grandTotal not provided, falls back to total (backward compat for non-HST jobs).
+export default function PaymentBreakdown({ j, paid, total, grandTotal, privacyOn, T, metaColor }) {
   const src = j.raw || j;
-  const remaining = Math.max(0, total - (paid || 0));
+  const owingBase = grandTotal ?? total;
+  const remaining = Math.max(0, owingBase - (paid || 0));
   if (remaining === 0) return null;
 
   if (privacyOn) {

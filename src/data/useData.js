@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { fetchClients, fetchClientById } from './clientsRepo';
 import { fetchActiveJobs, fetchJobsByClientId } from './jobsRepo';
 import { fetchExpenses } from './expensesRepo';
+import { fetchWorkers, fetchWorkersWithSkills, fetchSkillTypes } from './workersRepo';
 import { toDisplayClient, toDisplayJob } from './selectors';
 import { initRealtime, stopRealtime } from './realtime';
 import { getBusinessProfile, updateBusinessProfile } from './currentBusiness';
@@ -112,6 +113,7 @@ export function useClient(id) {
 export function useJobs() {
   const [rows, setRows] = useState([]);
   const [clientRows, setClientRows] = useState([]);
+  const [workerRows, setWorkerRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -123,11 +125,17 @@ export function useJobs() {
       if (!bid) {
         setRows([]);
         setClientRows([]);
+        setWorkerRows([]);
         return;
       }
-      const [js, cs] = await Promise.all([fetchActiveJobs(), fetchClients()]);
+      const [js, cs, ws] = await Promise.all([
+        fetchActiveJobs(),
+        fetchClients(),
+        fetchWorkers({ includeArchived: true }).catch(() => []),
+      ]);
       setRows(js);
       setClientRows(cs);
+      setWorkerRows(ws);
     } catch (e) {
       setError(e);
     } finally {
@@ -145,8 +153,63 @@ export function useJobs() {
   const clientLookup = Object.fromEntries(
     clientRows.map(c => [c.id, toDisplayClient(c, [])])
   );
-  const display = rows.map(j => toDisplayJob(j, clientLookup));
-  return { jobs: display, raw: rows, clients: clientLookup, loading, error, refresh };
+  const workerLookup = Object.fromEntries(workerRows.map(w => [w.id, w]));
+  const display = rows.map(j => toDisplayJob(j, clientLookup, workerLookup));
+  return { jobs: display, raw: rows, clients: clientLookup, workers: workerLookup, loading, error, refresh };
+}
+
+export function useWorkers() {
+  const [workers, setWorkers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const refresh = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await fetchWorkersWithSkills().catch(() => []);
+      setWorkers(data);
+    } catch (e) {
+      setError(e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    void Promise.resolve().then(() => { if (alive) refresh(); });
+    return () => { alive = false; };
+  }, [refresh]);
+  useChangeListener(refresh);
+
+  return { workers, loading, error, refresh };
+}
+
+export function useSkillTypes() {
+  const [skillTypes, setSkillTypes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const refresh = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await fetchSkillTypes().catch(() => []);
+      setSkillTypes(data);
+    } catch (e) {
+      setError(e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    void Promise.resolve().then(() => { if (alive) refresh(); });
+    return () => { alive = false; };
+  }, [refresh]);
+  useChangeListener(refresh);
+
+  return { skillTypes, loading, error, refresh };
 }
 
 export function useExpenses() {

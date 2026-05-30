@@ -304,3 +304,28 @@ CREATE TABLE public.users (
   CONSTRAINT users_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id),
   CONSTRAINT users_business_id_fkey FOREIGN KEY (business_id) REFERENCES public.businesses(id)
 );
+CREATE TABLE public.skill_types (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  business_id uuid NOT NULL,
+  name text NOT NULL,
+  sort_order integer DEFAULT 0,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT skill_types_pkey PRIMARY KEY (id),
+  CONSTRAINT skill_types_business_id_fkey FOREIGN KEY (business_id) REFERENCES public.businesses(id),
+  CONSTRAINT skill_types_business_name_key UNIQUE (business_id, name)
+);
+CREATE TABLE public.worker_skills (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  business_id uuid NOT NULL,
+  worker_id uuid NOT NULL,
+  skill_type_id uuid NOT NULL,
+  pay_rate numeric,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT worker_skills_pkey PRIMARY KEY (id),
+  CONSTRAINT worker_skills_business_id_fkey FOREIGN KEY (business_id) REFERENCES public.businesses(id),
+  CONSTRAINT worker_skills_worker_id_fkey FOREIGN KEY (worker_id) REFERENCES public.workers(id),
+  CONSTRAINT worker_skills_skill_type_id_fkey FOREIGN KEY (skill_type_id) REFERENCES public.skill_types(id),
+  CONSTRAINT worker_skills_worker_skill_unique UNIQUE (worker_id, skill_type_id)
+);
+-- workers.person_type added in v0.10.0: 'worker' (no app access) | 'staff' (future app access)
+-- ALTER TABLE workers ADD COLUMN person_type text NOT NULL DEFAULT 'worker' CHECK (person_type IN ('worker','staff'));

@@ -8,7 +8,7 @@ import { useToast } from '../context/ToastContext';
 import AmtCell from '../components/ui/AmtCell';
 import { Title, Subheading, Text, Caption, SectionLabel } from '../components/ui/typography';
 import { useClient, notifyDataChanged } from '../data/useData';
-import { simulateAILearning, updateClient, softDeleteClient } from '../data/clientsRepo';
+import { simulateAILearning, updateClient, softDeleteClient, hardDeleteClient } from '../data/clientsRepo';
 import { archiveClientJobs } from '../data/jobsRepo';
 import { useAuth } from '../context/AuthContext';
 import { EmptyActivity, EmptySchedule } from '../components/ui/Illustrations';
@@ -39,6 +39,8 @@ export default function ClientProfile() {
   const [dangerOpen, setDangerOpen] = useState(false);
   const [archiveConfirm, setArchiveConfirm] = useState(false);
   const [archiveBusy, setArchiveBusy] = useState(false);
+  const [hardDeleteConfirm, setHardDeleteConfirm] = useState(false);
+  const [hardDeleteBusy, setHardDeleteBusy] = useState(false);
 
   const handleSimulateFuture = async () => {
     setIsSavingAi(true);
@@ -100,6 +102,19 @@ export default function ClientProfile() {
       console.error('Archive failed:', err);
       toast.error('Archive failed. Please try again.');
       setArchiveBusy(false);
+    }
+  };
+
+  const handleHardDelete = async () => {
+    setHardDeleteBusy(true);
+    try {
+      await hardDeleteClient(id);
+      notifyDataChanged();
+      navigate('/clients');
+    } catch (err) {
+      console.error('Hard delete failed:', err);
+      toast.error('Delete failed. Please try again.');
+      setHardDeleteBusy(false);
     }
   };
 
@@ -581,6 +596,50 @@ export default function ClientProfile() {
                         style={{ flex: 1, background: '#B01550', border: 'none', borderRadius: 9, padding: '9px 0', fontFamily: T.font, fontSize: 12.5, fontWeight: 700, color: 'white', cursor: archiveBusy ? 'not-allowed' : 'default', opacity: archiveBusy ? 0.7 : 1 }}
                       >
                         {archiveBusy ? 'Archiving…' : 'Archive Everything'}
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                <div style={{ height: 1, background: 'rgba(127,29,29,0.2)', margin: '10px 0' }} />
+
+                {!hardDeleteConfirm ? (
+                  <>
+                    <div style={{ fontFamily: T.font, fontSize: 11, color: '#7F1D1D', marginBottom: 10, lineHeight: 1.5 }}>
+                      Permanently deletes this client and all their jobs from the database. Cannot be undone.
+                    </div>
+                    <button
+                      onClick={() => setHardDeleteConfirm(true)}
+                      style={{
+                        width: '100%', background: '#7F1D1D', border: 'none', borderRadius: 9,
+                        padding: '10px 0', fontFamily: T.font, fontSize: 13, fontWeight: 700, color: 'white', cursor: 'pointer',
+                      }}
+                    >
+                      Permanently Delete Client + All Jobs
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ fontFamily: T.font, fontSize: 12.5, fontWeight: 600, color: T.ink, marginBottom: 6 }}>
+                      Permanently delete <span style={{ fontFamily: T.serif }}>{client.name}</span> and all their jobs?
+                    </div>
+                    <div style={{ fontFamily: T.font, fontSize: 11, color: '#7F1D1D', marginBottom: 10, fontWeight: 600 }}>
+                      This cannot be undone from anywhere.
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button
+                        onClick={() => setHardDeleteConfirm(false)}
+                        disabled={hardDeleteBusy}
+                        style={{ flex: 1, background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 9, padding: '9px 0', fontFamily: T.font, fontSize: 12.5, fontWeight: 600, color: T.inkSub, cursor: 'pointer' }}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleHardDelete}
+                        disabled={hardDeleteBusy}
+                        style={{ flex: 1, background: '#7F1D1D', border: 'none', borderRadius: 9, padding: '9px 0', fontFamily: T.font, fontSize: 12.5, fontWeight: 700, color: 'white', cursor: hardDeleteBusy ? 'not-allowed' : 'default', opacity: hardDeleteBusy ? 0.7 : 1 }}
+                      >
+                        {hardDeleteBusy ? 'Deleting…' : 'Delete Forever'}
                       </button>
                     </div>
                   </>

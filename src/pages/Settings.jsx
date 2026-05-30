@@ -9,6 +9,7 @@ import { getCurrentBusinessId } from '../data/currentBusiness';
 import { uploadAsset, getSignedUrl } from '../lib/storage';
 import { useKeyboardFocus } from '../hooks/useKeyboardFocus';
 import { SectionLabel } from '../components/ui/typography';
+import WorkerCatalogSheet from '../components/sheets/WorkerCatalogSheet';
 
 function ToggleBtn({ show, onToggle }) {
   return (
@@ -49,6 +50,7 @@ export default function Settings() {
   const [error, setError] = useState(null);
   const [form, setForm] = useState(null);
   const [gcalOn, setGcalOn] = useState(false);
+  const [showWorkers, setShowWorkers] = useState(false);
 
   const [pw, setPw] = useState('');
   const [showPw, setShowPw] = useState(false);
@@ -280,6 +282,25 @@ export default function Settings() {
            </div>
         </div>
 
+        <SectionLabel>Team</SectionLabel>
+        <div style={{ marginBottom: 20, background: 'white', borderRadius: 'var(--r-card)', border: '1.5px solid var(--pink-border)', padding: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--pink-pale)', border: '1.5px solid var(--pink-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>👥</div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>Workers</div>
+                <div style={{ fontSize: 10, color: 'var(--ink-muted)' }}>Manage who you assign to jobs</div>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowWorkers(true)}
+              style={{ background: 'transparent', border: '1.5px solid var(--pink-border)', borderRadius: 8, padding: '6px 12px', fontSize: 11, fontWeight: 700, color: 'var(--pink)', cursor: 'pointer' }}
+            >
+              MANAGE
+            </button>
+          </div>
+        </div>
+
         <SectionLabel>Security</SectionLabel>
         <div style={{ marginBottom: 20, background: 'white', borderRadius: 'var(--r-card)', border: '1.5px solid var(--pink-border)', padding: 16 }}>
            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)', marginBottom: 14 }}>Password & Access</div>
@@ -315,6 +336,7 @@ export default function Settings() {
       </div>
       
       <div style={{ height: isKeyboardFocused ? 260 : 0, transition: 'height 0.2s ease-out' }} />
+      <WorkerCatalogSheet isOpen={showWorkers} onClose={() => setShowWorkers(false)} />
     </div>
   );
 }
@@ -331,5 +353,6 @@ const RESET_TABLES = [
   'job_templates',
   'template_schedule',
   'clients',
-  'expense_log'
+  'expense_log',
+  'workers',
 ];

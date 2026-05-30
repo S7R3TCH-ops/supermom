@@ -2,7 +2,7 @@ import { fmtTimeRange, dateBrief } from '../../lib/dateUtils';
 import PaymentBreakdown from './PaymentBreakdown';
 import { useAppTheme } from '../../context/AppThemeContext';
 
-export default function UpcomingCard({ job: j, T, onClick, total = 0, paid = 0, privacyOn = false, hstNote = false }) {
+export default function UpcomingCard({ job: j, T, onClick, total = 0, grandTotal, paid = 0, privacyOn = false, hstNote = false }) {
   const { mode } = useAppTheme();
   const BORDER = T.pink;
   const ACCENT = T.pink;
@@ -75,14 +75,21 @@ export default function UpcomingCard({ job: j, T, onClick, total = 0, paid = 0, 
         </span>
       </div>
 
-      {/* Row 4: payment breakdown for pre-paid jobs */}
-      {remaining > 0 && (
-        <div style={{ marginTop: 6 }}>
-          <PaymentBreakdown j={j} paid={paid} total={total} privacyOn={privacyOn} T={T} metaColor={ACCENT} />
+      {/* Row 4: worker name */}
+      {j.worker_name && (
+        <div style={{ fontSize: 10.5, color: T.inkMuted, marginTop: 2, fontFamily: T.font }}>
+          {j.assignee_type === 'staff' ? '⭐ Staff:' : '👷 Worker:'} {j.worker_name}
         </div>
       )}
 
-      {/* Row 5: job notes */}
+      {/* Row 5: payment breakdown for pre-paid jobs */}
+      {remaining > 0 && (
+        <div style={{ marginTop: 6 }}>
+          <PaymentBreakdown j={j} paid={paid} total={total} grandTotal={grandTotal} privacyOn={privacyOn} T={T} metaColor={ACCENT} />
+        </div>
+      )}
+
+      {/* Row 6: job notes */}
       {j.notes && (
         <div style={{
           fontSize: 11, color: T.inkMuted, fontStyle: 'italic', marginTop: 5,

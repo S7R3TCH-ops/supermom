@@ -123,9 +123,10 @@ export function toDisplayClient(row, jobs = []) {
 }
 
 // Decorate the jobs themselves with the display shape pages expect.
-export function toDisplayJob(jobRow, clientLookup = {}) {
+export function toDisplayJob(jobRow, clientLookup = {}, workerLookup = {}) {
   if (!jobRow) return null;
   const c = clientLookup[jobRow.client_id] || null;
+  const w = workerLookup[jobRow.worker_id] || null;
   return {
     id: jobRow.id,
     raw: jobRow,
@@ -138,6 +139,10 @@ export function toDisplayJob(jobRow, clientLookup = {}) {
     client_notes: c?.note || '',
     client_ai_context: c?.raw?.ai_context || {},
     client_tags: Array.isArray(c?.raw?.tags) ? c.raw.tags : [],
+    worker_id: jobRow.worker_id ?? null,
+    worker_name: w ? w.name : (jobRow.worker_name ?? null),
+    worker_pay: jobRow.worker_pay ?? null,
+    assignee_type: w ? (w.person_type ?? 'worker') : null,
     service_name: jobRow.service_name || 'Service',
     scheduled_at: jobRow.scheduled_at,
     duration_est: jobRow.duration_est,

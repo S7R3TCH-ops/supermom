@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAppTheme } from '../context/AppThemeContext';
 import { useJobs, useBusiness } from '../data/useData';
 import CapeUpButton from '../components/ui/CapeUpButton';
@@ -13,6 +13,16 @@ import { getNavigationUrl } from '../lib/maps';
 
 // Real "now" — was previously a hard-coded prototype anchor.
 const NOW = () => new Date();
+
+// Reactive hook that re-renders once per minute so the current-time indicator stays accurate.
+function useNow() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+  return now;
+}
 
 const VIEWS = ['Day', 'Week', 'Agenda'];
 
@@ -121,6 +131,7 @@ function findSameDayConflicts(jobsOnDay) {
 
 export default function Calendar() {
   const { T, mode, privacyOn } = useAppTheme();
+  const now = useNow();
   const [view, setView] = useState('Day');
   const [selectedDay, setSelectedDay] = useState(() => NOW());
   const [weekStart, setWeekStart] = useState(() => startOfWeek(NOW()));
@@ -268,8 +279,8 @@ export default function Calendar() {
         </div>
       )}
 
-      {view === 'Day'    && <DayView    T={T} mode={mode} privacyOn={privacyOn} selectedDay={selectedDay} todayJobs={selectedDayJobs} nextUpcoming={nextUpcoming} onJobPress={handleJobPress} firstName={firstName} />}
-      {view === 'Week'   && <WeekView   T={T} mode={mode} weekDays={weekDays} allJobs={allJobs} onPickDay={handlePickDay} onJobPress={handleJobPress} />}
+      {view === 'Day'    && <DayView    T={T} mode={mode} privacyOn={privacyOn} selectedDay={selectedDay} todayJobs={selectedDayJobs} nextUpcoming={nextUpcoming} onJobPress={handleJobPress} firstName={firstName} now={now} />}
+      {view === 'Week'   && <WeekView   T={T} mode={mode} weekDays={weekDays} allJobs={allJobs} onPickDay={handlePickDay} onJobPress={handleJobPress} now={now} />}
       {view === 'Agenda' && <AgendaView T={T} mode={mode} privacyOn={privacyOn} allJobs={allJobs} nextUpcoming={nextUpcoming} onJobPress={handleJobPress} firstName={firstName} />}
     </div>
   );
@@ -277,7 +288,7 @@ export default function Calendar() {
 
 /* ------------------------------ DAY VIEW ------------------------------ */
 
-function DayView({ T, mode, privacyOn, selectedDay, todayJobs, nextUpcoming, onJobPress, firstName }) {
+function DayView({ T, mode, privacyOn, selectedDay, todayJobs, nextUpcoming, onJobPress, firstName, now }) {
   const slotH = 50;
   const startH = todayJobs.length > 0
     ? Math.max(5, Math.floor(Math.min(...todayJobs.map(j => torontoDecimalHour(j.start)))) - 1)
@@ -297,6 +308,11 @@ function DayView({ T, mode, privacyOn, selectedDay, todayJobs, nextUpcoming, onJ
     if (gapMin > 0) gaps.push({ from: a.end, to: b.start, minutes: gapMin, conflict: gapMin < 60 });
   }
 
+  const nowDec = torontoDecimalHour(now);
+  const nowLineTop = isToday && nowDec >= startH && nowDec <= endH
+    ? (nowDec - startH) * slotH
+    : null;
+
   return (
     <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '6px 12px 80px', position: 'relative', contain: 'layout style paint' }}>
       {!isToday && (
@@ -308,17 +324,20 @@ function DayView({ T, mode, privacyOn, selectedDay, todayJobs, nextUpcoming, onJ
       )}
       <div style={{ position: 'relative', minHeight: hours.length * slotH }}>
         {hours.map(h => (
-          <div key={h} style={{ display: 'flex', height: slotH, alignItems: 'flex-start', gap: 7 }}>
-            <div style={{ width: 36, fontFamily: T.font, fontSize: 9, fontWeight: 600, color: T.inkMuted, paddingTop: 2, textAlign: 'right', flexShrink: 0 }}>
+          <div key={h} style={{ display: 'flex', height: slotH, alignItems: 'flex-start', gap: 7, position: 'relative' }}>
+            <div style={{ width: 36, fontFamily: T.font, fontSize: 10, fontWeight: 600, color: T.inkMuted, paddingTop: 2, textAlign: 'right', flexShrink: 0 }}>
               {h === 12 ? '12 PM' : h < 12 ? `${h} AM` : `${h - 12} PM`}
             </div>
-            <div style={{ flex: 1, borderTop: mode === 'dark' ? '1px solid rgba(255,255,255,0.05)' : '1px solid #FFE8F2' }} />
+            <div style={{ flex: 1, borderTop: mode === 'dark' ? '1px solid rgba(255,255,255,0.07)' : '1px solid #EDD5E4', position: 'relative' }}>
+              {/* Half-hour dashed subdivision */}
+              <div style={{ position: 'absolute', top: slotH / 2, left: 0, right: 0, borderTop: `1px dashed ${mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.05)'}`, pointerEvents: 'none' }} />
+            </div>
           </div>
         ))}
 
         {todayJobs.length === 0 && (
-          <div style={{ 
-            position: 'absolute', top: 60, left: 43, right: 0, 
+          <div style={{
+            position: 'absolute', top: 60, left: 43, right: 0,
             display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12,
             padding: '40px 20px', textAlign: 'center', opacity: 0.8
           }}>
@@ -342,13 +361,15 @@ function DayView({ T, mode, privacyOn, selectedDay, todayJobs, nextUpcoming, onJ
                 ? (mode === 'dark' ? 'rgba(34,197,94,0.1)'  : '#F0FFF5')
                 : (mode === 'dark' ? 'rgba(233,30,106,0.12)' : '#FFF0F7');
           return (
-            <div key={j.id} onClick={() => onJobPress(j.id)} style={{ position: 'absolute', top, left: 43, right: 0, height: h, background: bg, border: `1.5px solid ${j.color}35`, borderLeft: `3px solid ${j.color}`, borderRadius: 9, padding: '6px 9px', overflow: 'hidden', cursor: 'pointer' }}>
-              <div style={{ fontFamily: T.serif, fontSize: 12, fontWeight: 500, color: j.color, letterSpacing: '-0.2px' }}>{j.service?.label}</div>
+            <div key={j.id} onClick={() => onJobPress(j.id)} style={{ position: 'absolute', top, left: 43, right: 0, height: h, background: bg, border: `1.5px solid ${j.color}35`, borderLeft: `3px solid ${j.color}`, borderRadius: 9, padding: '5px 9px', overflow: 'hidden', cursor: 'pointer' }}>
+              {/* Time always shown first — the single most-needed Google Calendar parity */}
+              <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 600, color: T.inkMuted, letterSpacing: '0.1px' }}>
+                {h > 38 ? fmtTimeRange(j.start, j.end) : fmtTime(j.start)}
+              </div>
+              <div style={{ fontFamily: T.serif, fontSize: 12, fontWeight: 500, color: j.color, letterSpacing: '-0.2px', marginTop: 1 }}>{j.service?.label}</div>
               <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkSub, marginTop: 1 }}>{j.client?.name}</div>
-              {h > 55 && (
-                <div style={{ fontFamily: T.font, fontSize: 9, color: T.inkMuted, marginTop: 2 }}>
-                  {fmtTimeRange(j.start, j.end)}
-                </div>
+              {j.worker_name && (
+                <div style={{ fontFamily: T.font, fontSize: 9, color: T.inkMuted, marginTop: 1 }}>{j.assignee_type === 'staff' ? '⭐' : '👷'} {j.worker_name}</div>
               )}
               {j.status === 'Completed' && !j.actual_duration && (
                 <div style={{ fontFamily: T.font, fontSize: 8, fontWeight: 700, color: '#B45309', marginTop: 1 }}>⚠ MANUAL HOURS NEEDED</div>
@@ -391,6 +412,13 @@ function DayView({ T, mode, privacyOn, selectedDay, todayJobs, nextUpcoming, onJ
             </div>
           );
         })}
+
+        {/* Current-time indicator */}
+        {nowLineTop !== null && (
+          <div style={{ position: 'absolute', top: nowLineTop, left: 36, right: 0, height: 2, background: '#E91E6A', zIndex: 10, pointerEvents: 'none' }}>
+            <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#E91E6A', position: 'absolute', left: -5, top: -4 }} />
+          </div>
+        )}
       </div>
 
       {/* GO button on next upcoming today */}
@@ -408,7 +436,7 @@ function DayView({ T, mode, privacyOn, selectedDay, todayJobs, nextUpcoming, onJ
 
 /* ------------------------------ WEEK VIEW ------------------------------ */
 
-function WeekView({ T, mode, weekDays, allJobs, onJobPress }) {
+function WeekView({ T, mode, weekDays, allJobs, onJobPress, now }) {
   const slotH = 46, startH = 6, endH = 22;
   const hours = Array.from({ length: endH - startH + 1 }, (_, i) => startH + i);
 
@@ -416,17 +444,50 @@ function WeekView({ T, mode, weekDays, allJobs, onJobPress }) {
     return weekDays.map(d => allJobs.filter(j => sameDay(j.start, d)));
   }, [weekDays, allJobs]);
 
+  const nowDec = torontoDecimalHour(now);
+  const weekContainsToday = weekDays.some(d => sameDay(d, now));
+  const nowLineTop = weekContainsToday && nowDec >= startH && nowDec <= endH
+    ? (nowDec - startH) * slotH
+    : null;
+
   return (
-    <div className="sm-scroll" style={{ flex: 1, overflow: 'auto', padding: '4px 10px 80px', contain: 'strict' }}>
-      {/* Grid — day headers are in the shared hero strip above */}
+    <div className="sm-scroll" style={{ flex: 1, overflow: 'auto', padding: '0 10px 80px', contain: 'strict' }}>
+
+      {/* Day column headers — Mon 30, Tue 31, etc. */}
+      <div style={{ display: 'grid', gridTemplateColumns: '28px repeat(7,1fr)', gap: 2, marginBottom: 4, position: 'sticky', top: 0, background: T.bg, zIndex: 5, paddingTop: 4 }}>
+        <div />
+        {weekDays.map((d, i) => {
+          const isToday = sameDay(d, NOW());
+          return (
+            <div key={i} style={{ textAlign: 'center', paddingBottom: 4 }}>
+              <div style={{ fontFamily: T.font, fontSize: 8, fontWeight: 700, color: isToday ? T.pink : T.inkMuted, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                {d.toLocaleDateString('en-US', { weekday: 'short' }).charAt(0)}
+              </div>
+              <div style={{
+                fontFamily: T.font, fontSize: 13, fontWeight: 600,
+                color: isToday ? 'white' : T.ink,
+                background: isToday ? T.pink : 'transparent',
+                borderRadius: '50%', width: 22, height: 22,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                margin: '2px auto 0',
+              }}>{d.getDate()}</div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Time grid */}
       <div style={{ position: 'relative' }}>
         {hours.map(h => (
-          <div key={h} style={{ display: 'grid', gridTemplateColumns: '28px repeat(7,1fr)', gap: 2, height: slotH, alignItems: 'stretch' }}>
-            <div style={{ fontFamily: T.font, fontSize: 8, fontWeight: 600, color: T.inkMuted, textAlign: 'right', paddingTop: 1 }}>
+          <div key={h} style={{ display: 'grid', gridTemplateColumns: '28px repeat(7,1fr)', gap: 2, height: slotH, alignItems: 'stretch', position: 'relative' }}>
+            <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 600, color: T.inkMuted, textAlign: 'right', paddingTop: 1 }}>
               {h === 12 ? '12P' : h < 12 ? `${h}A` : `${h - 12}P`}
             </div>
             {weekDays.map((_, i) => (
-              <div key={i} style={{ borderTop: mode === 'dark' ? '1px solid rgba(255,255,255,0.05)' : '1px solid #FFE8F2', borderLeft: i === 0 ? 'none' : mode === 'dark' ? '1px solid rgba(255,255,255,0.03)' : '1px solid #FFF0F7' }} />
+              <div key={i} style={{ borderTop: mode === 'dark' ? '1px solid rgba(255,255,255,0.07)' : '1px solid #EDD5E4', borderLeft: i === 0 ? 'none' : mode === 'dark' ? '1px solid rgba(255,255,255,0.03)' : '1px solid #F9EDF5', position: 'relative' }}>
+                {/* Half-hour dashed subdivision */}
+                <div style={{ position: 'absolute', top: slotH / 2, left: 0, right: 0, borderTop: `1px dashed ${mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)'}`, pointerEvents: 'none' }} />
+              </div>
             ))}
           </div>
         ))}
@@ -443,10 +504,15 @@ function WeekView({ T, mode, weekDays, allJobs, onJobPress }) {
                   const endDec   = torontoDecimalHour(j.end);
                   const top = (startDec - startH) * slotH + 1;
                   const h   = Math.max((endDec - startDec) * slotH - 2, 18);
-                  const paid = j.paid;
-                  const bg  = paid ? (mode === 'dark' ? 'rgba(34,197,94,0.18)' : '#DCFCE7')
-                                   : (mode === 'dark' ? 'rgba(233,30,106,0.2)' : '#FFE0EC');
-                  const bd  = paid ? '#22C55E' : '#E91E6A';
+                  // Full 4-state color matching DayView
+                  const bg = j.isCancelled
+                    ? (mode === 'dark' ? 'rgba(156,163,175,0.12)' : '#F3F4F6')
+                    : j.isUnpaidCompleted
+                      ? (mode === 'dark' ? 'rgba(245,158,11,0.18)' : '#FEF3C7')
+                      : j.paid
+                        ? (mode === 'dark' ? 'rgba(34,197,94,0.18)' : '#DCFCE7')
+                        : (mode === 'dark' ? 'rgba(233,30,106,0.2)' : '#FFE0EC');
+                  const bd = j.color;
                   return (
                     <div key={j.id} onClick={() => onJobPress(j.id)} style={{
                       position: 'absolute', top, left: 1, right: 1, height: h,
@@ -469,13 +535,21 @@ function WeekView({ T, mode, weekDays, allJobs, onJobPress }) {
             );
           })}
         </div>
+
+        {/* Current-time indicator */}
+        {nowLineTop !== null && (
+          <div style={{ position: 'absolute', top: nowLineTop, left: 28, right: 0, height: 2, background: '#E91E6A', zIndex: 10, pointerEvents: 'none' }}>
+            <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#E91E6A', position: 'absolute', left: -5, top: -4 }} />
+          </div>
+        )}
       </div>
 
       {/* Legend */}
       <div style={{ display: 'flex', gap: 10, marginTop: 12, padding: '6px 10px', background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 10 }}>
-        <LegendDot T={T} color="#E91E6A" label="Unpaid" />
+        <LegendDot T={T} color="#E91E6A" label="Scheduled" />
         <LegendDot T={T} color="#22C55E" label="Paid" />
-        <LegendDot T={T} color="#F59E0B" label="Conflict" />
+        <LegendDot T={T} color="#F59E0B" label="Unpaid" />
+        <LegendDot T={T} color="#9CA3AF" label="Cancelled" />
       </div>
     </div>
   );

@@ -110,6 +110,26 @@ export async function softDeleteClient(id) {
   return updateClient(id, { deleted_at: new Date().toISOString() });
 }
 
+export async function hardDeleteClient(clientId) {
+  const businessId = await getCurrentBusinessId();
+  const { data: jobs } = await supabase
+    .from('jobs')
+    .select('id')
+    .eq('client_id', clientId)
+    .eq('business_id', businessId);
+  for (const job of jobs ?? []) {
+    await supabase.from('payments').delete().eq('job_id', job.id);
+    await supabase.from('invoice_jobs').delete().eq('job_id', job.id);
+    await supabase.from('jobs').delete().eq('id', job.id).eq('business_id', businessId);
+  }
+  const { error } = await supabase
+    .from('clients')
+    .delete()
+    .eq('id', clientId)
+    .eq('business_id', businessId);
+  if (error) throw error;
+}
+
 export async function simulateAILearning(id, clientName) {
   const patch = {
     ai_context: {

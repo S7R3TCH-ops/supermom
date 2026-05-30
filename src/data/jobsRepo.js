@@ -64,6 +64,16 @@ export async function fetchJobById(id) {
   const clientName = c
     ? [c.first_name, c.last_name].filter(Boolean).join(' ')
     : 'Unknown';
+  // Explicit worker lookup — avoids relying on PostgREST schema cache for the new FK
+  let workerName = null;
+  if (data.worker_id) {
+    const { data: wData } = await supabase
+      .from('workers')
+      .select('name')
+      .eq('id', data.worker_id)
+      .maybeSingle();
+    workerName = wData?.name ?? null;
+  }
   const { clients: _dropped, ...jobRow } = data;
 
   let client_recent_notes = [];
@@ -88,6 +98,7 @@ export async function fetchJobById(id) {
     client_ai_context: c?.ai_context || {},
     client_tags: c?.tags || [],
     client_recent_notes,
+    worker_name: workerName,
   };
 }
 
@@ -334,8 +345,16 @@ export async function archiveClientJobs(clientId) {
   if (error) throw error;
 }
 
+export async function hardDeleteJob(id) {
+  const businessId = await getCurrentBusinessId();
+  await supabase.from('payments').delete().eq('job_id', id);
+  await supabase.from('invoice_jobs').delete().eq('job_id', id);
+  const { error } = await supabase.from('jobs').delete().eq('id', id).eq('business_id', businessId);
+  if (error) throw error;
+}
+
 // eslint-disable-next-line no-unused-vars
-export async function recordPayment(jobId, amount, method = 'Cash', _paymentStatus = null, duration = null, jobNotes = null, additionalCosts = [], completionNotes = null) {
+export async function recordPayment(jobId, amount, method = 'Cash', _paymentStatus = null, duration = null, jobNotes = null, additionalCosts = [], completionNotes = null, workerPaid = null) {
   const businessId = await getCurrentBusinessId();
 
   // 1. Get job info (need full fields for computeJobTotal to work correctly on hourly jobs)
@@ -395,6 +414,7 @@ export async function recordPayment(jobId, amount, method = 'Cash', _paymentStat
     payment_method: amount > 0 ? method : null,
     actual_duration: duration,
     completion_notes: completionNotes,
+    ...(workerPaid !== null ? { worker_paid: workerPaid } : {}),
   };
   if (validCosts.length > 0) {
     jobPatch.additional_costs_json = validCosts;

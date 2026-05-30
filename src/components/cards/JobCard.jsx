@@ -1,7 +1,7 @@
 import { fmtTimeRange, dateBrief } from '../../lib/dateUtils';
 import PaymentBreakdown from './PaymentBreakdown';
 
-export default function JobCard({ job: j, T, onClick, onDuplicate, paid = 0, total = 0, privacyOn = false, subtle = false, hstNote = false }) {
+export default function JobCard({ job: j, T, onClick, onDuplicate, paid = 0, total = 0, grandTotal, privacyOn = false, subtle = false, hstNote = false }) {
   const isCompleted = j.status === 'Completed';
   const isPaid = j.payment_status === 'Paid';
   const isPartial = j.payment_status === 'Partial';
@@ -101,14 +101,21 @@ export default function JobCard({ job: j, T, onClick, onDuplicate, paid = 0, tot
         )}
       </div>
 
-      {/* Row 4: payment breakdown when balance is owed */}
-      {remaining > 0 && (
-        <div style={{ marginTop: 6 }}>
-          <PaymentBreakdown j={j} paid={paid} total={total} privacyOn={privacyOn} T={T} metaColor={accentColor} />
+      {/* Row 4: worker name */}
+      {j.worker_name && (
+        <div style={{ fontSize: 10.5, color: T.inkMuted, marginTop: 2, fontFamily: T.font }}>
+          {j.assignee_type === 'staff' ? '⭐ Staff:' : '👷 Worker:'} {j.worker_name}
         </div>
       )}
 
-      {/* Row 5: job notes */}
+      {/* Row 5: payment breakdown when balance is owed */}
+      {remaining > 0 && (
+        <div style={{ marginTop: 6 }}>
+          <PaymentBreakdown j={j} paid={paid} total={total} grandTotal={grandTotal} privacyOn={privacyOn} T={T} metaColor={accentColor} />
+        </div>
+      )}
+
+      {/* Row 6: job notes */}
       {j.notes && (
         <div style={{
           fontSize: 11, color: T.inkMuted, fontStyle: 'italic', marginTop: 5,
@@ -119,7 +126,7 @@ export default function JobCard({ job: j, T, onClick, onDuplicate, paid = 0, tot
         </div>
       )}
 
-      {/* Row 6: address (scheduled jobs) */}
+      {/* Row 7: address (scheduled jobs) */}
       {j.address && (
         <div style={{
           fontSize: 11, color: T.inkMuted, marginTop: 4, opacity: 0.7,

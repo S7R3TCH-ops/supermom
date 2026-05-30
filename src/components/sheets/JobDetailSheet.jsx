@@ -2,9 +2,9 @@ import { useEffect, useState, useRef } from 'react';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useKeyboardFocus } from '../../hooks/useKeyboardFocus';
-import { fetchJobById, updateJob, softDeleteJob, cancelJob } from '../../data/jobsRepo';
+import { fetchJobById, updateJob, softDeleteJob, cancelJob, hardDeleteJob } from '../../data/jobsRepo';
 import { useAuth } from '../../context/AuthContext';
-import { notifyDataChanged, useBusiness, useServices } from '../../data/useData';
+import { notifyDataChanged, useBusiness, useServices, useWorkers } from '../../data/useData';
 import { useToast } from '../../context/ToastContext';
 import { usePostJobSheet } from '../../context/PostJobSheetContext';
 import { RECURRENCE } from '../../data/services';
@@ -68,6 +68,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
   const isKeyboardFocused = useKeyboardFocus();
   const { business } = useBusiness();
   const { services } = useServices();
+  const { workers } = useWorkers();
   const sheetRef = useRef(null);
   useFocusTrap(sheetRef, true, onClose);
   const [job, setJob] = useState(null);
@@ -174,6 +175,16 @@ export default function JobDetailSheet({ jobId, onClose }) {
     } catch (e) { setMutErr(e.message || String(e)); setBusy(false); }
   }
 
+  const [hardDeleteConfirm, setHardDeleteConfirm] = useState(false);
+  async function handleHardDelete() {
+    setBusy(true); setMutErr(null);
+    try {
+      await hardDeleteJob(job.id);
+      showToast('Job permanently deleted');
+      onClose();
+    } catch (e) { setMutErr(e.message || String(e)); setBusy(false); }
+  }
+
   function initiateSave() {
     if (job.template_id) { setPendingAction('save'); setShowSeriesPicker(true); }
     else saveEdit('this');
@@ -195,6 +206,9 @@ export default function JobDetailSheet({ jobId, onClose }) {
         estimated_hours: form.estimated_hours === '' ? null : Number(form.estimated_hours),
         job_notes:       form.job_notes || null,
         additional_costs_json: form.additional_costs_json || [],
+        worker_id:       form.worker_id || null,
+        worker_pay:      form.worker_id && form.worker_pay !== '' ? Number(form.worker_pay) : null,
+        worker_paid:     form.worker_paid ?? false,
         ai_context: {
           ...(job.ai_context || {}),
           payment_method:  form.payment_method,
@@ -242,6 +256,9 @@ export default function JobDetailSheet({ jobId, onClose }) {
       recurrence:      job.ai_context?.recurrence_rule || null,
       job_notes:       job.job_notes || '',
       additional_costs_json: job.additional_costs_json || [],
+      worker_id:       job.worker_id || null,
+      worker_pay:      job.worker_pay != null ? String(job.worker_pay) : '',
+      worker_paid:     job.worker_paid ?? false,
     });
     setEditMode(true);
   }
@@ -323,6 +340,10 @@ export default function JobDetailSheet({ jobId, onClose }) {
             onCancelConfirm={initiateDelete}
             onConfirmDelete={() => deleteJob('this')}
             onDismissConfirm={() => { setConfirm(false); setShowSeriesPicker(false); }}
+            hardDeleteConfirm={hardDeleteConfirm}
+            onHardDeleteConfirm={() => setHardDeleteConfirm(true)}
+            onHardDeleteCancel={() => setHardDeleteConfirm(false)}
+            onHardDelete={handleHardDelete}
             onEdit={openEditMode}
             onUpdate={(patch) => updateJob(job.id, patch).then(() => notifyDataChanged())}
             onDeepPrep={() => setShowDeepPrep(true)}
@@ -332,7 +353,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
         {!loading && job && editMode && (
           <EditMode
             job={job}
-            form={form} setForm={setForm} services={services} business={business}
+            form={form} setForm={setForm} services={services} workers={workers} business={business}
             T={T} mode={mode} busy={busy} mutErr={mutErr}
             showSeriesPicker={showSeriesPicker} onSeriesChoice={onSeriesChoice}
             onSave={initiateSave}
@@ -355,6 +376,7 @@ function ReadMode({
   showCancelForm, cancelReason, cancelBusy,
   onSetShowCancelForm, onSetCancelReason, onHandleCancel,
   onClose, onMarkComplete, onMarkPaid, onCancelConfirm, onConfirmDelete, onDismissConfirm, onEdit, onUpdate, onDeepPrep,
+  hardDeleteConfirm, onHardDeleteConfirm, onHardDeleteCancel, onHardDelete,
 }) {
   const statusC = STATUS_COLORS[job.job_status] || STATUS_COLORS.Scheduled;
   const payKey  = job.payment_status || '';
@@ -416,7 +438,10 @@ function ReadMode({
         <InfoCard T={T}>
           <Row T={T} label="Date" value={fmtDate(job.scheduled_date)} />
           <Row T={T} label="Time" value={timeRange} />
-          <Row T={T} label="Pricing" value={job.pricing_type || '—'} last />
+          <Row T={T} label="Pricing" value={job.pricing_type || '—'} last={!job.worker_name} />
+          {job.worker_name && (
+            <Row T={T} label={job.assignee_type === 'staff' ? 'Staff' : 'Worker'} value={`${job.worker_name}${job.worker_pay != null ? ` · $${Number(job.worker_pay).toFixed(0)}` : ''}`} last />
+          )}
         </InfoCard>
 
         <FinancialMathBreakdown job={job} business={business} payments={jobPayments} T={T} mode={mode} />
@@ -499,6 +524,35 @@ function ReadMode({
               >
                 Delete Job (Admin)
               </button>
+              <div style={{ height: 1, background: T.cardBorder, margin: '4px 0' }} />
+              {!hardDeleteConfirm ? (
+                <button
+                  onClick={onHardDeleteConfirm}
+                  style={{ background: 'transparent', border: 'none', fontSize: 12, color: '#7F1D1D', padding: '4px 0', cursor: 'pointer', fontFamily: T.font, fontWeight: 600, textAlign: 'left' }}
+                >
+                  Permanently Delete Job (Admin)
+                </button>
+              ) : (
+                <div style={{ background: 'rgba(127,29,29,0.08)', border: '1px solid rgba(127,29,29,0.3)', borderRadius: 10, padding: '10px 12px', marginTop: 4 }}>
+                  <div style={{ fontFamily: T.font, fontSize: 11, color: '#7F1D1D', marginBottom: 8, fontWeight: 600 }}>
+                    Permanently delete this job? This cannot be undone.
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      onClick={onHardDeleteCancel}
+                      style={{ flex: 1, background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 9, padding: '8px 0', fontFamily: T.font, fontSize: 12, fontWeight: 600, color: T.inkSub, cursor: 'pointer' }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={onHardDelete}
+                      style={{ flex: 1, background: '#7F1D1D', border: 'none', borderRadius: 9, padding: '8px 0', fontFamily: T.font, fontSize: 12, fontWeight: 700, color: 'white', cursor: 'pointer' }}
+                    >
+                      Delete Forever
+                    </button>
+                  </div>
+                </div>
+              )}
             </>
           )}
 
@@ -515,7 +569,7 @@ function ReadMode({
 }
 
 /* ============= EDIT MODE ============= */
-function EditMode({ job, form, setForm, services, business, T, mode, busy, showSeriesPicker, onSeriesChoice, onSave, onCancelEdit, isKeyboardFocused }) {
+function EditMode({ job, form, setForm, services, workers, business, T, mode, busy, showSeriesPicker, onSeriesChoice, onSave, onCancelEdit, isKeyboardFocused }) {
   function set(k, v) { setForm(f => ({ ...f, [k]: v })); }
 
   function onPickService(e) {
@@ -597,7 +651,63 @@ function EditMode({ job, form, setForm, services, business, T, mode, busy, showS
             {RECURRENCE.map(r => <option key={r.label} value={r.key || ''}>{r.label}</option>)}
           </select>
         </Field>
-        <Field T={T} label="Notes" last><textarea rows={3} value={form.job_notes} onChange={e => set('job_notes', e.target.value)} style={{ ...iStyle(T), width: '100%', resize: 'vertical' }} /></Field>
+        <Field T={T} label="Notes"><textarea rows={3} value={form.job_notes} onChange={e => set('job_notes', e.target.value)} style={{ ...iStyle(T), width: '100%', resize: 'vertical' }} /></Field>
+        {workers && workers.length > 0 && (
+          <Field T={T} label="Team Member">
+            <select
+              value={form.worker_id || ''}
+              onChange={e => {
+                const wid = e.target.value || null;
+                set('worker_id', wid);
+                if (!wid) { set('worker_pay', ''); return; }
+                const w = workers.find(x => x.id === wid);
+                if (w?.skills?.length > 0) {
+                  const svcName = (form.service_name || '').toLowerCase();
+                  const match = svcName ? w.skills.find(sk =>
+                    svcName.includes(sk.skill_name.toLowerCase()) || sk.skill_name.toLowerCase().includes(svcName)
+                  ) : null;
+                  if (match?.pay_rate != null) set('worker_pay', String(match.pay_rate));
+                }
+              }}
+              style={{ ...iStyle(T), width: '100%' }}
+            >
+              <option value="">— Unassigned —</option>
+              {workers.filter(w => (w.person_type || 'worker') === 'worker').length > 0 && (
+                <optgroup label="── Workers ──">
+                  {workers.filter(w => (w.person_type || 'worker') === 'worker').map(w => (
+                    <option key={w.id} value={w.id}>{w.name}{w.skills?.length > 0 ? ` · ${w.skills.map(s => s.skill_name).join(', ')}` : ''}</option>
+                  ))}
+                </optgroup>
+              )}
+              {workers.filter(w => w.person_type === 'staff').length > 0 && (
+                <optgroup label="── Staff ──">
+                  {workers.filter(w => w.person_type === 'staff').map(w => (
+                    <option key={w.id} value={w.id}>{w.name}{w.skills?.length > 0 ? ` · ${w.skills.map(s => s.skill_name).join(', ')}` : ''}</option>
+                  ))}
+                </optgroup>
+              )}
+            </select>
+          </Field>
+        )}
+        {form.worker_id && (
+          <Field T={T} label="Pay for this job ($)"><input type="number" value={form.worker_pay} onChange={e => set('worker_pay', e.target.value)} style={{ ...iStyle(T), width: '100%' }} /></Field>
+        )}
+        {form.worker_id && (
+          <Field T={T} label="Worker Paid?">
+            <button
+              onClick={() => set('worker_paid', !form.worker_paid)}
+              style={{
+                background: form.worker_paid ? 'rgba(34,197,94,0.15)' : 'rgba(245,158,11,0.12)',
+                border: `1.5px solid ${form.worker_paid ? '#22C55E' : '#F59E0B'}`,
+                borderRadius: 8, padding: '8px 16px', cursor: 'pointer',
+                fontFamily: T.font, fontSize: 12, fontWeight: 700,
+                color: form.worker_paid ? '#16A34A' : '#B45309',
+              }}
+            >
+              {form.worker_paid ? 'Paid ✓' : 'Not Yet Paid'}
+            </button>
+          </Field>
+        )}
         <SeriesPicker show={showSeriesPicker} onChoice={onSeriesChoice} onCancel={() => onSeriesChoice(null)} busy={busy} T={T} mode={mode} />
       </div>
       <div style={{ padding: '10px 14px 28px', borderTop: `1px solid ${T.cardBorder}`, display: 'flex', gap: 8 }}>

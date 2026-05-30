@@ -3,6 +3,7 @@ import { useAppTheme } from '../../context/AppThemeContext';
 import { useServices, useBusiness, notifyDataChanged } from '../../data/useData';
 import { createJob, fetchActiveJobs, fetchJobsByClientId, findConflicts, composeTorontoISO } from '../../data/jobsRepo';
 import { fetchClients } from '../../data/clientsRepo';
+import { fetchWorkersWithSkills } from '../../data/workersRepo';
 import { toDisplayClient } from '../../data/selectors';
 import { useToast } from '../../context/ToastContext';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
@@ -69,21 +70,22 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
   const [step, setStep] = useState(() => hasPrefill ? 2 : 1);
   const { panelRef: swipePanelRef, scrollRef: swipeScrollRef, handlers: swipeHandlers } = useSwipeToDismiss(onClose);
 
-  // Fetch clients + jobs on mount
+  // Fetch clients + jobs + workers on mount
   const [clientRows, setClientRows] = useState([]);
   const [jobRows, setJobRows] = useState([]);
   const [clientJobs, setClientJobs] = useState([]);
   const [showNewClient, setShowNewClient] = useState(false);
+  const [workerOptions, setWorkerOptions] = useState([]);
 
   useEffect(() => {
     let alive = true;
-    Promise.all([fetchClients(), fetchActiveJobs()])
-      .then(([cs, js]) => { 
-        if (alive) { 
-          setClientRows(cs); 
+    Promise.all([fetchClients(), fetchActiveJobs(), fetchWorkersWithSkills().catch(() => [])])
+      .then(([cs, js, ws]) => {
+        if (alive) {
+          setClientRows(cs);
           setJobRows(js);
-          console.log('NewJobSheet: jobRows fetched', js.length);
-        } 
+          setWorkerOptions(ws);
+        }
       })
       .catch(console.error);
     return () => { alive = false; };
@@ -127,6 +129,8 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
   const [bookErr, setBookErr] = useState('');
   const [bookingNotes, setBookingNotes] = useState(prefillData?.job_notes || prefillData?.bookingNotes || '');
   const [takingChances, setTakingChances] = useState(false);
+  const [workerId, setWorkerId] = useState(null);
+  const [workerPay, setWorkerPay] = useState('');
 
   const scheduledISO = useMemo(() => composeTorontoISO(date, time), [date, time]);
   const conflicts = useMemo(() => {
@@ -235,6 +239,8 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
         job_notes: bookingNotes,
         additional_costs_json: validCosts,
         additional_cost: validCosts.reduce((s, c) => s + c.amount, 0),
+        worker_id: workerId || null,
+        worker_pay: workerId && workerPay !== '' ? Number(workerPay) : null,
         ...(recurrence ? { ai_context: { recurrence_rule: recurrence } } : {}),
       };
       await createJob(payload);
@@ -319,6 +325,11 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
               setCustomPrice={setCustomPrice}
               additionalCosts={additionalCosts}
               setAdditionalCosts={setAdditionalCosts}
+              workers={workerOptions}
+              workerId={workerId}
+              setWorkerId={setWorkerId}
+              workerPay={workerPay}
+              setWorkerPay={setWorkerPay}
               T={T}
             />
           ) : (
@@ -337,6 +348,9 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
               setTakingChances={setTakingChances}
               customPrice={customPrice}
               additionalCosts={additionalCosts}
+              workers={workerOptions}
+              workerId={workerId}
+              workerPay={workerPay}
               T={T}
             />
           )}
@@ -443,7 +457,9 @@ function Step2What({
   date, setDate, time, setTime, duration, setDuration,
   recurrence, setRecurrence, notes, setNotes,
   aiDuration, aiLoading, aiReason, suggestedTime,
-  business, customPrice, setCustomPrice, additionalCosts, setAdditionalCosts, T
+  business, customPrice, setCustomPrice, additionalCosts, setAdditionalCosts,
+  workers, workerId, setWorkerId, workerPay, setWorkerPay,
+  T
 }) {
   const selectedSvc = services.find(s => s.id === serviceId);
   const defaultRate = selectedSvc
@@ -688,6 +704,60 @@ function Step2What({
         />
       </div>
 
+      {/* Assign Worker / Staff */}
+      {workers && workers.length > 0 && (
+        <div>
+          <SectionLabel>Assign Team Member (optional)</SectionLabel>
+          <select
+            value={workerId || ''}
+            onChange={e => {
+              const wid = e.target.value || null;
+              setWorkerId(wid);
+              if (!wid) { setWorkerPay(''); return; }
+              const w = workers.find(x => x.id === wid);
+              if (w?.skills?.length > 0) {
+                const svcName = (selectedSvc?.name || '').toLowerCase();
+                const match = svcName ? w.skills.find(sk =>
+                  svcName.includes(sk.skill_name.toLowerCase()) || sk.skill_name.toLowerCase().includes(svcName)
+                ) : null;
+                setWorkerPay(match?.pay_rate != null ? String(match.pay_rate) : '');
+              } else {
+                setWorkerPay('');
+              }
+            }}
+            style={{ width: '100%', padding: '10px 12px', borderRadius: 12, background: T.card, border: `1px solid ${workerId ? T.pink : T.cardBorder}`, color: T.ink, fontSize: 13, outline: 'none', fontFamily: T.font }}
+          >
+            <option value="">— Unassigned —</option>
+            {workers.filter(w => (w.person_type || 'worker') === 'worker').length > 0 && (
+              <optgroup label="── Workers ──">
+                {workers.filter(w => (w.person_type || 'worker') === 'worker').map(w => (
+                  <option key={w.id} value={w.id}>{w.name}{w.skills?.length > 0 ? ` · ${w.skills.map(s => s.skill_name).join(', ')}` : ''}</option>
+                ))}
+              </optgroup>
+            )}
+            {workers.filter(w => w.person_type === 'staff').length > 0 && (
+              <optgroup label="── Staff ──">
+                {workers.filter(w => w.person_type === 'staff').map(w => (
+                  <option key={w.id} value={w.id}>{w.name}{w.skills?.length > 0 ? ` · ${w.skills.map(s => s.skill_name).join(', ')}` : ''}</option>
+                ))}
+              </optgroup>
+            )}
+          </select>
+          {workerId && (
+            <div style={{ marginTop: 8, position: 'relative' }}>
+              <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: T.inkMuted, fontSize: 13 }}>$</span>
+              <input
+                type="number"
+                value={workerPay}
+                onChange={e => setWorkerPay(e.target.value)}
+                placeholder="Pay for this job"
+                style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px 10px 26px', borderRadius: 10, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.ink, fontSize: 13, outline: 'none', fontFamily: T.font }}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
       <div style={{ height: 20 }} />
     </div>
   );
@@ -697,8 +767,11 @@ function Step3Review({
   selectedClient, services, serviceId,
   date, time, duration, recurrence, notes,
   business, conflicts = [], takingChances, setTakingChances,
-  customPrice, additionalCosts, T
+  customPrice, additionalCosts,
+  workers, workerId, workerPay,
+  T
 }) {
+  const assignedWorker = workers?.find(w => w.id === workerId) || null;
   const service = services.find(s => s.id === serviceId);
   const hasConflict = conflicts.length > 0;
 
@@ -758,6 +831,25 @@ function Step3Review({
           <div style={{ fontSize: 10, color: 'var(--pink-label)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '1.2px', marginBottom: 2 }}>Recurrence</div>
           <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 500, color: 'white' }}>{recurrence || 'One-time'}</div>
         </div>
+        {assignedWorker && (
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'rgba(255,255,255,0.06)', borderRadius: 10 }}>
+            <span style={{ fontSize: 16 }}>{assignedWorker.person_type === 'staff' ? '⭐' : '👷'}</span>
+            <div>
+              <div style={{ fontSize: 10, color: 'var(--pink-label)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '1.2px', marginBottom: 1 }}>
+                Assigned {assignedWorker.person_type === 'staff' ? 'Staff' : 'Worker'}
+              </div>
+              <div style={{ fontFamily: T.serif, fontSize: 14, fontWeight: 500, color: 'white' }}>
+                {assignedWorker.name}
+                {workerPay !== '' && workerPay != null && (
+                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', fontFamily: 'var(--font-ui)', fontWeight: 400, marginLeft: 6 }}>· ${Number(workerPay).toFixed(0)} pay</span>
+                )}
+              </div>
+              {assignedWorker.skills?.length > 0 && (
+                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)', marginTop: 1 }}>{assignedWorker.skills.map(s => s.skill_name).join(', ')}</div>
+              )}
+            </div>
+          </div>
+        )}
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'rgba(255,255,255,0.06)', borderRadius: 10 }}>
           <span style={{ fontSize: 16 }}>🚗</span>
           <div>

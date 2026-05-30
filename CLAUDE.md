@@ -62,15 +62,18 @@ This is a **managed service product** — Sandra is the first user, but the arch
 | `businesses` | One row per business; includes `ai_profile` for persona. |
 | `users` | `auth.users.id` → `business_id`, role (`owner`/`admin`/`worker`). |
 | `clients` | Business-scoped. `ai_context` jsonb, `tags` array. |
-| `jobs` | `scheduled_date` + `scheduled_time`, `pricing_type` (Hourly/Flat), `flat_rate`, `total_amount`, `actual_duration`, `additional_costs_json`. |
+| `jobs` | `scheduled_date` + `scheduled_time`, `pricing_type` (Hourly/Flat), `flat_rate`, `total_amount`, `actual_duration`, `additional_costs_json`, `worker_id` (FK → workers), `worker_pay`, `worker_paid` (boolean — has Sandra paid the worker). |
 | `payments` | One row per payment transaction. Source of truth for what's been collected. |
 | `services` | Service catalog with `default_price`, `default_duration`, `pricing_type`. |
+| `workers` | Business-scoped team members. `name`, `phone`, `email`, `person_type` (`'worker'`/`'staff'`), `deleted_at` (soft-delete). No Supabase Auth — picker only. |
+| `skill_types` | Business-scoped catalog of skill/specialty types (e.g. "Organizing", "Caregiving"). Used to assign skills to workers. |
+| `worker_skills` | Junction: `worker_id` → `skill_type_id` + `pay_rate`. One row per worker-skill assignment. |
 | `integrations` | OAuth tokens for external services (Google Calendar). |
 | `storage.job-assets` | Private bucket for job photos and voice notes. |
 
 ### Critical data layer rules
 - **Multi-tenancy**: Every query must include `.eq('business_id', businessId)`.
-- **Soft deletes only**: Never hard-delete jobs or clients. Set `deleted_at = now()`.
+- **Soft deletes only**: Never hard-delete jobs, clients, or workers. Set `deleted_at = now()`.
 - **Supabase migrations are NOT auto-applied** — run schema changes manually in the Supabase SQL Editor.
 - **Supabase project ID**: `lskzzsjmmtsosfneuovt`
 
@@ -85,10 +88,12 @@ This is a **managed service product** — Sandra is the first user, but the arch
 - `computeJobSubtotal(job)` = subtotal + additional costs (no HST). Use for card/revenue display (Sandra's earnings).
 - **Never trust caller-supplied `paymentStatus`** — `recordPayment` always re-derives from DB payments sum.
 
-### RLS policy state (verified May 4, 2026)
+### RLS policy state (updated May 30, 2026)
 - All tables RLS-enabled. Two SECURITY DEFINER helpers: `is_admin()` and `my_business_id()`.
 - `businesses_modify` — `USING/WITH CHECK (is_admin() OR id = my_business_id())`
 - `services_modify` — `USING/WITH CHECK (is_admin() OR business_id = my_business_id())`
+- `workers_select` — `USING (business_id = my_business_id() OR is_admin())`
+- `workers_modify` — `USING/WITH CHECK (is_admin() OR business_id = my_business_id())`
 
 ---
 
@@ -100,9 +105,54 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 ---
 
-## Current version: 0.8.1
+## Current version: 0.11.0
 
 All core features are live. The app is in active use by Sandra.
+
+### Recent changes (v0.11.0 — May 30, 2026) — Worker pay tracking + Calendar polish + Invoice mobile
+
+- **Worker pay tracking** — `jobs.worker_paid` boolean column (run migration: `ALTER TABLE jobs ADD COLUMN worker_paid boolean DEFAULT false`). Tracks whether Sandra has paid the assigned worker for a job.
+  - `recordPayment` in `jobsRepo.js` accepts `workerPaid` param (9th arg) and writes `worker_paid` to DB.
+  - `hardDeleteJob(id)` added to `jobsRepo.js` — permanent hard-delete for admin use only.
+  - `hardDeleteClient(clientId)` added to `clientsRepo.js` — cascades to all client jobs (hard-delete).
+  - `FinancialMathBreakdown.jsx` — new "👷 Worker Cost" section at bottom shows worker name, pay amount, and Paid/Not Yet Paid badge reading `worker_paid` field.
+  - `PostJobSheet.jsx` — `workerPaid` state toggle UI in wrap-up. Amount field now always tracks `liveTotal - alreadyPaid` reactively (removed `hoursInitialized` hack + `isHourly` restriction). `workerPaid` passed to `recordPayment`.
+  - `JobDetailSheet.jsx` — `worker_paid` initialized in `openEditMode` from `job.worker_paid`, written in `saveEdit`. Toggle button UI in edit form shows when team member assigned: "Paid ✓" (green) / "Not Yet Paid" (amber).
+- **Calendar polish** — four improvements:
+  - Current-time indicator (pink line + dot) in both Day view and Week view, updating every minute via `useNow()` hook.
+  - Half-hour dashed subdivision lines in Day view and Week view slot rows.
+  - Time always shown on Day view job blocks (previously hidden below a height threshold).
+  - Week view day headers + full 4-state color coding.
+- **Invoice mobile scale-to-fit** — `InvoiceView.jsx` uses `ResizeObserver` + `transform: scale()` to fit the 800px invoice layout into any mobile screen width. Print CSS resets the transform so PDFs render at full size.
+- **HST grandTotal on cards** — `PaymentBreakdown.jsx` gains `grandTotal` prop (HST-inclusive). `JobCard` + `UpcomingCard` pass it through. `Home.jsx` passes `grandTotal={computeJobTotal(j)}` so payment breakdown math uses the HST-inclusive total, not just the subtotal.
+
+### Recent changes (v0.10.0 — May 30, 2026) — Staff + Worker team redesign
+
+- **Two team member types** — `workers.person_type` column (`'worker'` | `'staff'`). Workers get assigned to jobs by admin; Staff future app access (tracked now, plumbed later). SQL migration: `ALTER TABLE workers ADD COLUMN person_type text NOT NULL DEFAULT 'worker' CHECK (person_type IN ('worker','staff'))`.
+- **Skill catalog** — New `skill_types` table (business-scoped, like services) and `worker_skills` junction table (worker → skill_type + pay_rate). Admin can add/rename/delete skill types from the Team Management sheet. RLS policies: `skill_types_select`, `skill_types_modify`, `worker_skills_select`, `worker_skills_modify`.
+- **WorkerCatalogSheet → Team Management** — Full redesign. Tab strip: WORKERS | STAFF. Form replaces free-text specialty with multi-skill picker (checkboxes + per-skill pay rate). Expandable "Skill Catalog" section for managing skill types. Worker list cards show person_type badge + skill list with pay rates.
+- **`workersRepo.js`** — New exports: `fetchWorkersWithSkills`, `fetchSkillTypes`, `createSkillType`, `updateSkillType`, `deleteSkillType`, `fetchWorkerSkills`, `setWorkerSkills`. `useWorkers` hook now uses `fetchWorkersWithSkills` — each worker has a `skills` array.
+- **`useData.js`** — Added `useSkillTypes()` hook. `useWorkers` switched to `fetchWorkersWithSkills`.
+- **`selectors.js`** — `toDisplayJob` now includes `assignee_type` (`'worker'` | `'staff'` | null) resolved from worker's `person_type`.
+- **Job assignment auto-fill** — NewJobSheet and JobDetailSheet worker picker uses `<optgroup>` to separate Workers from Staff. Selecting a team member auto-fills pay from their skill rate that best matches the job's service name (case-insensitive contains match).
+- **All job display surfaces** — `👷 Worker:` / `⭐ Staff:` label prefix replaces plain `👤` on: JobCard, UpcomingCard, Home (Next Up, Needs Action, Rest of Week), Calendar DayView, PostJobSheet wrap-up, JobDetailSheet Mission Vitals + edit form.
+- **DB migrations to run manually**: see above `ALTER TABLE`, plus `CREATE TABLE skill_types`, `CREATE TABLE worker_skills`, and RLS policies in plan file.
+
+### Recent changes (v0.9.0 — May 30, 2026) — Workers feature
+- **New `workers` table** — business-scoped team members with `name`, `phone`, `email`, `specialty`. Soft-delete only. RLS-protected via `my_business_id()`. No Supabase Auth — picker only. SQL migration run manually on Supabase project `lskzzsjmmtsosfneuovt`.
+- **`jobs.worker_id` + `jobs.worker_pay`** — nullable FK to `workers.id`, nullable numeric pay per job. `worker_pay` is informational only — does NOT reduce profit on Finance page (v1 scope decision).
+- **`src/data/workersRepo.js`** — `fetchWorkers({ includeArchived })`, `createWorker`, `updateWorker`, `archiveWorker`. All scoped with `business_id`.
+- **Worker name resolution** — `toDisplayJob` in `selectors.js` now accepts `workerLookup` (3rd param). `useJobs` in `useData.js` fetches all workers (incl. archived) to build the lookup — archived workers still resolve on historical jobs. `fetchJobById` uses an **explicit separate query** (`supabase.from('workers').select('name').eq('id', data.worker_id)`) — NOT a PostgREST join — to avoid schema cache dependency on the new FK.
+- **`useWorkers` hook** — added to `useData.js` for active-workers-only consumers (pickers, WorkerCatalogSheet). All worker fetches use `.catch(() => [])` so a missing table degrades gracefully.
+- **WorkerCatalogSheet** (`src/components/sheets/WorkerCatalogSheet.jsx`) — bottom sheet for add/edit/archive workers. Accessible from two places: **Business Admin → Staff Management** and **Settings → Team > MANAGE**.
+- **Admin.jsx Staff Management** — was "Coming soon", now live. Opens WorkerCatalogSheet. Same sheet also accessible from Settings > Team section.
+- **Settings > Team section + RESET_TABLES** — `workers` added after `jobs` in FK-safe deletion order.
+- **NewJobSheet** — Step 2: optional worker picker + per-job pay field (hidden when no workers exist). Step 3 Review: assigned worker shown in dark hero summary with name, specialty, and pay (as a side note, not in financial breakdown).
+- **JobDetailSheet** — worker name + pay shown in Mission Vitals (read mode); worker select + pay field in edit mode. Both read from `job.worker_name` / `job.worker_pay` (set by `fetchJobById`).
+- **PostJobSheet** — assigned worker name + pay shown as small line under client name in the wrap-up header.
+- **Home.jsx** — worker name shown in ALL card surfaces: Next Up spotlight (inline), Needs Action (inline), Rest of Week (inline), Coming Up Today (`UpcomingCard`), Done This Week (`JobCard`).
+- **Calendar DayView** — worker name shown in job block below client name when assigned.
+- **RLS** — `workers_select` (SELECT) + `workers_modify` (ALL) policies, both scoped via `my_business_id() OR is_admin()`.
 
 ### Recent changes (v0.8.1 — May 30, 2026) — invoice PDF polish + Vercel fix
 - **Invoice PDF: no browser headers/footers** — `@page { margin: 0 }` eliminates Chrome's date/time/URL print header+footer area. Invoice box print padding bumped to `0.5in` to compensate.
@@ -247,13 +297,19 @@ All core features are live. The app is in active use by Sandra.
 ## Parked / not building yet
 
 ### Immediate (next session) — in priority order
-- [ ] **Job edit time round-trip** — Joel checking manually on device. If time shifts after save, fix is in `JobDetailSheet` `saveEdit` / `composeTorontoISO`.
+- [ ] **v0.11.0 verify end-to-end on device** — Verify: skill types → add worker with skills → book job → assign worker → pay auto-fills → cards/calendar show `👷`/`⭐` → wrap-up shows worker pay + paid toggle → `FinancialMathBreakdown` shows Worker Cost section → edit job → Worker Paid toggle visible → admin hard-delete buttons work.
 - [ ] **owedTotal balance for Partial jobs** — `selectors.js` shows full job total instead of remaining balance for Partial clients. Fix: join payments table in `clientsRepo.js` to get `amount_paid` per job, then subtract in `toDisplayClient`. No SQL migration needed — code only.
-- [ ] **Gmail App Password** — waiting on `sandra@supermom.com` domain going live. When ready: App Password → `GMAIL_USER` + `GMAIL_APP_PASSWORD` in `.env` + Vercel dashboard. Also add `APP_BASE_URL=https://supermom-v2.vercel.app` to Vercel env vars.
-- [ ] **16 missing Vercel env vars** — only VITE_SUPABASE_ANON_KEY + VERCEL_OIDC_TOKEN pulled locally. Others likely Production-only on Vercel dashboard. Confirm nothing breaks as features are used.
+- [ ] **Job edit time round-trip** — Joel checking manually on device. If time shifts after save, fix is in `JobDetailSheet` `saveEdit` / `composeTorontoISO`.
+- [ ] **worker_pay → Finance integration (Phase 2)** — `worker_pay` per job stored but does NOT reduce profit on Finance page. Deliberate v1 scope. Future: sum `worker_pay` on completed jobs and subtract in `computeJobFinancials`.
+- [ ] **Staff app access (Phase 2)** — `person_type = 'staff'` tracked in DB. No app login yet. When ready: link `workers.id` → `users` table + add Supabase Auth account.
+- [ ] **Gmail App Password** — waiting on `sandra@supermom.com` domain. When ready: App Password → `GMAIL_USER` + `GMAIL_APP_PASSWORD` in `.env` + Vercel. Also add `APP_BASE_URL=https://supermom-v2.vercel.app`.
+- [ ] **16 missing Vercel env vars** — only VITE_SUPABASE_ANON_KEY + VERCEL_OIDC_TOKEN pulled locally. Others Production-only on Vercel dashboard.
 - [ ] **Credential rotation** — DB password + GitHub token were in a public commit. Should be rotated.
+- [x] **worker_paid DB migration run** — `ALTER TABLE jobs ADD COLUMN worker_paid boolean DEFAULT false` (May 30, 2026).
+- [x] **v0.11.0 shipped** — worker pay toggle in JobDetailSheet edit, admin hard-delete buttons in JobDetailSheet + ClientProfile (May 30, 2026).
+- [x] **v0.10.0 DB migrations run** — `person_type`, `skill_types`, `worker_skills`, RLS policies (May 30, 2026).
 - [x] **CS1–CS3 verification pass** — PASSED (May 30, 2026).
-- [x] **Supabase businesses record** — populated (May 30, 2026).
+- [x] **Workers feature shipped** — v0.9.0 (May 30, 2026).
 
 > ⚠ **Vercel Hobby plan: 12 serverless function limit.** Currently at exactly 12 (`api/` files). Adding any new API route requires deleting one first, or upgrading to Pro.
 

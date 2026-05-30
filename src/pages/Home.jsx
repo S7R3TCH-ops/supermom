@@ -586,12 +586,15 @@ export default function Home() {
                         <>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4, position: 'relative' }}>
                             <div style={{ flex: 1, minWidth: 0, paddingRight: 10 }}>
-                              <div style={{ fontFamily: T.serif, fontSize: 26, fontWeight: 700, color: T.ink, lineHeight: 1.1, letterSpacing: '-0.5px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                      <div style={{ fontFamily: T.serif, fontSize: 26, fontWeight: 700, color: T.ink, lineHeight: 1.1, letterSpacing: '-0.5px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {next.client_name}
                               </div>
                               <div style={{ fontSize: 13, fontWeight: 700, color: DEEP_ROSE, textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: 3 }}>
                                 {next.service_name}
                               </div>
+                              {next.worker_name && (
+                                <div style={{ fontSize: 11, color: T.inkMuted, marginTop: 3 }}>{next.assignee_type === 'staff' ? '⭐ Staff:' : '👷 Worker:'} {next.worker_name}</div>
+                              )}
                             </div>
                             <div style={{ flexShrink: 0, textAlign: 'right' }}>
                               <div style={{ fontSize: 17, fontWeight: 900, color: DEEP_ROSE, fontFamily: T.font, letterSpacing: '-0.5px', lineHeight: 1.2, whiteSpace: 'nowrap' }}>
@@ -704,6 +707,7 @@ export default function Home() {
                 T={T}
                 onClick={() => openJob(j.id)}
                 total={computeJobSubtotal(j)}
+                grandTotal={computeJobTotal(j)}
                 paid={paymentMap[j.id] || 0}
                 privacyOn={privacyOn}
                 hstNote={computeJobTotal(j) > computeJobSubtotal(j)}
@@ -754,6 +758,9 @@ export default function Home() {
                       <div style={{ fontSize: 12, fontWeight: 700, color: '#B45309', textTransform: 'uppercase', marginTop: 2 }}>
                         {j.service_name}
                       </div>
+                      {j.worker_name && (
+                        <div style={{ fontSize: 10.5, color: '#92400E', opacity: 0.75, marginTop: 2 }}>{j.assignee_type === 'staff' ? '⭐ Staff:' : '👷 Worker:'} {j.worker_name}</div>
+                      )}
                       <div style={{ fontSize: 11, color: '#92400E', marginTop: 4 }}>
                         {j.start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · {fmtTimeRange(j.start, j.end)}
                       </div>
@@ -835,6 +842,9 @@ export default function Home() {
                     <div style={{ fontSize: 11, fontWeight: 700, color: T.inkSub, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
                       {j.service_name}
                     </div>
+                    {j.worker_name && (
+                      <div style={{ fontSize: 10.5, color: T.inkMuted, marginTop: 2 }}>{j.assignee_type === 'staff' ? '⭐ Staff:' : '👷 Worker:'} {j.worker_name}</div>
+                    )}
                     {j.job_notes && (
                       <div style={{
                         fontSize: 10, color: T.inkMuted, fontStyle: 'italic', marginTop: 2,
@@ -872,6 +882,7 @@ export default function Home() {
                 onDuplicate={handleDuplicateJob}
                 paid={paymentMap[j.id] || 0}
                 total={computeJobSubtotal(j)}
+                grandTotal={computeJobTotal(j)}
                 privacyOn={privacyOn}
                 hstNote={computeJobTotal(j) > computeJobSubtotal(j)}
                 subtle

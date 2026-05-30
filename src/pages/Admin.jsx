@@ -8,6 +8,7 @@ import { useToast } from '../context/ToastContext';
 import { SectionLabel } from '../components/ui/typography';
 import { useViewpoint } from '../context/ViewpointContext';
 import ServiceCatalogSheet from '../components/sheets/ServiceCatalogSheet';
+import WorkerCatalogSheet from '../components/sheets/WorkerCatalogSheet';
 
 function ToggleBtn({ show, onToggle, color }) {
   return (
@@ -58,6 +59,7 @@ export default function Admin() {
   const [pendingStyle, setPendingStyle] = useState(null);
   const [selectedBizId, setSelectedBizId] = useState('');
   const [showServices, setShowServices] = useState(false);
+  const [showWorkers, setShowWorkers] = useState(false);
 
   // Clear pending style when business data actually updates to match - adjusting state during render
   if (pendingStyle && business?.ai_profile?.style === pendingStyle) {
@@ -411,7 +413,7 @@ export default function Admin() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
           <ToolRow T={T} icon="⚙" label="Business Settings" sub="Profile, rates, Google Calendar" onClick={() => navigate('/settings')} />
           <ToolRow T={T} icon="📊" label="Detailed Reports" sub="Coming soon" />
-          <ToolRow T={T} icon="👥" label="Staff Management" sub="Coming soon" />
+          <ToolRow T={T} icon="👥" label="Staff Management" sub="Workers, staff, skills &amp; pay rates" onClick={() => setShowWorkers(true)} />
           <ToolRow T={T} icon="🗂" label="Service Catalog" sub="Manage defaults, rates, durations" onClick={() => setShowServices(true)} />
         </div>
 
@@ -504,6 +506,10 @@ export default function Admin() {
       <ServiceCatalogSheet
         isOpen={showServices}
         onClose={() => setShowServices(false)}
+      />
+      <WorkerCatalogSheet
+        isOpen={showWorkers}
+        onClose={() => setShowWorkers(false)}
       />
     </div>
   );

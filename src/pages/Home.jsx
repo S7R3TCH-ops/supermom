@@ -68,6 +68,25 @@ export default function Home() {
     return 'there';
   }, [business, profile]);
 
+  const allWeekJobs = useMemo(() => {
+    if (!allJobs) return [];
+    return allJobs
+      .map(j => {
+        if (!j.scheduled_at) return null;
+        const start = new Date(j.scheduled_at);
+        if (isNaN(start.getTime())) return null;
+        const end = new Date(start.getTime() + (j.duration_est || 60) * 60000);
+        return { ...j, start, end };
+      })
+      .filter(j =>
+        j &&
+        j.status !== 'Cancelled' &&
+        j.start >= currentWeekStart &&
+        j.start <= currentWeekEnd
+      )
+      .sort((a, b) => a.start - b.start);
+  }, [allJobs, currentWeekStart, currentWeekEnd]);
+
   const todayJobs = useMemo(() => {
     if (!allJobs) return [];
     return allJobs
@@ -85,8 +104,8 @@ export default function Home() {
   const allDone = todayJobs.length > 0 && !todayJobs.some(j => j.status === 'Scheduled' || j.payment_status !== 'Paid');
 
   const displayRevenue = useMemo(
-    () => todayJobs.reduce((s, j) => s + computeJobSubtotal(j), 0),
-    [todayJobs]
+    () => allWeekJobs.reduce((s, j) => s + computeJobSubtotal(j), 0),
+    [allWeekJobs]
   );
 
   const activeJob = todayJobs.find(j => j.status === 'Scheduled' && j.ai_context?.clock_in_time != null);
@@ -180,10 +199,8 @@ export default function Home() {
   const [paymentMap, setPaymentMap] = useState({});
   useEffect(() => {
     const jobIds = [...new Set([
-      ...todayJobs.map(j => j.id),
+      ...allWeekJobs.map(j => j.id),
       ...attentionItems.map(j => j.id),
-      ...restOfWeekJobs.map(j => j.id),
-      ...completedPaidThisWeek.map(j => j.id),
     ])];
 
     let alive = true;
@@ -207,18 +224,27 @@ export default function Home() {
 
     fetchPayments();
     return () => { alive = false; };
-  }, [todayJobs, attentionItems, restOfWeekJobs, completedPaidThisWeek]);
+  }, [allWeekJobs, attentionItems]);
 
   const collectedThisWeek = useMemo(() => {
-    if (!allJobs) return 0;
-    return allJobs
-      .filter(j => {
-        if (!j.scheduled_at) return false;
-        const start = new Date(j.scheduled_at);
-        return !isNaN(start.getTime()) && start >= currentWeekStart && start <= currentWeekEnd;
-      })
-      .reduce((s, j) => s + (paymentMap[j.id] || 0), 0);
-  }, [allJobs, paymentMap, currentWeekStart, currentWeekEnd]);
+    return allWeekJobs.reduce((s, j) => {
+      if (j.payment_status === 'Paid') return s + computeJobSubtotal(j);
+      if (j.payment_status === 'Partial') return s + (paymentMap[j.id] || 0);
+      return s;
+    }, 0);
+  }, [allWeekJobs, paymentMap]);
+
+  const weekOwed = useMemo(() => {
+    return allWeekJobs
+      .filter(j => j.status === 'Completed' && j.payment_status !== 'Paid')
+      .reduce((s, j) => s + Math.max(0, computeJobTotal(j) - (paymentMap[j.id] || 0)), 0);
+  }, [allWeekJobs, paymentMap]);
+
+  const weekUpcoming = useMemo(() => {
+    return allWeekJobs
+      .filter(j => j.status === 'Scheduled')
+      .reduce((s, j) => s + computeJobSubtotal(j), 0);
+  }, [allWeekJobs]);
 
   const todayUpcoming = useMemo(() => {
     return todayJobs.filter(j =>
@@ -384,7 +410,11 @@ export default function Home() {
 
           <div style={{ textAlign: 'right', flexShrink: 0 }}>
             <div
-              onClick={openDetail}
+              onClick={() => openDetail(
+                'This Week',
+                allWeekJobs.map(j => ({ ...j, total: computeJobSubtotal(j) })),
+                'jobs'
+              )}
               style={{ cursor: 'pointer', padding: '4px 0 4px 12px' }}
             >
               <div style={{
@@ -399,12 +429,30 @@ export default function Home() {
                 {privacyOn ? '•••' : `$${displayRevenue.toFixed(0)}`}
               </div>
               <div style={{ fontSize: 10, fontWeight: 700, color: mode === 'dark' ? T.pinkLabel : T.pink, textTransform: 'uppercase', letterSpacing: '0.6px', marginTop: 3 }}>
-                Projected
+                This Week
               </div>
-              {collectedThisWeek > 0 && (
-                <div style={{ fontSize: 10, fontWeight: 700, color: '#16A34A', marginTop: 3, letterSpacing: '0.3px' }}>
-                  {privacyOn ? '•••' : `$${collectedThisWeek.toFixed(0)}`} collected
-                </div>
+              {displayRevenue > 0 && (
+                <>
+                  {collectedThisWeek > 0 && (
+                    <div style={{ fontSize: 10, fontWeight: 700, color: '#16A34A', marginTop: 3, letterSpacing: '0.3px' }}>
+                      {privacyOn ? '•••' : (
+                        collectedThisWeek >= displayRevenue
+                          ? '✓ all collected'
+                          : `$${collectedThisWeek.toFixed(0)} collected`
+                      )}
+                    </div>
+                  )}
+                  {weekOwed > 0 && (
+                    <div style={{ fontSize: 10, fontWeight: 700, color: '#F97316', marginTop: 2, letterSpacing: '0.3px' }}>
+                      {privacyOn ? '•••' : `$${weekOwed.toFixed(0)} owed`}
+                    </div>
+                  )}
+                  {weekUpcoming > 0 && (
+                    <div style={{ fontSize: 10, fontWeight: 600, color: T.inkMuted, marginTop: 2, letterSpacing: '0.3px' }}>
+                      {privacyOn ? '•••' : `$${weekUpcoming.toFixed(0)} upcoming`}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>

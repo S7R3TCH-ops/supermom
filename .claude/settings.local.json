@@ -43,7 +43,13 @@
       "Bash(git pull *)",
       "Bash(npx eslint *)",
       "Bash(not exist *)",
-      "Bash(npx --no-install eslint src/pages/Home.jsx --max-warnings=0)"
+      "Bash(npx --no-install eslint src/pages/Home.jsx --max-warnings=0)",
+      "PowerShell(Get-ChildItem *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8080/)",
+      "Bash(python3 -c \"import playwright\")",
+      "Bash(npx --no-install tsc --noEmit)",
+      "Bash(npx --no-install eslint src/lib/financialMath.js src/data/selectors.js src/data/jobsRepo.js src/data/invoicesRepo.js src/pages/Calendar.jsx src/components/sheets/PostJobSheet.jsx src/components/cards/JobCard.jsx src/components/cards/UpcomingCard.jsx api/email-invoice.js --max-warnings=0)",
+      "Bash(npx --no-install eslint src/pages/InvoiceView.jsx src/data/jobsRepo.js src/App.jsx src/components/sheets/NewJobSheet.jsx --max-warnings=0)"
     ]
   }
 }

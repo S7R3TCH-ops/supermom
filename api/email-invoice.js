@@ -1,6 +1,20 @@
 import nodemailer from 'nodemailer';
 
+function escapeHtml(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function brandedEmailHtml({ clientName, bizName, bizEmail, invoiceNumber, invoiceUrl }) {
+  clientName   = escapeHtml(clientName);
+  bizName      = escapeHtml(bizName);
+  bizEmail     = escapeHtml(bizEmail);
+  invoiceNumber = escapeHtml(invoiceNumber);
+  // invoiceUrl is server-generated (not from req.body) — no escaping needed
   const pink = '#E91E6A';
   const cream = '#FFF9F5';
   return `<!DOCTYPE html>
@@ -42,7 +56,7 @@ function brandedEmailHtml({ clientName, bizName, bizEmail, invoiceNumber, invoic
           <div style="border-top:1px solid #eee;padding-top:20px;">
             <div style="font-size:10px;font-weight:700;color:#aaa;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Payment</div>
             <p style="margin:0;font-size:13px;color:#555;line-height:1.7;">
-              e-Transfer to <strong>${bizEmail || 'supermomsforhire@gmail.com'}</strong><br>
+              e-Transfer to <strong>${bizEmail || 'sandra@supermom.com'}</strong><br>
               <span style="color:#888;">Reference: Invoice #${invoiceNumber}</span>
             </p>
           </div>
@@ -86,8 +100,8 @@ export default async function handler(req, res) {
     auth: { user: gmailUser, pass: gmailPass },
   });
 
-  const origin = req.headers.origin || 'https://supermom-v2.vercel.app';
-  const invoiceUrl = `${origin}/i/${invoiceId}`;
+  const appBase = process.env.APP_BASE_URL || 'https://supermom-v2.vercel.app';
+  const invoiceUrl = `${appBase}/i/${invoiceId}`;
 
   try {
     await transporter.sendMail({

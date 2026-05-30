@@ -92,7 +92,7 @@ export function toDisplayClient(row, jobs = []) {
     },
     stats: {
       jobsTotal: sorted.length,
-      revenueYtd: past.reduce((sum, j) => sum + Number(j?.total_amount || 0), 0),
+      revenueYtd: past.reduce((sum, j) => sum + computeJobTotal(j), 0),
       lastVisit: lastJob ? fmtShortDate(lastJob.scheduled_at) : '—',
     },
     upcoming: future.map(j => {
@@ -103,7 +103,7 @@ export function toDisplayClient(row, jobs = []) {
         date: fmtShortDate(j?.scheduled_at),
         service: j?.service_name,
         time: endStr ? `${startStr} – ${endStr}` : startStr,
-        amt: `$${Number(j?.total_amount || 0).toFixed(0)}`,
+        amt: `$${computeJobTotal(j).toFixed(0)}`,
         job_status: j?.job_status || 'Scheduled',
         payment_status: j?.payment_status || '',
       };
@@ -115,7 +115,7 @@ export function toDisplayClient(row, jobs = []) {
       duration: j?.actual_duration ? fmtDur(Number(j.actual_duration) * 60)
               : j?.estimated_hours ? fmtDur(Number(j.estimated_hours) * 60)
               : '—',
-      amt: `$${Number(j?.total_amount || 0).toFixed(0)}`,
+      amt: `$${computeJobTotal(j).toFixed(0)}`,
       status: j?.payment_status === 'Paid' ? 'paid' : j?.payment_status === 'Partial' ? 'partial' : 'unpaid',
       job_status: j?.job_status || 'Completed',
     })),

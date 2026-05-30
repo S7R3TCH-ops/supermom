@@ -22,6 +22,7 @@ export async function generateInvoiceForJob(jobId) {
     .from('jobs')
     .select('*, clients(*)')
     .eq('id', jobId)
+    .eq('business_id', businessId)
     .single();
 
   if (jobErr) throw jobErr;
@@ -30,9 +31,11 @@ export async function generateInvoiceForJob(jobId) {
   const actualTotal = Math.round(computeJobTotal(job) * 100) / 100;
 
   if (existingLink) {
-    await supabase.from('invoices')
+    const { error: updateErr } = await supabase.from('invoices')
       .update({ total_amount: actualTotal })
-      .eq('id', existingLink.invoice_id);
+      .eq('id', existingLink.invoice_id)
+      .eq('business_id', businessId);
+    if (updateErr) throw updateErr;
     return existingLink.invoice_id;
   }
 

@@ -16,18 +16,34 @@ const NOW = () => new Date();
 
 const VIEWS = ['Day', 'Week', 'Agenda'];
 
+// Extract the Toronto calendar date as "YYYY-MM-DD" — used for day comparisons and grouping.
+function torontoDateKey(d) {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Toronto' }).format(d);
+}
+// Extract Toronto decimal hour (h + min/60) for block layout calculations.
+function torontoDecimalHour(d) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Toronto', hourCycle: 'h23', hour: '2-digit', minute: '2-digit',
+  }).formatToParts(d);
+  const h = parseInt(parts.find(p => p.type === 'hour').value, 10);
+  const m = parseInt(parts.find(p => p.type === 'minute').value, 10);
+  return h + m / 60;
+}
 function startOfWeek(d) {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  const dow = (x.getDay() + 6) % 7; // Mon=0
-  x.setDate(x.getDate() - dow);
-  return x;
+  // Anchor at 17:00 UTC (= noon EDT / 1 PM EST) of the Toronto Monday so torontoDateKey
+  // always resolves to the correct calendar date regardless of the browser's local timezone.
+  const key = torontoDateKey(d);
+  const [y, mo, dy] = key.split('-').map(Number);
+  const noon = new Date(Date.UTC(y, mo - 1, dy, 17));
+  const dow = (noon.getUTCDay() + 6) % 7; // Mon=0
+  noon.setUTCDate(noon.getUTCDate() - dow);
+  return noon;
 }
 function sameDay(a, b) {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  return torontoDateKey(a) === torontoDateKey(b);
 }
 function addDays(d, n) {
-  const x = new Date(d); x.setDate(x.getDate() + n); return x;
+  const x = new Date(d); x.setUTCDate(x.getUTCDate() + n); return x;
 }
 function fmtTime(d) {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -264,10 +280,10 @@ export default function Calendar() {
 function DayView({ T, mode, privacyOn, selectedDay, todayJobs, nextUpcoming, onJobPress, firstName }) {
   const slotH = 50;
   const startH = todayJobs.length > 0
-    ? Math.max(5, Math.floor(Math.min(...todayJobs.map(j => j.start.getHours() + j.start.getMinutes() / 60))) - 1)
+    ? Math.max(5, Math.floor(Math.min(...todayJobs.map(j => torontoDecimalHour(j.start)))) - 1)
     : 6;
   const endH = todayJobs.length > 0
-    ? Math.min(23, Math.ceil(Math.max(...todayJobs.map(j => j.end.getHours() + j.end.getMinutes() / 60))) + 1)
+    ? Math.min(23, Math.ceil(Math.max(...todayJobs.map(j => torontoDecimalHour(j.end)))) + 1)
     : 22;
   const hours = Array.from({ length: endH - startH + 1 }, (_, i) => startH + i);
 
@@ -314,8 +330,8 @@ function DayView({ T, mode, privacyOn, selectedDay, todayJobs, nextUpcoming, onJ
         )}
 
         {todayJobs.map(j => {
-          const startDec = j.start.getHours() + j.start.getMinutes() / 60;
-          const endDec   = j.end.getHours()   + j.end.getMinutes() / 60;
+          const startDec = torontoDecimalHour(j.start);
+          const endDec   = torontoDecimalHour(j.end);
           const top = (startDec - startH) * slotH + 2;
           const h   = (endDec - startDec) * slotH - 4;
           const bg = j.isCancelled
@@ -362,8 +378,8 @@ function DayView({ T, mode, privacyOn, selectedDay, todayJobs, nextUpcoming, onJ
         })}
 
         {gaps.map((d, i) => {
-          const fromDec = d.from.getHours() + d.from.getMinutes() / 60;
-          const toDec   = d.to.getHours()   + d.to.getMinutes() / 60;
+          const fromDec = torontoDecimalHour(d.from);
+          const toDec   = torontoDecimalHour(d.to);
           const top = (fromDec - startH) * slotH + 4;
           const h   = (toDec - fromDec) * slotH - 8;
           if (h <= 0) return null;
@@ -423,8 +439,8 @@ function WeekView({ T, mode, weekDays, allJobs, onJobPress }) {
             return (
               <div key={i} style={{ position: 'relative' }}>
                 {dayJobs.map(j => {
-                  const startDec = j.start.getHours() + j.start.getMinutes() / 60;
-                  const endDec   = j.end.getHours()   + j.end.getMinutes() / 60;
+                  const startDec = torontoDecimalHour(j.start);
+                  const endDec   = torontoDecimalHour(j.end);
                   const top = (startDec - startH) * slotH + 1;
                   const h   = Math.max((endDec - startDec) * slotH - 2, 18);
                   const paid = j.paid;
@@ -482,7 +498,7 @@ function AgendaView({ T, mode, privacyOn, allJobs, nextUpcoming, onJobPress, fir
     const map = new Map();
     for (const j of allJobs) {
       if (j.end < NOW()) continue;
-      const key = j.start.toISOString().slice(0, 10);
+      const key = torontoDateKey(j.start);
       if (!map.has(key)) map.set(key, { date: j.start, jobs: [] });
       map.get(key).jobs.push(j);
     }

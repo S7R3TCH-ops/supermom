@@ -24,7 +24,12 @@ export function computeJobFinancials(job, business = null, liveForm = null) {
   // 2. Resolve Hours
   // If completed, use actual_duration. If not, use estimated_hours.
   // If editing, use the live form value.
-  const rawHours = liveForm?.estimated_hours ?? (src?.job_status === 'Completed' ? src?.actual_duration : src?.estimated_hours) ?? 0;
+  // For completed jobs, prefer actual_duration; fall back to estimated_hours if actual was never recorded.
+  const rawHours = liveForm?.estimated_hours
+    ?? (src?.job_status === 'Completed'
+      ? (src?.actual_duration ?? src?.estimated_hours)
+      : src?.estimated_hours)
+    ?? 0;
   const hoursNum = Number(rawHours);
   const hours = isNaN(hoursNum) ? 0 : hoursNum;
 

@@ -100,9 +100,24 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 ---
 
-## Current version: 0.7.5
+## Current version: 0.8.0
 
 All core features are live. The app is in active use by Sandra.
+
+### Recent changes (v0.8.0 — May 30, 2026) — code review security + accuracy pass
+- **Security: XSS in invoice email** — `api/email-invoice.js` now escapes all user-supplied values (`clientName`, `bizName`, etc.) via `escapeHtml()` before HTML interpolation.
+- **Security: phishing via Origin header** — `invoiceUrl` in `api/email-invoice.js` now uses `process.env.APP_BASE_URL` instead of `req.headers.origin`.
+- **Security: multi-tenancy gaps** — `generateInvoiceForJob` job fetch + invoice update now scoped with `.eq('business_id', businessId)`. `job_templates` UPDATE and soft-delete in series edits, and AI-learning `services` UPDATE, all now scoped with `business_id`. `/preview` route moved inside Gate (requires auth).
+- **Payment accuracy: stale job row** — `recordPayment` was calling `computeJobTotal` on the pre-completion DB row. Now builds a `liveJob` synthetic object with the incoming duration/status/costs before computing the Paid/Partial threshold.
+- **Payment accuracy: swallowed error** — Payments SELECT error in `recordPayment` now thrown, not silently discarded.
+- **Payment date timezone** — `payment_date` now uses `Intl.DateTimeFormat` with `America/Toronto` (was UTC midnight; evening payments got tomorrow's date).
+- **Notes never rendered** — `JobCard` and `UpcomingCard` were reading `j.job_notes` but `toDisplayJob` maps to `j.notes`. Fixed field name in both cards.
+- **Bi-weekly recurrence broken** — `NewJobSheet` was writing `recurrence_rule: 'Bi-weekly'` but `createRecurringSeries` checks for `'Biweekly'`. Fixed option id to match.
+- **Null actual_duration = $0** — `computeJobFinancials` now falls back to `estimated_hours` when a Completed job has `actual_duration=null` (was collapsing to 0 hours/$0 labor).
+- **Client revenue stats** — `selectors.js` `revenueYtd`, `upcoming[].amt`, `history[].amt` all switched from `total_amount` to `computeJobTotal(j)`.
+- **e-Transfer fallback address** — Both `InvoiceView.jsx` and `api/email-invoice.js` now fall back to `sandra@supermom.com` (not the old interim Gmail).
+- **Calendar timezone** — Added `torontoDecimalHour()` + `torontoDateKey()` helpers. All block positions (DayView/WeekView/gaps), `sameDay()`, `startOfWeek()`, `addDays()`, and AgendaView date grouping now use Toronto time, not system timezone.
+- **Dead code removed** — `ThankYouDraftSheet` in `PostJobSheet` was permanently hidden (`showThankYou` never set to true). Import, state, and render removed.
 
 ### Recent changes (v0.7.5 — May 30, 2026)
 - **Time display timezone fix** — `fmtTime12` / `fmtTimeRange` in `dateUtils.js` now extract hours/minutes via `Intl.DateTimeFormat` with `timeZone: 'America/Toronto'` instead of `d.getHours()`. Prevents hour shift on machines not set to Eastern time. Same fix applied to Calendar.jsx local `fmtTime`. `JobDetailSheet` edit form now strips seconds from `job.scheduled_time` on open (`slice(0,5)`) so `<input type="time">` always gets clean `HH:mm`.
@@ -115,29 +130,6 @@ All core features are live. The app is in active use by Sandra.
 - **Needs Action HST label fix** — Replaced misleading `+HST` note (implied HST was additional) with `(incl. HST)` parenthetical — `computeJobTotal` amounts already include HST.
 - **Partial→Paid auto-upgrade** — Three-part fix: (1) `recordPayment` SELECT now includes `job_status` so `computeJobFinancials` uses `actual_duration` (not `estimated_hours`) for completed hourly jobs — was the root cause of "partial stays partial even when fully paid"; (2) epsilon tolerance `paid >= total - 0.01` prevents float noise from blocking Paid status; (3) PostJobSheet `handleLogPayment` now upgrades `ps` from Partial→Paid when `alreadyPaid + paidAmt >= liveTotal - 0.01` (mirrors the existing downgrade check), so save button text and toast are correct.
 - **Home hero: collected this week** — Small green `$X collected` line added below "Projected" in the hero, showing sum of payments received for all jobs scheduled this week. Hidden when zero. Respects privacy mode.
-
-### ⚠ Bugs found this session — fix next
-- **Job edit time shift** — Editing a booked job changes the time after saving: the saved time appears a couple hours earlier than what was entered. Likely a timezone issue in how `JobDetailSheet` composes the time value for the DB (suspect `composeTorontoISO` or the time `<input>` writing UTC instead of Toronto local). **Priority: HIGH — affects live data.**
-- **Hourly rate inconsistency** — The hourly amount shown for a job is not consistent across views. Could be the `flat_rate` vs `hourly_rate` field confusion, or `computeJobFinancials` picking a different source depending on context. Needs systematic trace through all places that read/display the rate.
-
-### ⚠ Still pending — must do before email works
-Run this SQL in Supabase SQL Editor (Sandra's businesses record):
-```sql
-UPDATE businesses
-SET
-  phone      = '(416) 738-0309',
-  email      = 'supermomsforhire@gmail.com',
-  city       = 'Georgetown',
-  province   = 'ON',
-  hst_number = '777616178 RT0001'
-WHERE name ILIKE '%supermom%';
-```
-Add to `.env` and Vercel dashboard:
-```
-GMAIL_USER=supermomsforhire@gmail.com
-GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx   ← get from Sandra's Google account
-```
-Gmail App Password setup: Sandra's Gmail → Google Account → Security → 2-Step Verification (enable) → App Passwords → Create → copy 16-char code.
 
 ### Recent changes (v0.7.3 — May 29, 2026)
 - **Payment accuracy (CS1)** — `recordPayment` in `jobsRepo.js` now always re-derives payment status from the DB payments sum; expanded job SELECT to include all fields needed by `computeJobTotal` (was missing `flat_rate`, `pricing_type`, `actual_duration` — would have marked every hourly job as `Paid` regardless of amount). Caller-supplied status is ignored.
@@ -156,7 +148,10 @@ Gmail App Password setup: Sandra's Gmail → Google Account → Security → 2-S
 - **Logo split** — `public/branding/logo-banner.png` = app top bar (original 41KB file). `public/branding/logo-final.png` = invoice (492KB full logo). `LogoBar.jsx` and `PalettePreview.jsx` updated to use `logo-banner.png`.
 
 ### Sandra's business contact details (confirmed)
-- Email: `supermomsforhire@gmail.com` (NOT `supermoms@gmail.com`)
+- Email: `sandra@supermom.com` ← **canonical for everything** (domain pending; placeholder until live)
+  - Used on: invoices (FROM + e-Transfer), Google Calendar OAuth, Google Maps, Gmail SMTP
+  - `supermomsforhire@gmail.com` was the interim address — superseded by above
+  - When domain goes live: re-run the businesses SQL with new email, update `GMAIL_USER` env var
 - Phone: `(416) 738-0309`
 - Location: Georgetown, ON (home-based — no street address on invoices)
 - HST #: `777616178 RT0001`
@@ -246,11 +241,14 @@ Gmail App Password setup: Sandra's Gmail → Google Account → Security → 2-S
 ## Parked / not building yet
 
 ### Immediate (next session) — in priority order
-- [ ] **CS1–CS3 full verification pass** — test end-to-end on real device: partial → reopen → collect balance → confirm Paid (green card); card color states (scheduled/partial/unpaid/paid); subtotal on cards; hero "collected" counter updates; toast says "Payment saved — balance owing." for partial, "Job complete!" for fully paid.
-- [ ] **Gmail App Password** — get from Sandra, add `GMAIL_USER` + `GMAIL_APP_PASSWORD` to `.env` and Vercel dashboard
-- [ ] **Supabase businesses record** — run the SQL under v0.7.4 above to populate phone/email/city/province/hst_number
+- [ ] **Commit v0.8.0 code review fixes** — Joel testing on dev server first. ~20 files changed (security, payment accuracy, timezone, field names). All lint-clean.
+- [ ] **Job edit time round-trip** — Joel checking manually on device. If time shifts after save, fix is in `JobDetailSheet` `saveEdit` / `composeTorontoISO`.
+- [ ] **owedTotal balance for Partial jobs** — `selectors.js` shows full job total instead of remaining balance for Partial clients. Fix: join payments table in `clientsRepo.js` to get `amount_paid` per job, then subtract in `toDisplayClient`. No SQL migration needed — code only.
+- [ ] **Gmail App Password** — waiting on `sandra@supermom.com` domain going live. When ready: App Password → `GMAIL_USER` + `GMAIL_APP_PASSWORD` in `.env` + Vercel dashboard. Also add `APP_BASE_URL=https://supermom-v2.vercel.app` to Vercel env vars.
 - [ ] **16 missing Vercel env vars** — only VITE_SUPABASE_ANON_KEY + VERCEL_OIDC_TOKEN pulled locally. Others likely Production-only on Vercel dashboard. Confirm nothing breaks as features are used.
 - [ ] **Credential rotation** — DB password + GitHub token were in a public commit. Should be rotated.
+- [x] **CS1–CS3 verification pass** — PASSED (May 30, 2026).
+- [x] **Supabase businesses record** — populated (May 30, 2026).
 
 ### Laptop / dev environment
 - [ ] WSL2 cleanup — `sudo umount /mnt/recovery` → `exit` → `wsl --unmount`

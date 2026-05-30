@@ -109,13 +109,13 @@ export default function JobCard({ job: j, T, onClick, onDuplicate, paid = 0, tot
       )}
 
       {/* Row 5: job notes */}
-      {j.job_notes && (
+      {j.notes && (
         <div style={{
           fontSize: 11, color: T.inkMuted, fontStyle: 'italic', marginTop: 5,
           display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
           overflow: 'hidden', lineHeight: 1.4,
         }}>
-          {j.job_notes}
+          {j.notes}
         </div>
       )}
 

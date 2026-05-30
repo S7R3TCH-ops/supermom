@@ -231,7 +231,8 @@ export async function updateJob(id, patch, seriesAction = 'this') {
         flat_rate: cleanPatch.flat_rate,
         notes: cleanPatch.job_notes,
       })
-      .eq('id', job.template_id);
+      .eq('id', job.template_id)
+      .eq('business_id', businessId);
   }
 
   return decorateJob(data.find(j => j.id === id) || data[0]);
@@ -285,7 +286,8 @@ export async function softDeleteJob(id, seriesAction = 'this') {
     await supabase
       .from('job_templates')
       .update({ deleted_at: deletedAt, active: false })
-      .eq('id', job.template_id);
+      .eq('id', job.template_id)
+      .eq('business_id', businessId);
   }
 
   return decorateJob(data[0]);
@@ -332,7 +334,8 @@ export async function archiveClientJobs(clientId) {
   if (error) throw error;
 }
 
-export async function recordPayment(jobId, amount, method = 'Cash', paymentStatus = null, duration = null, jobNotes = null, additionalCosts = [], completionNotes = null) {
+// eslint-disable-next-line no-unused-vars
+export async function recordPayment(jobId, amount, method = 'Cash', _paymentStatus = null, duration = null, jobNotes = null, additionalCosts = [], completionNotes = null) {
   const businessId = await getCurrentBusinessId();
 
   // 1. Get job info (need full fields for computeJobTotal to work correctly on hourly jobs)
@@ -354,7 +357,7 @@ export async function recordPayment(jobId, amount, method = 'Cash', paymentStatu
         client_id: job.client_id,
         amount: amount,
         payment_method: method,
-        payment_date: new Date().toISOString().split('T')[0],
+        payment_date: new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Toronto' }).format(new Date()),
         notes: jobNotes,
       })
       .select();
@@ -362,19 +365,29 @@ export async function recordPayment(jobId, amount, method = 'Cash', paymentStatu
     assertWrote(payData, 'recordPayment:insert');
   }
 
+  const validCosts = (additionalCosts || []).filter(c => Number(c.amount) > 0);
+  const costSum = validCosts.reduce((s, c) => s + Number(c.amount), 0);
+  const costNotes = validCosts.map(c => c.description).filter(Boolean).join('; ');
+
   // 3. Always derive status from DB payments sum — never trust caller-supplied value
-  const { data: existingPayments } = await supabase
+  const { data: existingPayments, error: paymentsErr } = await supabase
     .from('payments')
     .select('amount')
     .eq('job_id', jobId)
     .eq('is_void', false);
+  if (paymentsErr) throw paymentsErr;
   const paid = (existingPayments ?? []).reduce((s, p) => s + Number(p.amount), 0);
-  const total = computeJobTotal(job);
-  let status = paid >= total - 0.01 && paid > 0 ? 'Paid' : paid > 0 ? 'Partial' : (amount > 0 ? 'Partial' : '');
 
-  const validCosts = (additionalCosts || []).filter(c => Number(c.amount) > 0);
-  const costSum = validCosts.reduce((s, c) => s + Number(c.amount), 0);
-  const costNotes = validCosts.map(c => c.description).filter(Boolean).join('; ');
+  // Compute total against the values being written, not the stale pre-completion DB row.
+  // The DB row still has job_status='Scheduled' and the old actual_duration/costs at this point.
+  const liveJob = {
+    ...job,
+    job_status: 'Completed',
+    actual_duration: duration,
+    ...(validCosts.length > 0 ? { additional_costs_json: validCosts, additional_cost: costSum } : {}),
+  };
+  const total = computeJobTotal(liveJob);
+  let status = paid >= total - 0.01 && paid > 0 ? 'Paid' : paid > 0 ? 'Partial' : (amount > 0 ? 'Partial' : '');
 
   const jobPatch = {
     payment_status: status,
@@ -410,7 +423,8 @@ export async function recordPayment(jobId, amount, method = 'Cash', paymentStatu
         await supabase
           .from('services')
           .update({ default_duration: avgMinutes })
-          .eq('id', job.service_id);
+          .eq('id', job.service_id)
+          .eq('business_id', businessId);
           
         console.log(`[AI learning] Updated ${job.service_id} default duration to ${avgMinutes}m based on ${pastJobs.length} jobs.`);
       }

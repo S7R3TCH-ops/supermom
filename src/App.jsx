@@ -131,6 +131,7 @@ function AuthedShell() {
               <Route path="/finance" element={<Finance />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/admin" element={<Admin />} />
+              <Route path="/preview" element={<PalettePreview />} />
             </Routes>
           </Suspense>
           {!hideFAB && <FAB />}
@@ -339,7 +340,6 @@ export default function App() {
             <Suspense fallback={null}>
               <Routes>
                 <Route path="/i/:id" element={<InvoiceView />} />
-                <Route path="/preview" element={<PalettePreview />} />
                 <Route path="*" element={<Gate />} />
               </Routes>
             </Suspense>

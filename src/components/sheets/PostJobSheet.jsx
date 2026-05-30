@@ -5,7 +5,6 @@ import { fetchJobById, recordPayment } from '../../data/jobsRepo';
 import { notifyDataChanged, useBusiness } from '../../data/useData';
 import { computeJobTotal } from '../../lib/financialMath';
 import { useToast } from '../../context/ToastContext';
-import ThankYouDraftSheet from './ThankYouDraftSheet';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { supabase } from '../../lib/supabase';
 import GrabBar from '../ui/GrabBar';
@@ -29,7 +28,6 @@ export default function PostJobSheet({ jobId, onClose }) {
   const [payStatus, setPayStatus] = useState('paid');
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
-  const [showThankYou, setShowThankYou] = useState(false);
   const [invoiceId, setInvoiceId] = useState(null);
   const [jobPayments, setJobPayments] = useState([]);
   const [costs, setCosts] = useState([{ amount: '', description: '' }]);
@@ -480,7 +478,6 @@ export default function PostJobSheet({ jobId, onClose }) {
       )}
 
       </div>
-      <ThankYouDraftSheet isOpen={showThankYou} onClose={() => setShowThankYou(false)} jobId={jobId} />
     </div>
   );
 }

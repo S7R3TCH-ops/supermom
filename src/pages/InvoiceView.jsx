@@ -295,7 +295,7 @@ export default function InvoiceView() {
         <div style={{ borderTop: '1px solid #eee', paddingTop: 24, marginBottom: 28 }}>
           <div style={LABEL}>Payment</div>
           <div style={{ fontSize: 13, color: '#444', lineHeight: 1.8 }}>
-            e-Transfer to <strong>{biz.email || 'supermomsforhire@gmail.com'}</strong>
+            e-Transfer to <strong>{biz.email || 'sandra@supermom.com'}</strong>
             <div style={{ color: '#888', fontSize: 12 }}>Reference: Invoice #{invoice.invoice_number}</div>
           </div>
         </div>

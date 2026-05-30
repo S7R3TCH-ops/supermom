@@ -657,7 +657,7 @@ function Step2What({
           {[
             { id: null, label: 'Once' },
             { id: 'Weekly', label: 'Weekly' },
-            { id: 'Bi-weekly', label: 'Every 2 wks' },
+            { id: 'Biweekly', label: 'Every 2 wks' },
             { id: 'Monthly', label: 'Monthly' },
           ].map(r => (
             <button

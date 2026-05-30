@@ -83,13 +83,13 @@ export default function UpcomingCard({ job: j, T, onClick, total = 0, paid = 0, 
       )}
 
       {/* Row 5: job notes */}
-      {j.job_notes && (
+      {j.notes && (
         <div style={{
           fontSize: 11, color: T.inkMuted, fontStyle: 'italic', marginTop: 5,
           display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
           overflow: 'hidden', lineHeight: 1.4,
         }}>
-          {j.job_notes}
+          {j.notes}
         </div>
       )}
     </div>

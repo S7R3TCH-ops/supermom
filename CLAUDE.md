@@ -25,7 +25,7 @@ This is a **managed service product** — Sandra is the first user, but the arch
 | Styling | Tailwind CSS + CSS custom properties (see DESIGN.md) |
 | Auth | Supabase Auth (email/password) |
 | Database | Supabase (Postgres) |
-| Hosting | Vercel ([supermom.vercel.app](https://supermom.vercel.app)) |
+| Hosting | Vercel ([supermom-s7-r3-tch.vercel.app](https://supermom-s7-r3-tch.vercel.app)) |
 | Performance | `React.lazy` + `Suspense` code-splitting |
 | Calendar | Google Calendar API (OAuth) |
 | Maps/Geo | Google Maps API (routing + geofence) |
@@ -321,7 +321,7 @@ All core features are live. The app is in active use by Sandra.
   - **Calendar** (Day/Week/Agenda blocks) — show worker name when assigned
   - **`CLAUDE.md`** — update schema, bump version to 0.13.0
   - ⚠️ No new `api/` files — Vercel at 12-function limit
-- [x] **Rename supermom-v2 → supermom** — DONE (May 31, 2026). GitHub repo, Vercel project, git remote, package.json, and CLAUDE.md all updated. APP_BASE_URL updated in Vercel env vars.
+- [x] **Rename supermom-v2 → supermom** — DONE (May 31, 2026). GitHub repo, Vercel project, git remote, package.json, and CLAUDE.md all updated. Canonical URL is `supermom-s7-r3-tch.vercel.app` (`supermom.vercel.app` is taken). APP_BASE_URL in Vercel set to `https://supermom-s7-r3-tch.vercel.app`.
 - [x] **Job edit time round-trip** — verified on device, no time shift. (May 30, 2026)
 - [ ] **Vercel env vars (Google/Gmail)** — `SUPABASE_SERVICE_ROLE_KEY` + `APP_BASE_URL` already added (May 30). Still missing: `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` (Calendar OAuth), `VITE_GOOGLE_MAPS_API_KEY` (maps/geocode), `GMAIL_USER` + `GMAIL_APP_PASSWORD` (waiting on Sandra's domain).
 - [ ] **Supabase public schema grants — due before Oct 30, 2026** — Existing project is safe until then (new-project rule only). Before Oct 30 run in SQL Editor: `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO anon, authenticated; GRANT USAGE ON SCHEMA public TO anon, authenticated;` — required after Supabase removes the implicit public grant for all projects.

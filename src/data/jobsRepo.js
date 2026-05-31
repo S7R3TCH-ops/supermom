@@ -6,7 +6,7 @@
 import { supabase } from '../lib/supabase';
 import { getCurrentBusinessId } from './currentBusiness';
 import { generateInvoiceForJob } from './invoicesRepo';
-import { computeJobTotal } from '../lib/financialMath';
+import { computeJobFinancials } from '../lib/financialMath';
 import { composeTorontoISO as _composeTorontoISO } from '../lib/dateUtils';
 export { composeTorontoISO } from '../lib/dateUtils';
 
@@ -54,7 +54,7 @@ export async function fetchJobById(id) {
 
   const { data, error } = await supabase
     .from('jobs')
-    .select(`${SELECT_FULL}, clients(first_name, last_name, notes, ai_context, tags)`)
+    .select(`${SELECT_FULL}, clients(first_name, last_name, notes, ai_context, tags), workers(name, person_type)`)
     .eq('id', id)
     .eq('business_id', businessId)
     .maybeSingle();
@@ -64,17 +64,8 @@ export async function fetchJobById(id) {
   const clientName = c
     ? [c.first_name, c.last_name].filter(Boolean).join(' ')
     : 'Unknown';
-  // Explicit worker lookup — avoids relying on PostgREST schema cache for the new FK
-  let workerName = null;
-  if (data.worker_id) {
-    const { data: wData } = await supabase
-      .from('workers')
-      .select('name')
-      .eq('id', data.worker_id)
-      .maybeSingle();
-    workerName = wData?.name ?? null;
-  }
-  const { clients: _dropped, ...jobRow } = data;
+  const workerName = data.workers?.name ?? null;
+  const { clients: _dropped, workers: _droppedW, ...jobRow } = data;
 
   let client_recent_notes = [];
   if (data.client_id) {
@@ -405,7 +396,8 @@ export async function recordPayment(jobId, amount, method = 'Cash', _paymentStat
     actual_duration: duration,
     ...(validCosts.length > 0 ? { additional_costs_json: validCosts, additional_cost: costSum } : {}),
   };
-  const total = computeJobTotal(liveJob);
+  const financials = computeJobFinancials(liveJob);
+  const total = financials.total;
   let status = paid >= total - 0.01 && paid > 0 ? 'Paid' : paid > 0 ? 'Partial' : (amount > 0 ? 'Partial' : '');
 
   const jobPatch = {
@@ -414,6 +406,9 @@ export async function recordPayment(jobId, amount, method = 'Cash', _paymentStat
     payment_method: amount > 0 ? method : null,
     actual_duration: duration,
     completion_notes: completionNotes,
+    subtotal: financials.subtotal,
+    hst_amount: financials.taxAmount,
+    total_amount: financials.total,
     ...(workerPaid !== null ? { worker_paid: workerPaid } : {}),
   };
   if (validCosts.length > 0) {

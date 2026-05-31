@@ -79,8 +79,8 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 ### Hourly job field conventions — READ THIS
 - `flat_rate` stores the **$/hr rate** for Hourly jobs (not a flat fee). This is intentional — NewJobSheet writes it that way.
-- `total_amount` stores the **booking-time estimate** and is **never updated after completion**. Do not read it as the actual total for a completed hourly job.
-- To compute a completed hourly job's true total: `flat_rate × actual_duration + additional_cost + hst_amount`.
+- `total_amount` is written with the **finalized actual total** when a job completes (via `recordPayment`). For in-progress/scheduled jobs it holds the booking-time estimate. Always use `computeJobFinancials()` for UI math — do not read `total_amount` raw in components.
+- `subtotal` (DB column) = base labor only. `hst_amount` = finalized HST. `total_amount` = final grand total. All three are written on completion.
 - `additional_costs_json` is the array of cost items. `additional_cost` is a backward-compat scalar sum.
 - `toDisplayJob()` in `selectors.js` wraps the raw DB row — use `j.raw.fieldName` to access DB fields from display objects (e.g., in Home.jsx).
 - `payments` table is the source of truth for amounts collected. `job.payment_status` is a denormalized cache.
@@ -105,9 +105,15 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 ---
 
-## Current version: 0.12.0 — committed (7cdce28) and deployed May 30, 2026
+## Current version: 0.12.1 — committed May 31, 2026
 
 All core features are live. The app is in active use by Sandra.
+
+### Recent changes (v0.12.1 — May 31, 2026) — Infrastructure + data layer refactor (AI Studio review)
+
+- **AI serverless consolidation** — `api/ai/enrich-client.js`, `estimate-duration.js`, `prep-note.js`, `test-persona.js` deleted. Replaced by single `api/ai/[action].js` dynamic route. Vercel function count: **12 → 9**. All mock fallbacks and frontend fetch paths (`/api/ai/enrich-client` etc.) unchanged.
+- **`fetchJobById` PostgREST join** — replaced separate sequential worker lookup with inline `workers(name, person_type)` join in the main select. Schema cache refreshed via `NOTIFY pgrst, 'reload schema'` in Supabase SQL Editor. Saves one round-trip on every job detail open.
+- **Financial write-back on completion** — `recordPayment` now writes finalized `subtotal`, `hst_amount`, and `total_amount` back to the jobs row on completion using `computeJobFinancials`. DB columns existed but were never populated post-completion; SQL aggregates against `total_amount` now give accurate figures.
 
 ### Recent changes (v0.12.0 — May 30, 2026) — Worker pay Finance integration + owedTotal fix + card reminders
 
@@ -320,11 +326,13 @@ All core features are live. The app is in active use by Sandra.
   - **`JobCard.jsx` + `UpcomingCard.jsx`** — show worker name as secondary line when assigned
   - **Calendar** (Day/Week/Agenda blocks) — show worker name when assigned
   - **`CLAUDE.md`** — update schema, bump version to 0.13.0
-  - ⚠️ No new `api/` files — Vercel at 12-function limit
 - [x] **Rename supermom-v2 → supermom** — DONE (May 31, 2026). GitHub repo, Vercel project, git remote, package.json, and CLAUDE.md all updated. Canonical URL is `supermom-s7-r3-tch.vercel.app` (`supermom.vercel.app` is taken). APP_BASE_URL in Vercel set to `https://supermom-s7-r3-tch.vercel.app`.
 - [x] **Job edit time round-trip** — verified on device, no time shift. (May 30, 2026)
+- [x] **AI route consolidation** — 4 AI functions merged into `api/ai/[action].js`. Function count: 9/12. (May 31, 2026)
+- [x] **PostgREST schema reload** — `NOTIFY pgrst, 'reload schema'` run in Supabase SQL Editor. (May 31, 2026)
+- [x] **Financial write-back** — `recordPayment` now persists `subtotal`, `hst_amount`, `total_amount` on completion. (May 31, 2026)
 - [ ] **Vercel env vars (Google/Gmail)** — `SUPABASE_SERVICE_ROLE_KEY` + `APP_BASE_URL` already added (May 30). Still missing: `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` (Calendar OAuth), `VITE_GOOGLE_MAPS_API_KEY` (maps/geocode), `GMAIL_USER` + `GMAIL_APP_PASSWORD` (waiting on Sandra's domain).
-- [ ] **Supabase public schema grants — due before Oct 30, 2026** — Existing project is safe until then (new-project rule only). Before Oct 30 run in SQL Editor: `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO anon, authenticated; GRANT USAGE ON SCHEMA public TO anon, authenticated;` — required after Supabase removes the implicit public grant for all projects.
+- [ ] **Supabase public schema grants — due before Oct 30, 2026** — Before Oct 30 run in SQL Editor: `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO anon, authenticated; GRANT USAGE ON SCHEMA public TO anon, authenticated;`
 - [ ] **Staff app access (Phase 2)** — `person_type = 'staff'` tracked in DB. No app login yet. When ready: link `workers.id` → `users` table + add Supabase Auth account.
 - [ ] **Gmail App Password** — waiting on `sandra@supermom.com` domain. When ready: App Password → `GMAIL_USER` + `GMAIL_APP_PASSWORD` in `.env` + Vercel.
 - [x] **v0.12.0 committed + deployed** — commit 7cdce28, live on Vercel (May 30, 2026).
@@ -338,11 +346,10 @@ All core features are live. The app is in active use by Sandra.
 - [x] **CS1–CS3 verification pass** — PASSED (May 30, 2026).
 - [x] **Workers feature shipped** — v0.9.0 (May 30, 2026).
 
-> ⚠ **Vercel Hobby plan: 12 serverless function limit.** Currently at exactly 12 (`api/` files). Adding any new API route requires deleting one first, or upgrading to Pro.
+> Vercel Hobby plan: **9 of 12** serverless functions used. 3 slots available for new API routes.
 
 ### Laptop / dev environment
-- [ ] WSL2 cleanup — `sudo umount /mnt/recovery` → `exit` → `wsl --unmount`
-- [ ] Full Windows format + clean reinstall (deferred — everything critical is on GitHub/Vercel)
+- [x] **Fresh Windows install complete** — `C:\Projects\supermom` cloned, Node + Git installed via winget, npm install done. (May 31, 2026)
 
 ### Features — Phase 2
 - [ ] **Custom domain → swap email provider** — when Sandra's domain is live, swap `nodemailer` for `resend` and verify domain. `from` becomes `invoices@[domain]`. 5-min job.

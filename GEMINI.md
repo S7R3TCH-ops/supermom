@@ -17,8 +17,8 @@ Increment patch version in `package.json` after a successful production deploy.
 State: "I am incrementing the version to [X] as per GEMINI.md" before doing so.
 
 ### 3. Deployment
-- **Hosting**: Vercel ([supermom-v2.vercel.app](https://supermom-v2.vercel.app))
-- **Auto-deploy**: Connected to GitHub (`S7R3TCH-ops/supermom-v2`). `git push origin main` deploys to production. Do NOT run `vercel --prod` manually.
+- **Hosting**: Vercel ([supermom-s7-r3-tch.vercel.app](https://supermom-s7-r3-tch.vercel.app))
+- **Auto-deploy**: Connected to GitHub (`S7R3TCH-ops/supermom`). `git push origin main` deploys to production. Do NOT run `vercel --prod` manually.
 
 ---
 
@@ -49,8 +49,8 @@ After the v0.6.2 refactor, these symbols moved. The old locations no longer exis
 
 ### Hourly job field conventions — critical
 - `flat_rate` = $/hr rate for Hourly jobs (not a flat fee). NewJobSheet always writes it this way.
-- `total_amount` = booking-time estimate only. Never updated after job completion.
-- True completed total = `flat_rate × actual_duration + additional_cost + hst_amount`
+- `total_amount` = finalized actual total written on job completion (as of v0.12.1). For Scheduled jobs it still holds the booking estimate. Always use `computeJobFinancials()` in UI — never read `total_amount` raw in components.
+- `subtotal` (DB) = base labor. `hst_amount` = finalized HST. Both written on completion alongside `total_amount`.
 - `payments` table = source of truth for what's collected. `payment_status` is a cached status only.
 
 ---
@@ -110,4 +110,4 @@ After the v0.6.2 refactor, these symbols moved. The old locations no longer exis
 9. **Offline mode** — crashes if Supabase unreachable on initial load.
 10. **Credential rotation** — DB password + GitHub token were in a public repo commit; check memory file.
 
-(Updated by Claude Code — May 19, 2026 — v0.7.0)
+(Updated by Claude Code — May 31, 2026 — v0.12.1)

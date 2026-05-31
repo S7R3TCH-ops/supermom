@@ -14,110 +14,88 @@
 
 ## LAPTOP STATE
 
-- Profile: `C:\Users\jlund` — functional (recovered from ACL strip, everything critical on GitHub/Vercel)
-- Node v24.14.1, npm 11, Git 2.54, GitHub CLI 2.92, VS Code — all working
-- App runs at `http://localhost:8080` via `npm run dev` (or 8081 if 8080 is in use)
-- `.env` at repo root (gitignored) — contains `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY`. Gmail creds not yet added.
+- **Fresh Windows install** — `C:\Projects\supermom\` (cloned May 31, 2026)
+- Node.js LTS + Git installed via winget
+- App runs at `http://localhost:5173` via `npm run dev`
+- `.env` at repo root (gitignored) — contains `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` + `SUPABASE_SERVICE_ROLE_KEY`. Gmail/Google creds not yet added (waiting on Sandra's domain).
 
 ---
 
 ## SUPERMOM PROJECT — CURRENT STATE
 
 ### Local dev
-- Folder: `C:\Users\jlund\Projects\supermom\`
-- Run: `npm run dev` → `http://localhost:8080`
+- Folder: `C:\Projects\supermom\`
+- Run: `npm run dev` → `http://localhost:5173`
 - Deploy: `git push origin main` → auto-deploys to Vercel. **Never run `vercel --prod` manually.**
 - Supabase project ID: `lskzzsjmmtsosfneuovt`
 
 ### GitHub
 | Repo | Purpose |
 |---|---|
-| S7R3TCH-ops/supermom-v2 | Main app (cloned locally as `supermom`) |
+| S7R3TCH-ops/supermom | Main app |
 | S7R3TCH-ops/supermom-crm | Legacy vanilla JS — NOT cloned, low priority |
 
-### Current version: 0.11.0 (May 30, 2026)
-> v0.11.0 committed and pushed to Vercel.
+### Current version: 0.12.1 (May 31, 2026)
+> v0.12.0 is live on Vercel. v0.12.1 is committed + pushed, pending merge to main.
 
 ---
 
-## WHAT WE JUST FINISHED (this session — May 30, 2026)
+## WHAT WE JUST FINISHED (May 31, 2026)
 
-### v0.11.0 — Worker pay tracking + admin hard-delete UI + Calendar polish + Invoice mobile
+### v0.12.1 — Infrastructure + data layer refactor (AI Studio review)
 
-**DB migration run this session:**
-- `ALTER TABLE jobs ADD COLUMN worker_paid boolean DEFAULT false;` ✅
+Three changes from an external AI code review — all committed to branch `claude/ai-studio-review-analysis-2yDhP`:
 
-**Three UI pieces added this session:**
+1. **AI serverless consolidation** — `api/ai/enrich-client.js`, `estimate-duration.js`, `prep-note.js`, `test-persona.js` merged into single `api/ai/[action].js` dynamic route. Vercel function count: 12 → 9. All mock fallbacks + frontend fetch paths unchanged.
 
-1. **JobDetailSheet edit form — Worker Paid toggle** — "Worker Paid?" toggle button appears in edit mode when a team member is assigned. Green "Paid ✓" / amber "Not Yet Paid". Reads/writes `form.worker_paid`. Sits between "Pay for this job ($)" field and SeriesPicker.
+2. **`fetchJobById` PostgREST join** — Removed the separate sequential worker lookup. Now uses `workers(name, person_type)` inline join in the main select. Schema cache refreshed via `NOTIFY pgrst, 'reload schema'` in Supabase SQL Editor.
 
-2. **JobDetailSheet admin footer — Permanently Delete Job** — "Permanently Delete Job (Admin)" link below the existing soft-delete "Delete Job (Admin)" link. Tapping shows inline confirm panel (Cancel + "Delete Forever"). Calls `hardDeleteJob(job.id)`. Admin-only (`isAdmin`).
+3. **Financial write-back on completion** — `recordPayment` now writes finalized `subtotal`, `hst_amount`, `total_amount` to the jobs row on completion. These DB columns existed but were never populated post-completion. SQL aggregates against `total_amount` now give accurate figures.
 
-3. **ClientProfile admin danger zone — Permanently Delete Client** — Second section inside Admin Actions collapse, below Archive. Same 2-tap confirm pattern. Calls `hardDeleteClient(id)`. Navigates to `/clients` on success. Uses dark red (`#7F1D1D`) to visually distinguish from archive (`#B01550`).
-
-**Also in v0.11.0 (shipped in previous session within same day):**
-- `recordPayment` in `jobsRepo.js` accepts `workerPaid` param (9th arg) and writes `worker_paid` to DB.
-- `hardDeleteJob(id)` in `jobsRepo.js` — permanent hard-delete.
-- `hardDeleteClient(clientId)` in `clientsRepo.js` — cascades to all client jobs.
-- `FinancialMathBreakdown.jsx` — "👷 Worker Cost" section showing worker name, pay, Paid/Not Yet Paid badge.
-- `PostJobSheet.jsx` — `workerPaid` toggle in wrap-up UI.
-- Calendar polish: current-time indicator, half-hour dashed lines, Day view time always shown, Week view 4-state color coding.
-- Invoice mobile scale-to-fit via ResizeObserver + transform:scale().
-- HST grandTotal wired through PaymentBreakdown → JobCard/UpcomingCard → Home.jsx.
+### Also this session
+- Fresh Windows dev environment set up (`C:\Projects\supermom`)
+- Joel's local Claude Code is running from the project folder
 
 ---
 
 ## MUST DO NEXT — in priority order
 
-### 1. Verify v0.11.0 end-to-end on device (clean slate)
-1. Admin → Staff Management → "Team Management" + Workers/Staff tabs
-2. Skill Catalog → add "Organizing", "Caregiving"
-3. Add a Worker → assign skills with pay rates
-4. Staff tab → add a Staff member
-5. New job → assign worker → pay auto-fills from skill rate
-6. Job cards on Home + Calendar → `👷 Worker:` / `⭐ Staff:` labels
-7. Wrap up job → PostJobSheet shows worker name + pay + paid toggle
-8. FinancialMathBreakdown → Worker Cost section at bottom
-9. Edit job → Worker Paid? toggle visible and functional
-10. Admin: Permanently Delete Job → 2-tap confirm works
-11. ClientProfile Admin Actions → Permanently Delete Client → 2-tap confirm works
+### 1. Merge v0.12.1 branch to main + deploy
+Branch: `claude/ai-studio-review-analysis-2yDhP` → merge to `main` → Vercel auto-deploys.
 
-### 2. owedTotal for Partial clients
-Clients page shows full job total instead of remaining balance for Partial clients.
-- Fix in `clientsRepo.js` + `toDisplayClient` in `selectors.js`
-- Join payments table, subtract `amount_paid` per job
-- No SQL migration needed — code only
+### 2. Vercel env vars (Google/Gmail)
+Already in Vercel: `SUPABASE_SERVICE_ROLE_KEY`, `APP_BASE_URL`.
+Still missing:
+- `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` (Calendar OAuth)
+- `VITE_GOOGLE_MAPS_API_KEY` (maps/geocode)
+- `GMAIL_USER` + `GMAIL_APP_PASSWORD` (waiting on `sandra@supermom.com` domain)
+- `ANTHROPIC_API_KEY` (in Vercel, also add to local `.env` for AI features)
 
-### 3. Job edit time round-trip
-Joel to verify manually: edit a scheduled job's time, save, confirm displayed time didn't shift. If it did, bug is in `JobDetailSheet` `saveEdit` → `composeTorontoISO`.
+### 3. Supabase public schema grants — deadline Oct 30, 2026
+Run in SQL Editor before then:
+```sql
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO anon, authenticated;
+GRANT USAGE ON SCHEMA public TO anon, authenticated;
+```
 
 ---
 
 ## PARKED LIST (do not let these disappear)
 
 ### Immediate
-- [ ] **v0.11.0 on-device verify** — see checklist above
-- [ ] **owedTotal for Partial clients** — code-only fix in clientsRepo + selectors
-- [ ] **Job edit time round-trip** — Joel checking on device
-- [ ] **worker_pay → Finance page (Phase 2)** — stored but not deducted from profit. Deliberate v1 scope.
+- [ ] **Merge v0.12.1 → main + deploy** — branch ready, needs PR or direct merge
+- [ ] **ANTHROPIC_API_KEY** — add to Vercel + local `.env` (AI features fall back to mock without it)
+- [ ] **Gmail App Password** — blocked on `sandra@supermom.com` domain going live
 - [ ] **Staff app access (Phase 2)** — `person_type = 'staff'` tracked. Link to `users` + Auth when ready.
-- [ ] **Gmail App Password** — blocked on `sandra@supermom.com` domain. When live: App Password → `GMAIL_USER` + `GMAIL_APP_PASSWORD` in `.env` + Vercel. Also `APP_BASE_URL=https://supermom-v2.vercel.app`.
-- [ ] **16 missing Vercel env vars** — only VITE_SUPABASE_ANON_KEY + VERCEL_OIDC_TOKEN pull locally. Others are Production-only.
-- [ ] **Credential rotation** — DB password + GitHub token were in a public commit. Should be rotated.
-- ⚠ **Vercel 12-function limit** — at exactly 12/12. No new API routes without deleting one or upgrading to Pro.
-
-### Laptop / environment
-- [ ] WSL2 cleanup: `sudo umount /mnt/recovery` → `exit` → `wsl --unmount`
-- [ ] GitHub repo rename: `supermom-v2` → `supermom` (cosmetic)
-- [ ] Full Windows format + clean reinstall (deferred)
+- [ ] **Supabase schema grants** — before Oct 30, 2026 (see above)
 
 ### Features — Phase 2
-- [ ] Custom domain → swap nodemailer for Resend when `sandra@supermom.com` is live (5-min job)
-- [ ] Sandra daily job briefing email — Vercel Cron, 7am Toronto, Resend
-- [ ] Staff Supabase Auth login + scheduling access
-- [ ] Self-serve client booking link
-- [ ] Offline mode
-- [ ] Client engagement tools (AI follow-up / re-booking reminders)
+- [ ] **Custom domain → swap email provider** — when Sandra's domain is live, swap `nodemailer` for `resend`. 5-min job.
+- [ ] **Sandra daily job briefing email** — Vercel Cron, 7am Toronto, Resend
+- [ ] **Staff Supabase Auth login + scheduling access**
+- [ ] **Self-serve client booking link**
+- [ ] **Offline mode** — app crashes if Supabase unreachable on first load
+- [ ] **Client engagement tools** (AI follow-up / re-booking reminders)
 
 ---
 
@@ -125,24 +103,28 @@ Joel to verify manually: edit a scheduled job's time, save, confirm displayed ti
 
 ### Financial math
 - `flat_rate` = $/hr for Hourly jobs (not a flat fee — legacy field name, intentional)
-- `total_amount` = booking-time estimate only, never updated after completion
+- `total_amount` is written with the **finalized actual total** when a job completes. For Scheduled jobs it still holds the booking estimate. Always use `computeJobFinancials()` for UI math — never read `total_amount` raw in components.
+- `subtotal` (DB) = base labor only. `hst_amount` = finalized HST. Both written on completion.
+- `payments` table = source of truth for amounts collected; `job.payment_status` is a cache
 - Always use `computeJobFinancials()` from `src/lib/financialMath.js` — never inline math
-- `payments` table = source of truth for collected amounts; `job.payment_status` is a cache
+
+### API layer
+- Vercel Hobby plan: **9 of 12** functions used. 3 slots available.
+- AI routes all go through `api/ai/[action].js` — do NOT add new files in `api/ai/`
+- No `api/` files that start without `_` count as functions — helpers go in `api/_lib/`
 
 ### Multi-tenancy
 - Every Supabase query must include `.eq('business_id', businessId)` — never skip this
-- RLS is enabled but don't rely on it as the only guard — enforce in code too
+- RLS is enabled but enforce in code too — don't rely on RLS as the only guard
 
 ### Soft deletes
-- Never hard-delete jobs, clients, or workers **from normal flows** — always set `deleted_at = now()`
-- Hard delete functions (`hardDeleteJob`, `hardDeleteClient`) exist for admin use only
-- Archived workers still resolve on historical jobs via `includeArchived: true`
+- Never hard-delete jobs, clients, or workers from normal flows — always set `deleted_at = now()`
+- `hardDeleteJob` / `hardDeleteClient` exist for admin use only
 
 ### Workers / Skills
 - `useWorkers()` returns workers with a `skills: [{ skill_type_id, skill_name, pay_rate }]` array
 - `assignee_type` on display jobs comes from `toDisplayJob` → `w.person_type`
-- `fetchJobById` in jobsRepo does NOT use PostgREST join for worker — uses explicit separate query (avoids schema cache dependency on FK)
-- **Never chain `.catch()` directly on a Supabase query builder** — use try/catch or rely on the `error` field in the response.
+- `fetchJobById` uses PostgREST join for worker: `workers(name, person_type)` inline in select (no separate query)
 
 ### Timezone
 - Everything is `America/Toronto` — never system timezone. Use helpers in `src/lib/dateUtils.js`

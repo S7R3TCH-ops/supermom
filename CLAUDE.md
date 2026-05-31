@@ -25,7 +25,7 @@ This is a **managed service product** — Sandra is the first user, but the arch
 | Styling | Tailwind CSS + CSS custom properties (see DESIGN.md) |
 | Auth | Supabase Auth (email/password) |
 | Database | Supabase (Postgres) |
-| Hosting | Vercel ([supermom-v2.vercel.app](https://supermom-v2.vercel.app)) |
+| Hosting | Vercel ([supermom.vercel.app](https://supermom.vercel.app)) |
 | Performance | `React.lazy` + `Suspense` code-splitting |
 | Calendar | Google Calendar API (OAuth) |
 | Maps/Geo | Google Maps API (routing + geofence) |
@@ -105,7 +105,7 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 ---
 
-## Current version: 0.12.0 (pending commit — do not push until Joel confirms)
+## Current version: 0.12.0 — committed (7cdce28) and deployed May 30, 2026
 
 All core features are live. The app is in active use by Sandra.
 
@@ -308,16 +308,30 @@ All core features are live. The app is in active use by Sandra.
 ## Parked / not building yet
 
 ### Immediate (next session) — in priority order
-- [ ] **v0.12.0 commit + deploy** — Joel to confirm all changes look good on device, then commit. Changes are built and clean but NOT yet committed.
-- [ ] **v0.12.0 verify on device** — Test: (1) Clients page partial-payment client shows correct remaining balance. (2) Finance Profit tile is lower when jobs have worker_pay — drill in to see Worker Costs section with Paid/Unpaid badges. (3) Book job, assign worker → pay auto-fills from skill rate. Go back, change service → pay re-fills. (4) Completed+paid job with unpaid worker shows "$ Unpaid" tag on card. Tap job → amber "Mark Worker Paid" button appears → tap it → worker marked paid, Finance updates. (5) Edit job → "Mark Worker Paid" toggle still in edit form.
-- [ ] **v0.11.0 verify end-to-end on device** — skill types → add worker with skills → book job → assign worker → pay auto-fills → cards/calendar show `👷`/`⭐` → wrap-up shows worker pay + paid toggle → `FinancialMathBreakdown` shows Worker Cost section → edit job → Worker Paid toggle visible → admin hard-delete buttons work.
-- [ ] **Job edit time round-trip** — Joel checking manually on device. If time shifts after save, fix is in `JobDetailSheet` `saveEdit` / `composeTorontoISO`.
-- [ ] **Credential rotation** — DB password + GitHub token were in a public commit. Supabase: Dashboard → Settings → Database → Reset DB password. GitHub: Settings → Developer settings → PATs → Regenerate. Run `git remote set-url origin https://<new-token>@github.com/youruser/supermom-v2.git` locally.
-- [ ] **Vercel env vars** — Local `.env` only has `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VERCEL_OIDC_TOKEN`. Missing (add in Vercel dashboard → Project → Settings → Environment Variables): `SUPABASE_SERVICE_ROLE_KEY` (for API routes), `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` (for Calendar OAuth), `VITE_GOOGLE_MAPS_API_KEY` (maps/geocode), `APP_BASE_URL=https://supermom-v2.vercel.app` (invoice email links).
+- [ ] **Workers / assignee feature (v0.13.0)** — Sandra can create worker profiles (name, phone, email, specialty) and assign them to jobs with a per-job pay amount. Workers have no app login — internal tracking only. Full plan below:
+  - **DB migration (manual, Supabase SQL Editor)**:
+    - New `workers` table: `id`, `business_id`, `name`, `phone`, `email`, `specialty`, `created_at`, `deleted_at` (soft-delete)
+    - Add to `jobs`: `worker_id` (nullable FK → workers.id), `worker_pay` (nullable numeric)
+    - RLS: `workers_select` + `workers_modify` scoped via `my_business_id() OR is_admin()` (same pattern as services)
+  - **`src/data/workersRepo.js`** (new): `fetchWorkers`, `createWorker`, `updateWorker`, `archiveWorker`
+  - **Workers management screen** — new `src/pages/Workers.jsx` or sheet accessible from Settings; add/edit/archive workers
+  - **`NewJobSheet.jsx`** — optional worker picker + pay field (Step 2); hidden when no workers exist
+  - **`JobDetailSheet.jsx`** — show worker + pay in read mode; picker + pay field in edit mode
+  - **`JobCard.jsx` + `UpcomingCard.jsx`** — show worker name as secondary line when assigned
+  - **Calendar** (Day/Week/Agenda blocks) — show worker name when assigned
+  - **`CLAUDE.md`** — update schema, bump version to 0.13.0
+  - ⚠️ No new `api/` files — Vercel at 12-function limit
+- [x] **Rename supermom-v2 → supermom** — DONE (May 31, 2026). GitHub repo, Vercel project, git remote, package.json, and CLAUDE.md all updated. APP_BASE_URL updated in Vercel env vars.
+- [x] **Job edit time round-trip** — verified on device, no time shift. (May 30, 2026)
+- [ ] **Vercel env vars (Google/Gmail)** — `SUPABASE_SERVICE_ROLE_KEY` + `APP_BASE_URL` already added (May 30). Still missing: `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` (Calendar OAuth), `VITE_GOOGLE_MAPS_API_KEY` (maps/geocode), `GMAIL_USER` + `GMAIL_APP_PASSWORD` (waiting on Sandra's domain).
+- [ ] **Supabase public schema grants — due before Oct 30, 2026** — Existing project is safe until then (new-project rule only). Before Oct 30 run in SQL Editor: `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO anon, authenticated; GRANT USAGE ON SCHEMA public TO anon, authenticated;` — required after Supabase removes the implicit public grant for all projects.
 - [ ] **Staff app access (Phase 2)** — `person_type = 'staff'` tracked in DB. No app login yet. When ready: link `workers.id` → `users` table + add Supabase Auth account.
 - [ ] **Gmail App Password** — waiting on `sandra@supermom.com` domain. When ready: App Password → `GMAIL_USER` + `GMAIL_APP_PASSWORD` in `.env` + Vercel.
-- [x] **owedTotal balance for Partial jobs** — FIXED in v0.12.0. Payments fetched in useClients/useClient, paymentsByJobId map passed to toDisplayClient. (May 30, 2026)
-- [x] **worker_pay → Finance integration** — DONE in v0.12.0. workerCost in computeJobFinancials, Finance profit tile, FinanceDetailSheet drill-down. (May 30, 2026)
+- [x] **v0.12.0 committed + deployed** — commit 7cdce28, live on Vercel (May 30, 2026).
+- [x] **v0.12.0 + v0.11.0 device verification** — all scenarios tested and passed (May 30, 2026).
+- [x] **Credential rotation** — DB password reset, GitHub PAT regenerated, git remote URL updated (May 30, 2026).
+- [x] **owedTotal balance for Partial jobs** — FIXED in v0.12.0. (May 30, 2026)
+- [x] **worker_pay → Finance integration** — DONE in v0.12.0. (May 30, 2026)
 - [x] **worker_paid DB migration run** — `ALTER TABLE jobs ADD COLUMN worker_paid boolean DEFAULT false` (May 30, 2026).
 - [x] **v0.11.0 shipped** — worker pay toggle in JobDetailSheet edit, admin hard-delete buttons in JobDetailSheet + ClientProfile (May 30, 2026).
 - [x] **v0.10.0 DB migrations run** — `person_type`, `skill_types`, `worker_skills`, RLS policies (May 30, 2026).
@@ -328,7 +342,6 @@ All core features are live. The app is in active use by Sandra.
 
 ### Laptop / dev environment
 - [ ] WSL2 cleanup — `sudo umount /mnt/recovery` → `exit` → `wsl --unmount`
-- [ ] GitHub repo rename: `supermom-v2` → `supermom` (cosmetic — affects Vercel project name + doc refs)
 - [ ] Full Windows format + clean reinstall (deferred — everything critical is on GitHub/Vercel)
 
 ### Features — Phase 2

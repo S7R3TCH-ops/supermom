@@ -35,35 +35,32 @@
 | S7R3TCH-ops/supermom | Main app |
 | S7R3TCH-ops/supermom-crm | Legacy vanilla JS — NOT cloned, low priority |
 
-### Current version: 0.12.1 (May 31, 2026)
-> v0.12.0 is live on Vercel. v0.12.1 is committed + pushed, pending merge to main.
+### Current version: 0.12.1 (May 31, 2026) — LIVE on Vercel
+> Repo is clean. main branch = Vercel deployment. No pending merges.
 
 ---
 
 ## WHAT WE JUST FINISHED (May 31, 2026)
 
-### v0.12.1 — Infrastructure + data layer refactor (AI Studio review)
+### v0.12.1 — Infrastructure + data layer refactor (AI Studio review) — MERGED + DEPLOYED
+Merged `claude/ai-studio-review-analysis-2yDhP` → main → pushed → Vercel auto-deployed.
 
-Three changes from an external AI code review — all committed to branch `claude/ai-studio-review-analysis-2yDhP`:
+1. **AI serverless consolidation** — `api/ai/enrich-client.js`, `estimate-duration.js`, `prep-note.js`, `test-persona.js` merged into single `api/ai/[action].js` dynamic route. Vercel function count: 12 → 9.
 
-1. **AI serverless consolidation** — `api/ai/enrich-client.js`, `estimate-duration.js`, `prep-note.js`, `test-persona.js` merged into single `api/ai/[action].js` dynamic route. Vercel function count: 12 → 9. All mock fallbacks + frontend fetch paths unchanged.
+2. **`fetchJobById` PostgREST join** — Removed separate sequential worker lookup. Uses `workers(name, person_type)` inline join. Schema cache refreshed via `NOTIFY pgrst, 'reload schema'`.
 
-2. **`fetchJobById` PostgREST join** — Removed the separate sequential worker lookup. Now uses `workers(name, person_type)` inline join in the main select. Schema cache refreshed via `NOTIFY pgrst, 'reload schema'` in Supabase SQL Editor.
-
-3. **Financial write-back on completion** — `recordPayment` now writes finalized `subtotal`, `hst_amount`, `total_amount` to the jobs row on completion. These DB columns existed but were never populated post-completion. SQL aggregates against `total_amount` now give accurate figures.
+3. **Financial write-back on completion** — `recordPayment` now writes finalized `subtotal`, `hst_amount`, `total_amount` to the jobs row on completion.
 
 ### Also this session
-- Fresh Windows dev environment set up (`C:\Projects\supermom`)
-- Joel's local Claude Code is running from the project folder
+- Repo cleanup: deleted `docs/minxymomma-dashboard.html`, `New Text Document.txt`, synced `package-lock.json` — all committed + pushed (commit `4284906`)
+- Git identity set locally: `jlundie@gmail.com` / `Joel Lundie`
+- Claude Code statusline configured: shows current directory, session context %, 5h usage %, 7d usage %
 
 ---
 
 ## MUST DO NEXT — in priority order
 
-### 1. Merge v0.12.1 branch to main + deploy
-Branch: `claude/ai-studio-review-analysis-2yDhP` → merge to `main` → Vercel auto-deploys.
-
-### 2. Vercel env vars (Google/Gmail)
+### 1. Vercel env vars (Google/Gmail)
 Already in Vercel: `SUPABASE_SERVICE_ROLE_KEY`, `APP_BASE_URL`.
 Still missing:
 - `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` (Calendar OAuth)
@@ -83,7 +80,7 @@ GRANT USAGE ON SCHEMA public TO anon, authenticated;
 ## PARKED LIST (do not let these disappear)
 
 ### Immediate
-- [ ] **Merge v0.12.1 → main + deploy** — branch ready, needs PR or direct merge
+- [x] **Merge v0.12.1 → main + deploy** — DONE (May 31, 2026)
 - [ ] **ANTHROPIC_API_KEY** — add to Vercel + local `.env` (AI features fall back to mock without it)
 - [ ] **Gmail App Password** — blocked on `sandra@supermom.com` domain going live
 - [ ] **Staff app access (Phase 2)** — `person_type = 'staff'` tracked. Link to `users` + Auth when ready.

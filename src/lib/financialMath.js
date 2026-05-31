@@ -77,7 +77,10 @@ export function computeJobFinancials(job, business = null, liveForm = null) {
     taxEnabled = true;
   }
 
-  // 7. Grand Total
+  // 7. Worker Cost (informational — not added to client-facing total)
+  const workerCost = Number(src?.worker_pay) || 0;
+
+  // 8. Grand Total
   const total = subtotal + additionalTotal + taxAmount;
 
   return {
@@ -91,7 +94,8 @@ export function computeJobFinancials(job, business = null, liveForm = null) {
     taxEnabled,
     taxAmount,
     taxRate,
-    total
+    total,
+    workerCost
   };
 }
 

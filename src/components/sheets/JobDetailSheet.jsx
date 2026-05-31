@@ -185,6 +185,16 @@ export default function JobDetailSheet({ jobId, onClose }) {
     } catch (e) { setMutErr(e.message || String(e)); setBusy(false); }
   }
 
+  async function handleMarkWorkerPaid() {
+    setBusy(true); setMutErr(null);
+    try {
+      await updateJob(job.id, { worker_paid: true });
+      notifyDataChanged();
+      toast.success('Worker marked as paid');
+      onClose();
+    } catch (e) { setMutErr(e.message || String(e)); setBusy(false); }
+  }
+
   function initiateSave() {
     if (job.template_id) { setPendingAction('save'); setShowSeriesPicker(true); }
     else saveEdit('this');
@@ -337,6 +347,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
             onClose={onClose}
             onMarkComplete={markComplete}
             onMarkPaid={markPaid}
+            onMarkWorkerPaid={handleMarkWorkerPaid}
             onCancelConfirm={initiateDelete}
             onConfirmDelete={() => deleteJob('this')}
             onDismissConfirm={() => { setConfirm(false); setShowSeriesPicker(false); }}
@@ -375,7 +386,7 @@ function ReadMode({
   isAdmin,
   showCancelForm, cancelReason, cancelBusy,
   onSetShowCancelForm, onSetCancelReason, onHandleCancel,
-  onClose, onMarkComplete, onMarkPaid, onCancelConfirm, onConfirmDelete, onDismissConfirm, onEdit, onUpdate, onDeepPrep,
+  onClose, onMarkComplete, onMarkPaid, onMarkWorkerPaid, onCancelConfirm, onConfirmDelete, onDismissConfirm, onEdit, onUpdate, onDeepPrep,
   hardDeleteConfirm, onHardDeleteConfirm, onHardDeleteCancel, onHardDelete,
 }) {
   const statusC = STATUS_COLORS[job.job_status] || STATUS_COLORS.Scheduled;
@@ -475,6 +486,11 @@ function ReadMode({
         <div style={{ padding: '10px 14px 28px', borderTop: `1px solid ${T.cardBorder}`, display: 'flex', flexDirection: 'column', gap: 8 }}>
           {!isCancelled && isScheduled && <Btn onClick={onMarkComplete} disabled={busy} bg="#22C55E" color="white" T={T}>Mark Complete</Btn>}
           {!isCancelled && !isPaid && <Btn onClick={onMarkPaid} disabled={busy} bg="#E91E6A" color="white" T={T}>Mark Paid</Btn>}
+          {!isCancelled && isPaid && Number(job.raw?.worker_pay) > 0 && !job.raw?.worker_paid && (
+            <Btn onClick={onMarkWorkerPaid} disabled={busy} bg="#F59E0B" color="white" T={T}>
+              👷 Mark {job.raw?.worker_name || 'Worker'} Paid — ${Number(job.raw.worker_pay).toFixed(0)}
+            </Btn>
+          )}
           {!isCancelled && (
             <Btn
               onClick={invoiceId ? () => { if (window.confirm('This job has an invoice. Editing may cause the invoice total to diverge. Continue?')) onEdit(); } : onEdit}
@@ -584,6 +600,18 @@ function EditMode({ job, form, setForm, services, workers, business, T, mode, bu
 
     if (form.pricing_type === 'Flat') set('total_amount', String(resolvedPrice || ''));
     if (!form.hoursTouched) set('estimated_hours', (Number(svc.default_duration || 120) / 60).toFixed(1));
+
+    // Re-auto-fill worker pay when service changes and a worker is assigned
+    if (form.worker_id && workers?.length) {
+      const w = workers.find(x => x.id === form.worker_id);
+      if (w?.skills?.length) {
+        const svcName = (svc.name || '').toLowerCase();
+        const match = w.skills.find(sk =>
+          svcName.includes(sk.skill_name.toLowerCase()) || sk.skill_name.toLowerCase().includes(svcName)
+        );
+        if (match?.pay_rate != null) set('worker_pay', String(match.pay_rate));
+      }
+    }
   }
 
   const liveHourlyRate = parseFloat(form.hourly_rate) || 0;

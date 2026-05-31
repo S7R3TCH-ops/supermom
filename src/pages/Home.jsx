@@ -759,7 +759,12 @@ export default function Home() {
                         {j.service_name}
                       </div>
                       {j.worker_name && (
-                        <div style={{ fontSize: 10.5, color: '#92400E', opacity: 0.75, marginTop: 2 }}>{j.assignee_type === 'staff' ? '⭐ Staff:' : '👷 Worker:'} {j.worker_name}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2, flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: 10.5, color: '#92400E', opacity: 0.75 }}>{j.assignee_type === 'staff' ? '⭐ Staff:' : '👷 Worker:'} {j.worker_name}</span>
+                          {j.payment_status === 'Paid' && Number(j.raw?.worker_pay) > 0 && !j.raw?.worker_paid && (
+                            <span style={{ fontSize: 8.5, fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: '#FEF3C7', color: '#92400E', textTransform: 'uppercase', letterSpacing: '0.3px' }}>$ Unpaid</span>
+                          )}
+                        </div>
                       )}
                       <div style={{ fontSize: 11, color: '#92400E', marginTop: 4 }}>
                         {j.start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · {fmtTimeRange(j.start, j.end)}
@@ -843,7 +848,12 @@ export default function Home() {
                       {j.service_name}
                     </div>
                     {j.worker_name && (
-                      <div style={{ fontSize: 10.5, color: T.inkMuted, marginTop: 2 }}>{j.assignee_type === 'staff' ? '⭐ Staff:' : '👷 Worker:'} {j.worker_name}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 10.5, color: T.inkMuted }}>{j.assignee_type === 'staff' ? '⭐ Staff:' : '👷 Worker:'} {j.worker_name}</span>
+                        {j.payment_status === 'Paid' && Number(j.raw?.worker_pay) > 0 && !j.raw?.worker_paid && (
+                          <span style={{ fontSize: 8.5, fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: '#FEF3C7', color: '#92400E', textTransform: 'uppercase', letterSpacing: '0.3px' }}>$ Unpaid</span>
+                        )}
+                      </div>
                     )}
                     {j.job_notes && (
                       <div style={{

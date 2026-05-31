@@ -105,9 +105,20 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 ---
 
-## Current version: 0.11.0
+## Current version: 0.12.0 (pending commit — do not push until Joel confirms)
 
 All core features are live. The app is in active use by Sandra.
+
+### Recent changes (v0.12.0 — May 30, 2026) — Worker pay Finance integration + owedTotal fix + card reminders
+
+- **owedTotal fix for Partial jobs** — `selectors.js:toDisplayClient` now subtracts already-paid amounts for Partial jobs. `useData.js` `useClients` + `useClient` both fetch `payments` table in parallel and build `paymentsByJobId` map (jobId → totalPaid) passed as 3rd arg to `toDisplayClient`. Clients page now shows correct remaining balance.
+- **Worker pay as Finance expense** — `worker_pay` on a job now reduces Sandra's profit and surfaces in Finance drill-downs:
+  - `financialMath.js:computeJobFinancials` returns `workerCost: Number(src?.worker_pay) || 0`
+  - `Finance.jsx` stats: `workerCosts` subtracted from profit. Profit tile shows amber sub-note "-$X worker costs". Transaction list shows 👷 worker cost rows with Paid/Unpaid badge.
+  - `FinanceDetailSheet.jsx` profit drill-down: "Worker Costs" section (amber heading) between Income and Expenses. Header math includes workerCosts in net.
+- **Worker pay auto-fill on service change** — `NewJobSheet` Step 2 now re-triggers skill-match auto-fill when `serviceId` changes while a worker is already selected (`useEffect` on `[serviceId]`). `JobDetailSheet` edit mode `onPickService` also re-runs auto-fill when a worker is assigned.
+- **"$ Unpaid" badge on job cards** — `JobCard.jsx`, `Home.jsx` Needs Action section, and Home.jsx Rest of Week section all show an amber "$ Unpaid" tag next to the worker name when: `isPaid && worker_pay > 0 && !worker_paid`.
+- **"Mark Worker Paid" quick action in JobDetailSheet** — amber button "👷 Mark [Name] Paid — $XX" appears in read mode action bar when same condition met. Writes `{ worker_paid: true }` to DB, fires toast, closes sheet. Client invoice is NOT affected.
 
 ### Recent changes (v0.11.0 — May 30, 2026) — Worker pay tracking + Calendar polish + Invoice mobile
 
@@ -140,7 +151,7 @@ All core features are live. The app is in active use by Sandra.
 
 ### Recent changes (v0.9.0 — May 30, 2026) — Workers feature
 - **New `workers` table** — business-scoped team members with `name`, `phone`, `email`, `specialty`. Soft-delete only. RLS-protected via `my_business_id()`. No Supabase Auth — picker only. SQL migration run manually on Supabase project `lskzzsjmmtsosfneuovt`.
-- **`jobs.worker_id` + `jobs.worker_pay`** — nullable FK to `workers.id`, nullable numeric pay per job. `worker_pay` is informational only — does NOT reduce profit on Finance page (v1 scope decision).
+- **`jobs.worker_id` + `jobs.worker_pay`** — nullable FK to `workers.id`, nullable numeric pay per job. `worker_pay` NOW reduces profit on Finance page as of v0.12.0.
 - **`src/data/workersRepo.js`** — `fetchWorkers({ includeArchived })`, `createWorker`, `updateWorker`, `archiveWorker`. All scoped with `business_id`.
 - **Worker name resolution** — `toDisplayJob` in `selectors.js` now accepts `workerLookup` (3rd param). `useJobs` in `useData.js` fetches all workers (incl. archived) to build the lookup — archived workers still resolve on historical jobs. `fetchJobById` uses an **explicit separate query** (`supabase.from('workers').select('name').eq('id', data.worker_id)`) — NOT a PostgREST join — to avoid schema cache dependency on the new FK.
 - **`useWorkers` hook** — added to `useData.js` for active-workers-only consumers (pickers, WorkerCatalogSheet). All worker fetches use `.catch(() => [])` so a missing table degrades gracefully.
@@ -297,14 +308,16 @@ All core features are live. The app is in active use by Sandra.
 ## Parked / not building yet
 
 ### Immediate (next session) — in priority order
-- [ ] **v0.11.0 verify end-to-end on device** — Verify: skill types → add worker with skills → book job → assign worker → pay auto-fills → cards/calendar show `👷`/`⭐` → wrap-up shows worker pay + paid toggle → `FinancialMathBreakdown` shows Worker Cost section → edit job → Worker Paid toggle visible → admin hard-delete buttons work.
-- [ ] **owedTotal balance for Partial jobs** — `selectors.js` shows full job total instead of remaining balance for Partial clients. Fix: join payments table in `clientsRepo.js` to get `amount_paid` per job, then subtract in `toDisplayClient`. No SQL migration needed — code only.
+- [ ] **v0.12.0 commit + deploy** — Joel to confirm all changes look good on device, then commit. Changes are built and clean but NOT yet committed.
+- [ ] **v0.12.0 verify on device** — Test: (1) Clients page partial-payment client shows correct remaining balance. (2) Finance Profit tile is lower when jobs have worker_pay — drill in to see Worker Costs section with Paid/Unpaid badges. (3) Book job, assign worker → pay auto-fills from skill rate. Go back, change service → pay re-fills. (4) Completed+paid job with unpaid worker shows "$ Unpaid" tag on card. Tap job → amber "Mark Worker Paid" button appears → tap it → worker marked paid, Finance updates. (5) Edit job → "Mark Worker Paid" toggle still in edit form.
+- [ ] **v0.11.0 verify end-to-end on device** — skill types → add worker with skills → book job → assign worker → pay auto-fills → cards/calendar show `👷`/`⭐` → wrap-up shows worker pay + paid toggle → `FinancialMathBreakdown` shows Worker Cost section → edit job → Worker Paid toggle visible → admin hard-delete buttons work.
 - [ ] **Job edit time round-trip** — Joel checking manually on device. If time shifts after save, fix is in `JobDetailSheet` `saveEdit` / `composeTorontoISO`.
-- [ ] **worker_pay → Finance integration (Phase 2)** — `worker_pay` per job stored but does NOT reduce profit on Finance page. Deliberate v1 scope. Future: sum `worker_pay` on completed jobs and subtract in `computeJobFinancials`.
+- [ ] **Credential rotation** — DB password + GitHub token were in a public commit. Supabase: Dashboard → Settings → Database → Reset DB password. GitHub: Settings → Developer settings → PATs → Regenerate. Run `git remote set-url origin https://<new-token>@github.com/youruser/supermom-v2.git` locally.
+- [ ] **Vercel env vars** — Local `.env` only has `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VERCEL_OIDC_TOKEN`. Missing (add in Vercel dashboard → Project → Settings → Environment Variables): `SUPABASE_SERVICE_ROLE_KEY` (for API routes), `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` (for Calendar OAuth), `VITE_GOOGLE_MAPS_API_KEY` (maps/geocode), `APP_BASE_URL=https://supermom-v2.vercel.app` (invoice email links).
 - [ ] **Staff app access (Phase 2)** — `person_type = 'staff'` tracked in DB. No app login yet. When ready: link `workers.id` → `users` table + add Supabase Auth account.
-- [ ] **Gmail App Password** — waiting on `sandra@supermom.com` domain. When ready: App Password → `GMAIL_USER` + `GMAIL_APP_PASSWORD` in `.env` + Vercel. Also add `APP_BASE_URL=https://supermom-v2.vercel.app`.
-- [ ] **16 missing Vercel env vars** — only VITE_SUPABASE_ANON_KEY + VERCEL_OIDC_TOKEN pulled locally. Others Production-only on Vercel dashboard.
-- [ ] **Credential rotation** — DB password + GitHub token were in a public commit. Should be rotated.
+- [ ] **Gmail App Password** — waiting on `sandra@supermom.com` domain. When ready: App Password → `GMAIL_USER` + `GMAIL_APP_PASSWORD` in `.env` + Vercel.
+- [x] **owedTotal balance for Partial jobs** — FIXED in v0.12.0. Payments fetched in useClients/useClient, paymentsByJobId map passed to toDisplayClient. (May 30, 2026)
+- [x] **worker_pay → Finance integration** — DONE in v0.12.0. workerCost in computeJobFinancials, Finance profit tile, FinanceDetailSheet drill-down. (May 30, 2026)
 - [x] **worker_paid DB migration run** — `ALTER TABLE jobs ADD COLUMN worker_paid boolean DEFAULT false` (May 30, 2026).
 - [x] **v0.11.0 shipped** — worker pay toggle in JobDetailSheet edit, admin hard-delete buttons in JobDetailSheet + ClientProfile (May 30, 2026).
 - [x] **v0.10.0 DB migrations run** — `person_type`, `skill_types`, `worker_skills`, RLS policies (May 30, 2026).

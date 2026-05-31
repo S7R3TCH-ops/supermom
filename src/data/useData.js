@@ -33,6 +33,7 @@ function useChangeListener(refresh) {
 export function useClients() {
   const [rows, setRows] = useState([]);
   const [jobs, setJobs] = useState([]);
+  const [paymentRows, setPaymentRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -44,11 +45,18 @@ export function useClients() {
       if (!bid) {
         setRows([]);
         setJobs([]);
+        setPaymentRows([]);
         return;
       }
-      const [clientRows, jobRows] = await Promise.all([fetchClients(), fetchActiveJobs()]);
+      const businessId = bid.id || await getCurrentBusinessId();
+      const [clientRows, jobRows, pmtResult] = await Promise.all([
+        fetchClients(),
+        fetchActiveJobs(),
+        supabase.from('payments').select('job_id, amount').eq('business_id', businessId),
+      ]);
       setRows(clientRows);
       setJobs(jobRows);
+      setPaymentRows(pmtResult.data || []);
     } catch (e) {
       setError(e);
     } finally {
@@ -63,13 +71,18 @@ export function useClients() {
   }, [refresh]);
   useChangeListener(refresh);
 
-  const display = rows.map(r => toDisplayClient(r, jobs.filter(j => j.client_id === r.id)));
+  const paymentsByJobId = {};
+  paymentRows.forEach(p => {
+    paymentsByJobId[p.job_id] = (paymentsByJobId[p.job_id] || 0) + Number(p.amount || 0);
+  });
+  const display = rows.map(r => toDisplayClient(r, jobs.filter(j => j.client_id === r.id), paymentsByJobId));
   return { clients: display, raw: rows, jobs, loading, error, refresh };
 }
 
 export function useClient(id) {
   const [row, setRow] = useState(null);
   const [jobs, setJobs] = useState([]);
+  const [paymentRows, setPaymentRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -77,6 +90,7 @@ export function useClient(id) {
     if (!id || id === 'null') {
       setRow(null);
       setJobs([]);
+      setPaymentRows([]);
       setLoading(false);
       return;
     }
@@ -87,11 +101,18 @@ export function useClient(id) {
       if (!bid) {
         setRow(null);
         setJobs([]);
+        setPaymentRows([]);
         return;
       }
-      const [c, js] = await Promise.all([fetchClientById(id), fetchJobsByClientId(id)]);
+      const businessId = bid.id || await getCurrentBusinessId();
+      const [c, js, pmtResult] = await Promise.all([
+        fetchClientById(id),
+        fetchJobsByClientId(id),
+        supabase.from('payments').select('job_id, amount').eq('business_id', businessId),
+      ]);
       setRow(c);
       setJobs(js);
+      setPaymentRows(pmtResult.data || []);
     } catch (e) {
       setError(e);
     } finally {
@@ -106,7 +127,11 @@ export function useClient(id) {
   }, [refresh]);
   useChangeListener(refresh);
 
-  const display = row ? toDisplayClient(row, jobs) : null;
+  const paymentsByJobId = {};
+  paymentRows.forEach(p => {
+    paymentsByJobId[p.job_id] = (paymentsByJobId[p.job_id] || 0) + Number(p.amount || 0);
+  });
+  const display = row ? toDisplayClient(row, jobs, paymentsByJobId) : null;
   return { client: display, raw: row, jobs, loading, error, refresh };
 }
 

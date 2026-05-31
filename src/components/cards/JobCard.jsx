@@ -101,10 +101,17 @@ export default function JobCard({ job: j, T, onClick, onDuplicate, paid = 0, tot
         )}
       </div>
 
-      {/* Row 4: worker name */}
+      {/* Row 4: worker name + unpaid badge */}
       {j.worker_name && (
-        <div style={{ fontSize: 10.5, color: T.inkMuted, marginTop: 2, fontFamily: T.font }}>
-          {j.assignee_type === 'staff' ? '⭐ Staff:' : '👷 Worker:'} {j.worker_name}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2, flexWrap: 'wrap' }}>
+          <div style={{ fontSize: 10.5, color: T.inkMuted, fontFamily: T.font }}>
+            {j.assignee_type === 'staff' ? '⭐ Staff:' : '👷 Worker:'} {j.worker_name}
+          </div>
+          {isPaid && Number(j.raw?.worker_pay) > 0 && !j.raw?.worker_paid && (
+            <span style={{ fontSize: 8.5, fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: '#FEF3C7', color: '#92400E', textTransform: 'uppercase', letterSpacing: '0.3px', flexShrink: 0 }}>
+              $ Unpaid
+            </span>
+          )}
         </div>
       )}
 

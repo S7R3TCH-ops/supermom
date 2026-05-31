@@ -218,6 +218,7 @@ const TrendChart = memo(function TrendChart({ data, T, mode }) {
 
 const TransactionRow = memo(function TransactionRow({ tx, T, privacyOn, onPress }) {
   const isJob = tx.type === 'job';
+  const isWorkerCost = tx.type === 'worker_cost';
   const tappable = isJob && tx.status !== 'Cancelled';
 
   const pillKey = isJob
@@ -228,6 +229,11 @@ const TransactionRow = memo(function TransactionRow({ tx, T, privacyOn, onPress 
     : 'scheduled'
     : null;
   const pill = pillKey ? STATUS_PILL[pillKey] : null;
+  const workerPill = isWorkerCost
+    ? tx.workerPaid
+      ? { bg: '#DCFCE7', color: '#14532D', label: 'Paid ✓' }
+      : { bg: '#FEF3C7', color: '#92400E', label: 'Unpaid' }
+    : null;
 
   return (
     <div
@@ -250,10 +256,15 @@ const TransactionRow = memo(function TransactionRow({ tx, T, privacyOn, onPress 
               {pill.label}
             </span>
           )}
+          {workerPill && (
+            <span style={{ fontSize: 8.5, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: workerPill.bg, color: workerPill.color, textTransform: 'uppercase' }}>
+              {workerPill.label}
+            </span>
+          )}
         </div>
       </div>
       <div style={{ textAlign: 'right' }}>
-        <AmtCell amount={tx.amount} T={T} privacyOn={privacyOn} style={{ fontSize: 14, fontWeight: 600, color: tx.type === 'expense' ? '#EF4444' : T.ink }} />
+        <AmtCell amount={tx.amount} T={T} privacyOn={privacyOn} style={{ fontSize: 14, fontWeight: 600, color: (tx.type === 'expense' || tx.type === 'worker_cost') ? '#EF4444' : T.ink }} />
         {tx.isPartial && !privacyOn && (
           <div style={{ fontSize: 9, color: T.inkMuted, fontWeight: 500, marginTop: 1 }}>
             of ${tx.total}
@@ -305,12 +316,27 @@ export default function Finance() {
     [completedPeriodJobs],
   );
 
+  const workerCostItems = useMemo(() =>
+    completedPeriodJobs
+      .filter(j => Number(j.raw?.worker_pay) > 0)
+      .map(j => ({
+        ...j.raw,
+        client_name: j.client_name,
+        worker_name: j.worker_name,
+        amount: Number(j.raw.worker_pay),
+        worker_paid: j.raw.worker_paid ?? false,
+        _itemType: 'worker_cost',
+      })),
+    [completedPeriodJobs],
+  );
+
   const stats = useMemo(() => {
     const revenue = revenueItems.reduce((s, j) => s + j.total, 0);
     const outstanding = outstandingItems.reduce((s, j) => s + j.total, 0);
     const expenses = periodExpenses.reduce((s, e) => s + Number(e.amount || 0), 0);
-    return { revenue, outstanding, expenses, profit: revenue - expenses };
-  }, [revenueItems, outstandingItems, periodExpenses]);
+    const workerCosts = workerCostItems.reduce((s, w) => s + w.amount, 0);
+    return { revenue, outstanding, expenses, workerCosts, profit: revenue - expenses - workerCosts };
+  }, [revenueItems, outstandingItems, periodExpenses, workerCostItems]);
 
   const chartData = useMemo(
     () => computeChartBuckets(period, completedPeriodJobs, periodExpenses),
@@ -345,8 +371,19 @@ export default function Finance() {
       icon: '💸',
       color: '#6B7280',
     }));
-    return [...jobTx, ...expTx].sort((a, b) => b._date - a._date);
-  }, [periodJobs, periodExpenses]);
+    const workerTx = workerCostItems.map(w => ({
+      type: 'worker_cost',
+      rawId: w.id,
+      label: `${w.worker_name || 'Worker'} — ${w.client_name}`,
+      amount: w.amount,
+      workerPaid: w.worker_paid,
+      _date: parseDate(w.scheduled_at) || new Date(0),
+      dateBrief: (parseDate(w.scheduled_at) || new Date()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      icon: '👷',
+      color: '#F59E0B',
+    }));
+    return [...jobTx, ...expTx, ...workerTx].sort((a, b) => b._date - a._date);
+  }, [periodJobs, periodExpenses, workerCostItems]);
 
   const periodLabel = useMemo(() => ({
     Week: 'This Week', Month: 'This Month', Year: 'This Year', All: 'All Time',
@@ -365,6 +402,7 @@ export default function Finance() {
       const mixed = [
         ...revenueItems.map(j => ({ ...j, _itemType: 'revenue' })),
         ...periodExpenses.map(e => ({ ...e, _itemType: 'expense' })),
+        ...workerCostItems,
       ].sort((a, b) => {
         const da = parseDate(a.scheduled_at || a.expense_date || a.created_at) || new Date(0);
         const db = parseDate(b.scheduled_at || b.expense_date || b.created_at) || new Date(0);
@@ -372,7 +410,7 @@ export default function Finance() {
       });
       openFinanceDetail(`Profit Breakdown · ${periodLabel}`, mixed, 'profit');
     }
-  }, [revenueItems, outstandingItems, periodExpenses, periodLabel, openFinanceDetail]);
+  }, [revenueItems, outstandingItems, periodExpenses, workerCostItems, periodLabel, openFinanceDetail]);
 
   if (loading && (!allJobs || allJobs.length === 0)) {
     return <div style={{ padding: 20, background: T.bg, color: T.inkMuted }}>Loading finances…</div>;
@@ -428,7 +466,7 @@ export default function Finance() {
           <StatCard T={T} mode={mode} label="Total Revenue" value={stats.revenue} color={T.pink} privacyOn={privacyOn} onClick={() => handleStatClick('revenue')} count={revenueItems.length} />
           <StatCard T={T} mode={mode} label="Expenses" value={stats.expenses} color="#6B7280" privacyOn={privacyOn} onClick={() => handleStatClick('expenses')} count={periodExpenses.length} />
           <StatCard T={T} mode={mode} label="Outstanding" value={stats.outstanding} color="#F59E0B" privacyOn={privacyOn} onClick={() => handleStatClick('outstanding')} count={outstandingItems.length} />
-          <StatCard T={T} mode={mode} label="Est. Profit" value={stats.profit} color="#10B981" privacyOn={privacyOn} onClick={() => handleStatClick('profit')} />
+          <StatCard T={T} mode={mode} label="Est. Profit" value={stats.profit} color="#10B981" privacyOn={privacyOn} onClick={() => handleStatClick('profit')} workerCosts={stats.workerCosts} />
         </div>
 
         {/* Trend Chart */}
@@ -511,7 +549,7 @@ export default function Finance() {
   );
 }
 
-function StatCard({ T, mode, label, value, color, privacyOn, onClick, count }) {
+function StatCard({ T, mode, label, value, color, privacyOn, onClick, count, workerCosts }) {
   const isNeg = value < 0;
   return (
     <div
@@ -534,6 +572,11 @@ function StatCard({ T, mode, label, value, color, privacyOn, onClick, count }) {
       {count !== undefined && (
         <div style={{ fontSize: 9, color: T.inkMuted, marginTop: 4, fontWeight: 500 }}>
           {count} job{count !== 1 ? 's' : ''}
+        </div>
+      )}
+      {workerCosts > 0 && (
+        <div style={{ fontSize: 9, color: '#F59E0B', marginTop: 2, fontWeight: 600 }}>
+          {privacyOn ? '•••' : `-$${workerCosts.toFixed(0)}`} worker costs
         </div>
       )}
       <div style={{ position: 'absolute', bottom: 8, right: 10, fontSize: 9, color: color, fontWeight: 700, opacity: 0.7 }}>

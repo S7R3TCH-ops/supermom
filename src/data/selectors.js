@@ -33,7 +33,8 @@ function clientColor(row) {
 
 // Combine a client row + their job rows into the display object the UI consumes.
 // `jobs` should be all jobs for this client (already decorated by jobsRepo).
-export function toDisplayClient(row, jobs = []) {
+// `paymentsByJobId` maps jobId → total amount paid (for Partial balance calculation).
+export function toDisplayClient(row, jobs = [], paymentsByJobId = {}) {
   if (!row) return null;
   const ai = row.ai_context || {};
   const name = clientDisplayName(row);
@@ -54,7 +55,11 @@ export function toDisplayClient(row, jobs = []) {
     j?.job_status === 'Completed' &&
     (j?.payment_status == null || j?.payment_status === '' || j?.payment_status === 'Partial')
   );
-  const owedTotal = unpaidJobs.reduce((sum, j) => sum + computeJobTotal(j), 0);
+  const owedTotal = unpaidJobs.reduce((sum, j) => {
+    const total = computeJobTotal(j);
+    const alreadyPaid = paymentsByJobId[j.id] || 0;
+    return sum + Math.max(0, total - alreadyPaid);
+  }, 0);
   const lastService = lastJob?.service_name || nextJob?.service_name || '—';
 
   const recurrence = ai.recurrence ?? null;

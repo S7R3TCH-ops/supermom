@@ -462,6 +462,20 @@ function Step2What({
   T
 }) {
   const selectedSvc = services.find(s => s.id === serviceId);
+
+  // Re-run worker pay auto-fill when service changes (worker already selected)
+  useEffect(() => {
+    if (!workerId || !workers?.length) return;
+    const w = workers.find(x => x.id === workerId);
+    if (!w?.skills?.length) return;
+    const svcName = (selectedSvc?.name || '').toLowerCase();
+    if (!svcName) return;
+    const match = w.skills.find(sk =>
+      svcName.includes(sk.skill_name.toLowerCase()) || sk.skill_name.toLowerCase().includes(svcName)
+    );
+    if (match?.pay_rate != null) setWorkerPay(String(match.pay_rate));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serviceId]);
   const defaultRate = selectedSvc
     ? (selectedSvc.use_business_default ? (business?.hourly_rate || 0) : (Number(selectedSvc.default_price) || 0))
     : 0;

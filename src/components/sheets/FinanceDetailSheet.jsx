@@ -59,6 +59,34 @@ function JobRow({ item, T, privacyOn, onTap }) {
   );
 }
 
+function WorkerCostRow({ item, T, privacyOn }) {
+  const paid = item.worker_paid ?? false;
+  return (
+    <div style={{
+      background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 12,
+      padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10,
+    }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontFamily: T.serif, fontSize: 14, fontWeight: 500, color: T.ink }}>
+          {item.worker_name || 'Worker'}
+        </div>
+        <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, marginTop: 2 }}>
+          {fmtShortDate(item.scheduled_at)}{item.client_name ? ` · ${item.client_name}` : ''}
+        </div>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3, flexShrink: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: '#EF4444', fontVariantNumeric: 'tabular-nums' }}>
+          {privacyOn ? '•••' : `-$${Number(item.amount || 0).toFixed(0)}`}
+        </div>
+        <span style={{ fontSize: 8.5, fontWeight: 700, padding: '1px 5px', borderRadius: 4, textTransform: 'uppercase',
+          background: paid ? '#DCFCE7' : '#FEF3C7', color: paid ? '#14532D' : '#92400E' }}>
+          {paid ? 'Paid ✓' : 'Unpaid'}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function ExpenseRow({ item, T, privacyOn }) {
   return (
     <div style={{
@@ -103,8 +131,9 @@ export default function FinanceDetailSheet({ title, items, type, onClose }) {
     if (type === 'profit') {
       const revenue = items.filter(i => i._itemType === 'revenue').reduce((s, i) => s + Number(i.total || 0), 0);
       const expenses = items.filter(i => i._itemType === 'expense').reduce((s, i) => s + Number(i.amount || 0), 0);
-      const net = revenue - expenses;
-      return { revenue, expenses, net, color: net >= 0 ? '#10B981' : '#EF4444' };
+      const workerCosts = items.filter(i => i._itemType === 'worker_cost').reduce((s, i) => s + Number(i.amount || 0), 0);
+      const net = revenue - expenses - workerCosts;
+      return { revenue, expenses, workerCosts, net, color: net >= 0 ? '#10B981' : '#EF4444' };
     }
     return { line: `${items.length} item${items.length !== 1 ? 's' : ''}`, total: 0, color: T.pink };
   })();
@@ -144,6 +173,11 @@ export default function FinanceDetailSheet({ title, items, type, onClose }) {
                 <span style={{ fontSize: 10.5, fontWeight: 700, color: '#EF4444' }}>
                   {privacyOn ? '•••' : `-$${summary.expenses?.toFixed(0)}`} expenses
                 </span>
+                {summary.workerCosts > 0 && (
+                  <span style={{ fontSize: 10.5, fontWeight: 700, color: '#F59E0B' }}>
+                    {privacyOn ? '•••' : `-$${summary.workerCosts?.toFixed(0)}`} worker
+                  </span>
+                )}
                 <span style={{ fontSize: 10.5, fontWeight: 700, color: summary.color }}>
                   = {privacyOn ? '•••' : `$${summary.net?.toFixed(0)}`} net
                 </span>
@@ -198,6 +232,19 @@ export default function FinanceDetailSheet({ title, items, type, onClose }) {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
                     {items.filter(i => i._itemType === 'revenue').map(item => (
                       <JobRow key={item.id} item={item} T={T} privacyOn={privacyOn} onTap={handleJobTap} />
+                    ))}
+                  </div>
+                </>
+              )}
+              {/* Worker Costs section */}
+              {items.filter(i => i._itemType === 'worker_cost').length > 0 && (
+                <>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#F59E0B', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8, marginTop: items.filter(i => i._itemType === 'revenue').length > 0 ? 18 : 0 }}>
+                    Worker Costs ({items.filter(i => i._itemType === 'worker_cost').length})
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
+                    {items.filter(i => i._itemType === 'worker_cost').map((item, idx) => (
+                      <WorkerCostRow key={item.id || idx} item={item} T={T} privacyOn={privacyOn} />
                     ))}
                   </div>
                 </>

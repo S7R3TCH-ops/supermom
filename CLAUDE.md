@@ -123,14 +123,16 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 ---
 
-## Current version: 0.12.2 — committed Jun 2, 2026
+## Current version: 0.12.3 — committed Jun 2, 2026
 
 All core features are live. The app is in active use by Sandra. See `git log` for full history.
 
-### Last session (v0.12.2 — Jun 2, 2026)
-- **Gmail SMTP live** — `invoice@supermomforhire.com` alias created, "Send mail as" configured + tested. `GMAIL_USER` + `GMAIL_APP_PASSWORD` in Vercel. `api/email-invoice.js` now sends from `invoice@supermomforhire.com`.
+### Last session (v0.12.3 — Jun 2, 2026)
+- **Gmail SMTP live** — `invoice@supermomforhire.com` alias + "Send mail as" tested. `api/email-invoice.js` sends from `invoice@supermomforhire.com`.
+- **Google Calendar OAuth live** — consent screen configured, OAuth credentials set. Fixed: `business_id` not passed to login URL; `provider` → `service_name` in Settings; `VERCEL_URL` → `APP_BASE_URL` for redirect URI. Tested and working.
+- **Google Maps** — Geocoding + Distance Matrix APIs enabled, key in Vercel + `.env`. Not yet tested end-to-end.
 - **Domain cleanup** — removed `joel@supermom.com` from `provision.js` + `OnboardingWalkthrough.jsx`.
-- **InvoiceView PDF fixes** — bottom padding, `page-break-inside: avoid` on footer block, title restore timing fix.
+- **InvoiceView PDF fixes** — bottom padding, `page-break-inside: avoid` on footer, title restore timing fix.
 
 ---
 
@@ -147,9 +149,10 @@ All core features are live. The app is in active use by Sandra. See `git log` fo
 ## Parked / not building yet
 
 ### Immediate — in priority order
-- [x] **Gmail SMTP** — `GMAIL_USER` + `GMAIL_APP_PASSWORD` in Vercel. `invoice@supermomforhire.com` alias live + tested. (Jun 2, 2026)
-- [ ] **Google Cloud Console** — one trip: enable Calendar API + Geocoding + Distance Matrix. Create OAuth 2.0 credentials (redirect: `https://supermom-s7-r3-tch.vercel.app/api/auth/google/callback`) + Maps API key. Add to Vercel + local `.env`.
-  - Keys needed: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_MAPS_API_KEY` (server-side only — no `VITE_` prefix)
+- [x] **Gmail SMTP** — `invoice@supermomforhire.com` live + tested. (Jun 2, 2026)
+- [x] **Google Calendar OAuth** — consent screen configured, credentials set, tested working. (Jun 2, 2026)
+- [x] **Google Maps API** — Geocoding + Distance Matrix enabled, key in Vercel + `.env`. (Jun 2, 2026)
+- [ ] **Calendar sync** — wire `api/sync/gcal.js` to job create/update/delete flows
 - [ ] **Daily briefing email** — Resend + Vercel Cron, 7am Toronto, to `sandra@supermomforhire.com`
 - [ ] **ANTHROPIC_API_KEY** — add to Vercel + local `.env` (AI features fall back to mock without it)
 - [ ] **Supabase public schema grants — due before Oct 30, 2026** — Run in SQL Editor: `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO anon, authenticated; GRANT USAGE ON SCHEMA public TO anon, authenticated;`

@@ -9,6 +9,7 @@
 - **Sandra** — end client, solo personal-life-operations business owner in Georgetown ON. iPhone user. Services: organizing, decluttering, life coaching, caregiving, errands.
 - **Working style**: Direct, concise, personal, fun. No fluff. Push back when warranted. Ask clarifying questions before acting. Surface better options before doing it the asked way.
 - **ADHD accommodation**: Joel gets sidetracked. Maintain a visible Parked List. Surface dropped items proactively.
+- **Instructions style**: Always give step-by-step instructions for any multi-step task — one action per step, never collapse or summarize steps.
 
 ---
 
@@ -16,8 +17,9 @@
 
 - **Fresh Windows install** — `C:\Projects\supermom\` (cloned May 31, 2026)
 - Node.js LTS + Git installed via winget
-- App runs at `http://localhost:5173` via `npm run dev`
-- `.env` at repo root (gitignored) — contains `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` + `SUPABASE_SERVICE_ROLE_KEY`. Still needs locally: `GMAIL_USER`, `GMAIL_APP_PASSWORD`, `GOOGLE_MAPS_API_KEY`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` (all now set in Vercel Production).
+- App runs at `http://localhost:5173` via `npm run dev` (port may vary — 8080 observed)
+- API routes do NOT work with `npm run dev` — use the live Vercel URL for testing anything in `api/`
+- `.env` at repo root (gitignored) — all keys set: Supabase, Gmail, Google OAuth, Maps. Still missing: `ANTHROPIC_API_KEY`
 
 ---
 
@@ -25,7 +27,7 @@
 
 ### Local dev
 - Folder: `C:\Projects\supermom\`
-- Run: `npm run dev` → `http://localhost:5173`
+- Run: `npm run dev` → `http://localhost:5173` (frontend only)
 - Deploy: `git push origin main` → auto-deploys to Vercel. **Never run `vercel --prod` manually.**
 - Supabase project ID: `lskzzsjmmtsosfneuovt`
 
@@ -35,62 +37,69 @@
 | S7R3TCH-ops/supermom | Main app |
 | S7R3TCH-ops/supermom-crm | Legacy vanilla JS — NOT cloned, low priority |
 
-### Current version: 0.12.2 (Jun 2, 2026) — LIVE on Vercel
+### Current version: 0.12.3 (Jun 2, 2026) — LIVE on Vercel
 
 ---
 
 ## WHAT WE JUST FINISHED (Jun 2, 2026)
 
-### Google Workspace + Gmail SMTP — DONE ✅
-- Google Workspace live: `supermomforhire.com`, admin is `admin@supermomforhire.com`
-- `sandra@supermomforhire.com` — alias on admin account
-- `invoice@supermomforhire.com` — alias created, "Send mail as" configured + tested
-- App Password generated, 2-Step Verification enabled
-- `GMAIL_USER` + `GMAIL_APP_PASSWORD` added to Vercel (Production only)
-- `api/email-invoice.js` — from/replyTo hardcoded to `invoice@supermomforhire.com`
-- Test passed: sent to `jlundie@gmail.com`, reply came back to admin inbox correctly labelled
+### Google integrations — DONE ✅
 
-### Also this commit
+**Gmail SMTP**
+- Google Workspace live: `supermomforhire.com`, admin is `admin@supermomforhire.com`
+- `invoice@supermomforhire.com` alias created, "Send mail as" configured + tested
+- `GMAIL_USER` + `GMAIL_APP_PASSWORD` in Vercel + local `.env`
+- `api/email-invoice.js` sends from `invoice@supermomforhire.com`
+
+**Google Calendar OAuth**
+- OAuth consent screen configured (External, Testing mode)
+- `jlundie@gmail.com` added as test user
+- `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` in Vercel + local `.env`
+- Fixed two bugs: `business_id` not passed to login URL; `provider` → `service_name` in Settings query
+- Fixed redirect URI bug: was using `VERCEL_URL` (deployment-specific), now uses `APP_BASE_URL` (canonical)
+- **Tested and working** — Settings page shows CONNECTED
+
+**Google Maps**
+- Geocoding API + Distance Matrix API enabled in Cloud Console
+- Maps API key restricted to those two APIs
+- `GOOGLE_MAPS_API_KEY` in Vercel + local `.env`
+- Code already exists: `api/distance.js`, `api/geocode.js`, `src/lib/maps.js` — not yet tested
+
+### Also this session
 - Old domain cleanup: removed `joel@supermom.com` from `provision.js` + `OnboardingWalkthrough.jsx`
-- `InvoiceView.jsx` — PDF print improvements (bottom padding, page-break-inside: avoid on footer, title restore timing fix)
-- Package-lock synced to v0.12.2
+- `InvoiceView.jsx` PDF print fixes (padding, page-break-inside, title restore timing)
 
 ---
 
 ## MUST DO NEXT — in order
 
-### Step 1 — Google Calendar OAuth
-- [ ] Go to `console.cloud.google.com` → enable **Calendar API**
-- [ ] Create OAuth 2.0 credentials (Web Application type)
-  - Authorized redirect URI: `https://supermom-s7-r3-tch.vercel.app/api/auth/google/callback`
-- [ ] Add `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` to Vercel + local `.env`
-- [ ] Calendar can sync to any Google account Sandra authenticates with (does NOT have to be domain email)
-- [ ] Test OAuth flow with Joel's account first
-- [ ] Code is already written: `api/auth/google/login.js`, `api/auth/google/callback.js`, `api/sync/gcal.js` — zero code changes needed (probably)
+### 1. Bug fixes
+- Joel has a list — ask him at session start
 
-### Step 2 — Google Maps / geocoding ← do this in the same Google Cloud Console trip as Step 1
-- [ ] Enable **Geocoding API** + **Distance Matrix API**
-- [ ] Create API key, restrict to: `supermom-s7-r3-tch.vercel.app/*` + `localhost:5173/*`
-- [ ] Add `GOOGLE_MAPS_API_KEY` to Vercel + local `.env` (server-side only — **no VITE_ prefix**)
-- [ ] Code already written: `api/distance.js`, `api/geocode.js`, `src/lib/maps.js` — zero code changes needed
-- [ ] Billing stays under Joel's Google Cloud account (no relation to Sandra's domain)
+### 2. Daily job briefing email
+- Switch from nodemailer to **Resend** (free tier, 3k emails/month)
+- Set up **Vercel Cron** job (daily 7am America/Toronto)
+- Sends to `sandra@supermomforhire.com`: today's + tomorrow's jobs, times, clients, outstanding payments
+- Test to `jlundie@gmail.com` first
 
-### Step 3 — Daily job briefing email
-- [ ] Switch from nodemailer to **Resend** (free tier, 3k emails/month)
-- [ ] Set up **Vercel Cron** job (daily 7am America/Toronto)
-- [ ] Sends to `sandra@supermomforhire.com`: today's + tomorrow's jobs, times, clients, outstanding payments
-- [ ] Test to `jlundie@gmail.com` first
+### 3. Calendar sync — wire up to job create/update/delete
+- `api/sync/gcal.js` exists and is solid — just needs to be called when jobs change
+- Call on: job created, job updated (date/time/service), job completed, job deleted (soft)
+- Consider: should sync be automatic or manual button per job?
 
-### Step 4 — ANTHROPIC_API_KEY
-- [ ] Add to Vercel (Production) + local `.env`
-- [ ] AI features fall back to mock responses without it
+### 4. Maps / geocoding — test it
+- APIs enabled, key set — just needs a test run to confirm `api/geocode.js` + `api/distance.js` work
+
+### 5. ANTHROPIC_API_KEY
+- Add to Vercel + local `.env` when ready
+- AI features fall back to mock without it — not urgent
 
 ---
 
 ## PARKED LIST (do not let these disappear)
 
 ### Immediate
-- [ ] **ANTHROPIC_API_KEY** — see Step 4 above
+- [ ] **ANTHROPIC_API_KEY** — add to Vercel + local `.env`
 - [ ] **Staff app access (Phase 2)** — `person_type = 'staff'` tracked. Link to `users` + Auth when ready.
 - [ ] **Supabase schema grants — deadline Oct 30, 2026** — Run in SQL Editor:
   ```sql
@@ -99,7 +108,7 @@
   ```
 
 ### Features — Phase 2
-- [ ] **Custom domain → swap email provider** — when Sandra's domain is confirmed stable, swap `nodemailer` for `resend`. 5-min job.
+- [ ] **Custom domain → swap email provider** — swap `nodemailer` for `resend` when stable. 5-min job.
 - [ ] **Staff Supabase Auth login + scheduling access**
 - [ ] **Self-serve client booking link**
 - [ ] **Offline mode** — app crashes if Supabase unreachable on first load
@@ -111,7 +120,7 @@
 
 ### Financial math
 - `flat_rate` = $/hr for Hourly jobs (not a flat fee — legacy field name, intentional)
-- `total_amount` is written with the **finalized actual total** when a job completes. For Scheduled jobs it still holds the booking estimate. Always use `computeJobFinancials()` for UI math — never read `total_amount` raw in components.
+- `total_amount` is written with the **finalized actual total** when a job completes. For Scheduled jobs it holds the booking estimate. Always use `computeJobFinancials()` — never read `total_amount` raw.
 - `subtotal` (DB) = base labor only. `hst_amount` = finalized HST. Both written on completion.
 - `payments` table = source of truth for amounts collected; `job.payment_status` is a cache
 - Always use `computeJobFinancials()` from `src/lib/financialMath.js` — never inline math
@@ -119,20 +128,19 @@
 ### API layer
 - Vercel Hobby plan: **9 of 12** functions used. 3 slots available.
 - AI routes all go through `api/ai/[action].js` — do NOT add new files in `api/ai/`
-- No `api/` files that start without `_` count as functions — helpers go in `api/_lib/`
+- Helpers go in `api/_lib/` — files without `_` prefix in `api/` count as functions
 
 ### Multi-tenancy
 - Every Supabase query must include `.eq('business_id', businessId)` — never skip this
-- RLS is enabled but enforce in code too — don't rely on RLS as the only guard
+- RLS is enabled but enforce in code too
 
 ### Soft deletes
-- Never hard-delete jobs, clients, or workers from normal flows — always set `deleted_at = now()`
+- Never hard-delete jobs, clients, or workers — always set `deleted_at = now()`
 - `hardDeleteJob` / `hardDeleteClient` exist for admin use only
 
 ### Workers / Skills
-- `useWorkers()` returns workers with a `skills: [{ skill_type_id, skill_name, pay_rate }]` array
-- `assignee_type` on display jobs comes from `toDisplayJob` → `w.person_type`
-- `fetchJobById` uses PostgREST join for worker: `workers(name, person_type)` inline in select (no separate query)
+- `useWorkers()` returns workers with `skills: [{ skill_type_id, skill_name, pay_rate }]`
+- `fetchJobById` uses PostgREST inline join for worker: `workers(name, person_type)`
 
 ### Timezone
 - Everything is `America/Toronto` — never system timezone. Use helpers in `src/lib/dateUtils.js`
@@ -148,6 +156,7 @@
 ## PREFERENCES & RULES FOR THIS AI
 
 - Don't make assumptions — ask clarifying questions
+- **Always give step-by-step instructions** for any multi-step task — one action per step, never collapse
 - Surface better options BEFORE doing it the asked way
 - Keep a visible Parked List and surface it when topics get dropped
 - Be direct, concise, personal, fun — "gettin shit dun" is the motto

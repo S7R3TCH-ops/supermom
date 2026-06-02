@@ -106,9 +106,10 @@ export default function InvoiceView() {
             width: 100% !important;
             max-width: none !important;
             margin: 0 !important;
-            padding: 0.5in !important;
+            padding: 0.5in 0.5in 0.75in !important;
           }
           .table-wrap { overflow: visible !important; }
+          .invoice-footer { page-break-inside: avoid; }
         }
         .invoice-box {
           background: white;
@@ -175,7 +176,7 @@ export default function InvoiceView() {
               const prev = document.title;
               document.title = `${client.last_name || 'Client'}_Invoice_${invoice.invoice_number || 'Invoice'}`;
               window.print();
-              document.title = prev;
+              setTimeout(() => { document.title = prev; }, 500);
             }}
             style={{
               background: 'var(--pink)', color: 'white', border: 'none',
@@ -322,19 +323,20 @@ export default function InvoiceView() {
           </div>
         </div>
 
-        {/* Payment */}
-        <div style={{ borderTop: '1px solid #eee', paddingTop: 24, marginBottom: 28 }}>
-          <div style={LABEL}>Payment</div>
-          <div style={{ fontSize: 13, color: '#444', lineHeight: 1.8 }}>
-            e-Transfer to <strong>{biz.email || 'sandra@supermom.com'}</strong>
-            <div style={{ color: '#888', fontSize: 12 }}>Reference: Invoice #{invoice.invoice_number}</div>
+        {/* Payment + Thank you — kept together, never split across pages */}
+        <div className="invoice-footer">
+          <div style={{ borderTop: '1px solid #eee', paddingTop: 24, marginBottom: 28 }}>
+            <div style={LABEL}>Payment</div>
+            <div style={{ fontSize: 13, color: '#444', lineHeight: 1.8 }}>
+              e-Transfer to <strong>{biz.email || 'sandra@supermomforhire.com'}</strong>
+              <div style={{ color: '#888', fontSize: 12 }}>Reference: Invoice #{invoice.invoice_number}</div>
+            </div>
           </div>
-        </div>
 
-        {/* Thank you */}
-        <div style={{ textAlign: 'center', paddingTop: 4 }}>
-          <div className="inv-display" style={{ fontSize: 17, fontWeight: 500, color: '#777', fontStyle: 'italic' }}>
-            Thank you for letting Supermom save the day.
+          <div style={{ textAlign: 'center', paddingTop: 4 }}>
+            <div className="inv-display" style={{ fontSize: 17, fontWeight: 500, color: '#777', fontStyle: 'italic' }}>
+              Thank you for letting Supermom save the day.
+            </div>
           </div>
         </div>
 

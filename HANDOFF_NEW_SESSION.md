@@ -17,7 +17,7 @@
 - **Fresh Windows install** — `C:\Projects\supermom\` (cloned May 31, 2026)
 - Node.js LTS + Git installed via winget
 - App runs at `http://localhost:5173` via `npm run dev`
-- `.env` at repo root (gitignored) — contains `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` + `SUPABASE_SERVICE_ROLE_KEY`. Gmail/Google creds not yet added (waiting on Sandra's domain).
+- `.env` at repo root (gitignored) — contains `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` + `SUPABASE_SERVICE_ROLE_KEY`. Still needs locally: `GMAIL_USER`, `GMAIL_APP_PASSWORD`, `GOOGLE_MAPS_API_KEY`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` (all now set in Vercel Production).
 
 ---
 
@@ -35,60 +35,71 @@
 | S7R3TCH-ops/supermom | Main app |
 | S7R3TCH-ops/supermom-crm | Legacy vanilla JS — NOT cloned, low priority |
 
-### Current version: 0.12.1 (May 31, 2026) — LIVE on Vercel
-> Repo is clean. main branch = Vercel deployment. No pending merges.
+### Current version: 0.12.2 (Jun 2, 2026) — LIVE on Vercel
 
 ---
 
-## WHAT WE JUST FINISHED (May 31, 2026)
+## WHAT WE JUST FINISHED (Jun 2, 2026)
 
-### v0.12.1 — Infrastructure + data layer refactor (AI Studio review) — MERGED + DEPLOYED
-Merged `claude/ai-studio-review-analysis-2yDhP` → main → pushed → Vercel auto-deployed.
+### Google Workspace + Gmail SMTP — DONE ✅
+- Google Workspace live: `supermomforhire.com`, admin is `admin@supermomforhire.com`
+- `sandra@supermomforhire.com` — alias on admin account
+- `invoice@supermomforhire.com` — alias created, "Send mail as" configured + tested
+- App Password generated, 2-Step Verification enabled
+- `GMAIL_USER` + `GMAIL_APP_PASSWORD` added to Vercel (Production only)
+- `api/email-invoice.js` — from/replyTo hardcoded to `invoice@supermomforhire.com`
+- Test passed: sent to `jlundie@gmail.com`, reply came back to admin inbox correctly labelled
 
-1. **AI serverless consolidation** — `api/ai/enrich-client.js`, `estimate-duration.js`, `prep-note.js`, `test-persona.js` merged into single `api/ai/[action].js` dynamic route. Vercel function count: 12 → 9.
-
-2. **`fetchJobById` PostgREST join** — Removed separate sequential worker lookup. Uses `workers(name, person_type)` inline join. Schema cache refreshed via `NOTIFY pgrst, 'reload schema'`.
-
-3. **Financial write-back on completion** — `recordPayment` now writes finalized `subtotal`, `hst_amount`, `total_amount` to the jobs row on completion.
-
-### Also this session
-- Repo cleanup: deleted `docs/minxymomma-dashboard.html`, `New Text Document.txt`, synced `package-lock.json` — all committed + pushed (commit `4284906`)
-- Git identity set locally: `jlundie@gmail.com` / `Joel Lundie`
-- Claude Code statusline configured: shows current directory, session context %, 5h usage %, 7d usage %
+### Also this commit
+- Old domain cleanup: removed `joel@supermom.com` from `provision.js` + `OnboardingWalkthrough.jsx`
+- `InvoiceView.jsx` — PDF print improvements (bottom padding, page-break-inside: avoid on footer, title restore timing fix)
+- Package-lock synced to v0.12.2
 
 ---
 
-## MUST DO NEXT — in priority order
+## MUST DO NEXT — in order
 
-### 1. Vercel env vars (Google/Gmail)
-Already in Vercel: `SUPABASE_SERVICE_ROLE_KEY`, `APP_BASE_URL`.
-Still missing:
-- `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` (Calendar OAuth)
-- `VITE_GOOGLE_MAPS_API_KEY` (maps/geocode)
-- `GMAIL_USER` + `GMAIL_APP_PASSWORD` (waiting on `sandra@supermom.com` domain)
-- `ANTHROPIC_API_KEY` (in Vercel, also add to local `.env` for AI features)
+### Step 1 — Google Calendar OAuth
+- [ ] Go to `console.cloud.google.com` → enable **Calendar API**
+- [ ] Create OAuth 2.0 credentials (Web Application type)
+  - Authorized redirect URI: `https://supermom-s7-r3-tch.vercel.app/api/auth/google/callback`
+- [ ] Add `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` to Vercel + local `.env`
+- [ ] Calendar can sync to any Google account Sandra authenticates with (does NOT have to be domain email)
+- [ ] Test OAuth flow with Joel's account first
+- [ ] Code is already written: `api/auth/google/login.js`, `api/auth/google/callback.js`, `api/sync/gcal.js` — zero code changes needed (probably)
 
-### 3. Supabase public schema grants — deadline Oct 30, 2026
-Run in SQL Editor before then:
-```sql
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO anon, authenticated;
-GRANT USAGE ON SCHEMA public TO anon, authenticated;
-```
+### Step 2 — Google Maps / geocoding ← do this in the same Google Cloud Console trip as Step 1
+- [ ] Enable **Geocoding API** + **Distance Matrix API**
+- [ ] Create API key, restrict to: `supermom-s7-r3-tch.vercel.app/*` + `localhost:5173/*`
+- [ ] Add `GOOGLE_MAPS_API_KEY` to Vercel + local `.env` (server-side only — **no VITE_ prefix**)
+- [ ] Code already written: `api/distance.js`, `api/geocode.js`, `src/lib/maps.js` — zero code changes needed
+- [ ] Billing stays under Joel's Google Cloud account (no relation to Sandra's domain)
+
+### Step 3 — Daily job briefing email
+- [ ] Switch from nodemailer to **Resend** (free tier, 3k emails/month)
+- [ ] Set up **Vercel Cron** job (daily 7am America/Toronto)
+- [ ] Sends to `sandra@supermomforhire.com`: today's + tomorrow's jobs, times, clients, outstanding payments
+- [ ] Test to `jlundie@gmail.com` first
+
+### Step 4 — ANTHROPIC_API_KEY
+- [ ] Add to Vercel (Production) + local `.env`
+- [ ] AI features fall back to mock responses without it
 
 ---
 
 ## PARKED LIST (do not let these disappear)
 
 ### Immediate
-- [x] **Merge v0.12.1 → main + deploy** — DONE (May 31, 2026)
-- [ ] **ANTHROPIC_API_KEY** — add to Vercel + local `.env` (AI features fall back to mock without it)
-- [ ] **Gmail App Password** — blocked on `sandra@supermom.com` domain going live
+- [ ] **ANTHROPIC_API_KEY** — see Step 4 above
 - [ ] **Staff app access (Phase 2)** — `person_type = 'staff'` tracked. Link to `users` + Auth when ready.
-- [ ] **Supabase schema grants** — before Oct 30, 2026 (see above)
+- [ ] **Supabase schema grants — deadline Oct 30, 2026** — Run in SQL Editor:
+  ```sql
+  GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO anon, authenticated;
+  GRANT USAGE ON SCHEMA public TO anon, authenticated;
+  ```
 
 ### Features — Phase 2
-- [ ] **Custom domain → swap email provider** — when Sandra's domain is live, swap `nodemailer` for `resend`. 5-min job.
-- [ ] **Sandra daily job briefing email** — Vercel Cron, 7am Toronto, Resend
+- [ ] **Custom domain → swap email provider** — when Sandra's domain is confirmed stable, swap `nodemailer` for `resend`. 5-min job.
 - [ ] **Staff Supabase Auth login + scheduling access**
 - [ ] **Self-serve client booking link**
 - [ ] **Offline mode** — app crashes if Supabase unreachable on first load
@@ -127,7 +138,8 @@ GRANT USAGE ON SCHEMA public TO anon, authenticated;
 - Everything is `America/Toronto` — never system timezone. Use helpers in `src/lib/dateUtils.js`
 
 ### Sandra's canonical contact details
-- Email: `sandra@supermom.com` (domain pending — use everywhere, not the old Gmail)
+- Email: `sandra@supermomforhire.com` (Google Workspace — live)
+- Invoice email: `invoice@supermomforhire.com` (alias — live and tested)
 - Phone: `(416) 738-0309`
 - HST #: `777616178 RT0001`
 

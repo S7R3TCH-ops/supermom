@@ -56,7 +56,7 @@ function brandedEmailHtml({ clientName, bizName, bizEmail, invoiceNumber, invoic
           <div style="border-top:1px solid #eee;padding-top:20px;">
             <div style="font-size:10px;font-weight:700;color:#aaa;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Payment</div>
             <p style="margin:0;font-size:13px;color:#555;line-height:1.7;">
-              e-Transfer to <strong>${bizEmail || 'sandra@supermom.com'}</strong><br>
+              e-Transfer to <strong>${bizEmail || 'sandra@supermomforhire.com'}</strong><br>
               <span style="color:#888;">Reference: Invoice #${invoiceNumber}</span>
             </p>
           </div>
@@ -103,9 +103,12 @@ export default async function handler(req, res) {
   const appBase = process.env.APP_BASE_URL || 'https://supermom-v2.vercel.app';
   const invoiceUrl = `${appBase}/i/${invoiceId}`;
 
+  const fromAddress = 'invoice@supermomforhire.com';
+
   try {
     await transporter.sendMail({
-      from: `"${bizName || 'Supermom for Hire'}" <${gmailUser}>`,
+      from: `"${bizName || 'Supermom for Hire'}" <${fromAddress}>`,
+      replyTo: fromAddress,
       to: clientEmail,
       subject: `Invoice #${invoiceNumber} from ${bizName || 'Supermom for Hire'}`,
       html: brandedEmailHtml({ clientName, bizName, bizEmail, invoiceNumber, invoiceUrl }),

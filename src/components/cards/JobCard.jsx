@@ -5,16 +5,15 @@ export default function JobCard({ job: j, T, onClick, paid = 0, total = 0, grand
   const isPaid = j.payment_status === 'Paid';
   const isPartial = j.payment_status === 'Partial';
   const isUnpaid = isCompleted && !isPaid;
+  const isOwing = isUnpaid || isPartial;
 
-  const isCompletedUnpaid = isUnpaid && !isPartial;
-  const borderColor = isPartial ? '#F97316' : isCompletedUnpaid ? '#EF4444' : isPaid ? '#86EFAC' : '#E91E6A';
-  const bgColor = subtle
-    ? 'transparent'
+  const borderColor = isPartial ? '#F97316' : (isUnpaid && !isPartial) ? '#EF4444' : isPaid ? '#86EFAC' : '#E91E6A';
+  const bgColor = subtle ? 'transparent'
     : isPartial ? '#FFF7ED'
-    : isCompletedUnpaid ? '#FEF2F2'
+    : (isUnpaid && !isPartial) ? '#FEF2F2'
     : isPaid ? '#F0FFF5'
     : '#FFF0F7';
-  const accentColor = isPartial ? '#C2410C' : isCompletedUnpaid ? '#991B1B' : isPaid ? '#14532D' : '#E91E6A';
+  const accentColor = isPartial ? '#C2410C' : (isUnpaid && !isPartial) ? '#991B1B' : isPaid ? '#14532D' : '#E91E6A';
   const statusLabel = isPartial ? 'PARTIAL' : isUnpaid ? 'UNPAID' : isPaid ? 'PAID ✓' : 'SCHEDULED';
 
   const timeRange = j.start && j.end ? fmtTimeRange(j.start, j.end) : '—';
@@ -34,84 +33,77 @@ export default function JobCard({ job: j, T, onClick, paid = 0, total = 0, grand
         opacity: subtle ? 0.8 : 1,
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
-        {/* Left: client, service, date, worker */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{
-            fontFamily: T.serif, fontSize: 17, fontWeight: 500, color: T.ink,
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            letterSpacing: '-0.3px', marginBottom: 3,
-          }}>
-            {j.client_name}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
-            <span style={{
-              fontFamily: T.font, fontSize: 9, fontWeight: 700,
-              textTransform: 'uppercase', letterSpacing: '0.4px',
-              background: `${borderColor}18`, color: accentColor,
-              padding: '2px 6px', borderRadius: 4, flexShrink: 0,
-            }}>
-              {j.service_name}
-            </span>
-            <span style={{ fontFamily: T.font, fontSize: 10.5, fontWeight: 500, color: T.inkSub }}>
-              {dateLabel}
-            </span>
-          </div>
-          {j.worker_name && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 3, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 10.5, color: T.inkMuted, fontFamily: T.font }}>
-                {j.assignee_type === 'staff' ? '⭐ Staff:' : '👷 Worker:'} {j.worker_name}
-              </span>
-              {isPaid && Number(j.raw?.worker_pay) > 0 && !j.raw?.worker_paid && (
-                <span style={{ fontSize: 8.5, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: '#FEF3C7', color: '#92400E', textTransform: 'uppercase', letterSpacing: '0.3px', flexShrink: 0 }}>
-                  $ Unpaid
-                </span>
-              )}
-            </div>
-          )}
-          {j.notes && (
-            <div style={{
-              fontSize: 10.5, color: T.inkMuted, fontStyle: 'italic', marginTop: 4,
-              display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical',
-              overflow: 'hidden', lineHeight: 1.4,
-            }}>
-              {j.notes}
-            </div>
-          )}
-          {j.address && (
-            <div style={{
-              fontSize: 10.5, color: T.inkMuted, marginTop: 3, opacity: 0.7,
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            }}>
-              📍 {j.address}
-            </div>
-          )}
+      {/* Row 1: name · bold time | status pill */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+        <div style={{
+          fontFamily: T.serif, fontSize: 16, fontWeight: 600, color: T.ink,
+          flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          letterSpacing: '-0.3px',
+        }}>
+          {j.client_name}
         </div>
-
-        {/* Right: amount, time range, status badge — all stacked */}
-        <div style={{ flexShrink: 0, textAlign: 'right' }}>
-          {total > 0 && (
-            <div style={{
-              fontFamily: T.serif, fontSize: 14, fontWeight: 600, color: accentColor,
-              fontVariantNumeric: 'tabular-nums', marginBottom: 2,
-            }}>
-              {privacyOn ? '•••' : `$${total.toFixed(0)}`}
-              {!privacyOn && hstNote && <span style={{ fontSize: 8, fontWeight: 700, color: accentColor, opacity: 0.6, marginLeft: 2, fontFamily: T.font, textTransform: 'uppercase' }}> +HST</span>}
-            </div>
-          )}
-          <div style={{ fontFamily: T.font, fontSize: 12, fontWeight: 800, color: accentColor, marginBottom: 4, whiteSpace: 'nowrap', letterSpacing: '-0.2px' }}>
-            {timeRange}
-          </div>
-          <span style={{
-            fontFamily: T.font, fontSize: 9, fontWeight: 800,
-            textTransform: 'uppercase', letterSpacing: '0.3px',
-            background: `${borderColor}22`, color: accentColor,
-            padding: '2px 6px', borderRadius: 4,
-          }}>
-            {statusLabel}
-          </span>
+        <div style={{ fontSize: 12, fontWeight: 800, color: accentColor, whiteSpace: 'nowrap', flexShrink: 0, letterSpacing: '-0.3px' }}>
+          {timeRange}
         </div>
+        <span style={{
+          fontFamily: T.font, fontSize: 9, fontWeight: 800,
+          textTransform: 'uppercase', letterSpacing: '0.3px',
+          background: `${borderColor}22`, color: accentColor,
+          padding: '2px 6px', borderRadius: 4, flexShrink: 0, whiteSpace: 'nowrap',
+        }}>
+          {statusLabel}
+        </span>
       </div>
+
+      {/* Row 2: date | amount */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+        <div style={{ fontSize: 11, fontWeight: 500, color: T.inkSub }}>{dateLabel}</div>
+        {total > 0 && (
+          <div style={{
+            fontFamily: T.serif, fontSize: 14,
+            fontWeight: isOwing ? 900 : 600,
+            color: accentColor, fontVariantNumeric: 'tabular-nums',
+          }}>
+            {privacyOn ? '•••' : `$${total.toFixed(0)}`}
+            {!privacyOn && hstNote && <span style={{ fontSize: 8, fontWeight: 700, opacity: 0.6, marginLeft: 2, fontFamily: T.font, textTransform: 'uppercase' }}> +HST</span>}
+          </div>
+        )}
+      </div>
+
+      {/* Row 3: service tag */}
+      <div style={{
+        fontFamily: T.font, fontSize: 9, fontWeight: 700,
+        textTransform: 'uppercase', letterSpacing: '0.4px',
+        background: `${borderColor}18`, color: accentColor,
+        padding: '2px 6px', borderRadius: 4, display: 'inline-block', marginBottom: 3,
+      }}>
+        {j.service_name}
+      </div>
+
+      {/* Worker */}
+      {j.worker_name && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 10.5, color: T.inkMuted, fontFamily: T.font }}>
+            {j.assignee_type === 'staff' ? '⭐ Staff:' : '👷 Worker:'} {j.worker_name}
+          </span>
+          {isPaid && Number(j.raw?.worker_pay) > 0 && !j.raw?.worker_paid && (
+            <span style={{ fontSize: 8.5, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: '#FEF3C7', color: '#92400E', textTransform: 'uppercase', letterSpacing: '0.3px', flexShrink: 0 }}>
+              $ Unpaid
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Notes */}
+      {j.notes && (
+        <div style={{
+          fontSize: 10.5, color: T.inkMuted, fontStyle: 'italic', marginTop: 4,
+          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+          overflow: 'hidden', lineHeight: 1.4,
+        }}>
+          {j.notes}
+        </div>
+      )}
     </div>
   );
 }

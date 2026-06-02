@@ -643,34 +643,52 @@ export default function Home() {
                       );
                     })()}
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, padding: '7px 10px', background: DEEP_ROSE_TINT, borderRadius: 10 }}>
-                      <span style={{ fontSize: 13 }}>🚗</span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: T.ink }}>
-                          {fromHereDuration
-                            ? `${fromHereDuration} from here`
-                            : next.ai_context?.drive_to?.duration
-                              ? `${next.ai_context.drive_to.duration} from home`
-                              : next.address
-                                ? 'Calculating drive time…'
-                                : 'No address on file'}
+                    {isNowWindow ? (() => {
+                      const afterNext = todayJobs.find(tj => tj.start > next.start && tj.id !== next.id);
+                      const driveToNext = afterNext?.ai_context?.drive_to?.duration;
+                      if (!afterNext && !driveToNext) return null;
+                      return (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, padding: '7px 10px', background: DEEP_ROSE_TINT, borderRadius: 10 }}>
+                          <span style={{ fontSize: 13 }}>🚗</span>
+                          <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 600, color: T.ink }}>
+                            {driveToNext
+                              ? `${driveToNext} to ${afterNext.client_name}`
+                              : afterNext
+                                ? `Next: ${afterNext.client_name}`
+                                : null}
+                          </div>
                         </div>
-                        {next.address && (
-                          <button
-                            onClick={handleFromHere}
-                            disabled={isFromHereLoading}
-                            style={{ background: 'none', border: 'none', color: DEEP_ROSE, cursor: 'pointer', fontSize: 10, fontWeight: 700, padding: 0, marginTop: 2, opacity: isFromHereLoading ? 0.5 : 0.8 }}
-                          >
-                            {isFromHereLoading ? '…' : fromHereDuration ? '↻ from here' : '📍 from here'}
+                      );
+                    })() : (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, padding: '7px 10px', background: DEEP_ROSE_TINT, borderRadius: 10 }}>
+                        <span style={{ fontSize: 13 }}>🚗</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: T.ink }}>
+                            {fromHereDuration
+                              ? `${fromHereDuration} from here`
+                              : next.ai_context?.drive_to?.duration
+                                ? `${next.ai_context.drive_to.duration} from home`
+                                : next.address
+                                  ? 'Calculating drive time…'
+                                  : 'No address on file'}
+                          </div>
+                          {next.address && (
+                            <button
+                              onClick={handleFromHere}
+                              disabled={isFromHereLoading}
+                              style={{ background: 'none', border: 'none', color: DEEP_ROSE, cursor: 'pointer', fontSize: 10, fontWeight: 700, padding: 0, marginTop: 2, opacity: isFromHereLoading ? 0.5 : 0.8 }}
+                            >
+                              {isFromHereLoading ? '…' : fromHereDuration ? '↻ from here' : '📍 from here'}
+                            </button>
+                          )}
+                        </div>
+                        {next.ai_context?.drive_to && (
+                          <button onClick={e => { e.stopPropagation(); handleRefreshTraffic(e); }} disabled={isRefreshingTraffic} style={{ background: 'none', border: 'none', color: DEEP_ROSE, cursor: 'pointer', fontSize: 14, padding: 2 }} title="Refresh from home">
+                            {isRefreshingTraffic ? '…' : '↻'}
                           </button>
                         )}
                       </div>
-                      {next.ai_context?.drive_to && (
-                        <button onClick={e => { e.stopPropagation(); handleRefreshTraffic(e); }} disabled={isRefreshingTraffic} style={{ background: 'none', border: 'none', color: DEEP_ROSE, cursor: 'pointer', fontSize: 14, padding: 2 }} title="Refresh from home">
-                          {isRefreshingTraffic ? '…' : '↻'}
-                        </button>
-                      )}
-                    </div>
+                    )}
 
                     {next.job_notes && (
                       <div style={{ background: mode === 'dark' ? 'rgba(181,0,78,0.08)' : 'rgba(181,0,78,0.05)', borderRadius: 10, padding: '8px 12px', marginBottom: 10, borderLeft: `3px solid ${DEEP_ROSE}` }}>
@@ -764,6 +782,9 @@ export default function Home() {
                 : isAttnPartial
                   ? (mode === 'dark' ? 'rgba(249,115,22,0.08)' : '#FFF7ED')
                   : (mode === 'dark' ? 'rgba(239,68,68,0.08)' : '#FEF2F2');
+              const attnStatusLabel = needsWrap ? 'Wrap Up' : isAttnPartial ? 'Partial' : 'Owing';
+              const attnDateLabel = j.start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+              const attnTimeRange = fmtTimeRange(j.start, j.end);
               return (
                 <div
                   key={j.id}
@@ -773,57 +794,72 @@ export default function Home() {
                     border: `2px solid ${cardBorder}`,
                     borderLeft: `6px solid ${cardBorder}`,
                     borderRadius: 16,
-                    padding: '14px 16px',
+                    padding: '10px 14px 10px 12px',
                     marginBottom: 10,
                     cursor: 'pointer',
                   }}
                 >
-                  {/* Status label */}
-                  <div style={{ marginBottom: 8 }}>
+                  {/* Row 1: name · bold time | status pill */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                    <div style={{ fontFamily: T.serif, fontSize: 16, fontWeight: 600, color: T.ink, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.3px' }}>
+                      {j.client_name}
+                    </div>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: cardBorder, whiteSpace: 'nowrap', flexShrink: 0, letterSpacing: '-0.3px' }}>
+                      {attnTimeRange}
+                    </div>
                     <span style={{
                       fontFamily: T.font, fontSize: 9, fontWeight: 800,
                       textTransform: 'uppercase', letterSpacing: '0.5px',
                       background: `${cardBorder}22`, color: cardBorder,
-                      padding: '3px 8px', borderRadius: 4,
+                      padding: '2px 6px', borderRadius: 4, flexShrink: 0, whiteSpace: 'nowrap',
                     }}>
-                      {needsWrap ? 'Needs Wrap Up' : isAttnPartial ? 'Partial Payment' : 'Payment Due'}
+                      {attnStatusLabel}
                     </span>
                   </div>
 
-                  {/* Two-column: info left, amounts+time right */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontFamily: T.serif, fontSize: 17, fontWeight: 600, color: T.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {j.client_name}
-                      </div>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: '#B45309', textTransform: 'uppercase', marginTop: 2, letterSpacing: '0.3px' }}>
-                        {j.service_name}
-                      </div>
-                      <div style={{ fontSize: 10.5, color: '#92400E', marginTop: 2, opacity: 0.8 }}>
-                        {j.start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                      </div>
-                      {j.worker_name && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 3, flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: 10.5, color: '#92400E', opacity: 0.75 }}>{j.assignee_type === 'staff' ? '⭐ Staff:' : '👷 Worker:'} {j.worker_name}</span>
-                          {j.payment_status === 'Paid' && Number(j.raw?.worker_pay) > 0 && !j.raw?.worker_paid && (
-                            <span style={{ fontSize: 8.5, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: '#FEF3C7', color: '#92400E', textTransform: 'uppercase' }}>$ Unpaid</span>
-                          )}
+                  {/* Row 2: date | amount */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+                    <div style={{ fontSize: 11, fontWeight: 500, color: '#92400E', opacity: 0.8 }}>{attnDateLabel}</div>
+                    {!needsWrap && (
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontFamily: T.serif, fontSize: 14, fontWeight: 900, color: cardBorder, fontVariantNumeric: 'tabular-nums' }}>
+                          {privacyOn ? '•••' : remaining > 0 ? `$${remaining.toFixed(0)} owing` : `$${total.toFixed(0)}`}
+                          {!privacyOn && attnHstNote && <span style={{ fontSize: 8, fontWeight: 600, opacity: 0.6, marginLeft: 2, fontFamily: T.font }}> incl. HST</span>}
                         </div>
-                      )}
-                    </div>
-                    <div style={{ flexShrink: 0, textAlign: 'right' }}>
-                      <div style={{ fontFamily: T.font, fontSize: 13, fontWeight: 800, color: cardBorder, letterSpacing: '-0.2px', fontVariantNumeric: 'tabular-nums' }}>
-                        {privacyOn ? '•••' : remaining > 0 ? `$${remaining.toFixed(0)} owing` : `$${total.toFixed(0)}`}
-                        {!privacyOn && attnHstNote && <span style={{ fontSize: 8, fontWeight: 600, opacity: 0.6, marginLeft: 2, fontFamily: T.font }}> incl. HST</span>}
+                        {!privacyOn && paid > 0 && remaining > 0 && (
+                          <div style={{ fontSize: 10, color: '#16A34A', fontWeight: 700 }}>${paid.toFixed(0)} paid</div>
+                        )}
                       </div>
-                      {!privacyOn && paid > 0 && remaining > 0 && (
-                        <div style={{ fontSize: 10, color: '#16A34A', fontWeight: 700, marginTop: 1 }}>${paid.toFixed(0)} paid</div>
-                      )}
-                      <div style={{ fontSize: 11, fontWeight: 700, color: '#92400E', marginTop: 4, opacity: 0.85 }}>
-                        {fmtTimeRange(j.start, j.end)}
-                      </div>
-                    </div>
+                    )}
                   </div>
+
+                  {/* Row 3: service */}
+                  <div style={{
+                    fontFamily: T.font, fontSize: 9, fontWeight: 700,
+                    textTransform: 'uppercase', letterSpacing: '0.4px',
+                    background: `${cardBorder}18`, color: cardBorder,
+                    padding: '2px 6px', borderRadius: 4,
+                    display: 'inline-block', marginBottom: 3,
+                  }}>
+                    {j.service_name}
+                  </div>
+
+                  {/* Worker */}
+                  {j.worker_name && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 10.5, color: '#92400E', opacity: 0.75 }}>{j.assignee_type === 'staff' ? '⭐ Staff:' : '👷 Worker:'} {j.worker_name}</span>
+                      {j.payment_status === 'Paid' && Number(j.raw?.worker_pay) > 0 && !j.raw?.worker_paid && (
+                        <span style={{ fontSize: 8.5, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: '#FEF3C7', color: '#92400E', textTransform: 'uppercase' }}>$ Unpaid</span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Notes */}
+                  {j.notes && (
+                    <div style={{ fontSize: 10.5, color: '#92400E', fontStyle: 'italic', opacity: 0.75, marginTop: 4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.4 }}>
+                      {j.notes}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -837,6 +873,8 @@ export default function Home() {
             {restOfWeekJobs.map(j => {
               const total = computeJobSubtotal(j);
               const rowHstNote = computeJobTotal(j) > total;
+                const rowDateLabel = j.start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+              const rowTimeRange = fmtTimeRange(j.start, j.end);
               return (
                 <div
                   key={j.id}
@@ -849,53 +887,72 @@ export default function Home() {
                     padding: '10px 14px 10px 12px',
                     marginBottom: 8,
                     cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 12,
                   }}
                 >
-                  <div style={{ flexShrink: 0, textAlign: 'center', minWidth: 60 }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: T.inkSub, marginBottom: 2, whiteSpace: 'nowrap' }}>
-                      {j.start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                    </div>
-                    <div style={{ fontFamily: T.font, fontSize: 13, fontWeight: 700, color: T.pink, lineHeight: 1.2, whiteSpace: 'nowrap' }}>
-                      {fmtTimeRange(j.start, j.end)}
-                    </div>
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
+                  {/* Row 1: name · bold time | pill */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
                     <div style={{
-                      fontFamily: T.serif, fontSize: 15, fontWeight: 500, color: T.ink,
-                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      fontFamily: T.serif, fontSize: 16, fontWeight: 600, color: T.ink,
+                      flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      letterSpacing: '-0.3px',
                     }}>
                       {j.client_name}
                     </div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: T.inkSub, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
-                      {j.service_name}
+                    <div style={{ fontSize: 12, fontWeight: 800, color: T.pink, whiteSpace: 'nowrap', flexShrink: 0, letterSpacing: '-0.3px' }}>
+                      {rowTimeRange}
                     </div>
-                    {j.worker_name && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2, flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 10.5, color: T.inkMuted }}>{j.assignee_type === 'staff' ? '⭐ Staff:' : '👷 Worker:'} {j.worker_name}</span>
-                        {j.payment_status === 'Paid' && Number(j.raw?.worker_pay) > 0 && !j.raw?.worker_paid && (
-                          <span style={{ fontSize: 8.5, fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: '#FEF3C7', color: '#92400E', textTransform: 'uppercase', letterSpacing: '0.3px' }}>$ Unpaid</span>
-                        )}
-                      </div>
-                    )}
-                    {j.job_notes && (
+                    <span style={{
+                      fontFamily: T.font, fontSize: 9, fontWeight: 800,
+                      textTransform: 'uppercase', letterSpacing: '0.3px',
+                      background: `${T.pink}18`, color: T.pink,
+                      padding: '2px 6px', borderRadius: 4, flexShrink: 0,
+                    }}>
+                      SCHEDULED
+                    </span>
+                  </div>
+
+                  {/* Row 2: date | amount */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+                    <div style={{ fontSize: 11, fontWeight: 500, color: T.inkSub }}>{rowDateLabel}</div>
+                    {!privacyOn && total > 0 && (
                       <div style={{
-                        fontSize: 10, color: T.inkMuted, fontStyle: 'italic', marginTop: 2,
-                        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden', lineHeight: 1.35,
+                        fontFamily: T.serif, fontSize: 14, fontWeight: 600,
+                        color: T.inkSub, fontVariantNumeric: 'tabular-nums',
                       }}>
-                        {j.job_notes}
+                        ${total.toFixed(0)}{rowHstNote && <span style={{ fontSize: 8, fontWeight: 700, opacity: 0.6, marginLeft: 2, fontFamily: T.font, textTransform: 'uppercase' }}> +HST</span>}
                       </div>
                     )}
                   </div>
-                  {!privacyOn && total > 0 && (
+
+                  {/* Row 3: service */}
+                  <div style={{
+                    fontFamily: T.font, fontSize: 9, fontWeight: 700,
+                    textTransform: 'uppercase', letterSpacing: '0.4px',
+                    background: `${T.pink}18`, color: T.pink,
+                    padding: '2px 6px', borderRadius: 4,
+                    display: 'inline-block', marginBottom: 3,
+                  }}>
+                    {j.service_name}
+                  </div>
+
+                  {/* Worker */}
+                  {j.worker_name && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 10.5, color: T.inkMuted }}>{j.assignee_type === 'staff' ? '⭐ Staff:' : '👷 Worker:'} {j.worker_name}</span>
+                      {j.payment_status === 'Paid' && Number(j.raw?.worker_pay) > 0 && !j.raw?.worker_paid && (
+                        <span style={{ fontSize: 8.5, fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: '#FEF3C7', color: '#92400E', textTransform: 'uppercase', letterSpacing: '0.3px' }}>$ Unpaid</span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Notes */}
+                  {j.notes && (
                     <div style={{
-                      fontFamily: T.serif, fontSize: 14, fontWeight: 500,
-                      color: T.inkSub, flexShrink: 0, fontVariantNumeric: 'tabular-nums',
+                      fontSize: 10, color: T.inkMuted, fontStyle: 'italic', marginTop: 3,
+                      display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden', lineHeight: 1.35,
                     }}>
-                      ${total.toFixed(0)}{rowHstNote && <span style={{ fontSize: 8, fontWeight: 700, opacity: 0.6, marginLeft: 2, fontFamily: T.font, textTransform: 'uppercase' }}> +HST</span>}
+                      {j.notes}
                     </div>
                   )}
                 </div>

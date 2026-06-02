@@ -39,11 +39,13 @@ export default function LogoBar() {
         <img
           src="/branding/logo-banner.png"
           alt="Supermom for Hire"
-          style={{ 
-            height: 72, 
+          onClick={() => navigate('/')}
+          style={{
+            height: 72,
             width: 'auto',
             filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.2))',
-            margin: '-10px 0', // Pull up/down to exceed standard padding slightly if needed
+            margin: '-10px 0',
+            cursor: 'pointer',
           }}
         />
       ) : (

@@ -314,6 +314,8 @@ export default function Home() {
 
   const [isRefreshingTraffic, setIsRefreshingTraffic] = useState(false);
   const [isGoLaunching, setIsGoLaunching] = useState(false);
+  const [fromHereDuration, setFromHereDuration] = useState(null);
+  const [isFromHereLoading, setIsFromHereLoading] = useState(false);
 
   const handleSupermomGo = (e) => {
     e.stopPropagation();
@@ -336,6 +338,31 @@ export default function Home() {
     } finally {
       setIsRefreshingTraffic(false);
     }
+  };
+
+  const handleFromHere = (e) => {
+    e.stopPropagation();
+    if (!next?.address) return;
+    setIsFromHereLoading(true);
+    setFromHereDuration(null);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const origin = `${pos.coords.latitude},${pos.coords.longitude}`;
+          const res = await fetch(`/api/distance?origins=${encodeURIComponent(origin)}&destinations=${encodeURIComponent(next.address)}`);
+          const data = await res.json();
+          const el = data?.rows?.[0]?.elements?.[0];
+          if (el?.status === 'OK') setFromHereDuration(el.duration.text);
+          else setFromHereDuration('Unavailable');
+        } catch {
+          setFromHereDuration('Unavailable');
+        } finally {
+          setIsFromHereLoading(false);
+        }
+      },
+      () => { setFromHereDuration('Location denied'); setIsFromHereLoading(false); },
+      { timeout: 8000 }
+    );
   };
 
   const handleAddTime = async (job, mins = 30) => {
@@ -620,15 +647,28 @@ export default function Home() {
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, padding: '7px 10px', background: DEEP_ROSE_TINT, borderRadius: 10 }}>
                       <span style={{ fontSize: 13 }}>🚗</span>
-                      <div style={{ flex: 1, fontSize: 12, fontWeight: 600, color: T.ink }}>
-                        {next.ai_context?.drive_to?.duration
-                          ? `${next.ai_context.drive_to.duration} to destination`
-                          : next.address
-                            ? 'Calculating drive time…'
-                            : 'No address on file'}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: T.ink }}>
+                          {fromHereDuration
+                            ? `${fromHereDuration} from here`
+                            : next.ai_context?.drive_to?.duration
+                              ? `${next.ai_context.drive_to.duration} from home`
+                              : next.address
+                                ? 'Calculating drive time…'
+                                : 'No address on file'}
+                        </div>
+                        {next.address && (
+                          <button
+                            onClick={handleFromHere}
+                            disabled={isFromHereLoading}
+                            style={{ background: 'none', border: 'none', color: DEEP_ROSE, cursor: 'pointer', fontSize: 10, fontWeight: 700, padding: 0, marginTop: 2, opacity: isFromHereLoading ? 0.5 : 0.8 }}
+                          >
+                            {isFromHereLoading ? '…' : fromHereDuration ? '↻ from here' : '📍 from here'}
+                          </button>
+                        )}
                       </div>
                       {next.ai_context?.drive_to && (
-                        <button onClick={e => { e.stopPropagation(); handleRefreshTraffic(e); }} disabled={isRefreshingTraffic} style={{ background: 'none', border: 'none', color: DEEP_ROSE, cursor: 'pointer', fontSize: 14, padding: 2 }}>
+                        <button onClick={e => { e.stopPropagation(); handleRefreshTraffic(e); }} disabled={isRefreshingTraffic} style={{ background: 'none', border: 'none', color: DEEP_ROSE, cursor: 'pointer', fontSize: 14, padding: 2 }} title="Refresh from home">
                           {isRefreshingTraffic ? '…' : '↻'}
                         </button>
                       )}
@@ -741,6 +781,7 @@ export default function Home() {
               return (
                 <div
                   key={j.id}
+                  onClick={() => openJob(j.id)}
                   style={{
                     background: cardBg,
                     border: `2px solid ${cardBorder}`,
@@ -748,6 +789,7 @@ export default function Home() {
                     borderRadius: 16,
                     padding: '14px 16px',
                     marginBottom: 10,
+                    cursor: 'pointer',
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -793,7 +835,7 @@ export default function Home() {
                       </div>
                     </div>
                     <button
-                      onClick={() => openPostJob(j.id)}
+                      onClick={e => { e.stopPropagation(); openPostJob(j.id); }}
                       style={{ background: cardBorder, color: 'white', border: 'none', borderRadius: 10, padding: '9px 14px', fontSize: 11, fontWeight: 800, cursor: 'pointer', flexShrink: 0, marginLeft: 10 }}
                     >
                       {needsWrap ? 'WRAP UP' : remaining > 0 ? 'COLLECT' : 'VIEW'}

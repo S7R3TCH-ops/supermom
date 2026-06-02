@@ -50,6 +50,7 @@ export default function Settings() {
   const [error, setError] = useState(null);
   const [form, setForm] = useState(null);
   const [gcalOn, setGcalOn] = useState(false);
+  const [gcalBusinessId, setGcalBusinessId] = useState(null);
   const [showWorkers, setShowWorkers] = useState(false);
 
   const [pw, setPw] = useState('');
@@ -87,7 +88,8 @@ export default function Settings() {
       if (!user) return;
       const businessId = await getCurrentBusinessId();
       if (!businessId) return;
-      const { data } = await supabase.from('integrations').select('*').eq('business_id', businessId).eq('provider', 'google_calendar').maybeSingle();
+      setGcalBusinessId(businessId);
+      const { data } = await supabase.from('integrations').select('*').eq('business_id', businessId).eq('service_name', 'google_calendar').maybeSingle();
       if (data) setGcalOn(true);
     }
     checkIntegration();
@@ -274,7 +276,7 @@ export default function Settings() {
                  </div>
               </div>
               <button 
-                onClick={() => window.location.href = '/api/auth/google/login'}
+                onClick={() => window.location.href = `/api/auth/google/login?business_id=${gcalBusinessId}`}
                 style={{ background: 'transparent', border: '1.5px solid var(--pink-border)', borderRadius: 8, padding: '6px 12px', fontSize: 11, fontWeight: 700, color: 'var(--pink)', cursor: 'pointer' }}
               >
                 {gcalOn ? 'RECONNECT' : 'CONNECT'}

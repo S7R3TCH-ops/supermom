@@ -1,5 +1,4 @@
 import { fmtTimeRange, dateBrief } from '../../lib/dateUtils';
-import PaymentBreakdown from './PaymentBreakdown';
 import { useAppTheme } from '../../context/AppThemeContext';
 
 export default function UpcomingCard({ job: j, T, onClick, total = 0, grandTotal, paid = 0, privacyOn = false, hstNote = false }) {
@@ -8,7 +7,6 @@ export default function UpcomingCard({ job: j, T, onClick, total = 0, grandTotal
   const ACCENT = T.pink;
   const BG = mode === 'dark' ? 'rgba(233,30,106,0.1)' : '#FFF0F7';
   const timeRange = j.start && j.end ? fmtTimeRange(j.start, j.end) : '—';
-  const remaining = Math.max(0, total - paid);
 
   return (
     <div
@@ -18,50 +16,35 @@ export default function UpcomingCard({ job: j, T, onClick, total = 0, grandTotal
         border: `1px solid ${BORDER}22`,
         borderLeft: `4px solid ${BORDER}`,
         borderRadius: 16,
-        padding: '11px 14px 11px 12px',
+        padding: '10px 14px 10px 12px',
         marginBottom: 8,
         cursor: 'pointer',
       }}
     >
-      {/* Row 1: time — amount + UPCOMING badge */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
-        <div style={{ fontFamily: T.font, fontSize: 13, fontWeight: 700, color: ACCENT }}>
+      {/* Row 1: client name ← → time range */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 3 }}>
+        <div style={{
+          fontFamily: T.serif, fontSize: 17, fontWeight: 500, color: T.ink,
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          letterSpacing: '-0.3px', flex: 1, paddingRight: 10,
+        }}>
+          {j.client_name}
+        </div>
+        <div style={{ fontFamily: T.font, fontSize: 14, fontWeight: 800, color: ACCENT, flexShrink: 0, whiteSpace: 'nowrap' }}>
           {timeRange}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          {total > 0 && (
-            <span style={{
-              fontFamily: T.serif, fontSize: 14, fontWeight: 500, color: ACCENT,
-              fontVariantNumeric: 'tabular-nums',
-            }}>
-              {privacyOn ? '•••' : `$${total.toFixed(0)}`}
-              {!privacyOn && hstNote && (
-                <span style={{ fontSize: 8, fontWeight: 700, color: ACCENT, opacity: 0.6, marginLeft: 2, fontFamily: T.font, textTransform: 'uppercase' }}> +HST</span>
-              )}
-            </span>
-          )}
-          <span style={{
-            fontFamily: T.font, fontSize: 9, fontWeight: 800,
-            textTransform: 'uppercase', letterSpacing: '0.3px',
-            background: `${ACCENT}22`, color: ACCENT,
-            padding: '3px 7px', borderRadius: 4,
-          }}>
-            UPCOMING
-          </span>
-        </div>
       </div>
 
-      {/* Row 2: client name */}
-      <div style={{
-        fontFamily: T.serif, fontSize: 16, fontWeight: 500, color: T.ink,
-        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        letterSpacing: '-0.3px', marginBottom: 4,
-      }}>
-        {j.client_name}
-      </div>
-
-      {/* Row 3: service pill + date */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      {/* Row 2: UPCOMING badge + service pill + date */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5, flexWrap: 'wrap' }}>
+        <span style={{
+          fontFamily: T.font, fontSize: 9, fontWeight: 800,
+          textTransform: 'uppercase', letterSpacing: '0.3px',
+          background: `${ACCENT}22`, color: ACCENT,
+          padding: '2px 6px', borderRadius: 4, flexShrink: 0,
+        }}>
+          UPCOMING
+        </span>
         <span style={{
           fontFamily: T.font, fontSize: 9, fontWeight: 700,
           textTransform: 'uppercase', letterSpacing: '0.4px',
@@ -75,21 +58,32 @@ export default function UpcomingCard({ job: j, T, onClick, total = 0, grandTotal
         </span>
       </div>
 
-      {/* Row 4: worker name */}
-      {j.worker_name && (
-        <div style={{ fontSize: 10.5, color: T.inkMuted, marginTop: 2, fontFamily: T.font }}>
-          {j.assignee_type === 'staff' ? '⭐ Staff:' : '👷 Worker:'} {j.worker_name}
+      {/* Row 3: price + worker + worker unpaid badge */}
+      {((!privacyOn && total > 0) || j.worker_name) && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          {!privacyOn && total > 0 && (
+            <span style={{
+              fontFamily: T.serif, fontSize: 13, fontWeight: 600, color: ACCENT,
+              fontVariantNumeric: 'tabular-nums',
+            }}>
+              ${total.toFixed(0)}{hstNote && <span style={{ fontSize: 8, fontWeight: 700, opacity: 0.6, marginLeft: 2, fontFamily: T.font, textTransform: 'uppercase' }}> +HST</span>}
+            </span>
+          )}
+          {privacyOn && total > 0 && (
+            <span style={{ fontFamily: T.serif, fontSize: 13, fontWeight: 600, color: ACCENT }}>•••</span>
+          )}
+          {j.worker_name && (
+            <>
+              {total > 0 && <span style={{ color: ACCENT, opacity: 0.3, fontSize: 11 }}>·</span>}
+              <span style={{ fontSize: 10.5, color: T.inkMuted, fontFamily: T.font }}>
+                {j.assignee_type === 'staff' ? '⭐ Staff:' : '👷 Worker:'} {j.worker_name}
+              </span>
+            </>
+          )}
         </div>
       )}
 
-      {/* Row 5: payment breakdown for pre-paid jobs */}
-      {remaining > 0 && (
-        <div style={{ marginTop: 6 }}>
-          <PaymentBreakdown j={j} paid={paid} total={total} grandTotal={grandTotal} privacyOn={privacyOn} T={T} metaColor={ACCENT} />
-        </div>
-      )}
-
-      {/* Row 6: job notes */}
+      {/* Notes (optional) */}
       {j.notes && (
         <div style={{
           fontSize: 11, color: T.inkMuted, fontStyle: 'italic', marginTop: 5,

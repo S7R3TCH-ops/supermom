@@ -1,5 +1,4 @@
 import { fmtTimeRange, dateBrief } from '../../lib/dateUtils';
-import PaymentBreakdown from './PaymentBreakdown';
 
 export default function JobCard({ job: j, T, onClick, onDuplicate, paid = 0, total = 0, grandTotal, privacyOn = false, subtle = false, hstNote = false }) {
   const isCompleted = j.status === 'Completed';
@@ -7,7 +6,6 @@ export default function JobCard({ job: j, T, onClick, onDuplicate, paid = 0, tot
   const isPartial = j.payment_status === 'Partial';
   const isUnpaid = isCompleted && !isPaid;
 
-  // State signal colours — all from design system
   const isCompletedUnpaid = isUnpaid && !isPartial;
   const borderColor = isPartial ? '#F97316' : isCompletedUnpaid ? '#EF4444' : isPaid ? '#86EFAC' : '#E91E6A';
   const bgColor = subtle
@@ -19,8 +17,6 @@ export default function JobCard({ job: j, T, onClick, onDuplicate, paid = 0, tot
   const accentColor = isPartial ? '#C2410C' : isCompletedUnpaid ? '#991B1B' : isPaid ? '#14532D' : '#E91E6A';
   const statusLabel = isPartial ? 'PARTIAL' : isUnpaid ? 'UNPAID' : isPaid ? 'PAID ✓' : 'SCHEDULED';
 
-  const remaining = isPaid ? 0 : Math.max(0, total - paid);
-  const showAmount = (isCompleted || total > 0) && total > 0;
   const timeRange = j.start && j.end ? fmtTimeRange(j.start, j.end) : '—';
   const dateLabel = j.start ? dateBrief(j.start) : '';
 
@@ -32,51 +28,36 @@ export default function JobCard({ job: j, T, onClick, onDuplicate, paid = 0, tot
         border: `1px solid ${borderColor}30`,
         borderLeft: `4px solid ${borderColor}`,
         borderRadius: 16,
-        padding: '11px 14px 11px 12px',
+        padding: '10px 14px 10px 12px',
         marginBottom: 8,
         cursor: 'pointer',
         opacity: subtle ? 0.8 : 1,
       }}
     >
-      {/* Row 1: time — amount + status badge */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
-        <div style={{ fontFamily: T.font, fontSize: 13, fontWeight: 700, color: accentColor }}>
+      {/* Row 1: client name ← → time range */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 3 }}>
+        <div style={{
+          fontFamily: T.serif, fontSize: 17, fontWeight: 500, color: T.ink,
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          letterSpacing: '-0.3px', flex: 1, paddingRight: 10,
+        }}>
+          {j.client_name}
+        </div>
+        <div style={{ fontFamily: T.font, fontSize: 14, fontWeight: 800, color: accentColor, flexShrink: 0, whiteSpace: 'nowrap' }}>
           {timeRange}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          {showAmount && (
-            <span style={{
-              fontFamily: T.serif, fontSize: 14, fontWeight: 500, color: accentColor,
-              fontVariantNumeric: 'tabular-nums',
-            }}>
-              {privacyOn ? '•••' : `$${total.toFixed(0)}`}
-              {!privacyOn && hstNote && (
-                <span style={{ fontSize: 8, fontWeight: 700, color: accentColor, opacity: 0.6, marginLeft: 2, fontFamily: T.font, textTransform: 'uppercase' }}> +HST</span>
-              )}
-            </span>
-          )}
-          <span style={{
-            fontFamily: T.font, fontSize: 9, fontWeight: 800,
-            textTransform: 'uppercase', letterSpacing: '0.3px',
-            background: `${borderColor}22`, color: accentColor,
-            padding: '3px 7px', borderRadius: 4,
-          }}>
-            {statusLabel}
-          </span>
-        </div>
       </div>
 
-      {/* Row 2: client name */}
-      <div style={{
-        fontFamily: T.serif, fontSize: 16, fontWeight: 500, color: T.ink,
-        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        letterSpacing: '-0.3px', marginBottom: 4,
-      }}>
-        {j.client_name}
-      </div>
-
-      {/* Row 3: service pill + date + rebook button */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      {/* Row 2: status badge + service pill + date */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5, flexWrap: 'wrap' }}>
+        <span style={{
+          fontFamily: T.font, fontSize: 9, fontWeight: 800,
+          textTransform: 'uppercase', letterSpacing: '0.3px',
+          background: `${borderColor}22`, color: accentColor,
+          padding: '2px 6px', borderRadius: 4, flexShrink: 0,
+        }}>
+          {statusLabel}
+        </span>
         <span style={{
           fontFamily: T.font, fontSize: 9, fontWeight: 700,
           textTransform: 'uppercase', letterSpacing: '0.4px',
@@ -88,6 +69,34 @@ export default function JobCard({ job: j, T, onClick, onDuplicate, paid = 0, tot
         <span style={{ fontFamily: T.font, fontSize: 10.5, fontWeight: 500, color: T.inkSub }}>
           {dateLabel}
         </span>
+      </div>
+
+      {/* Row 3: price + worker + worker unpaid badge + rebook */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        {total > 0 && (
+          <span style={{
+            fontFamily: T.serif, fontSize: 13, fontWeight: 600, color: accentColor,
+            fontVariantNumeric: 'tabular-nums',
+          }}>
+            {privacyOn ? '•••' : `$${total.toFixed(0)}`}
+            {!privacyOn && hstNote && (
+              <span style={{ fontSize: 8, fontWeight: 700, color: accentColor, opacity: 0.6, marginLeft: 2, fontFamily: T.font, textTransform: 'uppercase' }}> +HST</span>
+            )}
+          </span>
+        )}
+        {j.worker_name && (
+          <>
+            {total > 0 && <span style={{ color: accentColor, opacity: 0.3, fontSize: 11 }}>·</span>}
+            <span style={{ fontSize: 10.5, color: T.inkMuted, fontFamily: T.font }}>
+              {j.assignee_type === 'staff' ? '⭐ Staff:' : '👷 Worker:'} {j.worker_name}
+            </span>
+            {isPaid && Number(j.raw?.worker_pay) > 0 && !j.raw?.worker_paid && (
+              <span style={{ fontSize: 8.5, fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: '#FEF3C7', color: '#92400E', textTransform: 'uppercase', letterSpacing: '0.3px', flexShrink: 0 }}>
+                $ Unpaid
+              </span>
+            )}
+          </>
+        )}
         {onDuplicate && (
           <button
             onClick={e => { e.stopPropagation(); onDuplicate(j); }}
@@ -101,28 +110,7 @@ export default function JobCard({ job: j, T, onClick, onDuplicate, paid = 0, tot
         )}
       </div>
 
-      {/* Row 4: worker name + unpaid badge */}
-      {j.worker_name && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2, flexWrap: 'wrap' }}>
-          <div style={{ fontSize: 10.5, color: T.inkMuted, fontFamily: T.font }}>
-            {j.assignee_type === 'staff' ? '⭐ Staff:' : '👷 Worker:'} {j.worker_name}
-          </div>
-          {isPaid && Number(j.raw?.worker_pay) > 0 && !j.raw?.worker_paid && (
-            <span style={{ fontSize: 8.5, fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: '#FEF3C7', color: '#92400E', textTransform: 'uppercase', letterSpacing: '0.3px', flexShrink: 0 }}>
-              $ Unpaid
-            </span>
-          )}
-        </div>
-      )}
-
-      {/* Row 5: payment breakdown when balance is owed */}
-      {remaining > 0 && (
-        <div style={{ marginTop: 6 }}>
-          <PaymentBreakdown j={j} paid={paid} total={total} grandTotal={grandTotal} privacyOn={privacyOn} T={T} metaColor={accentColor} />
-        </div>
-      )}
-
-      {/* Row 6: job notes */}
+      {/* Notes (optional) */}
       {j.notes && (
         <div style={{
           fontSize: 11, color: T.inkMuted, fontStyle: 'italic', marginTop: 5,
@@ -133,7 +121,7 @@ export default function JobCard({ job: j, T, onClick, onDuplicate, paid = 0, tot
         </div>
       )}
 
-      {/* Row 7: address (scheduled jobs) */}
+      {/* Address (optional) */}
       {j.address && (
         <div style={{
           fontSize: 11, color: T.inkMuted, marginTop: 4, opacity: 0.7,

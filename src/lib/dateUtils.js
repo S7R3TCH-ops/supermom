@@ -56,6 +56,13 @@ export function dateBrief(d) {
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
+export function fmtDuration(mins) {
+  if (mins < 60) return `${mins}m`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}
+
 // Produces a Toronto-timezone ISO string (e.g. "2026-05-18T09:00:00-04:00").
 // Uses Intl.DateTimeFormat to determine the correct UTC offset for the given date,
 // so DST transitions are handled automatically without hardcoded rules.

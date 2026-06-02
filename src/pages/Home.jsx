@@ -14,7 +14,7 @@ import { getBriefingMessage } from '../lib/briefingMessages';
 import { updateJob } from '../data/jobsRepo';
 import { useGeofence } from '../context/GeofenceContext';
 import { useKeyboardFocus } from '../hooks/useKeyboardFocus';
-import { sameDay, getWeekRange, fmtTime12, fmtTimeRange, dateBrief } from '../lib/dateUtils';
+import { sameDay, getWeekRange, fmtTime12, fmtTimeRange, dateBrief, fmtDuration } from '../lib/dateUtils';
 import { computeJobTotal, computeJobSubtotal } from '../lib/financialMath';
 import JobCard from '../components/cards/JobCard';
 import UpcomingCard from '../components/cards/UpcomingCard';
@@ -482,8 +482,8 @@ export default function Home() {
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: '#9A3412', textTransform: 'uppercase', marginBottom: 2 }}>Tight Transition</div>
               <div style={{ fontSize: 12, color: '#7C2D12', lineHeight: 1.3 }}>
-                Only {tightGap.gapMin}m between {tightGap.a.client_name} and {tightGap.b.client_name}.
-                {tightGap.driveMin > 0 && ` Drive takes ~${tightGap.driveMin}m.`}
+                Only {fmtDuration(tightGap.gapMin)} between {tightGap.a.client_name} and {tightGap.b.client_name}.
+                {tightGap.driveMin > 0 && ` Drive takes ~${fmtDuration(tightGap.driveMin)}.`}
               </div>
             </div>
           </div>
@@ -581,7 +581,7 @@ export default function Home() {
                       const minsToStart = Math.round((next.start - now) / 60000);
                       const isNowWindow = now >= next.start && now < next.end;
                       const timingColor = isNowWindow ? '#E91E6A' : minsToStart <= 15 ? '#EF4444' : minsToStart <= 60 ? '#F59E0B' : '#16A34A';
-                      const timingLabel = isNowWindow ? '🔴 Happening now' : minsToStart > 0 ? `Starts in ${minsToStart}m` : null;
+                      const timingLabel = isNowWindow ? '🔴 Happening now' : minsToStart > 0 ? `Starts in ${fmtDuration(minsToStart)}` : null;
                       return (
                         <>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4, position: 'relative' }}>

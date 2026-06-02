@@ -18,8 +18,7 @@ function parseCookies(header) {
 
 export default async function handler(req, res) {
   const { code, state } = req.query;
-  const protocol = process.env.VERCEL_URL ? 'https' : 'http';
-  const host = process.env.VERCEL_URL || 'localhost:3000';
+  const base = process.env.APP_BASE_URL || 'http://localhost:3000';
 
   // Verify CSRF nonce
   const cookies = parseCookies(req.headers.cookie);
@@ -41,7 +40,7 @@ export default async function handler(req, res) {
   const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
-    `${protocol}://${host}/api/auth/google/callback`
+    `${base}/api/auth/google/callback`
   );
 
   try {

@@ -1,6 +1,6 @@
 import { fmtTimeRange, dateBrief } from '../../lib/dateUtils';
 
-export default function JobCard({ job: j, T, onClick, onDuplicate, paid = 0, total = 0, grandTotal, privacyOn = false, subtle = false, hstNote = false }) {
+export default function JobCard({ job: j, T, onClick, paid = 0, total = 0, grandTotal, privacyOn = false, subtle = false, hstNote = false }) {
   const isCompleted = j.status === 'Completed';
   const isPaid = j.payment_status === 'Paid';
   const isPartial = j.payment_status === 'Partial';
@@ -34,8 +34,8 @@ export default function JobCard({ job: j, T, onClick, onDuplicate, paid = 0, tot
         opacity: subtle ? 0.8 : 1,
       }}
     >
-      {/* Row 1: client name ← → time range */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 3 }}>
+      {/* Row 1: client name ← → amount + status badge */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 3 }}>
         <div style={{
           fontFamily: T.serif, fontSize: 17, fontWeight: 500, color: T.ink,
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
@@ -43,21 +43,34 @@ export default function JobCard({ job: j, T, onClick, onDuplicate, paid = 0, tot
         }}>
           {j.client_name}
         </div>
-        <div style={{ fontFamily: T.font, fontSize: 14, fontWeight: 800, color: accentColor, flexShrink: 0, whiteSpace: 'nowrap' }}>
-          {timeRange}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+          {total > 0 && (
+            <span style={{
+              fontFamily: T.serif, fontSize: 13, fontWeight: 600, color: accentColor,
+              fontVariantNumeric: 'tabular-nums',
+            }}>
+              {privacyOn ? '•••' : `$${total.toFixed(0)}`}
+              {!privacyOn && hstNote && <span style={{ fontSize: 8, fontWeight: 700, color: accentColor, opacity: 0.6, marginLeft: 2, fontFamily: T.font, textTransform: 'uppercase' }}> +HST</span>}
+            </span>
+          )}
+          <span style={{
+            fontFamily: T.font, fontSize: 9, fontWeight: 800,
+            textTransform: 'uppercase', letterSpacing: '0.3px',
+            background: `${borderColor}22`, color: accentColor,
+            padding: '2px 6px', borderRadius: 4,
+          }}>
+            {statusLabel}
+          </span>
         </div>
       </div>
 
-      {/* Row 2: status badge + service pill + date */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5, flexWrap: 'wrap' }}>
-        <span style={{
-          fontFamily: T.font, fontSize: 9, fontWeight: 800,
-          textTransform: 'uppercase', letterSpacing: '0.3px',
-          background: `${borderColor}22`, color: accentColor,
-          padding: '2px 6px', borderRadius: 4, flexShrink: 0,
-        }}>
-          {statusLabel}
-        </span>
+      {/* Row 2: time range (prominent) */}
+      <div style={{ fontFamily: T.font, fontSize: 14, fontWeight: 800, color: accentColor, marginBottom: 4, letterSpacing: '-0.2px' }}>
+        {timeRange}
+      </div>
+
+      {/* Row 3: service pill + date */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
         <span style={{
           fontFamily: T.font, fontSize: 9, fontWeight: 700,
           textTransform: 'uppercase', letterSpacing: '0.4px',
@@ -71,44 +84,19 @@ export default function JobCard({ job: j, T, onClick, onDuplicate, paid = 0, tot
         </span>
       </div>
 
-      {/* Row 3: price + worker + worker unpaid badge + rebook */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        {total > 0 && (
-          <span style={{
-            fontFamily: T.serif, fontSize: 13, fontWeight: 600, color: accentColor,
-            fontVariantNumeric: 'tabular-nums',
-          }}>
-            {privacyOn ? '•••' : `$${total.toFixed(0)}`}
-            {!privacyOn && hstNote && (
-              <span style={{ fontSize: 8, fontWeight: 700, color: accentColor, opacity: 0.6, marginLeft: 2, fontFamily: T.font, textTransform: 'uppercase' }}> +HST</span>
-            )}
+      {/* Row 4: worker + worker unpaid badge (optional) */}
+      {j.worker_name && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 10.5, color: T.inkMuted, fontFamily: T.font }}>
+            {j.assignee_type === 'staff' ? '⭐ Staff:' : '👷 Worker:'} {j.worker_name}
           </span>
-        )}
-        {j.worker_name && (
-          <>
-            {total > 0 && <span style={{ color: accentColor, opacity: 0.3, fontSize: 11 }}>·</span>}
-            <span style={{ fontSize: 10.5, color: T.inkMuted, fontFamily: T.font }}>
-              {j.assignee_type === 'staff' ? '⭐ Staff:' : '👷 Worker:'} {j.worker_name}
+          {isPaid && Number(j.raw?.worker_pay) > 0 && !j.raw?.worker_paid && (
+            <span style={{ fontSize: 8.5, fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: '#FEF3C7', color: '#92400E', textTransform: 'uppercase', letterSpacing: '0.3px', flexShrink: 0 }}>
+              $ Unpaid
             </span>
-            {isPaid && Number(j.raw?.worker_pay) > 0 && !j.raw?.worker_paid && (
-              <span style={{ fontSize: 8.5, fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: '#FEF3C7', color: '#92400E', textTransform: 'uppercase', letterSpacing: '0.3px', flexShrink: 0 }}>
-                $ Unpaid
-              </span>
-            )}
-          </>
-        )}
-        {onDuplicate && (
-          <button
-            onClick={e => { e.stopPropagation(); onDuplicate(j); }}
-            style={{
-              marginLeft: 'auto', background: 'none', border: 'none',
-              padding: '0 2px', color: accentColor, fontSize: 14,
-              fontWeight: 900, cursor: 'pointer', lineHeight: 1, opacity: 0.7,
-            }}
-            title="Rebook this job"
-          >↻</button>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
       {/* Notes (optional) */}
       {j.notes && (

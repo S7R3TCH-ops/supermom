@@ -611,9 +611,9 @@ export default function Home() {
                       const timingLabel = isNowWindow ? '🔴 Happening now' : minsToStart > 0 ? `Starts in ${fmtDuration(minsToStart)}` : null;
                       return (
                         <>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4, position: 'relative' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10, position: 'relative' }}>
                             <div style={{ flex: 1, minWidth: 0, paddingRight: 10 }}>
-                                      <div style={{ fontFamily: T.serif, fontSize: 26, fontWeight: 700, color: T.ink, lineHeight: 1.1, letterSpacing: '-0.5px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <div style={{ fontFamily: T.serif, fontSize: 26, fontWeight: 700, color: T.ink, lineHeight: 1.1, letterSpacing: '-0.5px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {next.client_name}
                               </div>
                               <div style={{ fontSize: 13, fontWeight: 700, color: DEEP_ROSE, textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: 3 }}>
@@ -622,25 +622,23 @@ export default function Home() {
                               {next.worker_name && (
                                 <div style={{ fontSize: 11, color: T.inkMuted, marginTop: 3 }}>{next.assignee_type === 'staff' ? '⭐ Staff:' : '👷 Worker:'} {next.worker_name}</div>
                               )}
+                              {!privacyOn && computeJobSubtotal(next) > 0 && (
+                                <div style={{ fontSize: 11, fontWeight: 600, color: DEEP_ROSE, opacity: 0.65, marginTop: 4 }}>
+                                  Est. ${computeJobSubtotal(next).toFixed(0)}{computeJobTotal(next) > computeJobSubtotal(next) && <span style={{ fontSize: 8, fontWeight: 700, opacity: 0.7, marginLeft: 2 }}> +HST</span>}
+                                </div>
+                              )}
                             </div>
                             <div style={{ flexShrink: 0, textAlign: 'right' }}>
                               <div style={{ fontSize: 17, fontWeight: 900, color: DEEP_ROSE, fontFamily: T.font, letterSpacing: '-0.5px', lineHeight: 1.2, whiteSpace: 'nowrap' }}>
                                 {timeRange}
                               </div>
+                              {timingLabel && (
+                                <div style={{ fontSize: 10, fontWeight: 800, color: timingColor, marginTop: 4, whiteSpace: 'nowrap' }}>
+                                  {timingLabel}
+                                </div>
+                              )}
                             </div>
                           </div>
-                          {timingLabel && (
-                            <div style={{ marginBottom: 8 }}>
-                              <span style={{ fontSize: 10, fontWeight: 800, color: timingColor, background: `${timingColor}18`, padding: '3px 8px', borderRadius: 6, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-                                {timingLabel}
-                              </span>
-                            </div>
-                          )}
-                          {!privacyOn && computeJobSubtotal(next) > 0 && (
-                            <div style={{ fontSize: 11, fontWeight: 600, color: DEEP_ROSE, opacity: 0.65, marginBottom: 6 }}>
-                              Est. ${computeJobSubtotal(next).toFixed(0)}{computeJobTotal(next) > computeJobSubtotal(next) && <span style={{ fontSize: 8, fontWeight: 700, opacity: 0.7, marginLeft: 2 }}> +HST</span>}
-                            </div>
-                          )}
                         </>
                       );
                     })()}
@@ -683,8 +681,8 @@ export default function Home() {
 
                     <MissionIntel prepNote={next.prep_note || next.client_access_json || next.client_prefs_json} T={T} theme={T} />
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12, paddingTop: 12, borderTop: `1px solid ${T.cardBorder}`, position: 'relative' }}>
-                      {next.address && (
+                    {next.address && (
+                      <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${T.cardBorder}` }}>
                         <button
                           onClick={handleSupermomGo}
                           disabled={isGoLaunching}
@@ -715,20 +713,8 @@ export default function Home() {
                             {isGoLaunching ? 'LAUNCHING…' : 'SUPERMOM GO'}
                           </span>
                         </button>
-                      )}
-                      <button
-                        onClick={e => { e.stopPropagation(); handleClockOut(next.id); }}
-                        style={{
-                          width: '100%', padding: '11px', borderRadius: 12,
-                          background: next.address ? 'transparent' : DEEP_ROSE,
-                          border: next.address ? `1.5px solid ${DEEP_ROSE}` : 'none',
-                          color: next.address ? DEEP_ROSE : 'white',
-                          fontSize: 12, fontWeight: 700, cursor: 'pointer', letterSpacing: '0.4px',
-                        }}
-                      >
-                        START NOW
-                      </button>
-                    </div>
+                      </div>
+                    )}
                   </div>
                 </>
               );
@@ -931,7 +917,6 @@ export default function Home() {
                 job={j}
                 T={T}
                 onClick={() => openJob(j.id)}
-                onDuplicate={handleDuplicateJob}
                 paid={paymentMap[j.id] || 0}
                 total={computeJobSubtotal(j)}
                 grandTotal={computeJobTotal(j)}

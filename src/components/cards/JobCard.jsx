@@ -34,25 +34,74 @@ export default function JobCard({ job: j, T, onClick, paid = 0, total = 0, grand
         opacity: subtle ? 0.8 : 1,
       }}
     >
-      {/* Row 1: client name ← → amount + status badge */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 3 }}>
-        <div style={{
-          fontFamily: T.serif, fontSize: 17, fontWeight: 500, color: T.ink,
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-          letterSpacing: '-0.3px', flex: 1, paddingRight: 10,
-        }}>
-          {j.client_name}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
-          {total > 0 && (
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+        {/* Left: client, service, date, worker */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{
+            fontFamily: T.serif, fontSize: 17, fontWeight: 500, color: T.ink,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            letterSpacing: '-0.3px', marginBottom: 3,
+          }}>
+            {j.client_name}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
             <span style={{
-              fontFamily: T.serif, fontSize: 13, fontWeight: 600, color: accentColor,
-              fontVariantNumeric: 'tabular-nums',
+              fontFamily: T.font, fontSize: 9, fontWeight: 700,
+              textTransform: 'uppercase', letterSpacing: '0.4px',
+              background: `${borderColor}18`, color: accentColor,
+              padding: '2px 6px', borderRadius: 4, flexShrink: 0,
+            }}>
+              {j.service_name}
+            </span>
+            <span style={{ fontFamily: T.font, fontSize: 10.5, fontWeight: 500, color: T.inkSub }}>
+              {dateLabel}
+            </span>
+          </div>
+          {j.worker_name && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 3, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 10.5, color: T.inkMuted, fontFamily: T.font }}>
+                {j.assignee_type === 'staff' ? '⭐ Staff:' : '👷 Worker:'} {j.worker_name}
+              </span>
+              {isPaid && Number(j.raw?.worker_pay) > 0 && !j.raw?.worker_paid && (
+                <span style={{ fontSize: 8.5, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: '#FEF3C7', color: '#92400E', textTransform: 'uppercase', letterSpacing: '0.3px', flexShrink: 0 }}>
+                  $ Unpaid
+                </span>
+              )}
+            </div>
+          )}
+          {j.notes && (
+            <div style={{
+              fontSize: 10.5, color: T.inkMuted, fontStyle: 'italic', marginTop: 4,
+              display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical',
+              overflow: 'hidden', lineHeight: 1.4,
+            }}>
+              {j.notes}
+            </div>
+          )}
+          {j.address && (
+            <div style={{
+              fontSize: 10.5, color: T.inkMuted, marginTop: 3, opacity: 0.7,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
+              📍 {j.address}
+            </div>
+          )}
+        </div>
+
+        {/* Right: amount, time range, status badge — all stacked */}
+        <div style={{ flexShrink: 0, textAlign: 'right' }}>
+          {total > 0 && (
+            <div style={{
+              fontFamily: T.serif, fontSize: 14, fontWeight: 600, color: accentColor,
+              fontVariantNumeric: 'tabular-nums', marginBottom: 2,
             }}>
               {privacyOn ? '•••' : `$${total.toFixed(0)}`}
               {!privacyOn && hstNote && <span style={{ fontSize: 8, fontWeight: 700, color: accentColor, opacity: 0.6, marginLeft: 2, fontFamily: T.font, textTransform: 'uppercase' }}> +HST</span>}
-            </span>
+            </div>
           )}
+          <div style={{ fontFamily: T.font, fontSize: 12, fontWeight: 800, color: accentColor, marginBottom: 4, whiteSpace: 'nowrap', letterSpacing: '-0.2px' }}>
+            {timeRange}
+          </div>
           <span style={{
             fontFamily: T.font, fontSize: 9, fontWeight: 800,
             textTransform: 'uppercase', letterSpacing: '0.3px',
@@ -63,61 +112,6 @@ export default function JobCard({ job: j, T, onClick, paid = 0, total = 0, grand
           </span>
         </div>
       </div>
-
-      {/* Row 2: time range (prominent) */}
-      <div style={{ fontFamily: T.font, fontSize: 14, fontWeight: 800, color: accentColor, marginBottom: 4, letterSpacing: '-0.2px' }}>
-        {timeRange}
-      </div>
-
-      {/* Row 3: service pill + date */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-        <span style={{
-          fontFamily: T.font, fontSize: 9, fontWeight: 700,
-          textTransform: 'uppercase', letterSpacing: '0.4px',
-          background: `${borderColor}18`, color: accentColor,
-          padding: '2px 7px', borderRadius: 4, flexShrink: 0,
-        }}>
-          {j.service_name}
-        </span>
-        <span style={{ fontFamily: T.font, fontSize: 10.5, fontWeight: 500, color: T.inkSub }}>
-          {dateLabel}
-        </span>
-      </div>
-
-      {/* Row 4: worker + worker unpaid badge (optional) */}
-      {j.worker_name && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 10.5, color: T.inkMuted, fontFamily: T.font }}>
-            {j.assignee_type === 'staff' ? '⭐ Staff:' : '👷 Worker:'} {j.worker_name}
-          </span>
-          {isPaid && Number(j.raw?.worker_pay) > 0 && !j.raw?.worker_paid && (
-            <span style={{ fontSize: 8.5, fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: '#FEF3C7', color: '#92400E', textTransform: 'uppercase', letterSpacing: '0.3px', flexShrink: 0 }}>
-              $ Unpaid
-            </span>
-          )}
-        </div>
-      )}
-
-      {/* Notes (optional) */}
-      {j.notes && (
-        <div style={{
-          fontSize: 11, color: T.inkMuted, fontStyle: 'italic', marginTop: 5,
-          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-          overflow: 'hidden', lineHeight: 1.4,
-        }}>
-          {j.notes}
-        </div>
-      )}
-
-      {/* Address (optional) */}
-      {j.address && (
-        <div style={{
-          fontSize: 11, color: T.inkMuted, marginTop: 4, opacity: 0.7,
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        }}>
-          📍 {j.address}
-        </div>
-      )}
     </div>
   );
 }

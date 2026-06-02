@@ -778,54 +778,51 @@ export default function Home() {
                     cursor: 'pointer',
                   }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  {/* Status label */}
+                  <div style={{ marginBottom: 8 }}>
+                    <span style={{
+                      fontFamily: T.font, fontSize: 9, fontWeight: 800,
+                      textTransform: 'uppercase', letterSpacing: '0.5px',
+                      background: `${cardBorder}22`, color: cardBorder,
+                      padding: '3px 8px', borderRadius: 4,
+                    }}>
+                      {needsWrap ? 'Needs Wrap Up' : isAttnPartial ? 'Partial Payment' : 'Payment Due'}
+                    </span>
+                  </div>
+
+                  {/* Two-column: info left, amounts+time right */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontFamily: T.serif, fontSize: 18, fontWeight: 600, color: T.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <div style={{ fontFamily: T.serif, fontSize: 17, fontWeight: 600, color: T.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {j.client_name}
                       </div>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: '#B45309', textTransform: 'uppercase', marginTop: 2 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#B45309', textTransform: 'uppercase', marginTop: 2, letterSpacing: '0.3px' }}>
                         {j.service_name}
                       </div>
+                      <div style={{ fontSize: 10.5, color: '#92400E', marginTop: 2, opacity: 0.8 }}>
+                        {j.start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                      </div>
                       {j.worker_name && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2, flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 3, flexWrap: 'wrap' }}>
                           <span style={{ fontSize: 10.5, color: '#92400E', opacity: 0.75 }}>{j.assignee_type === 'staff' ? '⭐ Staff:' : '👷 Worker:'} {j.worker_name}</span>
                           {j.payment_status === 'Paid' && Number(j.raw?.worker_pay) > 0 && !j.raw?.worker_paid && (
-                            <span style={{ fontSize: 8.5, fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: '#FEF3C7', color: '#92400E', textTransform: 'uppercase', letterSpacing: '0.3px' }}>$ Unpaid</span>
+                            <span style={{ fontSize: 8.5, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: '#FEF3C7', color: '#92400E', textTransform: 'uppercase' }}>$ Unpaid</span>
                           )}
                         </div>
                       )}
-                      <div style={{ fontSize: 11, color: '#92400E', marginTop: 4 }}>
-                        {j.start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · {fmtTimeRange(j.start, j.end)}
+                    </div>
+                    <div style={{ flexShrink: 0, textAlign: 'right' }}>
+                      <div style={{ fontFamily: T.font, fontSize: 13, fontWeight: 800, color: cardBorder, letterSpacing: '-0.2px', fontVariantNumeric: 'tabular-nums' }}>
+                        {privacyOn ? '•••' : remaining > 0 ? `$${remaining.toFixed(0)} owing` : `$${total.toFixed(0)}`}
+                        {!privacyOn && attnHstNote && <span style={{ fontSize: 8, fontWeight: 600, opacity: 0.6, marginLeft: 2, fontFamily: T.font }}> incl. HST</span>}
                       </div>
-                      <div style={{ marginTop: 5, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        <div style={{ fontSize: 10, color: '#92400E', opacity: 0.7, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
-                          {pricingLabel}
-                        </div>
-                        {privacyOn ? (
-                          <span style={{ fontSize: 13, fontWeight: 800, color: T.pink, letterSpacing: '-0.2px' }}>••• owing</span>
-                        ) : remaining > 0 ? (
-                          <div style={{ fontSize: 13, fontWeight: 700, fontVariantNumeric: 'tabular-nums', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 4 }}>
-                            {paid > 0 && (
-                              <>
-                                <span style={{ color: '#92400E', opacity: 0.7 }}>${total.toFixed(0)} total</span>
-                                <span style={{ color: '#92400E', opacity: 0.4 }}>·</span>
-                                <span style={{ color: '#16A34A' }}>${paid.toFixed(0)} paid</span>
-                                <span style={{ color: '#92400E', opacity: 0.4 }}>·</span>
-                              </>
-                            )}
-                            <span style={{ color: T.pink, fontWeight: 800 }}>${remaining.toFixed(0)} owing{attnHstNote && <span style={{ fontSize: 8, fontWeight: 600, opacity: 0.55, marginLeft: 3, fontFamily: T.font }}>(incl. HST)</span>}</span>
-                          </div>
-                        ) : (
-                          <span style={{ fontSize: 12, color: '#D97706', fontWeight: 700 }}>${total.toFixed(0)} total{attnHstNote && <span style={{ fontSize: 8, fontWeight: 600, opacity: 0.55, marginLeft: 3, fontFamily: T.font }}>(incl. HST)</span>}</span>
-                        )}
+                      {!privacyOn && paid > 0 && remaining > 0 && (
+                        <div style={{ fontSize: 10, color: '#16A34A', fontWeight: 700, marginTop: 1 }}>${paid.toFixed(0)} paid</div>
+                      )}
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#92400E', marginTop: 4, opacity: 0.85 }}>
+                        {fmtTimeRange(j.start, j.end)}
                       </div>
                     </div>
-                    <button
-                      onClick={e => { e.stopPropagation(); openPostJob(j.id); }}
-                      style={{ background: cardBorder, color: 'white', border: 'none', borderRadius: 10, padding: '9px 14px', fontSize: 11, fontWeight: 800, cursor: 'pointer', flexShrink: 0, marginLeft: 10 }}
-                    >
-                      {needsWrap ? 'WRAP UP' : remaining > 0 ? 'COLLECT' : 'VIEW'}
-                    </button>
                   </div>
                 </div>
               );

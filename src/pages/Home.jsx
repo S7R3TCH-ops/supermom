@@ -116,6 +116,7 @@ export default function Home() {
   const next = (activeJob && firstScheduled?.id === activeJob.id)
     ? todayJobs.find(j => j.status === 'Scheduled' && j.payment_status !== 'Paid' && j.id !== activeJob.id && j.end > now)
     : firstScheduled;
+  const isNowWindow = next ? (now >= next.start && now < next.end) : false;
 
   const attentionItems = useMemo(() => {
     if (!allJobs) return [];
@@ -606,7 +607,6 @@ export default function Home() {
                         ? `${startFmt.time} – ${endFmt.time}${endFmt.period}`
                         : `${startFmt.time}${startFmt.period} – ${endFmt.time}${endFmt.period}`;
                       const minsToStart = Math.round((next.start - now) / 60000);
-                      const isNowWindow = now >= next.start && now < next.end;
                       const timingColor = isNowWindow ? '#E91E6A' : minsToStart <= 15 ? '#EF4444' : minsToStart <= 60 ? '#F59E0B' : '#16A34A';
                       const timingLabel = isNowWindow ? '🔴 Happening now' : minsToStart > 0 ? `Starts in ${fmtDuration(minsToStart)}` : null;
                       return (

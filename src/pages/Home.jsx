@@ -46,6 +46,24 @@ export default function Home() {
     return [week[0], endOfSunday];
   }, [today]);
 
+  const [nextWeekStart, nextWeekEnd] = useMemo(() => {
+    const start = new Date(currentWeekEnd);
+    start.setDate(start.getDate() + 1);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+    return [start, end];
+  }, [currentWeekEnd]);
+
+  // Friday of the current week (index 4 in Mon-Sun week = day[0]+4 days)
+  const fridayOfThisWeek = useMemo(() => {
+    const fri = new Date(currentWeekStart);
+    fri.setDate(fri.getDate() + 4);
+    fri.setHours(0, 0, 0, 0);
+    return fri;
+  }, [currentWeekStart]);
+
   // Live clock — re-evaluates which job owns the spotlight each minute
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -195,6 +213,27 @@ export default function Home() {
       )
       .sort((a, b) => a.start - b.start);
   }, [allJobs, today, currentWeekEnd]);
+
+  const showNextWeekPreview = today >= fridayOfThisWeek;
+
+  const nextWeekJobs = useMemo(() => {
+    if (!allJobs || !showNextWeekPreview) return [];
+    return allJobs
+      .map(j => {
+        if (!j.scheduled_at) return null;
+        const start = new Date(j.scheduled_at);
+        if (isNaN(start.getTime())) return null;
+        const end = new Date(start.getTime() + (j.duration_est || 60) * 60000);
+        return { ...j, start, end };
+      })
+      .filter(j =>
+        j &&
+        j.status !== 'Cancelled' &&
+        j.start >= nextWeekStart &&
+        j.start <= nextWeekEnd
+      )
+      .sort((a, b) => a.start - b.start);
+  }, [allJobs, nextWeekStart, nextWeekEnd, showNextWeekPreview]);
 
   const [paymentMap, setPaymentMap] = useState({});
   useEffect(() => {
@@ -961,6 +1000,67 @@ export default function Home() {
           </div>
         )}
 
+        {/* NEXT WEEK PREVIEW — shown from Friday onward */}
+        {nextWeekJobs.length > 0 && (
+          <div style={{ marginBottom: 24 }}>
+            <SectionLabel style={{ color: T.inkMuted, marginBottom: 8 }}>COMING UP NEXT WEEK</SectionLabel>
+            {nextWeekJobs.map(j => {
+              const total = computeJobSubtotal(j);
+              const rowHstNote = computeJobTotal(j) > total;
+              const rowDateLabel = j.start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+              const rowTimeRange = fmtTimeRange(j.start, j.end);
+              return (
+                <div
+                  key={j.id}
+                  onClick={() => openJob(j.id)}
+                  style={{
+                    background: mode === 'dark' ? T.card : '#FAFAFA',
+                    border: `1px solid ${T.cardBorder}`,
+                    borderLeft: '3px solid #E2C5D4',
+                    borderRadius: 12,
+                    padding: '10px 14px 10px 12px',
+                    marginBottom: 8,
+                    cursor: 'pointer',
+                    opacity: 0.82,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                    <div style={{
+                      fontFamily: T.serif, fontSize: 15, fontWeight: 600, color: T.ink,
+                      flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      letterSpacing: '-0.3px',
+                    }}>
+                      {j.client_name}
+                    </div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: T.inkMuted, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                      {rowTimeRange}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ fontSize: 11, fontWeight: 500, color: T.inkMuted }}>{rowDateLabel}</div>
+                    {!privacyOn && total > 0 && (
+                      <div style={{ fontFamily: T.serif, fontSize: 13, fontWeight: 600, color: T.inkMuted, fontVariantNumeric: 'tabular-nums' }}>
+                        ${total.toFixed(0)}{rowHstNote && <span style={{ fontSize: 8, fontWeight: 700, opacity: 0.6, marginLeft: 2, fontFamily: T.font, textTransform: 'uppercase' }}> +HST</span>}
+                      </div>
+                    )}
+                  </div>
+                  {j.service_name && (
+                    <div style={{
+                      fontFamily: T.font, fontSize: 9, fontWeight: 700,
+                      textTransform: 'uppercase', letterSpacing: '0.4px',
+                      background: `${T.inkMuted}18`, color: T.inkMuted,
+                      padding: '2px 6px', borderRadius: 4,
+                      display: 'inline-block', marginTop: 4,
+                    }}>
+                      {j.service_name}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         {/* DONE THIS WEEK — subtle progress view */}
         {completedPaidThisWeek.length > 0 && (
           <div style={{ marginBottom: 24 }}>
@@ -983,7 +1083,7 @@ export default function Home() {
         )}
 
         {/* Empty state */}
-        {!activeJob && !next && todayUpcoming.length === 0 && attentionItems.length === 0 && restOfWeekJobs.length === 0 && completedPaidThisWeek.length === 0 && (
+        {!activeJob && !next && todayUpcoming.length === 0 && attentionItems.length === 0 && restOfWeekJobs.length === 0 && completedPaidThisWeek.length === 0 && nextWeekJobs.length === 0 && (
           <EmptyState allDone={allDone} T={T} persona={persona} />
         )}
 

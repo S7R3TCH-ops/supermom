@@ -132,6 +132,26 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
   const [pastConfirmed, setPastConfirmed] = useState(false);
   const [workerId, setWorkerId] = useState(null);
   const [workerPay, setWorkerPay] = useState('');
+  const [driveTime, setDriveTime] = useState(null);
+  const [driveTimeLoading, setDriveTimeLoading] = useState(false);
+
+  useEffect(() => {
+    const dest = selectedClient?.address;
+    if (!dest) { setDriveTime(null); return; }
+    let cancelled = false;
+    setDriveTimeLoading(true);
+    setDriveTime(null);
+    fetch(`/api/distance?origins=${encodeURIComponent('Georgetown, ON, Canada')}&destinations=${encodeURIComponent(dest)}`)
+      .then(r => r.json())
+      .then(data => {
+        if (cancelled) return;
+        const el = data?.rows?.[0]?.elements?.[0];
+        setDriveTime(el?.status === 'OK' ? el.duration.text : null);
+      })
+      .catch(() => { if (!cancelled) setDriveTime(null); })
+      .finally(() => { if (!cancelled) setDriveTimeLoading(false); });
+    return () => { cancelled = true; };
+  }, [selectedClient?.address]);
 
   const scheduledISO = useMemo(() => composeTorontoISO(date, time), [date, time]);
   const isPastBooking = useMemo(() => {
@@ -363,6 +383,8 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
               workers={workerOptions}
               workerId={workerId}
               workerPay={workerPay}
+              driveTime={driveTime}
+              driveTimeLoading={driveTimeLoading}
               T={T}
             />
           )}
@@ -796,6 +818,7 @@ function Step3Review({
   isPastBooking, pastConfirmed, setPastConfirmed,
   customPrice, additionalCosts,
   workers, workerId, workerPay,
+  driveTime, driveTimeLoading,
   T
 }) {
   const assignedWorker = workers?.find(w => w.id === workerId) || null;
@@ -881,7 +904,9 @@ function Step3Review({
           <span style={{ fontSize: 16 }}>🚗</span>
           <div>
             <div style={{ fontSize: 10, color: 'var(--pink-label)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '1.2px', marginBottom: 1 }}>Drive to {selectedClient?.raw?.first_name || selectedClient?.name}</div>
-            <div style={{ fontFamily: T.serif, fontSize: 14, fontWeight: 500, color: 'rgba(255,255,255,0.5)', fontStyle: 'italic' }}>Maps not connected yet</div>
+            <div style={{ fontFamily: T.serif, fontSize: 14, fontWeight: 500, color: driveTime ? 'white' : 'rgba(255,255,255,0.45)', fontStyle: driveTime ? 'normal' : 'italic' }}>
+              {driveTimeLoading ? 'Calculating…' : driveTime ? `~${driveTime} from home` : selectedClient?.address ? 'Unable to calculate' : 'No address on file'}
+            </div>
           </div>
         </div>
       </div>

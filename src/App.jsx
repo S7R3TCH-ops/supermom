@@ -41,7 +41,7 @@ class ErrorBoundary extends Component {
           <div style={{ fontSize: 40, marginBottom: 20 }}>👩‍🔧</div>
           <h2 style={{ fontFamily: 'serif', fontSize: 24, marginBottom: 10 }}>Ouch! Something went wrong.</h2>
           <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, marginBottom: 24 }}>
-            The app hit an unexpected glitch. Joel has been notified.
+            The app hit an unexpected glitch. Try restarting.
           </p>
           <pre style={{
             background: 'rgba(255,255,255,0.05)', padding: 12, borderRadius: 8,

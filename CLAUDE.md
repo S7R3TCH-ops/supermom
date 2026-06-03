@@ -123,16 +123,24 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 ---
 
-## Current version: 0.12.3 — committed Jun 2, 2026
+## Current version: 0.12.4 — committed Jun 3, 2026
 
 All core features are live. The app is in active use by Sandra. See `git log` for full history.
 
-### Last session (v0.12.3 — Jun 2, 2026)
-- **Gmail SMTP live** — `invoice@supermomforhire.com` alias + "Send mail as" tested. `api/email-invoice.js` sends from `invoice@supermomforhire.com`.
-- **Google Calendar OAuth live** — consent screen configured, OAuth credentials set. Fixed: `business_id` not passed to login URL; `provider` → `service_name` in Settings; `VERCEL_URL` → `APP_BASE_URL` for redirect URI. Tested and working.
-- **Google Maps** — Geocoding + Distance Matrix APIs enabled, key in Vercel + `.env`. Not yet tested end-to-end.
-- **Domain cleanup** — removed `joel@supermom.com` from `provision.js` + `OnboardingWalkthrough.jsx`.
-- **InvoiceView PDF fixes** — bottom padding, `page-break-inside: avoid` on footer, title restore timing fix.
+### Last session (v0.12.4 — Jun 3, 2026)
+- **GCal sync bug fixed** — `api/sync/gcal.js` was appending `:00` to already-normalized `HH:mm:ss` times, producing invalid datetimes Google rejected. Fixed datetime construction. Merged to main + deployed.
+- **Home screen crash fixed** — `isNowWindow` was defined inside an IIFE in JSX but referenced outside its scope. Hoisted to component level.
+- **Drive time in booking sheet** — `NewJobSheet` Step 3 now fetches real drive time from home to client on load. Replaced hardcoded "Maps not connected yet".
+- **Error message** — ErrorBoundary no longer says "Joel has been notified" — generic message now.
+- **Live drive-time + Leave By (executive assistant mode)** — Home screen auto-fetches GPS on load. Next Up card shows "Leave by X:XX PM" / "Leave in N mins" / "Leave NOW" (urgent red). COMING UP TODAY cards each get a "🚗 Leave by X · N mins away" annotation. Single ↻ button re-fetches from current location. Batch Distance Matrix call (one origin, all upcoming destinations). Falls back to home-based drive time if location denied.
+- **Google Calendar OAuth live** — previously working. Sandra needs to Reconnect in Settings with `sandra@supermomforhire.com` to sync her own calendar.
+- **Google Maps** — `GOOGLE_MAPS_API_KEY` in Vercel env. Distance Matrix + Geocoding APIs enabled. Server-side key — not account-specific.
+
+### Drive time architecture (v0.12.4)
+- `locationDrives` state in `Home.jsx`: `{ [jobId]: { duration: string, durationValue: number } }` — ephemeral, never persisted
+- `formatLeaveBy(durationValue, jobStart, nowDate)` — pure helper in Home.jsx
+- `fetchLocationDrives()` — batch GPS + Distance Matrix call, auto-triggered on load via `locationFetchedRef` guard
+- `updateDailyRoutes()` in `maps.js` — still runs for home-based pre-calc, persisted to `ai_context.drive_to` in DB
 
 ---
 

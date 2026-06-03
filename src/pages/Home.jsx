@@ -134,6 +134,7 @@ export default function Home() {
   const next = (activeJob && firstScheduled?.id === activeJob.id)
     ? todayJobs.find(j => j.status === 'Scheduled' && j.payment_status !== 'Paid' && j.id !== activeJob.id && j.end > now)
     : firstScheduled;
+  const isNowWindow = next ? (now >= next.start && now < next.end) : false;
 
   const attentionItems = useMemo(() => {
     if (!allJobs) return [];
@@ -295,6 +296,7 @@ export default function Home() {
   }, [todayJobs, activeJob, next, now]);
 
   const attentionRef = useRef(null);
+  const locationFetchedRef = useRef(false);
 
   const handleDuplicateJob = (job) => {
     newJobSheet.openWithPrefill({
@@ -338,6 +340,16 @@ export default function Home() {
     return null;
   })();
 
+  function formatLeaveBy(durationValue, jobStart, nowDate) {
+    const leaveByMs = jobStart.getTime() - durationValue * 1000;
+    const msUntilLeave = leaveByMs - nowDate.getTime();
+    const minsUntilLeave = Math.round(msUntilLeave / 60000);
+    if (minsUntilLeave <= 0) return { text: 'Leave NOW', urgent: true };
+    if (minsUntilLeave <= 60) return { text: `Leave in ${fmtDuration(minsUntilLeave)}`, urgent: minsUntilLeave <= 15 };
+    const { time, period } = fmtTime12(new Date(leaveByMs));
+    return { text: `Leave by ${time} ${period}`, urgent: false };
+  }
+
   useEffect(() => {
     if (!loading && todayJobs.length > 0) {
       const needsUpdate = todayJobs.some(j => !j.ai_context?.drive_to);
@@ -347,14 +359,22 @@ export default function Home() {
     }
   }, [todayJobs, loading]);
 
+  useEffect(() => {
+    if (!loading && todayJobs.length > 0 && !locationFetchedRef.current) {
+      locationFetchedRef.current = true;
+      fetchLocationDrives();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [todayJobs, loading]);
+
   const openJob = detailSheet?.openJob;
   const openPostJob = postJobSheet?.openPostJob;
   const openDetail = financeSheet?.open;
 
   const [isRefreshingTraffic, setIsRefreshingTraffic] = useState(false);
   const [isGoLaunching, setIsGoLaunching] = useState(false);
-  const [fromHereDuration, setFromHereDuration] = useState(null);
-  const [isFromHereLoading, setIsFromHereLoading] = useState(false);
+  const [locationDrives, setLocationDrives] = useState({});
+  const [locationLoading, setLocationLoading] = useState(false);
 
   const handleSupermomGo = (e) => {
     e.stopPropagation();
@@ -379,29 +399,41 @@ export default function Home() {
     }
   };
 
-  const handleFromHere = (e) => {
-    e.stopPropagation();
-    if (!next?.address) return;
-    setIsFromHereLoading(true);
-    setFromHereDuration(null);
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        try {
-          const origin = `${pos.coords.latitude},${pos.coords.longitude}`;
-          const res = await fetch(`/api/distance?origins=${encodeURIComponent(origin)}&destinations=${encodeURIComponent(next.address)}`);
-          const data = await res.json();
-          const el = data?.rows?.[0]?.elements?.[0];
-          if (el?.status === 'OK') setFromHereDuration(el.duration.text);
-          else setFromHereDuration('Unavailable');
-        } catch {
-          setFromHereDuration('Unavailable');
-        } finally {
-          setIsFromHereLoading(false);
+  const fetchLocationDrives = async () => {
+    const targets = todayJobs.filter(j => j.address && j.end > now && j.status === 'Scheduled');
+    if (!targets.length) return;
+    setLocationLoading(true);
+    try {
+      const position = await new Promise((resolve, reject) =>
+        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 8000 })
+      );
+      const origin = `${position.coords.latitude},${position.coords.longitude}`;
+      const destinations = targets.map(j => j.address).join('|');
+      const res = await fetch(`/api/distance?origins=${encodeURIComponent(origin)}&destinations=${encodeURIComponent(destinations)}`);
+      const data = await res.json();
+      if (data?.status !== 'OK') return;
+      const newDrives = {};
+      targets.forEach((job, idx) => {
+        const el = data.rows?.[0]?.elements?.[idx];
+        if (el?.status === 'OK') {
+          newDrives[job.id] = {
+            duration: el.duration.text,
+            durationValue: el.duration.value,
+          };
         }
-      },
-      () => { setFromHereDuration('Location denied'); setIsFromHereLoading(false); },
-      { timeout: 8000 }
-    );
+      });
+      setLocationDrives(newDrives);
+    } catch {
+      // Location denied or API error — fall back to home-based drives silently
+    } finally {
+      setLocationLoading(false);
+    }
+  };
+
+  const handleRefreshLocation = async (e) => {
+    e.stopPropagation();
+    setLocationDrives({});
+    await fetchLocationDrives();
   };
 
   const handleAddTime = async (job, mins = 30) => {
@@ -645,7 +677,6 @@ export default function Home() {
                         ? `${startFmt.time} – ${endFmt.time}${endFmt.period}`
                         : `${startFmt.time}${startFmt.period} – ${endFmt.time}${endFmt.period}`;
                       const minsToStart = Math.round((next.start - now) / 60000);
-                      const isNowWindow = now >= next.start && now < next.end;
                       const timingColor = isNowWindow ? '#E91E6A' : minsToStart <= 15 ? '#EF4444' : minsToStart <= 60 ? '#F59E0B' : '#16A34A';
                       const timingLabel = isNowWindow ? '🔴 Happening now' : minsToStart > 0 ? `Starts in ${fmtDuration(minsToStart)}` : null;
                       return (
@@ -698,36 +729,43 @@ export default function Home() {
                           </div>
                         </div>
                       );
-                    })() : (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, padding: '7px 10px', background: DEEP_ROSE_TINT, borderRadius: 10 }}>
-                        <span style={{ fontSize: 13 }}>🚗</span>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 12, fontWeight: 600, color: T.ink }}>
-                            {fromHereDuration
-                              ? `${fromHereDuration} from here`
-                              : next.ai_context?.drive_to?.duration
-                                ? `${next.ai_context.drive_to.duration} from home`
-                                : next.address
-                                  ? 'Calculating drive time…'
-                                  : 'No address on file'}
+                    })() : (() => {
+                      const locDrive = locationDrives[next.id];
+                      const leaveBy = locDrive ? formatLeaveBy(locDrive.durationValue, next.start, now) : null;
+                      const fallback = next.ai_context?.drive_to?.duration;
+                      const isUrgent = leaveBy?.urgent ?? false;
+                      let driveLabel;
+                      if (locationLoading) driveLabel = 'Getting your location…';
+                      else if (leaveBy) driveLabel = leaveBy.text;
+                      else if (fallback) driveLabel = `${fallback} from home`;
+                      else if (next.address) driveLabel = 'Calculating drive time…';
+                      else driveLabel = 'No address on file';
+                      return (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, padding: '7px 10px', background: isUrgent ? 'rgba(239,68,68,0.1)' : DEEP_ROSE_TINT, borderRadius: 10, border: isUrgent ? '1px solid rgba(239,68,68,0.35)' : 'none' }}>
+                          <span style={{ fontSize: 13 }}>{isUrgent ? '⚠️' : '🚗'}</span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 12, fontWeight: isUrgent ? 800 : 600, color: isUrgent ? '#DC2626' : T.ink }}>
+                              {driveLabel}
+                            </div>
+                            {locDrive && !locationLoading && (
+                              <div style={{ fontSize: 10, color: T.inkMuted, marginTop: 1 }}>
+                                {locDrive.duration} from here
+                              </div>
+                            )}
                           </div>
                           {next.address && (
                             <button
-                              onClick={handleFromHere}
-                              disabled={isFromHereLoading}
-                              style={{ background: 'none', border: 'none', color: DEEP_ROSE, cursor: 'pointer', fontSize: 10, fontWeight: 700, padding: 0, marginTop: 2, opacity: isFromHereLoading ? 0.5 : 0.8 }}
+                              onClick={handleRefreshLocation}
+                              disabled={locationLoading}
+                              style={{ background: 'none', border: 'none', color: DEEP_ROSE, cursor: 'pointer', fontSize: 14, padding: 2, opacity: locationLoading ? 0.4 : 1 }}
+                              title="Refresh from current location"
                             >
-                              {isFromHereLoading ? '…' : fromHereDuration ? '↻ from here' : '📍 from here'}
+                              {locationLoading ? '…' : '↻'}
                             </button>
                           )}
                         </div>
-                        {next.ai_context?.drive_to && (
-                          <button onClick={e => { e.stopPropagation(); handleRefreshTraffic(e); }} disabled={isRefreshingTraffic} style={{ background: 'none', border: 'none', color: DEEP_ROSE, cursor: 'pointer', fontSize: 14, padding: 2 }} title="Refresh from home">
-                            {isRefreshingTraffic ? '…' : '↻'}
-                          </button>
-                        )}
-                      </div>
-                    )}
+                      );
+                    })()}
 
                     {next.job_notes && (
                       <div style={{ background: mode === 'dark' ? 'rgba(181,0,78,0.08)' : 'rgba(181,0,78,0.05)', borderRadius: 10, padding: '8px 12px', marginBottom: 10, borderLeft: `3px solid ${DEEP_ROSE}` }}>
@@ -783,19 +821,33 @@ export default function Home() {
         {todayUpcoming.length > 0 && (
           <div style={{ marginBottom: 16 }}>
             <SectionLabel color={T.pink} style={{ marginBottom: 8 }}>COMING UP TODAY</SectionLabel>
-            {todayUpcoming.map(j => (
-              <UpcomingCard
-                key={j.id}
-                job={j}
-                T={T}
-                onClick={() => openJob(j.id)}
-                total={computeJobSubtotal(j)}
-                grandTotal={computeJobTotal(j)}
-                paid={paymentMap[j.id] || 0}
-                privacyOn={privacyOn}
-                hstNote={computeJobTotal(j) > computeJobSubtotal(j)}
-              />
-            ))}
+            {todayUpcoming.map(j => {
+              const locDrive = locationDrives[j.id];
+              const leaveBy = locDrive ? formatLeaveBy(locDrive.durationValue, j.start, now) : null;
+              return (
+                <div key={j.id}>
+                  <UpcomingCard
+                    job={j}
+                    T={T}
+                    onClick={() => openJob(j.id)}
+                    total={computeJobSubtotal(j)}
+                    grandTotal={computeJobTotal(j)}
+                    paid={paymentMap[j.id] || 0}
+                    privacyOn={privacyOn}
+                    hstNote={computeJobTotal(j) > computeJobSubtotal(j)}
+                  />
+                  {leaveBy && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: -4, marginBottom: 8, paddingLeft: 16 }}>
+                      <span style={{ fontSize: 10 }}>{leaveBy.urgent ? '⚠️' : '🚗'}</span>
+                      <span style={{ fontSize: 10, fontWeight: leaveBy.urgent ? 800 : 600, color: leaveBy.urgent ? '#DC2626' : T.inkMuted }}>
+                        {leaveBy.text}
+                        {!leaveBy.urgent && <span style={{ fontWeight: 400, marginLeft: 4, opacity: 0.7 }}>· {locDrive.duration} away</span>}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 

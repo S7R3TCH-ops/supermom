@@ -163,6 +163,9 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
+  // Optional override for testing: ?to=you@example.com
+  const toOverride = req.query?.to ?? null;
+
   const supabaseUrl = process.env.VITE_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!supabaseUrl || !serviceKey) return res.status(500).json({ error: 'DB config missing' });
@@ -187,7 +190,7 @@ export default async function handler(req, res) {
   const results = [];
 
   for (const biz of businesses) {
-    const toEmail = biz.email;
+    const toEmail = toOverride || biz.email;
     if (!toEmail) continue;
 
     // Today's jobs

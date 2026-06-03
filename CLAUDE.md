@@ -166,17 +166,27 @@ All core features are live. The app is in active use by Sandra. See `git log` fo
 - [x] **Gmail SMTP** — `invoice@supermomforhire.com` live + tested. (Jun 2, 2026)
 - [x] **Google Calendar OAuth** — consent screen configured, credentials set, tested working. (Jun 2, 2026)
 - [x] **Google Maps API** — Geocoding + Distance Matrix enabled, key in Vercel + `.env`. (Jun 2, 2026)
-- [ ] **Calendar sync** — wire `api/sync/gcal.js` to job create/update/delete flows
-- [ ] **Daily briefing email** — Resend + Vercel Cron, 7am Toronto, to `sandra@supermomforhire.com`
-- [ ] **ANTHROPIC_API_KEY** — add to Vercel + local `.env` (AI features fall back to mock without it)
-- [ ] **Supabase public schema grants — due before Oct 30, 2026** — Run in SQL Editor: `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO anon, authenticated; GRANT USAGE ON SCHEMA public TO anon, authenticated;`
+- [x] **Calendar sync** — `api/sync/gcal.js` wired to job create/update/delete. Datetime bug fixed Jun 3. (Jun 3, 2026)
+- [ ] **ANTHROPIC_API_KEY** ← DO THIS FIRST — add to Vercel env + local `.env`. AI features currently return mocked data without it. 5-minute task.
+- [ ] **Supabase public schema grants — due before Oct 30, 2026** — Run in Supabase SQL Editor (project `lskzzsjmmtsosfneuovt`): `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO anon, authenticated; GRANT USAGE ON SCHEMA public TO anon, authenticated;`
+- [ ] **Daily briefing email** — Vercel Cron, 7am Toronto, to `sandra@supermomforhire.com`. Today's + tomorrow's jobs, drive times, outstanding payments. Use Resend free tier. This is the next big feature to build.
+- [ ] **PWA / installable app** — `manifest.json` + service worker. Makes app installable to iPhone home screen (no browser chrome). Prerequisite for push notifications.
+- [ ] **Push notifications** — Fire "Leave in 15 mins for Karen" at leave-time. Requires PWA first. High value for Sandra.
 - [ ] **Staff app access (Phase 2)** — `person_type = 'staff'` tracked in DB. No app login yet. When ready: link `workers.id` → `users` table + add Supabase Auth account.
 
 > Vercel Hobby plan: **9 of 12** serverless functions used. 3 slots available for new API routes.
+> API cost note: All Google Maps usage is within the $200/month free credit for up to ~10 active operators. GCal is free. No runaway call risk — `locationFetchedRef` guard fires GPS fetch once per session.
+
+### Next session priorities (agreed Jun 3, 2026)
+1. **ANTHROPIC_API_KEY** in Vercel + `.env` (5 min)
+2. **Supabase schema grants** (1 SQL command)
+3. **Daily briefing email** — Vercel Cron + Resend
+4. **PWA setup** — manifest + service worker (enables push notifications later)
 
 ### Features — Phase 2
+- [ ] **AI chat interface** — `api/ai/[action].js` already exists. Need chat UI component + conversation state. Needs `ANTHROPIC_API_KEY` first.
+- [ ] **Voice scheduling** — `api/transcribe.js` already exists. Flow: tap mic → transcribe → Claude parses intent → pre-fills booking sheet.
 - [ ] **Custom domain → swap email provider** — Sandra's domain is live. When stable, swap `nodemailer` for `resend`. `from` becomes `invoices@supermomforhire.com`. 5-min job.
-- [ ] **Sandra daily job briefing email** — Vercel Cron Job (daily 7am Toronto). Queries Supabase as service role, emails Sandra: today's + tomorrow's jobs with times/clients/estimates + any outstanding payments. Use Resend (free tier).
-- [ ] Self-serve client booking link (Phase 2)
+- [ ] Self-serve client booking link
 - [ ] Offline mode (crashes if Supabase unreachable on first load)
 - [ ] Client engagement tools (AI follow-up / re-booking reminders)

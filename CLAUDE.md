@@ -123,11 +123,17 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 ---
 
-## Current version: 0.12.4 — committed Jun 3, 2026
+## Current version: 0.12.5 — committed Jun 3, 2026
 
 All core features are live. The app is in active use by Sandra. See `git log` for full history.
 
-### Last session (v0.12.4 — Jun 3, 2026)
+### Last session (v0.12.5 — Jun 3, 2026)
+- **Daily briefing email built** — `api/briefing/daily.js` queries today's + tomorrow's jobs and outstanding balances, sends branded HTML email to business owner via Gmail SMTP. Vercel Cron fires at `0 11 * * *` (7am EDT). Secured with `CRON_SECRET` env var. Multi-tenant ready. **Not yet confirmed working** — needs live test once Vercel deploys.
+- **ANTHROPIC_API_KEY** — added to Vercel env. AI features now live (no more mocks).
+- **CRON_SECRET** — added to Vercel env.
+- **Cleanup** — deleted one-time `run-update-email.bat` + `scripts/update-sandra-email.mjs` (Sandra's auth email was migrated to `sandra@supermomforhire.com`).
+
+### Previous session (v0.12.4 — Jun 3, 2026)
 - **GCal sync bug fixed** — `api/sync/gcal.js` was appending `:00` to already-normalized `HH:mm:ss` times, producing invalid datetimes Google rejected. Fixed datetime construction. Merged to main + deployed.
 - **Home screen crash fixed** — `isNowWindow` was defined inside an IIFE in JSX but referenced outside its scope. Hoisted to component level.
 - **Drive time in booking sheet** — `NewJobSheet` Step 3 now fetches real drive time from home to client on load. Replaced hardcoded "Maps not connected yet".

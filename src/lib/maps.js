@@ -54,7 +54,7 @@ export async function updateDailyRoutes(jobsForDay) {
       // Leg 2: i=1 -> matrix[1][2] (Job 1 -> Job 2)
       const elementTo = matrix[jobIndex - 1].elements[jobIndex];
       
-      let driveTo = null;
+      let driveTo = false; // false = attempted but no route (vs undefined = never attempted)
       if (elementTo && elementTo.status === 'OK') {
         driveTo = {
           from: i === 0 ? "Home" : "Previous Job",

@@ -297,6 +297,7 @@ export default function Home() {
 
   const attentionRef = useRef(null);
   const locationFetchedRef = useRef(false);
+  const routesFetchedRef = useRef(false);
 
   const handleDuplicateJob = (job) => {
     newJobSheet.openWithPrefill({
@@ -351,9 +352,10 @@ export default function Home() {
   }
 
   useEffect(() => {
-    if (!loading && todayJobs.length > 0) {
-      const needsUpdate = todayJobs.some(j => !j.ai_context?.drive_to);
+    if (!loading && todayJobs.length > 0 && !routesFetchedRef.current) {
+      const needsUpdate = todayJobs.some(j => j.ai_context?.drive_to === undefined);
       if (needsUpdate) {
+        routesFetchedRef.current = true;
         updateDailyRoutes(todayJobs.map(j => j.raw));
       }
     }

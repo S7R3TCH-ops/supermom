@@ -163,8 +163,8 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  // Optional override for testing: ?to=you@example.com
-  const toOverride = req.query?.to ?? null;
+  // Override recipient: query param (?to=) or BRIEFING_TO_OVERRIDE env var
+  const toOverride = req.query?.to ?? process.env.BRIEFING_TO_OVERRIDE ?? null;
 
   const supabaseUrl = process.env.VITE_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

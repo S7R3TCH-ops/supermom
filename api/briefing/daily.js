@@ -156,11 +156,14 @@ export default async function handler(req, res) {
   // Allow GET (Vercel Cron) or POST (manual trigger)
   if (req.method !== 'GET' && req.method !== 'POST') return res.status(405).end();
 
-  // Verify cron secret so this can't be triggered publicly
-  const authHeader = req.headers['authorization'] ?? '';
+  // Verify cron secret — accept Authorization header (Vercel Cron) or ?secret= (browser testing)
   const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-    return res.status(401).json({ error: 'Unauthorized' });
+  if (cronSecret) {
+    const authHeader = req.headers['authorization'] ?? '';
+    const querySecret = req.query?.secret ?? '';
+    if (authHeader !== `Bearer ${cronSecret}` && querySecret !== cronSecret) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
   }
 
   // ?to= overrides recipient for one-off manual test sends only

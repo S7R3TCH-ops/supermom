@@ -49,7 +49,16 @@
       "Bash(python3 -c \"import playwright\")",
       "Bash(npx --no-install tsc --noEmit)",
       "Bash(npx --no-install eslint src/lib/financialMath.js src/data/selectors.js src/data/jobsRepo.js src/data/invoicesRepo.js src/pages/Calendar.jsx src/components/sheets/PostJobSheet.jsx src/components/cards/JobCard.jsx src/components/cards/UpcomingCard.jsx api/email-invoice.js --max-warnings=0)",
-      "Bash(npx --no-install eslint src/pages/InvoiceView.jsx src/data/jobsRepo.js src/App.jsx src/components/sheets/NewJobSheet.jsx --max-warnings=0)"
+      "Bash(npx --no-install eslint src/pages/InvoiceView.jsx src/data/jobsRepo.js src/App.jsx src/components/sheets/NewJobSheet.jsx --max-warnings=0)",
+      "Bash(bash \"/c/Users/Joel/.claude/statusline-command.sh\")",
+      "Bash(bash --version)",
+      "Bash(bash /cygdrive/c/Users/Joel/.claude/statusline-command.sh)",
+      "Read(//mnt/c/Users/Joel/.claude/**)",
+      "Read(//c/Users/Joel/**)",
+      "Bash(find /c /mnt/c -name \"statusline-command.sh\")",
+      "Bash(bash /c/Users/joel/.claude/statusline-command.sh)",
+      "Bash(git rm *)",
+      "Bash(Remove-Item *)"
     ]
   }
 }

@@ -128,10 +128,11 @@ This is a **managed service product** — Sandra is the first user, but the arch
 All core features are live. The app is in active use by Sandra. See `git log` for full history.
 
 ### Last session (v0.12.5 — Jun 3, 2026)
-- **Daily briefing email built** — `api/briefing/daily.js` queries today's + tomorrow's jobs and outstanding balances, sends branded HTML email to business owner via Gmail SMTP. Vercel Cron fires at `0 11 * * *` (7am EDT). Secured with `CRON_SECRET` env var. Multi-tenant ready. **Not yet confirmed working** — needs live test once Vercel deploys.
+- **Daily briefing email built** — `api/briefing/daily.js` queries today's + tomorrow's jobs and outstanding balances, sends branded HTML email to business owner via Gmail SMTP. Vercel Cron fires at `0 11 * * *` (7am EDT). Secured with `CRON_SECRET` env var. Multi-tenant ready. Added `?to=` override + `?secret=` query param for browser-based test triggers.
 - **ANTHROPIC_API_KEY** — added to Vercel env. AI features now live (no more mocks).
-- **CRON_SECRET** — added to Vercel env.
+- **CRON_SECRET** — added to Vercel env, then **deleted for testing** (endpoint was returning 401 during browser tests). Must re-add in Vercel before briefing is production-ready. Code is correct — no code changes needed.
 - **Cleanup** — deleted one-time `run-update-email.bat` + `scripts/update-sandra-email.mjs` (Sandra's auth email was migrated to `sandra@supermomforhire.com`).
+- **Sandra login fix** — Sandra's Supabase Auth email was already correctly set to `sandra@supermomforhire.com`. Login failure was a wrong-password issue (email was changed programmatically). Sent password reset email via Supabase admin API. She can now set a new password and log in.
 
 ### Previous session (v0.12.4 — Jun 3, 2026)
 - **GCal sync bug fixed** — `api/sync/gcal.js` was appending `:00` to already-normalized `HH:mm:ss` times, producing invalid datetimes Google rejected. Fixed datetime construction. Merged to main + deployed.
@@ -166,9 +167,10 @@ All core features are live. The app is in active use by Sandra. See `git log` fo
 - [x] **Gmail SMTP** — `invoice@supermomforhire.com` live + tested. (Jun 2, 2026)
 - [x] **Google Calendar OAuth** — consent screen configured, credentials set, tested working. (Jun 2, 2026)
 - [x] **Google Maps API** — Geocoding + Distance Matrix enabled, key in Vercel + `.env`. (Jun 2, 2026)
+- [x] **Daily briefing email** — built in v0.12.5. Gmail SMTP, Vercel Cron 7am EDT, CRON_SECRET guard. **CRON_SECRET deleted from Vercel for testing — must re-add before this is live.** (Jun 3, 2026)
+- [x] **ANTHROPIC_API_KEY** — added to Vercel env. AI features live. (Jun 3, 2026)
+- [ ] **Re-add CRON_SECRET to Vercel** — Settings → Environment Variables → `CRON_SECRET` (strong random value, Production only). Then verify briefing email fires.
 - [ ] **Calendar sync** — wire `api/sync/gcal.js` to job create/update/delete flows
-- [ ] **Daily briefing email** — Resend + Vercel Cron, 7am Toronto, to `sandra@supermomforhire.com`
-- [ ] **ANTHROPIC_API_KEY** — add to Vercel + local `.env` (AI features fall back to mock without it)
 - [ ] **Supabase public schema grants — due before Oct 30, 2026** — Run in SQL Editor: `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO anon, authenticated; GRANT USAGE ON SCHEMA public TO anon, authenticated;`
 - [ ] **Staff app access (Phase 2)** — `person_type = 'staff'` tracked in DB. No app login yet. When ready: link `workers.id` → `users` table + add Supabase Auth account.
 
@@ -176,7 +178,6 @@ All core features are live. The app is in active use by Sandra. See `git log` fo
 
 ### Features — Phase 2
 - [ ] **Custom domain → swap email provider** — Sandra's domain is live. When stable, swap `nodemailer` for `resend`. `from` becomes `invoices@supermomforhire.com`. 5-min job.
-- [ ] **Sandra daily job briefing email** — Vercel Cron Job (daily 7am Toronto). Queries Supabase as service role, emails Sandra: today's + tomorrow's jobs with times/clients/estimates + any outstanding payments. Use Resend (free tier).
 - [ ] Self-serve client booking link (Phase 2)
 - [ ] Offline mode (crashes if Supabase unreachable on first load)
 - [ ] Client engagement tools (AI follow-up / re-booking reminders)

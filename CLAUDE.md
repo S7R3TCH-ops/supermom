@@ -123,11 +123,11 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 ---
 
-## Current version: 0.12.5 — committed Jun 3, 2026
+## Current version: 0.12.6 — committed Jun 4, 2026
 
 All core features are live. The app is in active use by Sandra. See `git log` for full history.
 
-### Last session (v0.12.5 — Jun 3, 2026, updated Jun 4)
+### Last session (v0.12.6 — Jun 4, 2026)
 - **Daily briefing email built** — `api/briefing/daily.js` queries today's + tomorrow's jobs and outstanding balances, sends branded HTML email to business owner via Gmail SMTP. Vercel Cron fires at `0 11 * * *` (7am EDT). Secured with `CRON_SECRET` env var. Multi-tenant ready. Added `?to=` override + `?secret=` query param for browser-based test triggers.
 - **ANTHROPIC_API_KEY** — added to Vercel env. AI features now live (no more mocks).
 - **CRON_SECRET** — re-added to Vercel env. ✅
@@ -137,6 +137,7 @@ All core features are live. The app is in active use by Sandra. See `git log` fo
 - **Distance Matrix quota cap** — hard limit set to 500 elements/day in Google Cloud Console. Sandra's real usage ~15–30/day; cap stops any runaway bug before it can cause charges.
 - **Google Cloud cleanup** — "My First Project" (where all credentials live, ID: `enhanced-idiom-498212-f6`) renamed to "Supermom For Hire". Empty "Supermom For Hire" project shut down. Console is now clean.
 - **Sandra needs to reconnect Google Calendar** — Settings → Reconnect with `sandra@supermomforhire.com` (billing now active, this will work).
+- **Drive time accuracy fixed** — Distance Matrix API was returning idealized road-speed times (no traffic). Added `departure_time=now` (real-time traffic) and `avoid=tolls` to all Distance Matrix calls. `getNavigationUrl()` also now opens Google Maps with toll avoidance pre-set. Affected: `api/distance.js`, `Home.jsx`, `maps.js`, `NewJobSheet.jsx`.
 
 ### Previous session (v0.12.4 — Jun 3, 2026)
 - **GCal sync bug fixed** — `api/sync/gcal.js` was appending `:00` to already-normalized `HH:mm:ss` times, producing invalid datetimes Google rejected. Fixed datetime construction. Merged to main + deployed.

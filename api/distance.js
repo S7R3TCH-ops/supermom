@@ -13,7 +13,10 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Google Maps API key not configured on server' });
   }
 
-  const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(origins)}&destinations=${encodeURIComponent(destinations)}&key=${apiKey}`;
+  const { departure_time, avoid } = req.query;
+  let url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(origins)}&destinations=${encodeURIComponent(destinations)}&key=${apiKey}`;
+  if (departure_time) url += `&departure_time=${encodeURIComponent(departure_time)}`;
+  if (avoid) url += `&avoid=${encodeURIComponent(avoid)}`;
 
   try {
     const response = await fetch(url);

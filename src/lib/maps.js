@@ -36,7 +36,7 @@ export async function updateDailyRoutes(jobsForDay) {
   const destinations = stops.join('|');
 
   try {
-    const res = await fetch(`/api/distance?origins=${encodeURIComponent(origins)}&destinations=${encodeURIComponent(destinations)}`);
+    const res = await fetch(`/api/distance?origins=${encodeURIComponent(origins)}&destinations=${encodeURIComponent(destinations)}&avoid=tolls`);
     const data = await res.json();
 
     if (data.status !== 'OK') {
@@ -100,7 +100,7 @@ export async function updateDailyRoutes(jobsForDay) {
  */
 export function getNavigationUrl(address) {
   if (!address) return null;
-  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}&travelmode=driving`;
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}&travelmode=driving&avoid=tolls`;
 }
 
 /**

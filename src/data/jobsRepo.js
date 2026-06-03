@@ -322,6 +322,8 @@ export async function cancelJob(id, reason) {
     .single();
   if (error) throw error;
   assertWrote(data, 'cancelJob');
+  // Remove cancelled jobs from Google Calendar
+  triggerGCalSync(id, 'delete');
   return decorateJob(data);
 }
 

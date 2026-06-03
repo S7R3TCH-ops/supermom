@@ -9,6 +9,11 @@ const supabase = createClient(
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
 
+  const secret = process.env.INTERNAL_API_SECRET;
+  if (!secret || req.headers['x-internal-secret'] !== secret) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
   const { jobId, action = 'upsert' } = req.body;
 
   try {
@@ -55,8 +60,9 @@ export default async function handler(req, res) {
     const summary = `${job.service_name} - ${clientName}`;
     const description = `${job.job_notes || ''}\n\nSynced from Supermom for Hire`;
     
-    const startTime = `${job.scheduled_date}T${job.scheduled_time || '09:00'}:00`;
-    const [hh, mm] = (job.scheduled_time || '09:00').split(':').map(Number);
+    const timeHHMM = (job.scheduled_time || '09:00').slice(0, 5);
+    const startTime = `${job.scheduled_date}T${timeHHMM}:00`;
+    const [hh, mm] = timeHHMM.split(':').map(Number);
     const totalMin = hh * 60 + mm + Math.round((job.estimated_hours || 1) * 60);
     const endHH = String(Math.floor(totalMin / 60) % 24).padStart(2, '0');
     const endMM = String(totalMin % 60).padStart(2, '0');

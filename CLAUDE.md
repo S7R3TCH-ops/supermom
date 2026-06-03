@@ -127,12 +127,16 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 All core features are live. The app is in active use by Sandra. See `git log` for full history.
 
-### Last session (v0.12.5 — Jun 3, 2026)
+### Last session (v0.12.5 — Jun 3, 2026, updated Jun 4)
 - **Daily briefing email built** — `api/briefing/daily.js` queries today's + tomorrow's jobs and outstanding balances, sends branded HTML email to business owner via Gmail SMTP. Vercel Cron fires at `0 11 * * *` (7am EDT). Secured with `CRON_SECRET` env var. Multi-tenant ready. Added `?to=` override + `?secret=` query param for browser-based test triggers.
 - **ANTHROPIC_API_KEY** — added to Vercel env. AI features now live (no more mocks).
-- **CRON_SECRET** — added to Vercel env, then **deleted for testing** (endpoint was returning 401 during browser tests). Must re-add in Vercel before briefing is production-ready. Code is correct — no code changes needed.
+- **CRON_SECRET** — re-added to Vercel env. ✅
 - **Cleanup** — deleted one-time `run-update-email.bat` + `scripts/update-sandra-email.mjs` (Sandra's auth email was migrated to `sandra@supermomforhire.com`).
 - **Sandra login fix** — Sandra's Supabase Auth email was already correctly set to `sandra@supermomforhire.com`. Login failure was a wrong-password issue (email was changed programmatically). Sent password reset email via Supabase admin API. She can now set a new password and log in.
+- **Google Cloud billing activated** — 90-day trial had expired. Billing re-enabled with credit card. $0 budget alert set (immediate notification on any spend). Unblocks drive times + GCal sync.
+- **Distance Matrix quota cap** — hard limit set to 500 elements/day in Google Cloud Console. Sandra's real usage ~15–30/day; cap stops any runaway bug before it can cause charges.
+- **Google Cloud cleanup** — "My First Project" (where all credentials live, ID: `enhanced-idiom-498212-f6`) renamed to "Supermom For Hire". Empty "Supermom For Hire" project shut down. Console is now clean.
+- **Sandra needs to reconnect Google Calendar** — Settings → Reconnect with `sandra@supermomforhire.com` (billing now active, this will work).
 
 ### Previous session (v0.12.4 — Jun 3, 2026)
 - **GCal sync bug fixed** — `api/sync/gcal.js` was appending `:00` to already-normalized `HH:mm:ss` times, producing invalid datetimes Google rejected. Fixed datetime construction. Merged to main + deployed.
@@ -169,21 +173,25 @@ All core features are live. The app is in active use by Sandra. See `git log` fo
 - [x] **Google Maps API** — Geocoding + Distance Matrix enabled, key in Vercel + `.env`. (Jun 2, 2026)
 - [x] **Calendar sync** — `api/sync/gcal.js` wired to job create/update/delete. Datetime bug fixed Jun 3. (Jun 3, 2026)
 - [x] **ANTHROPIC_API_KEY** — added to Vercel env. AI features live. (Jun 3, 2026)
-- [x] **Daily briefing email** — built in v0.12.5. Gmail SMTP, Vercel Cron 7am EDT. **CRON_SECRET deleted from Vercel for testing — must re-add before this is live.** (Jun 3, 2026)
-- [ ] **Re-add CRON_SECRET to Vercel** — Settings → Environment Variables → `CRON_SECRET` (strong random value, Production only). Then verify briefing email fires.
+- [x] **Daily briefing email** — built in v0.12.5. Gmail SMTP, Vercel Cron 7am EDT. CRON_SECRET re-added to Vercel. (Jun 3, 2026)
+- [x] **Google Cloud billing** — activated, $0 budget alert set, Distance Matrix quota capped at 500 elements/day. (Jun 4, 2026)
+- [x] **Google Cloud cleanup** — renamed project to "Supermom For Hire", shut down empty duplicate project. (Jun 4, 2026)
+- [ ] **Sandra reconnects Google Calendar** — Settings → Reconnect with `sandra@supermomforhire.com` (billing now active)
+- [ ] **Verify daily briefing email fires** — trigger manually, confirm Sandra receives at `sandra@supermomforhire.com`
 - [ ] **Supabase public schema grants — due before Oct 30, 2026** — Run in Supabase SQL Editor (project `lskzzsjmmtsosfneuovt`): `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO anon, authenticated; GRANT USAGE ON SCHEMA public TO anon, authenticated;`
 - [ ] **PWA / installable app** — `manifest.json` + service worker. Makes app installable to iPhone home screen (no browser chrome). Prerequisite for push notifications.
 - [ ] **Push notifications** — Fire "Leave in 15 mins for Karen" at leave-time. Requires PWA first. High value for Sandra.
 - [ ] **Staff app access (Phase 2)** — `person_type = 'staff'` tracked in DB. No app login yet. When ready: link `workers.id` → `users` table + add Supabase Auth account.
 
-> Vercel Hobby plan: **10 of 12** serverless functions used (`api/briefing/daily.js` added). 2 slots remaining.
-> API cost note: All Google Maps usage is within the $200/month free credit for up to ~10 active operators. GCal is free. No runaway call risk — `locationFetchedRef` guard fires GPS fetch once per session.
+> Vercel Hobby plan: **10 of 12** serverless functions used. 2 slots remaining.
+> API cost: Distance Matrix hard-capped at 500 elements/day. $0 budget alert on billing. GCal free. Sandra's real usage ~15–30 elements/day.
 
-### Next session priorities (updated Jun 3, 2026)
-1. **Supabase schema grants** — 1 SQL command, must do before Oct 30, 2026
-2. **Test daily briefing email** — confirm Vercel Cron fires correctly, check email output
-3. **PWA setup** — `manifest.json` + service worker (enables push notifications + home screen install)
-4. **Push notifications** — leave-time alerts ("Leave in 15 mins for Karen")
+### Next session priorities (updated Jun 4, 2026)
+1. **Sandra reconnects Google Calendar** — she does this herself in Settings
+2. **Verify briefing email** — trigger manually, confirm it fires
+3. **Supabase schema grants** — 1 SQL command, must do before Oct 30, 2026
+4. **PWA setup** — `manifest.json` + service worker (enables push notifications + home screen install)
+5. **Push notifications** — leave-time alerts ("Leave in 15 mins for Karen")
 
 ### Features — Phase 2
 - [ ] **AI chat interface** — `api/ai/[action].js` already exists. Need chat UI component + conversation state. `ANTHROPIC_API_KEY` is now set.

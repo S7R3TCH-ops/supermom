@@ -402,14 +402,26 @@ export default function Home() {
   const [isFlyingIcon, setIsFlyingIcon] = useState(false);
   const [locationDrives, setLocationDrives] = useState({});
   const [locationLoading, setLocationLoading] = useState(false);
+  const [lastKnownOrigin, setLastKnownOrigin] = useState(null);
 
   const handleSupermomGo = (e) => {
     e.stopPropagation();
     if (!next?.address) return;
     setIsGoLaunching(true);
     setIsFlyingIcon(true);
-    setTimeout(() => {
-      window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(next.address)}`, '_blank');
+    const gpsPromise = new Promise(resolve =>
+      navigator.geolocation.getCurrentPosition(
+        pos => resolve(`${pos.coords.latitude},${pos.coords.longitude}`),
+        () => resolve(null),
+        { timeout: 1000, maximumAge: 30000 }
+      )
+    );
+    setTimeout(async () => {
+      const freshOrigin = await gpsPromise;
+      const origin = freshOrigin ?? lastKnownOrigin;
+      if (freshOrigin) setLastKnownOrigin(freshOrigin);
+      const originParam = origin ? `&origin=${encodeURIComponent(origin)}` : '';
+      window.open(`https://www.google.com/maps/dir/?api=1${originParam}&destination=${encodeURIComponent(next.address)}&travelmode=driving&avoid=tolls`, '_blank');
       setIsGoLaunching(false);
     }, 1100);
     setTimeout(() => setIsFlyingIcon(false), 1450);
@@ -437,6 +449,7 @@ export default function Home() {
         navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 8000 })
       );
       const origin = `${position.coords.latitude},${position.coords.longitude}`;
+      setLastKnownOrigin(origin);
       const destinations = targets.map(j => j.address).join('|');
       const res = await fetch(`/api/distance?origins=${encodeURIComponent(origin)}&destinations=${encodeURIComponent(destinations)}&departure_time=now&avoid=tolls`);
       const data = await res.json();
@@ -445,15 +458,16 @@ export default function Home() {
       targets.forEach((job, idx) => {
         const el = data.rows?.[0]?.elements?.[idx];
         if (el?.status === 'OK') {
+          const trafficDuration = el.duration_in_traffic ?? el.duration;
           newDrives[job.id] = {
-            duration: el.duration.text,
-            durationValue: el.duration.value,
+            duration: trafficDuration.text,
+            durationValue: trafficDuration.value,
           };
         }
       });
       setLocationDrives(newDrives);
-    } catch {
-      // Location denied or API error — fall back to home-based drives silently
+    } catch (err) {
+      console.warn('[fetchLocationDrives] failed:', err);
     } finally {
       setLocationLoading(false);
     }
@@ -763,9 +777,14 @@ export default function Home() {
                       else if (leaveBy) driveLabel = leaveBy.text;
                       else if (next.address) driveLabel = 'Calculating drive time…';
                       else driveLabel = 'No address on file';
+                      const arrivalTime = (() => {
+                        const secs = locDrive?.durationValue ?? fallbackValue ?? null;
+                        if (!secs) return null;
+                        return new Date(Date.now() + secs * 1000).toLocaleTimeString('en-CA', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/Toronto' });
+                      })();
                       const driveSubtitle = locationLoading ? null
-                        : locDrive ? `${locDrive.duration} from your location · current traffic`
-                        : fallback ? `${fallback} from home · estimated with traffic`
+                        : locDrive ? `${locDrive.duration} · arrive ${arrivalTime} · live traffic`
+                        : fallback ? `~${fallback} · arrive ~${arrivalTime} · est. from home`
                         : null;
                       if (next.address) {
                         return (
@@ -773,15 +792,14 @@ export default function Home() {
                             <button
                               onClick={handleSupermomGo}
                               disabled={isGoLaunching}
+                              className={isUrgent && !isGoLaunching ? 'go-btn-urgent' : ''}
                               style={{
                                 width: '100%',
                                 padding: '12px 14px',
                                 borderRadius: 12,
                                 background: isGoLaunching
                                   ? 'linear-gradient(90deg,#8B0E3F,#E91E6A,#FF78B0)'
-                                  : isUrgent
-                                    ? 'linear-gradient(90deg,#DC2626,#EF4444)'
-                                    : `linear-gradient(90deg,${DEEP_ROSE},#E91E6A)`,
+                                  : `linear-gradient(90deg,${DEEP_ROSE},#E91E6A)`,
                                 color: 'white',
                                 border: 'none',
                                 cursor: isGoLaunching ? 'default' : 'pointer',
@@ -790,7 +808,7 @@ export default function Home() {
                                 gap: 10,
                                 transition: 'background 0.3s, transform 0.15s',
                                 transform: isGoLaunching ? 'scale(0.97)' : 'scale(1)',
-                                boxShadow: isGoLaunching ? 'none' : isUrgent ? '0 4px 16px rgba(220,38,38,0.4)' : '0 4px 16px rgba(233,30,106,0.35)',
+                                boxShadow: isGoLaunching ? 'none' : '0 4px 16px rgba(233,30,106,0.35)',
                                 textAlign: 'left',
                                 overflow: 'visible',
                               }}

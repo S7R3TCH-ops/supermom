@@ -161,26 +161,6 @@ export default function Home() {
       .sort((a, b) => a.start - b.start);
   }, [allJobs, now]);
 
-  const nextDriveValue =
-    locationDrives[next?.id]?.durationValue ??
-    next?.raw?.ai_context?.drive_to?.durationValue ??
-    0;
-  const minsLateToLeave = (next && nextDriveValue > 0)
-    ? Math.round((now - (next.start.getTime() - nextDriveValue * 1000)) / 60000)
-    : 0;
-
-  const briefingMsg = useMemo(() => getBriefingMessage({
-    allDone,
-    activeJob,
-    next,
-    now,
-    todayJobs,
-    attentionItemCount: attentionItems.length,
-    persona,
-    firstName,
-    minsLateToLeave,
-  }), [allDone, activeJob, next, now, todayJobs, attentionItems.length, persona, firstName, minsLateToLeave]);
-
   const completedPaidThisWeek = useMemo(() => {
     if (!allJobs) return [];
     return allJobs
@@ -411,6 +391,26 @@ export default function Home() {
   const [isFlyingIcon, setIsFlyingIcon] = useState(false);
   const [locationDrives, setLocationDrives] = useState({});
   const [locationLoading, setLocationLoading] = useState(false);
+
+  const nextDriveValue =
+    locationDrives[next?.id]?.durationValue ??
+    next?.raw?.ai_context?.drive_to?.durationValue ??
+    0;
+  const minsLateToLeave = (next && nextDriveValue > 0)
+    ? Math.round((now - (next.start.getTime() - nextDriveValue * 1000)) / 60000)
+    : 0;
+
+  const briefingMsg = useMemo(() => getBriefingMessage({
+    allDone,
+    activeJob,
+    next,
+    now,
+    todayJobs,
+    attentionItemCount: attentionItems.length,
+    persona,
+    firstName,
+    minsLateToLeave,
+  }), [allDone, activeJob, next, now, todayJobs, attentionItems.length, persona, firstName, minsLateToLeave]);
   const [lastKnownOrigin, setLastKnownOrigin] = useState(null);
 
   const handleSupermomGo = (e) => {

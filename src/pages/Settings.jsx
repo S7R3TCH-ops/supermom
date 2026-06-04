@@ -73,6 +73,7 @@ export default function Settings() {
         postal_code: business.postal_code ?? '',
         hourly_rate: business.hourly_rate != null ? String(business.hourly_rate) : '',
         tax_enabled: business.tax_enabled ?? false,
+        hst_number:  business.hst_number  ?? '',
         signature:   business.ai_profile?.signature ?? '',
       });
       formInitialized.current = true;
@@ -112,6 +113,7 @@ export default function Settings() {
           postal_code: form.postal_code,
           hourly_rate: form.hourly_rate === '' ? null : Number(form.hourly_rate),
           tax_enabled: form.tax_enabled,
+          hst_number:  form.hst_number || null,
           ai_profile: {
             ...(business?.ai_profile || {}),
             signature: form.signature,
@@ -262,6 +264,12 @@ export default function Settings() {
               </div>
               <input type="checkbox" checked={form.tax_enabled} onChange={e => setForm({...form, tax_enabled: e.target.checked})} style={{ width: 18, height: 18 }} />
             </div>
+            {form.tax_enabled && (
+              <div>
+                <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--ink-muted)', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>HST Registration #</label>
+                <input value={form.hst_number} onChange={e => setForm({...form, hst_number: e.target.value})} placeholder="123456789 RT0001" style={inputStyle} />
+              </div>
+            )}
           </div>
         </div>
 

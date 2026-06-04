@@ -132,9 +132,24 @@ All core features are live. The app is in active use by Sandra. See `git log` fo
 - **Google Calendar OAuth fixed** — `APP_BASE_URL` was set to empty string in Vercel, causing redirect to fall back to `localhost`. Fixed: set `APP_BASE_URL=https://app.supermomforhire.com` in Vercel. Added `https://app.supermomforhire.com/api/auth/google/callback` to Google Cloud Console authorized redirect URIs. Redeployed.
 - **GCal sync fixed** — `triggerGCalSync` in `jobsRepo.js` is called client-side and could never send the `INTERNAL_API_SECRET` header. Removed that auth check from `api/sync/gcal.js` — endpoint is write-only to Google Calendar, low exposure risk.
 - **GCal event color** — All synced events now use `colorId: '4'` (Flamingo). Existing events get color on next re-save.
-- **Briefing email improvements** — Jobs now show start–end time range (e.g. "9:00 AM – 11:00 AM"). Dad joke added to each email. Logo URL updated to `app.supermomforhire.com`. Unpaid job dates now formatted as day names. Subject line personalized with first name.
-- **Daily briefing cron** — Schedule remains `0 11 * * *` (7am EDT). Test schedule (`40 0 * * *`) was reverted before commit.
+- **Briefing email overhauled** — Many improvements made this session (see below). Manual trigger confirmed working. Cron auto-fire still unverified (see below).
 - **GCal sync still needs end-to-end test** — Joel connected his Google account (joel@). Sandra still needs to reconnect with `sandra@supermomforhire.com`.
+
+### Daily briefing email — current state (Jun 5, 2026)
+- **File**: `api/briefing/daily.js`
+- **Manual test URL**: `https://supermom-s7-r3-tch.vercel.app/api/briefing/daily?secret=supermom_daily_email_updates&to=jlundie@gmail.com`
+- **Cron schedule**: `0 11 * * *` = 7:00 AM EDT daily — defined in `vercel.json`
+- **CRON_SECRET**: `supermom_daily_email_updates` — set in Vercel env + local `.env`
+- **Gmail sender**: `admin@supermomforhire.com` via nodemailer. App Password updated Jun 5 (old one was revoked). New password stored in `.env` as `GMAIL_APP_PASSWORD`.
+- **Reply-To**: `noreply@supermomforhire.com` — replies bounce harmlessly
+- **Recipients**: loops all businesses in DB, sends to `biz.email`. Both confirmed correct:
+  - Joel test account → `jlundie@gmail.com`
+  - Sandra → `sandra@supermomforhire.com`
+- **Email content**: subject "Good morning, {first name}!", dad joke from `icanhazdadjoke.com`, job rows show full client name + start–end time range, unpaid balances show full client name + formatted date, all links point to `app.supermomforhire.com`
+- **✅ Auto-cron fixed (Jun 5, 2026)** — Root cause found: the `40 0 * * *` test schedule had been deployed to production from a **dirty working tree via `vercel --prod`** (the CLI deploys the working tree, not the committed file), so the live cron drifted from the committed `0 11 * * *`. Git never contained `40 0`. On top of that, ~20 rapid redeploys on the **Hobby plan** (single concurrent build) left one production build wedged in `INITIALIZING` for 30 min, and Hobby re-registers the cron on every deploy. **Fix:** canceled the stuck build, ran one clean `vercel --prod` from the committed `0 11 * * *` tree. Verified via Vercel API that the live cron now reads `{"path":"/api/briefing/daily","schedule":"0 11 * * *"}` on deployment `dpl_DEo4SQ...` (commit `0609679`), `enabled: true`.
+  - **Hobby plan caveat**: cron timing is best-effort — the email may land anywhere in the **7:00–8:00 AM EDT** window, not exactly 7:00. Minute-accurate firing requires Pro (not doing this).
+  - **DO NOT rapid-redeploy.** Every production deploy re-registers the cron and resets the next-run clock. Deploy once from a clean committed tree and leave it.
+  - To re-verify the live schedule any time: **Vercel dashboard → supermom → Settings → Crons**, or query `GET https://api.vercel.com/v9/projects/{projectId}?teamId={teamId}` and read `.crons.definitions`.
 
 ### Last session (v0.12.6 — Jun 4, 2026)
 - **Daily briefing email built** — `api/briefing/daily.js` queries today's + tomorrow's jobs and outstanding balances, sends branded HTML email to business owner via Gmail SMTP. Vercel Cron fires at `0 11 * * *` (7am EDT). Secured with `CRON_SECRET` env var. Multi-tenant ready. Added `?to=` override + `?secret=` query param for browser-based test triggers.
@@ -188,7 +203,8 @@ All core features are live. The app is in active use by Sandra. See `git log` fo
 - [x] **Google Cloud cleanup** — renamed project to "Supermom For Hire", shut down empty duplicate project. (Jun 4, 2026)
 - [x] **Google Calendar OAuth** — fixed and working (Jun 5, 2026). `APP_BASE_URL` corrected in Vercel.
 - [ ] **Sandra reconnects Google Calendar** — Settings → Reconnect with `sandra@supermomforhire.com`
-- [ ] **Verify daily briefing email fires** — trigger manually, confirm Sandra receives at `sandra@supermomforhire.com`
+- [x] **Manual briefing trigger confirmed working** — `?secret=supermom_daily_email_updates&to=jlundie@gmail.com` works. Gmail App Password updated Jun 5.
+- [x] **Auto-cron schedule fixed (Jun 5, 2026)** — live cron now correctly `0 11 * * *` (7am EDT) on a clean deploy; was drifted to a leftover `40 0` test schedule. See Last session notes. Final confirmation = email lands in `jlundie@gmail.com` between 7:00–8:00am EDT (Hobby timing slop).
 - [ ] **Supabase public schema grants — due before Oct 30, 2026** — Run in Supabase SQL Editor (project `lskzzsjmmtsosfneuovt`): `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO anon, authenticated; GRANT USAGE ON SCHEMA public TO anon, authenticated;`
 - [ ] **PWA / installable app** — `manifest.json` + service worker. Makes app installable to iPhone home screen (no browser chrome). Prerequisite for push notifications.
 - [ ] **Push notifications** — Fire "Leave in 15 mins for Karen" at leave-time. Requires PWA first. High value for Sandra.
@@ -198,10 +214,10 @@ All core features are live. The app is in active use by Sandra. See `git log` fo
 > API cost: Distance Matrix hard-capped at 500 elements/day. $0 budget alert on billing. GCal free. Sandra's real usage ~15–30 elements/day.
 
 ### Next session priorities (updated Jun 5, 2026)
-1. **Sandra reconnects Google Calendar** — she does this herself in Settings → Reconnect with `sandra@supermomforhire.com`
-2. **Verify briefing email** — trigger manually via `?to=&secret=`, confirm Sandra receives it
-3. **Fix briefing email test trigger** — Joel tried testing via URL params but it didn't work; needs investigation
-4. **Supabase schema grants** — 1 SQL command, must do before Oct 30, 2026
+1. **Confirm 7am cron delivered** — schedule is now correctly registered (`0 11 * * *`). Just check `jlundie@gmail.com` lands an email in the 7:00–8:00am EDT window. If not: Vercel dashboard → supermom → Settings → Crons → last run status. **Do not redeploy to "fix" it** — that resets the cron clock.
+2. **Sandra reconnects Google Calendar** — she does this herself in Settings → Reconnect with `sandra@supermomforhire.com`
+3. **Verify Sandra receives briefing email** — once cron confirmed working, check she gets it at `sandra@supermomforhire.com`
+4. **Supabase schema grants** — 1 SQL command, must do before Oct 30, 2026: `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO anon, authenticated; GRANT USAGE ON SCHEMA public TO anon, authenticated;`
 5. **PWA setup** — `manifest.json` + service worker (enables push notifications + home screen install)
 6. **Push notifications** — leave-time alerts ("Leave in 15 mins for Karen")
 

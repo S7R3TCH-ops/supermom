@@ -252,7 +252,7 @@ export default function Settings() {
 
             <div>
               <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--ink-muted)', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Base Hourly Rate ($)</label>
-              <input type="number" value={form.hourly_rate} onChange={e => setForm({...form, hourly_rate: e.target.value})} style={inputStyle} />
+              <input type="number" value={form.hourly_rate} onChange={e => setForm({...form, hourly_rate: e.target.value})} onFocus={e => e.target.select()} style={inputStyle} />
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderTop: '1px solid var(--pink-border)', marginTop: 4 }}>

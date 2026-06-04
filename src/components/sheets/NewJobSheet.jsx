@@ -246,7 +246,7 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
         ? (business?.hourly_rate || 0)
         : (Number(svc?.default_price) || 0);
       const serviceRate = customPrice !== null ? Number(customPrice) : defaultRate;
-      const estimatedHours = duration / 60;
+      const estimatedHours = Math.round((duration / 60) * 100) / 100;
       const totalAmount = pricingType === 'Hourly'
         ? serviceRate * estimatedHours
         : serviceRate;

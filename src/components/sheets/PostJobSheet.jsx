@@ -351,6 +351,7 @@ export default function PostJobSheet({ jobId, onClose }) {
                   type="number"
                   value={amount}
                   onChange={e => setAmount(e.target.value)}
+                  onFocus={e => e.target.select()}
                   placeholder={alreadyPaid > 0 ? `Remaining: $${Math.max(0, liveTotal - alreadyPaid).toFixed(2)}` : '0.00'}
                   style={{
                     width: '100%', padding: '12px 14px 12px 30px', borderRadius: 12,
@@ -385,6 +386,7 @@ export default function PostJobSheet({ jobId, onClose }) {
                       newCosts[i].amount = e.target.value;
                       setCosts(newCosts);
                     }}
+                    onFocus={e => e.target.select()}
                     placeholder="0"
                     style={{ width: '100%', padding: '10px 10px 10px 22px', borderRadius: 10, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.ink, fontSize: 13, outline: 'none' }}
                   />

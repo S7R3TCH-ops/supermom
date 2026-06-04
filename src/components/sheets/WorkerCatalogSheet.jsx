@@ -306,6 +306,7 @@ export default function WorkerCatalogSheet({ isOpen, onClose }) {
                                   type="number"
                                   value={sel.pay_rate}
                                   onChange={e => setSkillPay(st.id, e.target.value)}
+                                  onFocus={e => e.target.select()}
                                   placeholder="0.00"
                                   style={{ ...inputStyle, padding: '6px 8px 6px 20px', fontSize: 12 }}
                                 />

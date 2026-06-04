@@ -260,7 +260,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
       service_id:      job.service_id      || null,
       pricing_type:    job.pricing_type    || 'Flat',
       total_amount:    String(job.total_amount ?? job.flat_rate ?? ''),
-      estimated_hours: String(job.estimated_hours || ''),
+      estimated_hours: job.estimated_hours ? String(Math.round(Number(job.estimated_hours) * 100) / 100) : '',
       hourly_rate:     String(derivedRate),
       payment_method:  job.ai_context?.payment_method || 'Cash',
       recurrence:      job.ai_context?.recurrence_rule || null,
@@ -666,11 +666,11 @@ function EditMode({ job, form, setForm, services, workers, business, T, mode, bu
             }} style={{ flex: 1, padding: '9px 0', borderRadius: 8, background: form.pricing_type === p ? '#E91E6A' : T.card, border: `1.5px solid ${form.pricing_type === p ? '#E91E6A' : T.cardBorder}`, color: form.pricing_type === p ? 'white' : T.inkSub, cursor: 'pointer' }}>{p}</button>)}
           </div>
         </Field>
-        <Field T={T} label="Amount ($)"><input type="number" value={form.total_amount} onChange={e => set('total_amount', e.target.value)} style={{ ...iStyle(T), width: '100%' }} /></Field>
+        <Field T={T} label="Amount ($)"><input type="number" value={form.total_amount} onChange={e => set('total_amount', e.target.value)} onFocus={e => e.target.select()} style={{ ...iStyle(T), width: '100%' }} /></Field>
         <Field T={T} label="Est. hours"><input type="number" value={form.estimated_hours} onChange={e => {
           set('estimated_hours', e.target.value);
           set('hoursTouched', true);
-        }} style={{ ...iStyle(T), width: '100%' }} /></Field>
+        }} onFocus={e => e.target.select()} style={{ ...iStyle(T), width: '100%' }} /></Field>
 
         <FinancialMathBreakdown job={job} business={business} liveForm={form} T={T} mode={mode} />
 

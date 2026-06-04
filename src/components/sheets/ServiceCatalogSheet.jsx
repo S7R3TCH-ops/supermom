@@ -364,6 +364,7 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
                             value={displayPrice}
                             disabled={useDefault || isPendingDelete}
                             onChange={e => handleUpdate(s.id, 'default_price', e.target.value)}
+                            onFocus={e => e.target.select()}
                             style={{ width: '100%', background: 'transparent', border: 'none', padding: '8px 0', color: T.ink, fontSize: 15, outline: 'none' }}
                           />
                         </div>
@@ -388,6 +389,7 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
                             value={s.default_duration}
                             disabled={isPendingDelete}
                             onChange={e => handleUpdate(s.id, 'default_duration', e.target.value)}
+                            onFocus={e => e.target.select()}
                             style={{ width: '100%', background: 'transparent', border: 'none', padding: '8px 0', color: T.ink, fontSize: 15, outline: 'none' }}
                           />
                           <span style={{ color: T.inkMuted, fontSize: 10, fontWeight: 700 }}>HRS</span>

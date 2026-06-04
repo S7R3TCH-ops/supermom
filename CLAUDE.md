@@ -237,19 +237,35 @@ CLAUDE.md is the only shared truth across online / desktop / CLI sessions. Memor
 - [ ] **Push notifications** — Fire "Leave in 15 mins for Karen" at leave-time. Requires PWA first. High value for Sandra.
 - [ ] **Staff app access (Phase 2)** — `person_type = 'staff'` tracked in DB. No app login yet. When ready: link `workers.id` → `users` table + add Supabase Auth account.
 
-> Vercel Hobby plan: **10 of 12** serverless functions used. 2 slots remaining.
+> Vercel Hobby plan: **10 of 12** serverless functions used. 2 slots remaining. Consider consolidating functions when a new slot is needed.
 > API cost: Distance Matrix hard-capped at 500 elements/day. $0 budget alert on billing. GCal free. Sandra's real usage ~15–30 elements/day.
+> **Watchlist**: Monitor function slot count, Maps quota usage, and cron schedule drift each session. Don't rapid-redeploy (resets cron clock).
 
 ### Next session priorities
-1. **Verify drive time matches Maps on phone** — check F12 console for `[fetchLocationDrives] failed:` warning if times still differ. Most likely: GPS denied or `duration_in_traffic` not returned (billing issue).
-2. **Sandra reconnects Google Calendar** — Settings → Reconnect with `sandra@supermomforhire.com`
-3. **Supabase schema grants** — 1 SQL command, must do before Oct 30, 2026
-4. **PWA setup** → push notifications
+1. **Sandra reconnects Google Calendar** — Settings → Reconnect with `sandra@supermomforhire.com` (Sandra action)
+2. **Supabase schema grants** — 1 SQL command, must do before Oct 30, 2026
+3. **PWA setup** → push notifications (prerequisite for #4)
+4. **Archive Client & All Jobs** — admin danger zone in `ClientProfile.jsx`. Plan is in `docs/superpowers/plans/2026-05-18-ui-polish.md` Task 5. Was not shipped despite other ui-polish tasks being done.
+5. **Calendar readability overhaul** — current Schedule page (day/agenda views) is hard to read. Needs UX rethink — cards too dense, key info not scannable. Design pass required before coding.
+6. **Staff app access** — `person_type = 'staff'` in DB. Link `workers.id` → `users` + Supabase Auth. Note: rename "staff" label to something better — TBD with Joel.
+7. **Remove debug console.warn** — `console.warn('[fetchLocationDrives] failed:', err)` in `Home.jsx`. Cleanup before v1.0.
+
+### UX polish — input behaviour (confirmed Jun 4, 2026)
+- [ ] **Select-all on text field focus** — every numeric/amount input across the app (NewJobSheet, EditJob, service catalog, etc.) should select all text when tapped so the user can just start typing. Use `onFocus={e => e.target.select()}` on all `<input type="text|number">` fields.
+- [ ] **Duration defaulting to 1.667h bug** — when adding or editing a job, the duration field sometimes shows `1.667` instead of the service's `default_duration`. Likely a minutes→hours conversion rounding issue (100 min ÷ 60 = 1.6667). Needs investigation in NewJobSheet and EditJob — find where `default_duration` is written to the duration field and ensure it's rounded or stored correctly.
+
+### Navigation / UX fixes (confirmed Jun 4, 2026)
+- [ ] **Logo taps → Home** — tapping the logo in the app bar should always navigate to `/` (Home screen).
+- [ ] **Login always lands on Home** — after successful login, redirect to Home regardless of previous route.
+- [ ] **Viewpoint switch → Home** — when Super Admin switches to another user's viewpoint, navigate to Home screen immediately after the switch.
+- [ ] **Back always goes Home** — navigating "back" (e.g. closing a sheet or detail page) should return to Home, unless there is unsaved work in progress (edit or new job form — warn/block in that case).
+- [ ] **Edit Job parity with Add Job** — Edit Job sheet is missing fields that exist in NewJobSheet. Audit both and bring Edit Job up to full parity so every field editable at booking time is also editable after.
 
 ### Features — Phase 2
-- [ ] **AI chat interface** — `api/ai/[action].js` already exists. Need chat UI component + conversation state. `ANTHROPIC_API_KEY` is now set.
-- [ ] **Voice scheduling** — `api/transcribe.js` already exists. Flow: tap mic → transcribe → Claude parses intent → pre-fills booking sheet.
-- [ ] **Custom domain → swap email provider** — Sandra's domain is live. When stable, swap `nodemailer` for `resend`. `from` becomes `invoices@supermomforhire.com`. 5-min job.
-- [ ] Self-serve client booking link
-- [ ] Offline mode (crashes if Supabase unreachable on first load)
-- [ ] Client engagement tools (AI follow-up / re-booking reminders)
+- [ ] **AI chat interface** — `api/ai/[action].js` already exists. Need chat UI component + conversation state. `ANTHROPIC_API_KEY` is now set. HIGH PRIORITY.
+- [ ] **Voice scheduling** — `api/transcribe.js` already exists. Flow: tap mic → transcribe → Claude parses intent → pre-fills booking sheet. HIGH PRIORITY.
+- [ ] **Custom domain → swap email provider** — swap `nodemailer` for `resend`. `from` becomes `invoices@supermomforhire.com`. Ask Joel what Resend is before doing. ~5-min job once understood.
+- [ ] **Self-serve client booking link** — no self-serve portal yet. Low priority.
+- [ ] **Offline mode** — app crashes if Supabase unreachable on first load. Better `Suspense` fallbacks needed.
+- [ ] **Client engagement tools** — AI follow-up / re-booking reminders.
+- [ ] **Swipe to delete on job cards** — client request, low priority, may not do.

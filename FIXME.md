@@ -26,7 +26,7 @@
 
 ## Open Issues
 
-- [ ] **Mobile Keyboard Layout** — Keyboard covers the "Save" button in sheets on small iOS devices. Need to add `paddingBottom` to `SheetContainer` based on focus state.
+- [x] **Mobile Keyboard Layout** — Keyboard covers the "Save" button in sheets on small iOS devices. *(Fixed — confirmed Jun 4, 2026)*
 - [ ] **Swipe to Delete** — Client request for swipe gestures on job cards.
 - [ ] **Offline Mode** — App crashes if Supabase is unreachable on initial load. Need better `Suspense` fallbacks.
 

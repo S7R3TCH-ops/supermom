@@ -146,6 +146,7 @@ export default function NewExpenseSheet({ isOpen, onClose }) {
               required
               value={amount}
               onChange={e => setAmount(e.target.value)}
+              onFocus={e => e.target.select()}
               placeholder="0"
               min="0"
               step="1"

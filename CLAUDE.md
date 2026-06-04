@@ -124,12 +124,17 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 ---
 
-## Current version: 0.12.9 — committed Jun 4, 2026
+## Current version: 0.12.10 — committed Jun 4, 2026
 
 All core features are live. The app is in active use by Sandra. See `git log` for full history.
 
 ### ⚠️ Multi-client git discipline
 CLAUDE.md is the only shared truth across online / desktop / CLI sessions. Memory files are local-only. **Always push local commits before starting an online Claude Code session**, and always pull before the online session writes code — otherwise the online session will push stale commits and overwrite newer local work (happened Jun 4, 2026).
+
+### Last session (v0.12.10 — Jun 4, 2026)
+- **Select-all on numeric input focus** — `onFocus={e => e.target.select()}` added to all number inputs across JobDetailSheet, PostJobSheet, ServiceCatalogSheet, WorkerCatalogSheet, NewExpenseSheet, Settings.
+- **Duration 1.667 bug fixed** — `NewJobSheet` was saving `duration/60` unrounded; now rounds to 2dp. `JobDetailSheet` also rounds `estimated_hours` on load from DB so existing jobs display cleanly (e.g. `1.67` not `1.6666...`).
+- **Full to-do audit** — consolidated all open items into CLAUDE.md "Next session priorities" section. Old stale plan files reviewed; items 16–21 from May plans verified as done except Archive Client (still open).
 
 ### Last session (v0.12.9 — Jun 4, 2026)
 - **GO button urgent state** — replaced red gradient on "Leave NOW" with rose pulse animation (`.go-btn-urgent`, `@keyframes goUrgentPulse` in `index.css`). Keeps brand colors, no red clash.

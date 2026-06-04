@@ -124,12 +124,21 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 ---
 
-## Current version: 0.12.10 — committed Jun 4, 2026
+## Current version: 0.12.11 — committed Jun 4, 2026
 
 All core features are live. The app is in active use by Sandra. See `git log` for full history.
 
 ### ⚠️ Multi-client git discipline
 CLAUDE.md is the only shared truth across online / desktop / CLI sessions. Memory files are local-only. **Always push local commits before starting an online Claude Code session**, and always pull before the online session writes code — otherwise the online session will push stale commits and overwrite newer local work (happened Jun 4, 2026).
+
+### Last session (v0.12.11 — Jun 4, 2026)
+- **Full onboarding wizard** — 5-step flow for new business owners: Welcome (provisioned name+email card) → Business Info (first/last name, business name, phone, city, postal, HST — all required with inline validation, saves to both `businesses` + `users` tables) → Quick Tips (calendar, client, booking) → Email Preference (Daily vs Weekly picker, saves to `ai_profile.email_frequency`) → You're Ready (dark mode/privacy/GCal callouts) → navigates to `/settings` on completion.
+- **Command Brief dot removed** — colored status dot removed; Next Up card pulse covers urgency signaling.
+- **Drive-time-aware briefing** — `getBriefingMessage` now scolds Sandra with passive-aggressive messages when she's past her leave window (1–5 min: "Move it!"; 6–15 min: "They're watching the clock"; 16+: "Just call ahead"). Requires live or cached drive time to fire.
+- **`hst_number` in Settings** — was used on invoices but couldn't be edited in Settings. Field now appears when HST is enabled.
+- **Duplicate client error fix** — "email already exists" was incorrectly shown when email was blank (`null === null` bug). Now only says "email" when email was actually populated and matched.
+- **`locationDrives` TDZ crash fixed** — `minsLateToLeave` computation was placed before the `locationDrives` useState declaration; moved to after line 412.
+- **Weekly email preference** — stored in `ai_profile.email_frequency` ('daily'|'weekly'). Weekly email feature itself is parked for next session.
 
 ### Last session (v0.12.10 — Jun 4, 2026)
 - **Select-all on numeric input focus** — `onFocus={e => e.target.select()}` added to all number inputs across JobDetailSheet, PostJobSheet, ServiceCatalogSheet, WorkerCatalogSheet, NewExpenseSheet, Settings.

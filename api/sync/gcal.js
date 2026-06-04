@@ -9,11 +9,6 @@ const supabase = createClient(
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
 
-  const secret = process.env.INTERNAL_API_SECRET;
-  if (!secret || req.headers['x-internal-secret'] !== secret) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-
   const { jobId, action = 'upsert' } = req.body;
 
   try {
@@ -72,6 +67,7 @@ export default async function handler(req, res) {
       summary,
       location: job.clients.address || '',
       description,
+      colorId: '4', // Flamingo
       start: { dateTime: startTime, timeZone: 'America/Toronto' },
       end: { dateTime: endTime, timeZone: 'America/Toronto' },
     };

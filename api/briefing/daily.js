@@ -35,26 +35,35 @@ function escapeHtml(s) {
 
 // ── email builder ─────────────────────────────────────────────────────────────
 
-function buildEmailHtml({ todayJobs, tomorrowJobs, unpaidJobs, todayLabel, tomorrowLabel, ownerName }) {
+function buildEmailHtml({ todayJobs, tomorrowJobs, unpaidJobs, todayLabel, tomorrowLabel, ownerName, dadJoke }) {
   const pink = '#E91E6A';
   const cream = '#FFF9F5';
   const green = '#22c55e';
 
+  function calcEndTime(startTime, hours) {
+    if (!startTime || !hours) return null;
+    const [h, m] = startTime.split(':').map(Number);
+    const totalMins = h * 60 + m + Math.round(hours * 60);
+    const endH = Math.floor(totalMins / 60) % 24;
+    const endM = totalMins % 60;
+    return `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+  }
+
   function jobRow(job) {
-    const time = escapeHtml(formatTime(job.scheduled_time));
+    const startFmt = formatTime(job.scheduled_time);
+    const endTime = calcEndTime(job.scheduled_time, job.estimated_hours);
+    const timeStr = escapeHtml(endTime ? `${startFmt} – ${formatTime(endTime)}` : startFmt);
     const client = escapeHtml(`${job.clients?.first_name ?? ''} ${job.clients?.last_name ?? ''}`.trim() || 'Unknown Client');
     const service = escapeHtml(job.service_name || '');
-    const hrs = job.estimated_hours ? `${job.estimated_hours}h est` : '';
     const drive = job.clients?.ai_context?.drive_to?.duration ? `🚗 ${job.clients.ai_context.drive_to.duration} away` : '';
     const notes = job.job_notes ? `<div style="font-size:12px;color:#888;margin-top:2px;">${escapeHtml(job.job_notes)}</div>` : '';
-    const meta = [hrs, drive].filter(Boolean).join(' · ');
     return `
       <tr>
         <td style="padding:12px 0;border-bottom:1px solid #f0f0f0;vertical-align:top;">
-          <div style="font-size:13px;font-weight:700;color:${pink};width:70px;display:inline-block;">${time}</div>
+          <div style="font-size:13px;font-weight:700;color:${pink};margin-bottom:2px;">${timeStr}</div>
           <div style="display:inline-block;vertical-align:top;">
             <div style="font-size:14px;font-weight:600;color:#1a1a1a;">${client}</div>
-            <div style="font-size:12px;color:#666;">${service}${meta ? ` · <span style="color:#888;">${meta}</span>` : ''}</div>
+            <div style="font-size:12px;color:#666;">${service}${drive ? ` · <span style="color:#888;">${drive}</span>` : ''}</div>
             ${notes}
           </div>
         </td>
@@ -64,7 +73,7 @@ function buildEmailHtml({ todayJobs, tomorrowJobs, unpaidJobs, todayLabel, tomor
   function unpaidRow(job) {
     const client = escapeHtml(`${job.clients?.first_name ?? ''} ${job.clients?.last_name ?? ''}`.trim() || 'Unknown Client');
     const amount = escapeHtml(formatMoney(job.total_amount));
-    const date = escapeHtml(job.scheduled_date || '');
+    const date = escapeHtml(job.scheduled_date ? formatDayLabel(job.scheduled_date) : '');
     return `
       <tr>
         <td style="padding:10px 0;border-bottom:1px solid #f0f0f0;">
@@ -89,8 +98,8 @@ function buildEmailHtml({ todayJobs, tomorrowJobs, unpaidJobs, todayLabel, tomor
     : `<p style="color:${green};font-size:13px;font-weight:600;margin:0;">All caught up — no outstanding balances ✓</p>`;
 
   const greeting = todayJobs.length === 0
-    ? `Good morning, ${escapeHtml(ownerName)}! No jobs today.`
-    : `Good morning, ${escapeHtml(ownerName)}! You have ${todayJobs.length} job${todayJobs.length !== 1 ? 's' : ''} today.`;
+    ? `Good morning, ${escapeHtml(ownerName)}! No jobs today 🎉`
+    : `Good morning, ${escapeHtml(ownerName)}! You've got ${todayJobs.length} job${todayJobs.length !== 1 ? 's' : ''} today.`;
 
   return `<!DOCTYPE html>
 <html>
@@ -102,13 +111,14 @@ function buildEmailHtml({ todayJobs, tomorrowJobs, unpaidJobs, todayLabel, tomor
 
         <!-- Header -->
         <tr><td style="background:${pink};padding:28px 32px;text-align:center;">
-          <img src="https://supermom-v2.vercel.app/branding/logo-final.png" alt="Supermom for Hire" height="70" style="display:block;margin:0 auto 12px;" />
+          <img src="https://app.supermomforhire.com/branding/logo-final.png" alt="Supermom for Hire" height="70" style="display:block;margin:0 auto 12px;" />
           <div style="color:white;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;opacity:.85;">Daily Briefing · ${escapeHtml(todayLabel)}</div>
         </td></tr>
 
         <!-- Greeting -->
         <tr><td style="padding:24px 32px 0;">
           <p style="margin:0;font-size:16px;font-weight:600;color:#1a1a1a;">${greeting}</p>
+          ${dadJoke ? `<p style="margin:10px 0 0;font-size:13px;color:#888;font-style:italic;">😄 ${escapeHtml(dadJoke)}</p>` : ''}
         </td></tr>
 
         <!-- Today -->
@@ -139,7 +149,7 @@ function buildEmailHtml({ todayJobs, tomorrowJobs, unpaidJobs, todayLabel, tomor
         <tr><td style="background:#fafafa;border-top:1px solid #eee;padding:20px 32px;text-align:center;">
           <p style="margin:0;font-size:12px;color:#aaa;">Supermom for Hire · Georgetown, ON</p>
           <p style="margin:6px 0 0;font-size:12px;color:#ccc;">
-            <a href="https://supermom-v2.vercel.app" style="color:#ccc;">Open the app</a>
+            <a href="https://app.supermomforhire.com" style="color:#ccc;">Open the app</a>
           </p>
         </td></tr>
 
@@ -182,6 +192,13 @@ export default async function handler(req, res) {
   const tomorrow = torontoDateStr(1);
   const todayLabel = formatDayLabel(today);
   const tomorrowLabel = formatDayLabel(tomorrow);
+
+  // Fetch a dad joke for today's email
+  let dadJoke = null;
+  try {
+    const jokeRes = await fetch('https://icanhazdadjoke.com/', { headers: { Accept: 'application/json' } });
+    if (jokeRes.ok) dadJoke = (await jokeRes.json()).joke ?? null;
+  } catch { /* non-fatal — email sends without joke if this fails */ }
 
   // Fetch all active businesses (to support multiple owners in future)
   const { data: businesses, error: bizErr } = await sb
@@ -227,19 +244,22 @@ export default async function handler(req, res) {
       .order('scheduled_date', { ascending: false })
       .limit(10);
 
+    const todayCount = (todayJobs ?? []).length;
+    const firstName = (biz.owner_name || 'Sandra').split(' ')[0];
+
     const html = buildEmailHtml({
       todayJobs: todayJobs ?? [],
       tomorrowJobs: tomorrowJobs ?? [],
       unpaidJobs: unpaidJobs ?? [],
       todayLabel,
       tomorrowLabel,
-      ownerName: biz.owner_name || 'Sandra',
+      ownerName: firstName,
+      dadJoke,
     });
 
-    const todayCount = (todayJobs ?? []).length;
     const subject = todayCount === 0
-      ? `Good morning! No jobs scheduled for today`
-      : `Good morning! ${todayCount} job${todayCount !== 1 ? 's' : ''} today · ${todayLabel}`;
+      ? `Good morning, ${firstName}! No jobs today`
+      : `Good morning, ${firstName}! ${todayCount} job${todayCount !== 1 ? 's' : ''} today · ${todayLabel}`;
 
     if (!gmailUser || !gmailPass) {
       console.warn(`[briefing] No Gmail creds — skipping send to ${toEmail}`);
@@ -254,6 +274,7 @@ export default async function handler(req, res) {
 
     await transporter.sendMail({
       from: `"Supermom for Hire" <${gmailUser}>`,
+      replyTo: 'noreply@supermomforhire.com',
       to: toEmail,
       subject,
       html,

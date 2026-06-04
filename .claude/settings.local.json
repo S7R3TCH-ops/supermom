@@ -58,7 +58,8 @@
       "Bash(find /c /mnt/c -name \"statusline-command.sh\")",
       "Bash(bash /c/Users/joel/.claude/statusline-command.sh)",
       "Bash(git rm *)",
-      "Bash(Remove-Item *)"
+      "Bash(Remove-Item *)",
+      "WebFetch(domain:supermom-s7-r3-tch.vercel.app)"
     ]
   }
 }

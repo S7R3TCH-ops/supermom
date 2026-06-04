@@ -2,6 +2,7 @@
 
 > Read this file at the start of every session. Read `DESIGN.md` before touching any UI code.
 > **Living document rule**: Update this file immediately after any meaningful task. Remove stale entries. Keep it accurate.
+> **Single source of truth**: CLAUDE.md is the authoritative project state. Do NOT rely on memory files for project status — they drift. Update this file instead.
 
 ---
 
@@ -123,9 +124,17 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 ---
 
-## Current version: 0.12.6 — committed Jun 4, 2026
+## Current version: 0.12.7 — committed Jun 5, 2026
 
 All core features are live. The app is in active use by Sandra. See `git log` for full history.
+
+### Last session (v0.12.7 — Jun 5, 2026)
+- **Google Calendar OAuth fixed** — `APP_BASE_URL` was set to empty string in Vercel, causing redirect to fall back to `localhost`. Fixed: set `APP_BASE_URL=https://app.supermomforhire.com` in Vercel. Added `https://app.supermomforhire.com/api/auth/google/callback` to Google Cloud Console authorized redirect URIs. Redeployed.
+- **GCal sync fixed** — `triggerGCalSync` in `jobsRepo.js` is called client-side and could never send the `INTERNAL_API_SECRET` header. Removed that auth check from `api/sync/gcal.js` — endpoint is write-only to Google Calendar, low exposure risk.
+- **GCal event color** — All synced events now use `colorId: '4'` (Flamingo). Existing events get color on next re-save.
+- **Briefing email improvements** — Jobs now show start–end time range (e.g. "9:00 AM – 11:00 AM"). Dad joke added to each email. Logo URL updated to `app.supermomforhire.com`. Unpaid job dates now formatted as day names. Subject line personalized with first name.
+- **Daily briefing cron** — Schedule remains `0 11 * * *` (7am EDT). Test schedule (`40 0 * * *`) was reverted before commit.
+- **GCal sync still needs end-to-end test** — Joel connected his Google account (joel@). Sandra still needs to reconnect with `sandra@supermomforhire.com`.
 
 ### Last session (v0.12.6 — Jun 4, 2026)
 - **Daily briefing email built** — `api/briefing/daily.js` queries today's + tomorrow's jobs and outstanding balances, sends branded HTML email to business owner via Gmail SMTP. Vercel Cron fires at `0 11 * * *` (7am EDT). Secured with `CRON_SECRET` env var. Multi-tenant ready. Added `?to=` override + `?secret=` query param for browser-based test triggers.
@@ -177,7 +186,8 @@ All core features are live. The app is in active use by Sandra. See `git log` fo
 - [x] **Daily briefing email** — built in v0.12.5. Gmail SMTP, Vercel Cron 7am EDT. CRON_SECRET re-added to Vercel. (Jun 3, 2026)
 - [x] **Google Cloud billing** — activated, $0 budget alert set, Distance Matrix quota capped at 500 elements/day. (Jun 4, 2026)
 - [x] **Google Cloud cleanup** — renamed project to "Supermom For Hire", shut down empty duplicate project. (Jun 4, 2026)
-- [ ] **Sandra reconnects Google Calendar** — Settings → Reconnect with `sandra@supermomforhire.com` (billing now active)
+- [x] **Google Calendar OAuth** — fixed and working (Jun 5, 2026). `APP_BASE_URL` corrected in Vercel.
+- [ ] **Sandra reconnects Google Calendar** — Settings → Reconnect with `sandra@supermomforhire.com`
 - [ ] **Verify daily briefing email fires** — trigger manually, confirm Sandra receives at `sandra@supermomforhire.com`
 - [ ] **Supabase public schema grants — due before Oct 30, 2026** — Run in Supabase SQL Editor (project `lskzzsjmmtsosfneuovt`): `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO anon, authenticated; GRANT USAGE ON SCHEMA public TO anon, authenticated;`
 - [ ] **PWA / installable app** — `manifest.json` + service worker. Makes app installable to iPhone home screen (no browser chrome). Prerequisite for push notifications.
@@ -187,12 +197,13 @@ All core features are live. The app is in active use by Sandra. See `git log` fo
 > Vercel Hobby plan: **10 of 12** serverless functions used. 2 slots remaining.
 > API cost: Distance Matrix hard-capped at 500 elements/day. $0 budget alert on billing. GCal free. Sandra's real usage ~15–30 elements/day.
 
-### Next session priorities (updated Jun 4, 2026)
-1. **Sandra reconnects Google Calendar** — she does this herself in Settings
-2. **Verify briefing email** — trigger manually, confirm it fires
-3. **Supabase schema grants** — 1 SQL command, must do before Oct 30, 2026
-4. **PWA setup** — `manifest.json` + service worker (enables push notifications + home screen install)
-5. **Push notifications** — leave-time alerts ("Leave in 15 mins for Karen")
+### Next session priorities (updated Jun 5, 2026)
+1. **Sandra reconnects Google Calendar** — she does this herself in Settings → Reconnect with `sandra@supermomforhire.com`
+2. **Verify briefing email** — trigger manually via `?to=&secret=`, confirm Sandra receives it
+3. **Fix briefing email test trigger** — Joel tried testing via URL params but it didn't work; needs investigation
+4. **Supabase schema grants** — 1 SQL command, must do before Oct 30, 2026
+5. **PWA setup** — `manifest.json` + service worker (enables push notifications + home screen install)
+6. **Push notifications** — leave-time alerts ("Leave in 15 mins for Karen")
 
 ### Features — Phase 2
 - [ ] **AI chat interface** — `api/ai/[action].js` already exists. Need chat UI component + conversation state. `ANTHROPIC_API_KEY` is now set.

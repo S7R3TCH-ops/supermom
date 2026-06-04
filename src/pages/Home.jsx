@@ -23,6 +23,8 @@ import LiveTimer from '../components/cards/LiveTimer';
 import MissionIntel from '../components/cards/MissionIntel';
 import PaymentBreakdown from '../components/cards/PaymentBreakdown';
 
+const DEEP_ROSE = '#B5004E';
+
 export default function Home() {
   const themeCtx = useAppTheme();
   const jobsCtx = useJobs();
@@ -38,6 +40,7 @@ export default function Home() {
   // Use a stable reference for "today"
   const [today] = useState(() => new Date());
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [owingOpen, setOwingOpen] = useState(false);
 
   const [currentWeekStart, currentWeekEnd] = useMemo(() => {
     const week = getWeekRange(today);
@@ -169,11 +172,6 @@ export default function Home() {
     firstName,
   }), [allDone, activeJob, next, now, todayJobs, attentionItems.length, persona, firstName]);
 
-  const staleAttentionItems = useMemo(() => {
-    const cutoff = new Date(now.getTime() - 48 * 60 * 60 * 1000);
-    return attentionItems.filter(j => j.end < cutoff);
-  }, [attentionItems, now]);
-
   const completedPaidThisWeek = useMemo(() => {
     if (!allJobs) return [];
     return allJobs
@@ -266,6 +264,33 @@ export default function Home() {
     return () => { alive = false; };
   }, [allWeekJobs, attentionItems]);
 
+  const owingGroups = useMemo(() => {
+    const map = {};
+    attentionItems.forEach(j => {
+      if (!map[j.client_id]) {
+        map[j.client_id] = {
+          client_id: j.client_id,
+          client_name: j.client_name,
+          jobs: [],
+          totalOwing: 0,
+          maxHoursOld: 0,
+          hasCompleted: false,
+        };
+      }
+      const g = map[j.client_id];
+      g.jobs.push(j);
+      const paid = paymentMap[j.id] || 0;
+      const remaining = Math.max(0, computeJobTotal(j) - paid);
+      g.totalOwing += remaining;
+      const hoursOld = (now - j.end) / 3600000;
+      g.maxHoursOld = Math.max(g.maxHoursOld, hoursOld);
+      if (j.status === 'Completed') g.hasCompleted = true;
+    });
+    return Object.values(map).sort((a, b) => b.maxHoursOld - a.maxHoursOld);
+  }, [attentionItems, paymentMap, now]);
+
+  const owingTotal = owingGroups.reduce((sum, g) => sum + g.totalOwing, 0);
+
   const collectedThisWeek = useMemo(() => {
     return allWeekJobs.reduce((s, j) => {
       if (j.payment_status === 'Paid') return s + computeJobSubtotal(j);
@@ -295,7 +320,6 @@ export default function Home() {
     );
   }, [todayJobs, activeJob, next, now]);
 
-  const attentionRef = useRef(null);
   const locationFetchedRef = useRef(false);
   const routesFetchedRef = useRef(false);
 
@@ -375,6 +399,7 @@ export default function Home() {
 
   const [isRefreshingTraffic, setIsRefreshingTraffic] = useState(false);
   const [isGoLaunching, setIsGoLaunching] = useState(false);
+  const [isFlyingIcon, setIsFlyingIcon] = useState(false);
   const [locationDrives, setLocationDrives] = useState({});
   const [locationLoading, setLocationLoading] = useState(false);
 
@@ -382,10 +407,12 @@ export default function Home() {
     e.stopPropagation();
     if (!next?.address) return;
     setIsGoLaunching(true);
+    setIsFlyingIcon(true);
     setTimeout(() => {
       window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(next.address)}`, '_blank');
       setIsGoLaunching(false);
-    }, 650);
+    }, 1100);
+    setTimeout(() => setIsFlyingIcon(false), 1450);
   };
 
   const handleRefreshTraffic = async (e) => {
@@ -561,20 +588,6 @@ export default function Home() {
 
       <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '16px 14px' }}>
 
-        {/* Stale attention banner */}
-        {staleAttentionItems.length > 0 && (
-          <div
-            onClick={() => attentionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-            style={{ background: '#FEF3C7', border: '1.5px solid #F59E0B', borderRadius: 12, padding: '10px 14px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}
-          >
-            <span style={{ fontSize: 18 }}>⚠️</span>
-            <div style={{ flex: 1, fontSize: 13, fontWeight: 700, color: '#92400E' }}>
-              {staleAttentionItems.length} job{staleAttentionItems.length > 1 ? 's' : ''} need{staleAttentionItems.length === 1 ? 's' : ''} your attention
-            </div>
-            <span style={{ fontSize: 12, color: '#B45309', fontWeight: 700 }}>↓ View</span>
-          </div>
-        )}
-
         {/* Tight transition alert */}
         {tightGap && (
           <div style={{ background: '#FFF7ED', border: '1.5px solid #FED7AA', borderRadius: 14, padding: 12, marginBottom: 16, display: 'flex', gap: 12, alignItems: 'center' }}>
@@ -641,7 +654,6 @@ export default function Home() {
           /* TODAY — Next Up */
           <div style={{ marginBottom: 20 }}>
             {(() => {
-              const DEEP_ROSE = '#B5004E';
               const DEEP_ROSE_GLOW = 'rgba(181,0,78,0.18)';
               const DEEP_ROSE_TINT = mode === 'dark' ? 'rgba(181,0,78,0.12)' : '#FFF0F4';
               return (
@@ -691,13 +703,13 @@ export default function Home() {
                               <div style={{ fontSize: 13, fontWeight: 700, color: DEEP_ROSE, textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: 3 }}>
                                 {next.service_name}
                               </div>
+                              {next.notes && (
+                                <div style={{ fontSize: 11, color: T.inkMuted, marginTop: 3, lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                                  {next.notes}
+                                </div>
+                              )}
                               {next.worker_name && (
                                 <div style={{ fontSize: 11, color: T.inkMuted, marginTop: 3 }}>{next.assignee_type === 'staff' ? '⭐ Staff:' : '👷 Worker:'} {next.worker_name}</div>
-                              )}
-                              {!privacyOn && computeJobSubtotal(next) > 0 && (
-                                <div style={{ fontSize: 11, fontWeight: 600, color: DEEP_ROSE, opacity: 0.65, marginTop: 4 }}>
-                                  Est. ${computeJobSubtotal(next).toFixed(0)}{computeJobTotal(next) > computeJobSubtotal(next) && <span style={{ fontSize: 8, fontWeight: 700, opacity: 0.7, marginLeft: 2 }}> +HST</span>}
-                                </div>
                               )}
                             </div>
                             <div style={{ flexShrink: 0, textAlign: 'right' }}>
@@ -707,6 +719,11 @@ export default function Home() {
                               {timingLabel && (
                                 <div style={{ fontSize: 10, fontWeight: 800, color: timingColor, marginTop: 4, whiteSpace: 'nowrap' }}>
                                   {timingLabel}
+                                </div>
+                              )}
+                              {!privacyOn && computeJobSubtotal(next) > 0 && (
+                                <div style={{ fontSize: 11, fontWeight: 600, color: DEEP_ROSE, opacity: 0.65, marginTop: 4, whiteSpace: 'nowrap' }}>
+                                  Est. ${computeJobSubtotal(next).toFixed(0)}{computeJobTotal(next) > computeJobSubtotal(next) && <span style={{ fontSize: 8, fontWeight: 700, opacity: 0.7, marginLeft: 2 }}> +HST</span>}
                                 </div>
                               )}
                             </div>
@@ -733,91 +750,184 @@ export default function Home() {
                       );
                     })() : (() => {
                       const locDrive = locationDrives[next.id];
-                      const leaveBy = locDrive ? formatLeaveBy(locDrive.durationValue, next.start, now) : null;
                       const fallback = next.ai_context?.drive_to?.duration;
+                      const fallbackValue = next.ai_context?.drive_to?.durationValue;
+                      const leaveBy = locDrive
+                        ? formatLeaveBy(locDrive.durationValue, next.start, now)
+                        : fallbackValue
+                          ? formatLeaveBy(fallbackValue, next.start, now)
+                          : null;
                       const isUrgent = leaveBy?.urgent ?? false;
                       let driveLabel;
                       if (locationLoading) driveLabel = 'Getting your location…';
                       else if (leaveBy) driveLabel = leaveBy.text;
-                      else if (fallback) driveLabel = `${fallback} from home`;
                       else if (next.address) driveLabel = 'Calculating drive time…';
                       else driveLabel = 'No address on file';
-                      return (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, padding: '7px 10px', background: isUrgent ? 'rgba(239,68,68,0.1)' : DEEP_ROSE_TINT, borderRadius: 10, border: isUrgent ? '1px solid rgba(239,68,68,0.35)' : 'none' }}>
-                          <span style={{ fontSize: 13 }}>{isUrgent ? '⚠️' : '🚗'}</span>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 12, fontWeight: isUrgent ? 800 : 600, color: isUrgent ? '#DC2626' : T.ink }}>
-                              {driveLabel}
-                            </div>
-                            {locDrive && !locationLoading && (
-                              <div style={{ fontSize: 10, color: T.inkMuted, marginTop: 1 }}>
-                                {locDrive.duration} from here
-                              </div>
-                            )}
-                          </div>
-                          {next.address && (
+                      const driveSubtitle = locationLoading ? null
+                        : locDrive ? `${locDrive.duration} from your location · current traffic`
+                        : fallback ? `${fallback} from home · estimated with traffic`
+                        : null;
+                      if (next.address) {
+                        return (
+                          <div style={{ marginBottom: 10, overflow: 'visible', position: 'relative' }}>
                             <button
-                              onClick={handleRefreshLocation}
-                              disabled={locationLoading}
-                              style={{ background: 'none', border: 'none', color: DEEP_ROSE, cursor: 'pointer', fontSize: 14, padding: 2, opacity: locationLoading ? 0.4 : 1 }}
-                              title="Refresh from current location"
+                              onClick={handleSupermomGo}
+                              disabled={isGoLaunching}
+                              style={{
+                                width: '100%',
+                                padding: '12px 14px',
+                                borderRadius: 12,
+                                background: isGoLaunching
+                                  ? 'linear-gradient(90deg,#8B0E3F,#E91E6A,#FF78B0)'
+                                  : isUrgent
+                                    ? 'linear-gradient(90deg,#DC2626,#EF4444)'
+                                    : `linear-gradient(90deg,${DEEP_ROSE},#E91E6A)`,
+                                color: 'white',
+                                border: 'none',
+                                cursor: isGoLaunching ? 'default' : 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 10,
+                                transition: 'background 0.3s, transform 0.15s',
+                                transform: isGoLaunching ? 'scale(0.97)' : 'scale(1)',
+                                boxShadow: isGoLaunching ? 'none' : isUrgent ? '0 4px 16px rgba(220,38,38,0.4)' : '0 4px 16px rgba(233,30,106,0.35)',
+                                textAlign: 'left',
+                                overflow: 'visible',
+                              }}
                             >
-                              {locationLoading ? '…' : '↻'}
+                              <img
+                                src="/branding/supermom_icon_transparent.png"
+                                className={`sm-hero-icon${isFlyingIcon ? ' launching' : ''}`}
+                                style={{ width: 44, height: 44, objectFit: 'contain', flexShrink: 0, filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.3))' }}
+                                alt=""
+                              />
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.3px', transition: 'opacity 0.2s', opacity: isGoLaunching ? 0.7 : 1 }}>
+                                  {isGoLaunching ? 'LAUNCHING…' : driveLabel}
+                                </div>
+                                {!isGoLaunching && driveSubtitle && (
+                                  <div style={{ fontSize: 10, opacity: 0.8, marginTop: 2 }}>
+                                    {driveSubtitle}
+                                  </div>
+                                )}
+                              </div>
+                              {!isGoLaunching && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); handleRefreshLocation(e); }}
+                                  disabled={locationLoading}
+                                  style={{ background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 8, color: 'white', cursor: 'pointer', fontSize: 13, padding: '4px 7px', opacity: locationLoading ? 0.4 : 1, flexShrink: 0 }}
+                                  title="Refresh location"
+                                >
+                                  {locationLoading ? '…' : '↻'}
+                                </button>
+                              )}
                             </button>
-                          )}
+                          </div>
+                        );
+                      }
+                      return (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, padding: '7px 10px', background: DEEP_ROSE_TINT, borderRadius: 10 }}>
+                          <span style={{ fontSize: 13 }}>🚗</span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: T.ink }}>{driveLabel}</div>
+                          </div>
                         </div>
                       );
                     })()}
 
-                    {next.job_notes && (
-                      <div style={{ background: mode === 'dark' ? 'rgba(181,0,78,0.08)' : 'rgba(181,0,78,0.05)', borderRadius: 10, padding: '8px 12px', marginBottom: 10, borderLeft: `3px solid ${DEEP_ROSE}` }}>
-                        <div style={{ fontSize: 9, fontWeight: 900, color: DEEP_ROSE, textTransform: 'uppercase', marginBottom: 3 }}>📌 JOB NOTES</div>
-                        <div style={{ fontSize: 11, color: T.inkMuted, lineHeight: 1.4 }}>{next.job_notes}</div>
-                      </div>
-                    )}
 
                     <MissionIntel prepNote={next.prep_note || next.client_access_json || next.client_prefs_json} T={T} theme={T} />
-
-                    {next.address && (
-                      <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${T.cardBorder}` }}>
-                        <button
-                          onClick={handleSupermomGo}
-                          disabled={isGoLaunching}
-                          style={{
-                            width: '100%', padding: '13px', borderRadius: 12,
-                            background: isGoLaunching
-                              ? 'linear-gradient(90deg,#8B0E3F,#E91E6A,#FF78B0)'
-                              : `linear-gradient(90deg,${DEEP_ROSE},#E91E6A)`,
-                            color: 'white', border: 'none',
-                            fontSize: 14, fontWeight: 800, cursor: isGoLaunching ? 'default' : 'pointer',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                            transition: 'background 0.3s, transform 0.15s',
-                            transform: isGoLaunching ? 'scale(0.97)' : 'scale(1)',
-                            letterSpacing: '0.4px',
-                            boxShadow: isGoLaunching ? 'none' : '0 4px 16px rgba(233,30,106,0.35)',
-                          }}
-                        >
-                          <svg width="14" height="14" viewBox="0 0 48 46" fill="white"
-                            style={{
-                              transition: 'transform 0.4s ease, opacity 0.4s ease',
-                              transform: isGoLaunching ? 'translateX(6px) scale(1.3)' : 'translateX(0) scale(1)',
-                              opacity: isGoLaunching ? 0.5 : 1,
-                            }}
-                          >
-                            <path d="M25.946 44.938c-.664.845-2.021.375-2.021-.698V33.937a2.26 2.26 0 0 0-2.262-2.262H10.287c-.92 0-1.456-1.04-.92-1.788l7.48-10.471c1.07-1.497 0-3.578-1.842-3.578H1.237c-.92 0-1.456-1.04-.92-1.788L10.013.474c.214-.297.556-.474.92-.474h28.894c.92 0 1.456 1.04.92 1.788l-7.48 10.471c-1.07 1.498 0 3.579 1.842 3.579h11.377c.943 0 1.473 1.088.89 1.83L25.947 44.94z"/>
-                          </svg>
-                          <span style={{ transition: 'opacity 0.2s', opacity: isGoLaunching ? 0.7 : 1 }}>
-                            {isGoLaunching ? 'LAUNCHING…' : 'SUPERMOM GO'}
-                          </span>
-                        </button>
-                      </div>
-                    )}
                   </div>
                 </>
               );
             })()}
           </div>
         ) : null}
+
+        {/* OWING — collapsible, persistent */}
+        {owingGroups.length > 0 && (
+          <div style={{ marginBottom: 16 }}>
+            <div
+              onClick={() => setOwingOpen(o => !o)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '9px 12px',
+                background: mode === 'dark' ? 'rgba(181,0,78,0.1)' : '#FFF0F4',
+                borderRadius: owingOpen ? '12px 12px 0 0' : 12,
+                border: `1px solid rgba(181,0,78,0.25)`,
+                cursor: 'pointer',
+                userSelect: 'none',
+              }}
+            >
+              <span style={{
+                fontSize: 10, color: DEEP_ROSE,
+                display: 'inline-block',
+                transform: owingOpen ? 'rotate(90deg)' : 'none',
+                transition: 'transform 0.18s',
+              }}>▶</span>
+              <div style={{ flex: 1, fontSize: 13, fontWeight: 700, color: DEEP_ROSE }}>
+                {owingGroups.length} owing{!privacyOn && owingTotal > 0 ? ` · $${owingTotal.toFixed(0)}` : ''}
+              </div>
+              <span style={{ fontSize: 11, color: DEEP_ROSE, opacity: 0.55, fontWeight: 600 }}>
+                {owingOpen ? 'hide' : 'show'}
+              </span>
+            </div>
+            {owingOpen && (
+              <div style={{
+                borderRadius: '0 0 12px 12px',
+                border: `1px solid rgba(181,0,78,0.25)`,
+                borderTop: 'none',
+                overflow: 'hidden',
+              }}>
+                {owingGroups.map((g, i) => {
+                  const isStale = g.maxHoursOld >= 48 && g.hasCompleted;
+                  const isFresh = !isStale && g.hasCompleted;
+                  const bgColor = isStale
+                    ? (mode === 'dark' ? 'rgba(220,38,38,0.15)' : 'rgba(220,38,38,0.07)')
+                    : isFresh
+                      ? (mode === 'dark' ? 'rgba(181,0,78,0.1)' : 'rgba(181,0,78,0.05)')
+                      : (mode === 'dark' ? 'rgba(181,0,78,0.06)' : 'rgba(181,0,78,0.03)');
+                  const accentColor = isStale ? '#DC2626' : DEEP_ROSE;
+                  const mostRecentJob = g.jobs[g.jobs.length - 1];
+                  const allWrapUp = g.jobs.every(j => j.status !== 'Completed');
+                  const dateLabel = mostRecentJob.start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                  return (
+                    <div
+                      key={g.client_id}
+                      onClick={() => openJob(mostRecentJob.id)}
+                      style={{
+                        background: bgColor,
+                        borderTop: i > 0 ? `1px solid rgba(181,0,78,0.12)` : 'none',
+                        borderLeft: `3px solid ${accentColor}`,
+                        padding: '10px 14px 10px 12px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
+                        <div style={{ fontFamily: T.serif, fontSize: 16, fontWeight: 600, color: T.ink, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.3px' }}>
+                          {g.client_name}
+                        </div>
+                        <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 800, color: accentColor, whiteSpace: 'nowrap', marginLeft: 8 }}>
+                          {privacyOn ? '•••' : allWrapUp ? `~$${g.totalOwing.toFixed(0)} est.` : `$${g.totalOwing.toFixed(0)} owing`}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 11, color: T.inkMuted }}>{dateLabel}</span>
+                        <span style={{ fontSize: 11, color: T.inkMuted, opacity: 0.4 }}>·</span>
+                        <span style={{ fontSize: 11, color: T.inkMuted }}>{mostRecentJob.service_name}</span>
+                        {g.jobs.length > 1 && (
+                          <span style={{ fontSize: 10, fontWeight: 700, color: accentColor, background: `${accentColor}18`, padding: '1px 5px', borderRadius: 4 }}>
+                            +{g.jobs.length - 1} more
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* TODAY — Remaining jobs */}
         {todayUpcoming.length > 0 && (
@@ -845,112 +955,6 @@ export default function Home() {
                         {leaveBy.text}
                         {!leaveBy.urgent && <span style={{ fontWeight: 400, marginLeft: 4, opacity: 0.7 }}>· {locDrive.duration} away</span>}
                       </span>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* NEEDS ACTION — carry-forward from any past date */}
-        {attentionItems.length > 0 && (
-          <div ref={attentionRef} style={{ marginBottom: 24 }}>
-            <SectionLabel color="#78350F">Needs Action</SectionLabel>
-            {attentionItems.map(j => {
-              const needsWrap = j.status !== 'Completed';
-              const paid = paymentMap[j.id] || 0;
-              const total = computeJobTotal(j);
-              const remaining = Math.max(0, total - paid);
-              const src = j.raw || j;
-              const isHourly = src.pricing_type === 'Hourly';
-              const rate = Number(src.hourly_rate || src.flat_rate || 0);
-              const pricingLabel = isHourly ? `Hourly · $${rate.toFixed(0)}/hr` : 'Flat rate';
-              const attnHstNote = computeJobTotal(j) > computeJobSubtotal(j);
-              const isAttnPartial = !needsWrap && j.payment_status === 'Partial';
-              const isAttnUnpaid = !needsWrap && !isAttnPartial;
-              const cardBorder = needsWrap ? '#F59E0B' : isAttnPartial ? '#F97316' : '#EF4444';
-              const cardBg = needsWrap
-                ? (mode === 'dark' ? 'rgba(245,158,11,0.08)' : '#FFFBEB')
-                : isAttnPartial
-                  ? (mode === 'dark' ? 'rgba(249,115,22,0.08)' : '#FFF7ED')
-                  : (mode === 'dark' ? 'rgba(239,68,68,0.08)' : '#FEF2F2');
-              const attnStatusLabel = needsWrap ? 'Wrap Up' : isAttnPartial ? 'Partial' : 'Owing';
-              const attnDateLabel = j.start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-              const attnTimeRange = fmtTimeRange(j.start, j.end);
-              return (
-                <div
-                  key={j.id}
-                  onClick={() => openJob(j.id)}
-                  style={{
-                    background: cardBg,
-                    border: `2px solid ${cardBorder}`,
-                    borderLeft: `6px solid ${cardBorder}`,
-                    borderRadius: 16,
-                    padding: '10px 14px 10px 12px',
-                    marginBottom: 10,
-                    cursor: 'pointer',
-                  }}
-                >
-                  {/* Row 1: name · bold time | status pill */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                    <div style={{ fontFamily: T.serif, fontSize: 16, fontWeight: 600, color: T.ink, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.3px' }}>
-                      {j.client_name}
-                    </div>
-                    <div style={{ fontSize: 12, fontWeight: 800, color: cardBorder, whiteSpace: 'nowrap', flexShrink: 0, letterSpacing: '-0.3px' }}>
-                      {attnTimeRange}
-                    </div>
-                    <span style={{
-                      fontFamily: T.font, fontSize: 9, fontWeight: 800,
-                      textTransform: 'uppercase', letterSpacing: '0.5px',
-                      background: `${cardBorder}22`, color: cardBorder,
-                      padding: '2px 6px', borderRadius: 4, flexShrink: 0, whiteSpace: 'nowrap',
-                    }}>
-                      {attnStatusLabel}
-                    </span>
-                  </div>
-
-                  {/* Row 2: date | amount */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
-                    <div style={{ fontSize: 11, fontWeight: 500, color: '#92400E', opacity: 0.8 }}>{attnDateLabel}</div>
-                    {!needsWrap && (
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontFamily: T.serif, fontSize: 14, fontWeight: 900, color: cardBorder, fontVariantNumeric: 'tabular-nums' }}>
-                          {privacyOn ? '•••' : remaining > 0 ? `$${remaining.toFixed(0)} owing` : `$${total.toFixed(0)}`}
-                          {!privacyOn && attnHstNote && <span style={{ fontSize: 8, fontWeight: 600, opacity: 0.6, marginLeft: 2, fontFamily: T.font }}> incl. HST</span>}
-                        </div>
-                        {!privacyOn && paid > 0 && remaining > 0 && (
-                          <div style={{ fontSize: 10, color: '#16A34A', fontWeight: 700 }}>${paid.toFixed(0)} paid</div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Row 3: service */}
-                  <div style={{
-                    fontFamily: T.font, fontSize: 9, fontWeight: 700,
-                    textTransform: 'uppercase', letterSpacing: '0.4px',
-                    background: `${cardBorder}18`, color: cardBorder,
-                    padding: '2px 6px', borderRadius: 4,
-                    display: 'inline-block', marginBottom: 3,
-                  }}>
-                    {j.service_name}
-                  </div>
-
-                  {/* Worker */}
-                  {j.worker_name && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 10.5, color: '#92400E', opacity: 0.75 }}>{j.assignee_type === 'staff' ? '⭐ Staff:' : '👷 Worker:'} {j.worker_name}</span>
-                      {j.payment_status === 'Paid' && Number(j.raw?.worker_pay) > 0 && !j.raw?.worker_paid && (
-                        <span style={{ fontSize: 8.5, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: '#FEF3C7', color: '#92400E', textTransform: 'uppercase' }}>$ Unpaid</span>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Notes */}
-                  {j.notes && (
-                    <div style={{ fontSize: 10.5, color: '#92400E', fontStyle: 'italic', opacity: 0.75, marginTop: 4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.4 }}>
-                      {j.notes}
                     </div>
                   )}
                 </div>

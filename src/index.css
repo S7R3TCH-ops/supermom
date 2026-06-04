@@ -127,6 +127,16 @@ button {
 .sm-hero-icon { transition: transform 0.12s ease; }
 .sm-hero-icon.flying { animation: heroFly 0.85s cubic-bezier(0.2,0,0.55,1) forwards; }
 
+@keyframes supermomLaunch {
+  0%   { transform: translate(0, 0) scale(1) rotate(0deg); opacity: 1; }
+  40%  { transform: translate(200px, 0) scale(1.12) rotate(8deg); opacity: 1; }
+  58%  { transform: translate(245px, -12px) scale(1.08) rotate(-4deg); opacity: 1; }
+  75%  { transform: translate(280px, -55px) scale(0.8) rotate(22deg); opacity: 0.9; }
+  88%  { transform: translate(320px, -130px) scale(0.4) rotate(40deg); opacity: 0.5; }
+  100% { transform: translate(370px, -240px) scale(0.04) rotate(60deg); opacity: 0; }
+}
+.sm-hero-icon.launching { animation: supermomLaunch 1.3s cubic-bezier(0.25, 0, 0.35, 1) forwards; }
+
 .sm-scroll::-webkit-scrollbar { width: 0; }
 .sm-scroll { 
   scrollbar-width: none; 

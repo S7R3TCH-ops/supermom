@@ -124,9 +124,22 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 ---
 
-## Current version: 0.12.8 — committed Jun 4, 2026
+## Current version: 0.12.9 — committed Jun 4, 2026
 
 All core features are live. The app is in active use by Sandra. See `git log` for full history.
+
+### ⚠️ Multi-client git discipline
+CLAUDE.md is the only shared truth across online / desktop / CLI sessions. Memory files are local-only. **Always push local commits before starting an online Claude Code session**, and always pull before the online session writes code — otherwise the online session will push stale commits and overwrite newer local work (happened Jun 4, 2026).
+
+### Last session (v0.12.9 — Jun 4, 2026)
+- **GO button urgent state** — replaced red gradient on "Leave NOW" with rose pulse animation (`.go-btn-urgent`, `@keyframes goUrgentPulse` in `index.css`). Keeps brand colors, no red clash.
+- **Drive time now matches Maps** — was reading `el.duration` (no-traffic baseline); switched to `el.duration_in_traffic ?? el.duration` so the button shows the same traffic-aware time as Maps.
+- **Fresh GPS on tap** — `handleSupermomGo` now fires a GPS request the instant Sandra taps, races it against the 1.1s animation. Maps URL uses the fresh coords as `&origin=`, so Maps routes from her actual current location, not stale last-fetch coords.
+- **Maps URL params aligned** — added `&travelmode=driving&avoid=tolls` to match Distance Matrix API call params exactly.
+- **Arrive time in subtitle** — button subtitle now shows `"25 mins · arrive 3:45 PM · live traffic"` (GPS) or `"~32 mins · arrive ~3:52 PM · est. from home"` (fallback).
+- **Debug logging** — `fetchLocationDrives` catch block now `console.warn('[fetchLocationDrives] failed:', err)` instead of swallowing silently. Remove before v1.0.
+- **Branding assets committed** — `public/branding/supermom_icon.png` + `supermom_icon_transparent.png` were untracked; now in git.
+- **Conflict resolution** — online Claude.ai session had pushed stale commits (old plain GO button) that conflicted with local v0.12.8. Resolved with force push of local history. Remote is clean.
 
 ### Last session (v0.12.8 — Jun 4, 2026)
 - **Job notes fixed** — Next Up card was reading `next.job_notes` but `toDisplayJob()` maps the DB column to `next.notes`. Fixed. Removed duplicate `📌 Job Notes` block below GO button — notes only show inline under service name.
@@ -228,7 +241,7 @@ All core features are live. The app is in active use by Sandra. See `git log` fo
 > API cost: Distance Matrix hard-capped at 500 elements/day. $0 budget alert on billing. GCal free. Sandra's real usage ~15–30 elements/day.
 
 ### Next session priorities
-1. **Confirm 7am cron delivered** — check `jlundie@gmail.com` for email in 7:00–8:00am EDT window. **Do not redeploy to "fix" it.**
+1. **Verify drive time matches Maps on phone** — check F12 console for `[fetchLocationDrives] failed:` warning if times still differ. Most likely: GPS denied or `duration_in_traffic` not returned (billing issue).
 2. **Sandra reconnects Google Calendar** — Settings → Reconnect with `sandra@supermomforhire.com`
 3. **Supabase schema grants** — 1 SQL command, must do before Oct 30, 2026
 4. **PWA setup** → push notifications

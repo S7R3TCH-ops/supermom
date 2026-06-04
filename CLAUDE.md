@@ -124,9 +124,23 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 ---
 
-## Current version: 0.12.7 — committed Jun 5, 2026
+## Current version: 0.12.8 — committed Jun 4, 2026
 
 All core features are live. The app is in active use by Sandra. See `git log` for full history.
+
+### Last session (v0.12.8 — Jun 4, 2026)
+- **Job notes fixed** — Next Up card was reading `next.job_notes` but `toDisplayJob()` maps the DB column to `next.notes`. Fixed. Removed duplicate `📌 Job Notes` block below GO button — notes only show inline under service name.
+- **SUPERMOM GO button** (carried from prior session):
+  - Custom Supermom icon (`/branding/supermom_icon_transparent.png`, 44px, drop-shadow)
+  - `supermomLaunch` CSS animation: runway + takeoff. 1.3s. Maps opens at 1.1s.
+  - Leave-by time shown with and without GPS.
+- **Owing jobs redesign** — Replaced amber/red "Needs Action" section and ⚠️ stale banner with a clean collapsible "owing" section:
+  - Collapsed by default, positioned between Next Up and Coming Up Today
+  - Grouped by client with cumulative balance across all owing jobs
+  - Intensity tiers: stale ≥48h completed = dark red (`#DC2626`); fresh completed = app rose; wrap-up only = blush
+  - `+N more` badge when a client has multiple jobs
+  - Privacy mode hides amounts
+  - `DEEP_ROSE = '#B5004E'` hoisted to module-level constant in `Home.jsx`
 
 ### Last session (v0.12.7 — Jun 5, 2026)
 - **Google Calendar OAuth fixed** — `APP_BASE_URL` was set to empty string in Vercel, causing redirect to fall back to `localhost`. Fixed: set `APP_BASE_URL=https://app.supermomforhire.com` in Vercel. Added `https://app.supermomforhire.com/api/auth/google/callback` to Google Cloud Console authorized redirect URIs. Redeployed.
@@ -213,13 +227,11 @@ All core features are live. The app is in active use by Sandra. See `git log` fo
 > Vercel Hobby plan: **10 of 12** serverless functions used. 2 slots remaining.
 > API cost: Distance Matrix hard-capped at 500 elements/day. $0 budget alert on billing. GCal free. Sandra's real usage ~15–30 elements/day.
 
-### Next session priorities (updated Jun 5, 2026)
-1. **Confirm 7am cron delivered** — schedule is now correctly registered (`0 11 * * *`). Just check `jlundie@gmail.com` lands an email in the 7:00–8:00am EDT window. If not: Vercel dashboard → supermom → Settings → Crons → last run status. **Do not redeploy to "fix" it** — that resets the cron clock.
-2. **Sandra reconnects Google Calendar** — she does this herself in Settings → Reconnect with `sandra@supermomforhire.com`
-3. **Verify Sandra receives briefing email** — once cron confirmed working, check she gets it at `sandra@supermomforhire.com`
-4. **Supabase schema grants** — 1 SQL command, must do before Oct 30, 2026: `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO anon, authenticated; GRANT USAGE ON SCHEMA public TO anon, authenticated;`
-5. **PWA setup** — `manifest.json` + service worker (enables push notifications + home screen install)
-6. **Push notifications** — leave-time alerts ("Leave in 15 mins for Karen")
+### Next session priorities
+1. **Confirm 7am cron delivered** — check `jlundie@gmail.com` for email in 7:00–8:00am EDT window. **Do not redeploy to "fix" it.**
+2. **Sandra reconnects Google Calendar** — Settings → Reconnect with `sandra@supermomforhire.com`
+3. **Supabase schema grants** — 1 SQL command, must do before Oct 30, 2026
+4. **PWA setup** → push notifications
 
 ### Features — Phase 2
 - [ ] **AI chat interface** — `api/ai/[action].js` already exists. Need chat UI component + conversation state. `ANTHROPIC_API_KEY` is now set.

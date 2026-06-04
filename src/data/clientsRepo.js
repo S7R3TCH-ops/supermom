@@ -79,7 +79,7 @@ export async function createClient(payload) {
   // Pre-check for duplicates
   const existing = await fetchClientByContact(payload);
   if (existing) {
-    throw new Error(`A client with this ${existing.email === payload.email ? 'email' : 'name/phone'} already exists.`);
+    throw new Error(`A client with this ${(payload.email && existing.email === payload.email) ? 'email' : 'name/phone'} already exists.`);
   }
 
   const { data, error } = await supabase

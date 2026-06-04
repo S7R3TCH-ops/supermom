@@ -10,7 +10,7 @@ function dailyAddress(now, firstName) {
   return (Math.abs(h) % 10) < 4 ? NICKNAMES[Math.abs(h >> 2) % NICKNAMES.length] : firstName;
 }
 
-export function getBriefingMessage({ allDone, activeJob, next, now, todayJobs, attentionItemCount, persona, firstName }) {
+export function getBriefingMessage({ allDone, activeJob, next, now, todayJobs, attentionItemCount, persona, firstName, minsLateToLeave = 0 }) {
   const hour = now.getHours();
   const isMorning = hour < 12;
   const isEvening = hour >= 17;
@@ -32,6 +32,14 @@ export function getBriefingMessage({ allDone, activeJob, next, now, todayJobs, a
 
   if (next) {
     const minsToStart = Math.round((next.start - now) / 60000);
+
+    if (minsLateToLeave > 0 && minsToStart > 0) {
+      if (minsLateToLeave <= 5)
+        return `You should've left ${minsLateToLeave} min ago, ${address}. Move it!`;
+      if (minsLateToLeave <= 15)
+        return `You're going to be ~${minsLateToLeave} mins late, ${address}. They're watching the clock.`;
+      return `Okay at this point just call ahead, ${address}. You're properly late.`;
+    }
     const jobsRemaining = todayJobs.filter(j => j.status === 'Scheduled' && j.payment_status !== 'Paid').length;
     const countStr = jobsRemaining > 1 ? ` · ${jobsRemaining - 1} more after` : '';
 

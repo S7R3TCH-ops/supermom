@@ -161,6 +161,14 @@ export default function Home() {
       .sort((a, b) => a.start - b.start);
   }, [allJobs, now]);
 
+  const nextDriveValue =
+    locationDrives[next?.id]?.durationValue ??
+    next?.raw?.ai_context?.drive_to?.durationValue ??
+    0;
+  const minsLateToLeave = (next && nextDriveValue > 0)
+    ? Math.round((now - (next.start.getTime() - nextDriveValue * 1000)) / 60000)
+    : 0;
+
   const briefingMsg = useMemo(() => getBriefingMessage({
     allDone,
     activeJob,
@@ -170,7 +178,8 @@ export default function Home() {
     attentionItemCount: attentionItems.length,
     persona,
     firstName,
-  }), [allDone, activeJob, next, now, todayJobs, attentionItems.length, persona, firstName]);
+    minsLateToLeave,
+  }), [allDone, activeJob, next, now, todayJobs, attentionItems.length, persona, firstName, minsLateToLeave]);
 
   const completedPaidThisWeek = useMemo(() => {
     if (!allJobs) return [];
@@ -527,15 +536,7 @@ export default function Home() {
             <SectionLabel style={{ color: mode === 'dark' ? T.pinkLabel : T.pink, marginBottom: 8 }}>
               ✦ Command Brief · {dateBrief(today)}
             </SectionLabel>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 9, marginTop: 2 }}>
-              <span style={{
-                width: 7,
-                height: 7,
-                borderRadius: '50%',
-                background: allDone ? '#16A34A' : (activeJob || (next && Math.round((next.start - now) / 60000) < 60)) ? '#F59E0B' : '#64748B',
-                flexShrink: 0,
-                marginTop: 7,
-              }} />
+            <div style={{ marginTop: 2 }}>
               <div style={{
                 fontFamily: T.serif,
                 fontSize: 21,

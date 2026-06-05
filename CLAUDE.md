@@ -268,8 +268,8 @@ CLAUDE.md is the only shared truth across online / desktop / CLI sessions. Memor
 3. ~~**Navigation fixes**~~ — ✅ Done v0.12.12 (back→Home, login→Home, viewpoint switch→Home)
 4. ~~**Edit Job parity**~~ — ✅ Done v0.12.12 (additional costs UI added to EditMode)
 5. ~~**Remove debug console.warn**~~ — ✅ Done v0.12.12
-6. **Archive Client & All Jobs** — admin danger zone in `ClientProfile.jsx`. Plan is in `docs/superpowers/plans/2026-05-18-ui-polish.md` Task 5. Needs review/discussion before coding.
-7. **Calendar readability overhaul** — current Schedule page (day/agenda views) is hard to read. Needs UX rethink — cards too dense, key info not scannable. Design pass + brainstorm next session.
+6. ~~**Archive Client & All Jobs**~~ — ✅ Already done (found in audit Jun 4, 2026). Full ui-polish plan (`docs/superpowers/plans/2026-05-18-ui-polish.md`) was complete: `cancelJob` (jobsRepo.js:298), admin danger zone (ClientProfile.jsx:545), Cancel Booking UI + admin delete (JobDetailSheet.jsx:504), Calendar grey cancelled + dynamic timeline (Calendar.jsx:92), TODAY button (Calendar.jsx:222).
+7. ~~**Calendar readability overhaul**~~ — ✅ Done v0.12.13. Removed Day view (redundant with Home). Week view: first name at 10px + service word on second line (was 8px init·service). Agenda: time range prominent at 11.5px bold, address on separate line, removed GCAL badge, removed UNPAID badge from Scheduled (future) jobs. Tapping a week-strip day switches to Agenda. GO button removed from Calendar (Home only).
 8. **PWA setup** → push notifications (prerequisite for push notifs)
 9. **Staff app access** — `person_type = 'staff'` in DB. Link `workers.id` → `users` + Supabase Auth. Note: rename "staff" label to something better — TBD with Joel.
 

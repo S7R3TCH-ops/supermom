@@ -143,6 +143,7 @@ export function useJobs() {
   const [rows, setRows] = useState([]);
   const [clientRows, setClientRows] = useState([]);
   const [workerRows, setWorkerRows] = useState([]);
+  const [paymentRows, setPaymentRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -155,16 +156,20 @@ export function useJobs() {
         setRows([]);
         setClientRows([]);
         setWorkerRows([]);
+        setPaymentRows([]);
         return;
       }
-      const [js, cs, ws] = await Promise.all([
+      const businessId = bid.id || await getCurrentBusinessId();
+      const [js, cs, ws, pmtResult] = await Promise.all([
         fetchActiveJobs(),
         fetchClients(),
         fetchWorkers({ includeArchived: true }).catch(() => []),
+        supabase.from('payments').select('job_id, amount').eq('business_id', businessId),
       ]);
       setRows(js);
       setClientRows(cs);
       setWorkerRows(ws);
+      setPaymentRows(pmtResult.data || []);
     } catch (e) {
       setError(e);
     } finally {
@@ -183,7 +188,11 @@ export function useJobs() {
     clientRows.map(c => [c.id, toDisplayClient(c, [])])
   );
   const workerLookup = Object.fromEntries(workerRows.map(w => [w.id, w]));
-  const display = rows.map(j => toDisplayJob(j, clientLookup, workerLookup));
+  const paymentsByJobId = {};
+  paymentRows.forEach(p => {
+    paymentsByJobId[p.job_id] = (paymentsByJobId[p.job_id] || 0) + Number(p.amount || 0);
+  });
+  const display = rows.map(j => toDisplayJob(j, clientLookup, workerLookup, paymentsByJobId));
   return { jobs: display, raw: rows, clients: clientLookup, workers: workerLookup, loading, error, refresh };
 }
 

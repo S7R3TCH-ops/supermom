@@ -246,7 +246,7 @@ CLAUDE.md is the only shared truth across online / desktop / CLI sessions. Memor
 - [ ] **Sandra reconnects Google Calendar** — Settings → Reconnect with `sandra@supermomforhire.com`
 - [x] **Manual briefing trigger confirmed working** — `?secret=supermom_daily_email_updates&to=jlundie@gmail.com` works. Gmail App Password updated Jun 5.
 - [x] **Auto-cron schedule fixed (Jun 5, 2026)** — live cron now correctly `0 11 * * *` (7am EDT) on a clean deploy; was drifted to a leftover `40 0` test schedule. See Last session notes. Final confirmation = email lands in `jlundie@gmail.com` between 7:00–8:00am EDT (Hobby timing slop).
-- [ ] **Supabase public schema grants — due before Oct 30, 2026** — Run in Supabase SQL Editor (project `lskzzsjmmtsosfneuovt`): `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO anon, authenticated; GRANT USAGE ON SCHEMA public TO anon, authenticated;`
+- [x] **Supabase public schema grants** — Done Jun 4, 2026. Ran in Supabase SQL Editor (project `lskzzsjmmtsosfneuovt`).
 - [ ] **PWA / installable app** — `manifest.json` + service worker. Makes app installable to iPhone home screen (no browser chrome). Prerequisite for push notifications.
 - [ ] **Push notifications** — Fire "Leave in 15 mins for Karen" at leave-time. Requires PWA first. High value for Sandra.
 - [ ] **Staff app access (Phase 2)** — `person_type = 'staff'` tracked in DB. No app login yet. When ready: link `workers.id` → `users` table + add Supabase Auth account.
@@ -257,7 +257,7 @@ CLAUDE.md is the only shared truth across online / desktop / CLI sessions. Memor
 
 ### Next session priorities
 1. **Sandra reconnects Google Calendar** — Settings → Reconnect with `sandra@supermomforhire.com` (Sandra action)
-2. **Supabase schema grants** — 1 SQL command, must do before Oct 30, 2026
+2. ~~**Supabase schema grants**~~ — ✅ Done Jun 4, 2026
 3. **PWA setup** → push notifications (prerequisite for #4)
 4. **Archive Client & All Jobs** — admin danger zone in `ClientProfile.jsx`. Plan is in `docs/superpowers/plans/2026-05-18-ui-polish.md` Task 5. Was not shipped despite other ui-polish tasks being done.
 5. **Calendar readability overhaul** — current Schedule page (day/agenda views) is hard to read. Needs UX rethink — cards too dense, key info not scannable. Design pass required before coding.

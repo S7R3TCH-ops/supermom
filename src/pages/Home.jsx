@@ -319,6 +319,7 @@ export default function Home() {
 
   const locationFetchedRef = useRef(false);
   const routesFetchedRef = useRef(false);
+  const activeJobIdRef = useRef(null);
 
   const handleDuplicateJob = (job) => {
     newJobSheet.openWithPrefill({
@@ -349,19 +350,6 @@ export default function Home() {
     return () => stopSpeaking();
   }, []);
 
-  const tightGap = (() => {
-    for (let i = 0; i < todayJobs.length - 1; i++) {
-      const a = todayJobs[i], b = todayJobs[i + 1];
-      const gapMin = Math.round((b.start - a.end) / 60000);
-      if (gapMin < 0) continue;
-      if (b.start <= now) continue;
-      const driveMin = Math.round((b.raw?.ai_context?.drive_to?.durationValue ?? 0) / 60);
-      const threshold = driveMin > 0 ? driveMin + 15 : 60;
-      if (gapMin < threshold) return { a, b, gapMin, driveMin };
-    }
-    return null;
-  })();
-
   function formatLeaveBy(durationValue, jobStart, nowDate) {
     const leaveByMs = jobStart.getTime() - durationValue * 1000;
     const msUntilLeave = leaveByMs - nowDate.getTime();
@@ -389,6 +377,15 @@ export default function Home() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [todayJobs, loading]);
+
+  // Re-fetch GPS drives from job site when Sandra clocks into a job
+  useEffect(() => {
+    if (activeJob?.id && activeJob.id !== activeJobIdRef.current) {
+      activeJobIdRef.current = activeJob.id;
+      fetchLocationDrives();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeJob?.id]);
 
   const openJob = detailSheet?.openJob;
   const openPostJob = postJobSheet?.openPostJob;
@@ -601,19 +598,6 @@ export default function Home() {
 
       <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '16px 14px' }}>
 
-        {/* Tight transition alert */}
-        {tightGap && (
-          <div style={{ background: '#FFF7ED', border: '1.5px solid #FED7AA', borderRadius: 14, padding: 12, marginBottom: 16, display: 'flex', gap: 12, alignItems: 'center' }}>
-            <div style={{ fontSize: 20 }}>🕒</div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#9A3412', textTransform: 'uppercase', marginBottom: 2 }}>Tight Transition</div>
-              <div style={{ fontSize: 12, color: '#7C2D12', lineHeight: 1.3 }}>
-                Only {fmtDuration(tightGap.gapMin)} between {tightGap.a.client_name} and {tightGap.b.client_name}.
-                {tightGap.driveMin > 0 && ` Drive takes ~${fmtDuration(tightGap.driveMin)}.`}
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* TODAY — Active Job */}
         {activeJob ? (
@@ -655,6 +639,56 @@ export default function Home() {
 
                 <MissionIntel prepNote={activeJob.prep_note || activeJob.client_access_json || activeJob.client_prefs_json} T={T} theme={T} />
               </div>
+
+              {/* Up Next strip — drive time from current job site to next job */}
+              {next && (() => {
+                const locDrive = locationDrives[next.id];
+                const fallbackDrive = next.raw?.ai_context?.drive_to;
+                const driveValue = locDrive?.durationValue ?? fallbackDrive?.durationValue ?? 0;
+                const driveDuration = locDrive?.duration ?? fallbackDrive?.duration ?? null;
+                const isGPS = !!locDrive;
+                const leaveBy = driveValue > 0 ? formatLeaveBy(driveValue, next.start, now) : null;
+                const gapMin = Math.round((next.start - activeJob.end) / 60000);
+                const driveMin = Math.round(driveValue / 60);
+                const isTight = driveMin > 0 && gapMin < driveMin + 15;
+                const urgentColor = leaveBy?.urgent ? '#DC2626' : isTight ? '#F59E0B' : '#16A34A';
+                return (
+                  <div style={{
+                    margin: '10px 0 0',
+                    padding: '9px 12px',
+                    borderRadius: 10,
+                    background: leaveBy?.urgent ? 'rgba(220,38,38,0.08)' : isTight ? 'rgba(245,158,11,0.08)' : mode === 'dark' ? 'rgba(255,255,255,0.04)' : '#F9F9F9',
+                    border: `1px solid ${leaveBy?.urgent ? 'rgba(220,38,38,0.2)' : isTight ? 'rgba(245,158,11,0.25)' : T.cardBorder}`,
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 9, fontWeight: 700, color: urgentColor, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 2 }}>
+                          Up Next · {fmtTime12(next.start).time} {fmtTime12(next.start).period}
+                        </div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: T.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {next.client_name}
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        {leaveBy ? (
+                          <>
+                            <div style={{ fontSize: 11, fontWeight: 800, color: urgentColor }}>{leaveBy.text}</div>
+                            {driveDuration && (
+                              <div style={{ fontSize: 9, color: T.inkMuted, marginTop: 1 }}>
+                                {driveDuration} drive{!isGPS && driveDuration ? ' · est. from home' : ''}
+                              </div>
+                            )}
+                          </>
+                        ) : driveDuration ? (
+                          <div style={{ fontSize: 11, color: T.inkMuted }}>{driveDuration} drive{!isGPS ? ' · est.' : ''}</div>
+                        ) : (
+                          <div style={{ fontSize: 10, color: T.inkMuted }}>No address</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div style={{ display: 'flex', gap: 8, marginTop: 14, paddingTop: 14, borderTop: `1px solid ${T.cardBorder}` }}>
                 <button onClick={(e) => { e.stopPropagation(); handleAddTime(activeJob); }} style={{ flex: 1, padding: '10px', borderRadius: 10, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.ink, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>+30 MIN</button>
@@ -747,7 +781,7 @@ export default function Home() {
 
                     {isNowWindow ? (() => {
                       const afterNext = todayJobs.find(tj => tj.start > next.start && tj.id !== next.id);
-                      const driveToNext = afterNext?.ai_context?.drive_to?.duration;
+                      const driveToNext = afterNext ? (locationDrives[afterNext.id]?.duration ?? afterNext.ai_context?.drive_to?.duration) : null;
                       if (!afterNext && !driveToNext) return null;
                       return (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, padding: '7px 10px', background: DEEP_ROSE_TINT, borderRadius: 10 }}>
@@ -860,91 +894,6 @@ export default function Home() {
             })()}
           </div>
         ) : null}
-
-        {/* OWING — collapsible, persistent */}
-        {owingGroups.length > 0 && (
-          <div style={{ marginBottom: 16 }}>
-            <div
-              onClick={() => setOwingOpen(o => !o)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                padding: '9px 12px',
-                background: mode === 'dark' ? 'rgba(181,0,78,0.1)' : '#FFF0F4',
-                borderRadius: owingOpen ? '12px 12px 0 0' : 12,
-                border: `1px solid rgba(181,0,78,0.25)`,
-                cursor: 'pointer',
-                userSelect: 'none',
-              }}
-            >
-              <span style={{
-                fontSize: 10, color: DEEP_ROSE,
-                display: 'inline-block',
-                transform: owingOpen ? 'rotate(90deg)' : 'none',
-                transition: 'transform 0.18s',
-              }}>▶</span>
-              <div style={{ flex: 1, fontSize: 13, fontWeight: 700, color: DEEP_ROSE }}>
-                {owingGroups.length} owing{!privacyOn && owingTotal > 0 ? ` · $${owingTotal.toFixed(0)}` : ''}
-              </div>
-              <span style={{ fontSize: 11, color: DEEP_ROSE, opacity: 0.55, fontWeight: 600 }}>
-                {owingOpen ? 'hide' : 'show'}
-              </span>
-            </div>
-            {owingOpen && (
-              <div style={{
-                borderRadius: '0 0 12px 12px',
-                border: `1px solid rgba(181,0,78,0.25)`,
-                borderTop: 'none',
-                overflow: 'hidden',
-              }}>
-                {owingGroups.map((g, i) => {
-                  const isStale = g.maxHoursOld >= 48 && g.hasCompleted;
-                  const isFresh = !isStale && g.hasCompleted;
-                  const bgColor = isStale
-                    ? (mode === 'dark' ? 'rgba(220,38,38,0.15)' : 'rgba(220,38,38,0.07)')
-                    : isFresh
-                      ? (mode === 'dark' ? 'rgba(181,0,78,0.1)' : 'rgba(181,0,78,0.05)')
-                      : (mode === 'dark' ? 'rgba(181,0,78,0.06)' : 'rgba(181,0,78,0.03)');
-                  const accentColor = isStale ? '#DC2626' : DEEP_ROSE;
-                  const mostRecentJob = g.jobs[g.jobs.length - 1];
-                  const allWrapUp = g.jobs.every(j => j.status !== 'Completed');
-                  const dateLabel = mostRecentJob.start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-                  return (
-                    <div
-                      key={g.client_id}
-                      onClick={() => openJob(mostRecentJob.id)}
-                      style={{
-                        background: bgColor,
-                        borderTop: i > 0 ? `1px solid rgba(181,0,78,0.12)` : 'none',
-                        borderLeft: `3px solid ${accentColor}`,
-                        padding: '10px 14px 10px 12px',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
-                        <div style={{ fontFamily: T.serif, fontSize: 16, fontWeight: 600, color: T.ink, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.3px' }}>
-                          {g.client_name}
-                        </div>
-                        <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 800, color: accentColor, whiteSpace: 'nowrap', marginLeft: 8 }}>
-                          {privacyOn ? '•••' : allWrapUp ? `~$${g.totalOwing.toFixed(0)} est.` : `$${g.totalOwing.toFixed(0)} owing`}
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 11, color: T.inkMuted }}>{dateLabel}</span>
-                        <span style={{ fontSize: 11, color: T.inkMuted, opacity: 0.4 }}>·</span>
-                        <span style={{ fontSize: 11, color: T.inkMuted }}>{mostRecentJob.service_name}</span>
-                        {g.jobs.length > 1 && (
-                          <span style={{ fontSize: 10, fontWeight: 700, color: accentColor, background: `${accentColor}18`, padding: '1px 5px', borderRadius: 4 }}>
-                            +{g.jobs.length - 1} more
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
 
         {/* TODAY — Remaining jobs */}
         {todayUpcoming.length > 0 && (
@@ -1072,6 +1021,91 @@ export default function Home() {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* OWING — collapsible, below today's schedule */}
+        {owingGroups.length > 0 && (
+          <div style={{ marginBottom: 16 }}>
+            <div
+              onClick={() => setOwingOpen(o => !o)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '9px 12px',
+                background: mode === 'dark' ? 'rgba(181,0,78,0.1)' : '#FFF0F4',
+                borderRadius: owingOpen ? '12px 12px 0 0' : 12,
+                border: `1px solid rgba(181,0,78,0.25)`,
+                cursor: 'pointer',
+                userSelect: 'none',
+              }}
+            >
+              <span style={{
+                fontSize: 10, color: DEEP_ROSE,
+                display: 'inline-block',
+                transform: owingOpen ? 'rotate(90deg)' : 'none',
+                transition: 'transform 0.18s',
+              }}>▶</span>
+              <div style={{ flex: 1, fontSize: 13, fontWeight: 700, color: DEEP_ROSE }}>
+                {owingGroups.length} owing{!privacyOn && owingTotal > 0 ? ` · $${owingTotal.toFixed(0)}` : ''}
+              </div>
+              <span style={{ fontSize: 11, color: DEEP_ROSE, opacity: 0.55, fontWeight: 600 }}>
+                {owingOpen ? 'hide' : 'show'}
+              </span>
+            </div>
+            {owingOpen && (
+              <div style={{
+                borderRadius: '0 0 12px 12px',
+                border: `1px solid rgba(181,0,78,0.25)`,
+                borderTop: 'none',
+                overflow: 'hidden',
+              }}>
+                {owingGroups.map((g, i) => {
+                  const isStale = g.maxHoursOld >= 48 && g.hasCompleted;
+                  const isFresh = !isStale && g.hasCompleted;
+                  const bgColor = isStale
+                    ? (mode === 'dark' ? 'rgba(220,38,38,0.15)' : 'rgba(220,38,38,0.07)')
+                    : isFresh
+                      ? (mode === 'dark' ? 'rgba(181,0,78,0.1)' : 'rgba(181,0,78,0.05)')
+                      : (mode === 'dark' ? 'rgba(181,0,78,0.06)' : 'rgba(181,0,78,0.03)');
+                  const accentColor = isStale ? '#DC2626' : DEEP_ROSE;
+                  const mostRecentJob = g.jobs[g.jobs.length - 1];
+                  const allWrapUp = g.jobs.every(j => j.status !== 'Completed');
+                  const dateLabel = mostRecentJob.start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                  return (
+                    <div
+                      key={g.client_id}
+                      onClick={() => openJob(mostRecentJob.id)}
+                      style={{
+                        background: bgColor,
+                        borderTop: i > 0 ? `1px solid rgba(181,0,78,0.12)` : 'none',
+                        borderLeft: `3px solid ${accentColor}`,
+                        padding: '10px 14px 10px 12px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
+                        <div style={{ fontFamily: T.serif, fontSize: 16, fontWeight: 600, color: T.ink, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.3px' }}>
+                          {g.client_name}
+                        </div>
+                        <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 800, color: accentColor, whiteSpace: 'nowrap', marginLeft: 8 }}>
+                          {privacyOn ? '•••' : allWrapUp ? `~$${g.totalOwing.toFixed(0)} est.` : `$${g.totalOwing.toFixed(0)} owing`}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 11, color: T.inkMuted }}>{dateLabel}</span>
+                        <span style={{ fontSize: 11, color: T.inkMuted, opacity: 0.4 }}>·</span>
+                        <span style={{ fontSize: 11, color: T.inkMuted }}>{mostRecentJob.service_name}</span>
+                        {g.jobs.length > 1 && (
+                          <span style={{ fontSize: 10, fontWeight: 700, color: accentColor, background: `${accentColor}18`, padding: '1px 5px', borderRadius: 4 }}>
+                            +{g.jobs.length - 1} more
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 

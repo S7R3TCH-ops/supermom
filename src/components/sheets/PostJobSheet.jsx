@@ -217,7 +217,7 @@ export default function PostJobSheet({ jobId, onClose }) {
             </div>
             {!loading && job?.worker_name && (
               <div style={{ fontSize: 11, color: T.inkMuted, marginTop: 3 }}>
-                {job.assignee_type === 'staff' ? '⭐ Staff:' : '👷 Worker:'} {job.worker_name}{job.worker_pay != null ? <span style={{ opacity: 0.7 }}> · ${Number(job.worker_pay).toFixed(0)} pay</span> : ''}
+                {job.assignee_type === 'staff' ? '🌟 Wingmom:' : '🦸 Sidekick:'} {job.worker_name}{job.worker_pay != null ? <span style={{ opacity: 0.7 }}> · ${Number(job.worker_pay).toFixed(0)} pay</span> : ''}
               </div>
             )}
           </div>
@@ -421,7 +421,7 @@ export default function PostJobSheet({ jobId, onClose }) {
             <SectionLabel style={{ marginBottom: 8 }}>Worker Pay</SectionLabel>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ fontFamily: T.font, fontSize: 13, color: T.ink }}>
-                {job.assignee_type === 'staff' ? '⭐' : '👷'} {job.worker_name}
+                {job.assignee_type === 'staff' ? '🌟' : '🦸'} {job.worker_name}
                 <span style={{ color: T.inkMuted, marginLeft: 6 }}>· ${Number(job.worker_pay).toFixed(0)}</span>
               </div>
               <button

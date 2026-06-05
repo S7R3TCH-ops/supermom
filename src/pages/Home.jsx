@@ -592,16 +592,6 @@ export default function Home() {
                       )}
                     </div>
                   )}
-                  {weekOwed > 0 && (
-                    <div style={{ fontSize: 10, fontWeight: 700, color: '#F97316', marginTop: 2, letterSpacing: '0.3px' }}>
-                      {privacyOn ? '•••' : `$${weekOwed.toFixed(0)} owed`}
-                    </div>
-                  )}
-                  {weekUpcoming > 0 && (
-                    <div style={{ fontSize: 10, fontWeight: 600, color: T.inkMuted, marginTop: 2, letterSpacing: '0.3px' }}>
-                      {privacyOn ? '•••' : `$${weekUpcoming.toFixed(0)} upcoming`}
-                    </div>
-                  )}
                 </>
               )}
             </div>
@@ -732,7 +722,7 @@ export default function Home() {
                                 </div>
                               )}
                               {next.worker_name && (
-                                <div style={{ fontSize: 11, color: T.inkMuted, marginTop: 3 }}>{next.assignee_type === 'staff' ? '⭐ Staff:' : '👷 Worker:'} {next.worker_name}</div>
+                                <div style={{ fontSize: 11, color: T.inkMuted, marginTop: 3 }}>{next.assignee_type === 'staff' ? '🌟 Wingmom:' : '🦸 Sidekick:'} {next.worker_name}</div>
                               )}
                             </div>
                             <div style={{ flexShrink: 0, textAlign: 'right' }}>
@@ -1062,7 +1052,7 @@ export default function Home() {
                   {/* Worker */}
                   {j.worker_name && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 10.5, color: T.inkMuted }}>{j.assignee_type === 'staff' ? '⭐ Staff:' : '👷 Worker:'} {j.worker_name}</span>
+                      <span style={{ fontSize: 10.5, color: T.inkMuted }}>{j.assignee_type === 'staff' ? '🌟 Wingmom:' : '🦸 Sidekick:'} {j.worker_name}</span>
                       {j.payment_status === 'Paid' && Number(j.raw?.worker_pay) > 0 && !j.raw?.worker_paid && (
                         <span style={{ fontSize: 8.5, fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: '#FEF3C7', color: '#92400E', textTransform: 'uppercase', letterSpacing: '0.3px' }}>$ Unpaid</span>
                       )}

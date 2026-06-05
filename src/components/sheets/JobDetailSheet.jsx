@@ -190,7 +190,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
     try {
       await updateJob(job.id, { worker_paid: true });
       notifyDataChanged();
-      toast.success('Worker marked as paid');
+      toast.success('Team member marked as paid');
       onClose();
     } catch (e) { setMutErr(e.message || String(e)); setBusy(false); }
   }
@@ -452,7 +452,7 @@ function ReadMode({
           <Row T={T} label="Time" value={timeRange} />
           <Row T={T} label="Pricing" value={job.pricing_type || '—'} last={!job.worker_name} />
           {job.worker_name && (
-            <Row T={T} label={job.assignee_type === 'staff' ? 'Staff' : 'Worker'} value={`${job.worker_name}${job.worker_pay != null ? ` · $${Number(job.worker_pay).toFixed(0)}` : ''}`} last />
+            <Row T={T} label={job.assignee_type === 'staff' ? 'Wingmom' : 'Sidekick'} value={`${job.worker_name}${job.worker_pay != null ? ` · $${Number(job.worker_pay).toFixed(0)}` : ''}`} last />
           )}
         </InfoCard>
 
@@ -489,7 +489,7 @@ function ReadMode({
           {!isCancelled && !isPaid && <Btn onClick={onMarkPaid} disabled={busy} bg="#E91E6A" color="white" T={T}>Mark Paid</Btn>}
           {!isCancelled && isPaid && Number(job.raw?.worker_pay) > 0 && !job.raw?.worker_paid && (
             <Btn onClick={onMarkWorkerPaid} disabled={busy} bg="#F59E0B" color="white" T={T}>
-              👷 Mark {job.raw?.worker_name || 'Worker'} Paid — ${Number(job.raw.worker_pay).toFixed(0)}
+              🦸 Mark {job.raw?.worker_name || 'Team Member'} Paid — ${Number(job.raw.worker_pay).toFixed(0)}
             </Btn>
           )}
           {!isCancelled && (
@@ -736,14 +736,14 @@ function EditMode({ job, form, setForm, services, workers, business, T, mode, bu
             >
               <option value="">— Unassigned —</option>
               {workers.filter(w => (w.person_type || 'worker') === 'worker').length > 0 && (
-                <optgroup label="── Workers ──">
+                <optgroup label="── Sidekicks ──">
                   {workers.filter(w => (w.person_type || 'worker') === 'worker').map(w => (
                     <option key={w.id} value={w.id}>{w.name}{w.skills?.length > 0 ? ` · ${w.skills.map(s => s.skill_name).join(', ')}` : ''}</option>
                   ))}
                 </optgroup>
               )}
               {workers.filter(w => w.person_type === 'staff').length > 0 && (
-                <optgroup label="── Staff ──">
+                <optgroup label="── Wingmoms ──">
                   {workers.filter(w => w.person_type === 'staff').map(w => (
                     <option key={w.id} value={w.id}>{w.name}{w.skills?.length > 0 ? ` · ${w.skills.map(s => s.skill_name).join(', ')}` : ''}</option>
                   ))}
@@ -756,7 +756,7 @@ function EditMode({ job, form, setForm, services, workers, business, T, mode, bu
           <Field T={T} label="Pay for this job ($)"><input type="number" value={form.worker_pay} onChange={e => set('worker_pay', e.target.value)} style={{ ...iStyle(T), width: '100%' }} /></Field>
         )}
         {form.worker_id && (
-          <Field T={T} label="Worker Paid?">
+          <Field T={T} label="Team Member Paid?">
             <button
               onClick={() => set('worker_paid', !form.worker_paid)}
               style={{

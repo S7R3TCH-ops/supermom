@@ -106,7 +106,7 @@ export default function WorkerCatalogSheet({ isOpen, onClose }) {
           person_type: form.person_type,
         });
         savedId = w.id;
-        toast.success(`${form.person_type === 'staff' ? 'Staff' : 'Worker'} added!`);
+        toast.success(`${form.person_type === 'staff' ? 'Wingmom' : 'Sidekick'} added!`);
       } else {
         await updateWorker(editing, {
           name: form.name.trim(),
@@ -189,7 +189,7 @@ export default function WorkerCatalogSheet({ isOpen, onClose }) {
   };
 
   const filtered = workers.filter(w => (w.person_type || 'worker') === activeTab && !w.deleted_at);
-  const tabLabel = activeTab === 'staff' ? 'Staff' : 'Workers';
+  const tabLabel = activeTab === 'staff' ? 'Wingmoms' : 'Sidekicks';
 
   return (
     <div
@@ -241,7 +241,7 @@ export default function WorkerCatalogSheet({ isOpen, onClose }) {
                 borderBottom: activeTab === tab ? `2.5px solid ${T.pink}` : '2.5px solid transparent',
               }}
             >
-              {tab === 'worker' ? '👷 Workers' : '⭐ Staff'}
+              {tab === 'worker' ? '🦸 Sidekicks' : '🌟 Wingmoms'}
             </button>
           ))}
         </div>
@@ -251,7 +251,7 @@ export default function WorkerCatalogSheet({ isOpen, onClose }) {
           {/* Staff note */}
           {activeTab === 'staff' && (
             <div style={{ background: T.pinkTint, border: `1px solid ${T.pink}22`, borderRadius: 10, padding: '9px 12px', marginBottom: 14, fontSize: 11, color: T.pink, fontFamily: T.font }}>
-              Staff will receive app access in a future update. For now, they can be assigned to jobs like workers.
+              Wingmoms will receive app access in a future update. For now, they can be assigned to jobs like Sidekicks.
             </div>
           )}
 
@@ -337,7 +337,7 @@ export default function WorkerCatalogSheet({ isOpen, onClose }) {
           {/* Add button */}
           {!editing && (
             <button onClick={startNew} style={{ width: '100%', padding: '12px', borderRadius: 12, background: T.pinkTint, border: `1.5px dashed ${T.pink}`, color: T.pink, fontFamily: T.font, fontWeight: 700, fontSize: 13, cursor: 'pointer', marginBottom: 14 }}>
-              + ADD {activeTab === 'staff' ? 'STAFF' : 'WORKER'}
+              + ADD {activeTab === 'staff' ? 'WINGMOM' : 'SIDEKICK'}
             </button>
           )}
 
@@ -354,7 +354,7 @@ export default function WorkerCatalogSheet({ isOpen, onClose }) {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                     <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 500, color: T.ink }}>{w.name}</div>
                     <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', padding: '2px 6px', borderRadius: 4, background: w.person_type === 'staff' ? 'rgba(139,92,246,0.12)' : 'rgba(233,30,106,0.10)', color: w.person_type === 'staff' ? '#8B5CF6' : T.pink }}>
-                      {w.person_type === 'staff' ? 'Staff' : 'Worker'}
+                      {w.person_type === 'staff' ? 'Wingmom' : 'Sidekick'}
                     </span>
                   </div>
                   {w.skills && w.skills.length > 0 && (

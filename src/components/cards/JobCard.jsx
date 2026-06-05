@@ -84,7 +84,7 @@ export default function JobCard({ job: j, T, onClick, paid = 0, total = 0, grand
       {j.worker_name && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 10.5, color: T.inkMuted, fontFamily: T.font }}>
-            {j.assignee_type === 'staff' ? '⭐ Staff:' : '👷 Worker:'} {j.worker_name}
+            {j.assignee_type === 'staff' ? '🌟 Wingmom:' : '🦸 Sidekick:'} {j.worker_name}
           </span>
           {isPaid && Number(j.raw?.worker_pay) > 0 && !j.raw?.worker_paid && (
             <span style={{ fontSize: 8.5, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: '#FEF3C7', color: '#92400E', textTransform: 'uppercase', letterSpacing: '0.3px', flexShrink: 0 }}>

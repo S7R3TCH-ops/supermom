@@ -70,7 +70,7 @@ export default function UpcomingCard({ job: j, T, onClick, total = 0, grandTotal
       {/* Worker */}
       {j.worker_name && (
         <div style={{ fontSize: 10.5, color: T.inkMuted, marginTop: 2, fontFamily: T.font }}>
-          {j.assignee_type === 'staff' ? '⭐ Staff:' : '👷 Worker:'} {j.worker_name}
+          {j.assignee_type === 'staff' ? '🌟 Wingmom:' : '🦸 Sidekick:'} {j.worker_name}
         </div>
       )}
 

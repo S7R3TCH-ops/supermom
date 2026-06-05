@@ -215,7 +215,8 @@ export default function JobDetailSheet({ jobId, onClose }) {
           : { flat_rate: Number(form.hourly_rate) || null }),
         estimated_hours: form.estimated_hours === '' ? null : Number(form.estimated_hours),
         job_notes:       form.job_notes || null,
-        additional_costs_json: form.additional_costs_json || [],
+        additional_costs_json: (form.additional_costs_json || []).filter(c => parseFloat(c.amount) > 0),
+        additional_cost: (form.additional_costs_json || []).reduce((s, c) => s + (parseFloat(c.amount) || 0), 0),
         worker_id:       form.worker_id || null,
         worker_pay:      form.worker_id && form.worker_pay !== '' ? Number(form.worker_pay) : null,
         worker_paid:     form.worker_paid ?? false,
@@ -673,6 +674,40 @@ function EditMode({ job, form, setForm, services, workers, business, T, mode, bu
         }} onFocus={e => e.target.select()} style={{ ...iStyle(T), width: '100%' }} /></Field>
 
         <FinancialMathBreakdown job={job} business={business} liveForm={form} T={T} mode={mode} />
+
+        <Field T={T} label="Additional Costs">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {form.additional_costs_json.map((c, i) => (
+              <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <div style={{ position: 'relative', width: 90, flexShrink: 0 }}>
+                  <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: T.inkMuted, fontSize: 12, pointerEvents: 'none' }}>$</span>
+                  <input
+                    type="number"
+                    value={c.amount}
+                    onChange={e => set('additional_costs_json', form.additional_costs_json.map((x, j) => j === i ? { ...x, amount: e.target.value } : x))}
+                    onFocus={e => e.target.select()}
+                    placeholder="0"
+                    style={{ ...iStyle(T), paddingLeft: 22, width: '100%', boxSizing: 'border-box' }}
+                  />
+                </div>
+                <input
+                  value={c.description}
+                  onChange={e => set('additional_costs_json', form.additional_costs_json.map((x, j) => j === i ? { ...x, description: e.target.value } : x))}
+                  placeholder="e.g. Supplies, Parking"
+                  style={{ ...iStyle(T), flex: 1 }}
+                />
+                <button
+                  onClick={() => set('additional_costs_json', form.additional_costs_json.filter((_, j) => j !== i))}
+                  style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 18, cursor: 'pointer', flexShrink: 0 }}
+                >×</button>
+              </div>
+            ))}
+            <button
+              onClick={() => set('additional_costs_json', [...form.additional_costs_json, { amount: '', description: '' }])}
+              style={{ background: 'none', border: 'none', color: T.pink, fontSize: 11, fontWeight: 700, cursor: 'pointer', alignSelf: 'flex-start', padding: '4px 0' }}
+            >+ ADD COST</button>
+          </div>
+        </Field>
 
         <Field T={T} label="Recurrence">
           <select value={form.recurrence || ''} onChange={e => set('recurrence', e.target.value || null)} style={{ ...iStyle(T), width: '100%' }}>

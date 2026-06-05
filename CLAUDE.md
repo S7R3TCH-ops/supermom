@@ -124,12 +124,19 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 ---
 
-## Current version: 0.12.11 — committed Jun 4, 2026
+## Current version: 0.12.12 — committed Jun 4, 2026
 
 All core features are live. The app is in active use by Sandra. See `git log` for full history.
 
 ### ⚠️ Multi-client git discipline
 CLAUDE.md is the only shared truth across online / desktop / CLI sessions. Memory files are local-only. **Always push local commits before starting an online Claude Code session**, and always pull before the online session writes code — otherwise the online session will push stale commits and overwrite newer local work (happened Jun 4, 2026).
+
+### Last session (v0.12.12 — Jun 4, 2026)
+- **perf: debounce notifyDataChanged** — 300ms debounce in `useData.js` prevents event-dispatch spam on rapid mutations.
+- **perf: stable paymentFetchKey** — `Home.jsx` memo extracts job IDs so payment fetch no longer re-runs on every clock tick (~1440x/day with `now` dependency).
+- **Navigation always → Home** — all `navigate(-1)` back buttons changed to `navigate('/')`: `LogoBar.jsx` back button, `ClientProfile.jsx` hero back button. Login redirects to `/` after success. Viewpoint switch uses `window.location.href = '/'` so it lands on Home instead of staying on current route.
+- **Edit Job additional costs UI** — `JobDetailSheet` EditMode had `additional_costs_json` in form state and save payload but no UI. Added cost rows (amount + description, editable/removable) and `+ ADD COST` button. `saveEdit` now also writes `additional_cost` scalar sum and filters empty rows before saving.
+- **console.warn removed** — `[fetchLocationDrives] failed` debug log removed from `Home.jsx`.
 
 ### Last session (v0.12.11 — Jun 4, 2026)
 - **Full onboarding wizard** — 5-step flow for new business owners: Welcome (provisioned name+email card) → Business Info (first/last name, business name, phone, city, postal, HST — all required with inline validation, saves to both `businesses` + `users` tables) → Quick Tips (calendar, client, booking) → Email Preference (Daily vs Weekly picker, saves to `ai_profile.email_frequency`) → You're Ready (dark mode/privacy/GCal callouts) → navigates to `/settings` on completion.
@@ -256,24 +263,26 @@ CLAUDE.md is the only shared truth across online / desktop / CLI sessions. Memor
 > **Watchlist**: Monitor function slot count, Maps quota usage, and cron schedule drift each session. Don't rapid-redeploy (resets cron clock).
 
 ### Next session priorities
-1. **Sandra reconnects Google Calendar** — Settings → Reconnect with `sandra@supermomforhire.com` (Sandra action)
+1. **Sandra reconnects Google Calendar** — handled during onboarding/data reset (Sandra action)
 2. ~~**Supabase schema grants**~~ — ✅ Done Jun 4, 2026
-3. **PWA setup** → push notifications (prerequisite for #4)
-4. **Archive Client & All Jobs** — admin danger zone in `ClientProfile.jsx`. Plan is in `docs/superpowers/plans/2026-05-18-ui-polish.md` Task 5. Was not shipped despite other ui-polish tasks being done.
-5. **Calendar readability overhaul** — current Schedule page (day/agenda views) is hard to read. Needs UX rethink — cards too dense, key info not scannable. Design pass required before coding.
-6. **Staff app access** — `person_type = 'staff'` in DB. Link `workers.id` → `users` + Supabase Auth. Note: rename "staff" label to something better — TBD with Joel.
-7. **Remove debug console.warn** — `console.warn('[fetchLocationDrives] failed:', err)` in `Home.jsx`. Cleanup before v1.0.
+3. ~~**Navigation fixes**~~ — ✅ Done v0.12.12 (back→Home, login→Home, viewpoint switch→Home)
+4. ~~**Edit Job parity**~~ — ✅ Done v0.12.12 (additional costs UI added to EditMode)
+5. ~~**Remove debug console.warn**~~ — ✅ Done v0.12.12
+6. **Archive Client & All Jobs** — admin danger zone in `ClientProfile.jsx`. Plan is in `docs/superpowers/plans/2026-05-18-ui-polish.md` Task 5. Needs review/discussion before coding.
+7. **Calendar readability overhaul** — current Schedule page (day/agenda views) is hard to read. Needs UX rethink — cards too dense, key info not scannable. Design pass + brainstorm next session.
+8. **PWA setup** → push notifications (prerequisite for push notifs)
+9. **Staff app access** — `person_type = 'staff'` in DB. Link `workers.id` → `users` + Supabase Auth. Note: rename "staff" label to something better — TBD with Joel.
 
 ### UX polish — input behaviour (confirmed Jun 4, 2026)
 - [ ] **Select-all on text field focus** — every numeric/amount input across the app (NewJobSheet, EditJob, service catalog, etc.) should select all text when tapped so the user can just start typing. Use `onFocus={e => e.target.select()}` on all `<input type="text|number">` fields.
 - [ ] **Duration defaulting to 1.667h bug** — when adding or editing a job, the duration field sometimes shows `1.667` instead of the service's `default_duration`. Likely a minutes→hours conversion rounding issue (100 min ÷ 60 = 1.6667). Needs investigation in NewJobSheet and EditJob — find where `default_duration` is written to the duration field and ensure it's rounded or stored correctly.
 
 ### Navigation / UX fixes (confirmed Jun 4, 2026)
-- [ ] **Logo taps → Home** — tapping the logo in the app bar should always navigate to `/` (Home screen).
-- [ ] **Login always lands on Home** — after successful login, redirect to Home regardless of previous route.
-- [ ] **Viewpoint switch → Home** — when Super Admin switches to another user's viewpoint, navigate to Home screen immediately after the switch.
-- [ ] **Back always goes Home** — navigating "back" (e.g. closing a sheet or detail page) should return to Home, unless there is unsaved work in progress (edit or new job form — warn/block in that case).
-- [ ] **Edit Job parity with Add Job** — Edit Job sheet is missing fields that exist in NewJobSheet. Audit both and bring Edit Job up to full parity so every field editable at booking time is also editable after.
+- [x] **Logo taps → Home** — back button in `LogoBar.jsx` now navigates to `/`. (v0.12.12)
+- [x] **Login always lands on Home** — `Login.jsx` calls `navigate('/')` after successful sign-in. (v0.12.12)
+- [x] **Viewpoint switch → Home** — `ViewpointContext.switchTo` uses `window.location.href = '/'`. (v0.12.12)
+- [x] **Back always goes Home** — `LogoBar.jsx` + `ClientProfile.jsx` back buttons navigate to `/`. (v0.12.12)
+- [x] **Edit Job parity with Add Job** — additional costs UI added to EditMode in `JobDetailSheet.jsx`. (v0.12.12)
 
 ### Features — Phase 2
 - [ ] **AI chat interface** — `api/ai/[action].js` already exists. Need chat UI component + conversation state. `ANTHROPIC_API_KEY` is now set. HIGH PRIORITY.

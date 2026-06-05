@@ -484,7 +484,7 @@ export default function Home() {
       });
       setLocationDrives(newDrives);
     } catch (err) {
-      console.warn('[fetchLocationDrives] failed:', err);
+      // silently fail — drive time is best-effort
     } finally {
       setLocationLoading(false);
     }

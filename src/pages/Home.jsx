@@ -223,12 +223,20 @@ export default function Home() {
       .sort((a, b) => a.start - b.start);
   }, [allJobs, nextWeekStart, nextWeekEnd, showNextWeekPreview]);
 
-  const [paymentMap, setPaymentMap] = useState({});
-  useEffect(() => {
-    const jobIds = [...new Set([
+  // Stable string of IDs — changes only when actual job IDs change, not every clock tick.
+  // attentionItems depends on `now` (updates every minute), so we extract IDs here to
+  // prevent the payments fetch from firing 1440x/day while the tab is open.
+  const paymentFetchKey = useMemo(() => {
+    const ids = [...new Set([
       ...allWeekJobs.map(j => j.id),
       ...attentionItems.map(j => j.id),
-    ])];
+    ])].sort();
+    return ids.join(',');
+  }, [allWeekJobs, attentionItems]);
+
+  const [paymentMap, setPaymentMap] = useState({});
+  useEffect(() => {
+    const jobIds = paymentFetchKey ? paymentFetchKey.split(',') : [];
 
     let alive = true;
     const fetchPayments = async () => {
@@ -251,7 +259,7 @@ export default function Home() {
 
     fetchPayments();
     return () => { alive = false; };
-  }, [allWeekJobs, attentionItems]);
+  }, [paymentFetchKey]);
 
   const owingGroups = useMemo(() => {
     const map = {};

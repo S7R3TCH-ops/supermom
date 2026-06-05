@@ -11,8 +11,12 @@ import { initRealtime, stopRealtime } from './realtime';
 import { getBusinessProfile, updateBusinessProfile } from './currentBusiness';
 
 const CHANGE_EVENT = 'supermom:data-changed';
+let _debounceTimer = null;
 export function notifyDataChanged() {
-  window.dispatchEvent(new Event(CHANGE_EVENT));
+  clearTimeout(_debounceTimer);
+  _debounceTimer = setTimeout(() => {
+    window.dispatchEvent(new Event(CHANGE_EVENT));
+  }, 300);
 }
 
 export function useRealtimeSync() {

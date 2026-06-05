@@ -319,7 +319,13 @@ export default function Home() {
 
   const locationFetchedRef = useRef(false);
   const routesFetchedRef = useRef(false);
-  const activeJobIdRef = useRef(null);
+  const windowJobIdRef = useRef(null);
+
+  // Which job is currently in its scheduled time window (time-based, no clock-in needed)
+  const currentWindowJobId = useMemo(
+    () => todayJobs.find(j => now >= j.start && now < j.end && j.status === 'Scheduled')?.id ?? null,
+    [todayJobs, now]
+  );
 
   const handleDuplicateJob = (job) => {
     newJobSheet.openWithPrefill({
@@ -378,14 +384,15 @@ export default function Home() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [todayJobs, loading]);
 
-  // Re-fetch GPS drives from job site when Sandra clocks into a job
+  // Re-fetch GPS drives when a job enters its time window — no button needed.
+  // Fires within 1 min of job start; assumes Sandra is at/near the job site.
   useEffect(() => {
-    if (activeJob?.id && activeJob.id !== activeJobIdRef.current) {
-      activeJobIdRef.current = activeJob.id;
+    if (currentWindowJobId && currentWindowJobId !== windowJobIdRef.current) {
+      windowJobIdRef.current = currentWindowJobId;
       fetchLocationDrives();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeJob?.id]);
+  }, [currentWindowJobId]);
 
   const openJob = detailSheet?.openJob;
   const openPostJob = postJobSheet?.openPostJob;

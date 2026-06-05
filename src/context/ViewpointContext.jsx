@@ -29,7 +29,7 @@ export function ViewpointProvider({ children }) {
     setViewingAsName(name);
     setSuperOverride(id);
     clearBusinessCache();
-    window.location.reload();
+    window.location.href = '/';
   };
 
   const reset = () => {

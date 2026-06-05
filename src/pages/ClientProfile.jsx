@@ -158,7 +158,7 @@ export default function ClientProfile() {
         {/* Top row: back + label */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, position: 'relative' }}>
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => navigate('/')}
             style={{
               background: mode === 'dark' ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.4)', 
               border: `1px solid ${mode === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.05)'}`,

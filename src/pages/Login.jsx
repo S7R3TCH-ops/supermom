@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppTheme } from '../context/AppThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 
 export default function Login() {
   const { T } = useAppTheme();
+  const navigate = useNavigate();
   const { signIn, configured } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -19,7 +21,8 @@ export default function Login() {
     setBusy(true);
     const { error } = await signIn(email.trim(), password);
     setBusy(false);
-    if (error) setErr(error.message);
+    if (error) { setErr(error.message); return; }
+    navigate('/');
   }
 
   async function onForgot() {

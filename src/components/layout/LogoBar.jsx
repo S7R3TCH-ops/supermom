@@ -49,7 +49,7 @@ export default function LogoBar() {
           }}
         />
       ) : (
-        <button onClick={() => navigate(-1)} style={{ 
+        <button onClick={() => navigate('/')} style={{
           background: 'none', border: 'none', color: 'white', 
           display: 'flex', alignItems: 'center', gap: 4, 
           fontFamily: T.font, fontSize: 15, fontWeight: 600, 

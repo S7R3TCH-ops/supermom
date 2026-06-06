@@ -517,6 +517,29 @@ export function findConflicts(allJobs, scheduledAtISO, durationMin, windowMinute
   });
 }
 
+// ---------- Safe ai_context patch (no GCal sync) ----------
+
+// Use this instead of updateJob when only updating route/drive data.
+// Does a fresh DB read before merging to avoid clobbering gcal_event_id
+// written concurrently by the GCal sync handler.
+export async function patchJobAiContext(id, contextPatch) {
+  const businessId = await getCurrentBusinessId();
+  const { data: current } = await supabase
+    .from('jobs')
+    .select('ai_context')
+    .eq('id', id)
+    .eq('business_id', businessId)
+    .single();
+
+  const merged = { ...(current?.ai_context || {}), ...contextPatch };
+
+  await supabase
+    .from('jobs')
+    .update({ ai_context: merged, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .eq('business_id', businessId);
+}
+
 // ---------- GCal Sync + Learning ----------
 
 function triggerLearningEnrichment(clientId) {

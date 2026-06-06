@@ -1,7 +1,7 @@
 // src/lib/maps.js
 // Logic for calculating drive times and mileage using the Google Distance Matrix API (via Vercel proxy).
 
-import { updateJob } from '../data/jobsRepo';
+import { patchJobAiContext } from '../data/jobsRepo';
 import { fetchClients } from '../data/clientsRepo';
 
 const HOME_ADDRESS = "Georgetown, ON, Canada"; // Default base for Sandra
@@ -79,14 +79,10 @@ export async function updateDailyRoutes(jobsForDay) {
         }
       }
 
-      // Patch the job's ai_context
-      const updatedAiContext = {
-        ...(job.ai_context || {}),
+      await patchJobAiContext(job.id, {
         drive_to: driveTo,
         ...(driveHome ? { drive_home: driveHome } : {})
-      };
-
-      await updateJob(job.id, { ai_context: updatedAiContext });
+      });
     }
   } catch (error) {
     console.error('[maps] updateDailyRoutes failed:', error);

@@ -1,4 +1,6 @@
 import nodemailer from 'nodemailer';
+import { createClient } from '@supabase/supabase-js';
+import { buildInvoicePdfBuffer } from './_lib/invoicePdf.js';
 
 function escapeHtml(str) {
   return String(str ?? '')
@@ -95,6 +97,28 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true, mock: true });
   }
 
+  // Fetch full invoice data server-side (needed for PDF generation)
+  const sb = createClient(
+    process.env.VITE_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    { auth: { persistSession: false } }
+  );
+  const { data: invoiceData } = await sb
+    .from('invoices')
+    .select('*, clients(*), businesses(*), invoice_jobs(job_id, jobs(*))')
+    .eq('id', invoiceId)
+    .single();
+
+  // Generate PDF — fall back to sending without attachment if it fails
+  let pdfBuffer = null;
+  if (invoiceData) {
+    try {
+      pdfBuffer = await buildInvoicePdfBuffer(invoiceData);
+    } catch (err) {
+      console.error('[email-invoice] PDF generation failed:', err);
+    }
+  }
+
   const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: { user: gmailUser, pass: gmailPass },
@@ -112,6 +136,11 @@ export default async function handler(req, res) {
       to: clientEmail,
       subject: `Invoice #${invoiceNumber} from ${bizName || 'Supermom for Hire'}`,
       html: brandedEmailHtml({ clientName, bizName, bizEmail, invoiceNumber, invoiceUrl }),
+      attachments: pdfBuffer ? [{
+        filename: `Invoice-${invoiceNumber}.pdf`,
+        content: pdfBuffer,
+        contentType: 'application/pdf',
+      }] : [],
     });
 
     return res.status(200).json({ ok: true });

@@ -35,18 +35,38 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing required fields (businessName, ownerName, email, password)' });
     }
 
-    // 2. Create Auth User
-    const { data: authData, error: authErr } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: { 
-        requires_password_change: true, 
-        full_name: ownerName 
+    // 2. Create Auth User — reuse existing auth account if the email is already registered.
+    // This handles the case where a business was soft-deleted (auth.users row persists)
+    // and is being re-provisioned or linked to a new business.
+    let newUser;
+    const { data: { users: allAuthUsers } } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+    const existingUser = allAuthUsers?.find(u => u.email === email);
+
+    if (existingUser) {
+      // Check if this auth user is already linked to a live (non-deleted) business
+      const { data: existingLink } = await supabaseAdmin
+        .from('users')
+        .select('business_id, businesses(deleted_at)')
+        .eq('id', existingUser.id)
+        .maybeSingle();
+      if (existingLink && existingLink.businesses && !existingLink.businesses.deleted_at) {
+        return res.status(409).json({
+          error: `An active account already exists for ${email}. If you meant to restore a deleted business, use the RESTORE button in the Admin panel instead.`
+        });
       }
-    });
-    if (authErr) throw new Error(`Auth creation failed: ${authErr.message}`);
-    const newUser = authData.user;
+      // Reuse the existing auth user, update their password
+      await supabaseAdmin.auth.admin.updateUserById(existingUser.id, { password, email_confirm: true });
+      newUser = existingUser;
+    } else {
+      const { data: authData, error: authErr } = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: { requires_password_change: true, full_name: ownerName }
+      });
+      if (authErr) throw new Error(`Auth creation failed: ${authErr.message}`);
+      newUser = authData.user;
+    }
 
     // 3. Create Business
     const { data: bizData, error: bizErr } = await supabaseAdmin.from('businesses').insert({
@@ -59,8 +79,8 @@ export default async function handler(req, res) {
     }).select().single();
     if (bizErr) throw new Error(`Business creation failed: ${bizErr.message}`);
 
-    // 4. Create User Link (public.users)
-    const { error: linkErr } = await supabaseAdmin.from('users').insert({
+    // 4. Create/update User Link (public.users) — upsert so re-provisioned users don't hit a PK conflict
+    const { error: linkErr } = await supabaseAdmin.from('users').upsert({
       id: newUser.id,
       business_id: bizData.id,
       first_name: ownerName.split(' ')[0],
@@ -68,7 +88,7 @@ export default async function handler(req, res) {
       email: email,
       role: 'owner',
       status: 'active'
-    });
+    }, { onConflict: 'id' });
     if (linkErr) throw new Error(`User linking failed: ${linkErr.message}`);
 
     // 5. Seed Default Services

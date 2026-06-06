@@ -11,12 +11,11 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
-function brandedEmailHtml({ clientName, bizName, bizEmail, invoiceNumber, invoiceUrl }) {
+function brandedEmailHtml({ clientName, bizName, bizEmail, invoiceNumber }) {
   clientName   = escapeHtml(clientName);
   bizName      = escapeHtml(bizName);
   bizEmail     = escapeHtml(bizEmail);
   invoiceNumber = escapeHtml(invoiceNumber);
-  // invoiceUrl is server-generated (not from req.body) — no escaping needed
   const pink = '#E91E6A';
   const cream = '#FFF9F5';
   return `<!DOCTYPE html>
@@ -37,21 +36,13 @@ function brandedEmailHtml({ clientName, bizName, bizEmail, invoiceNumber, invoic
         <tr><td style="padding:32px;">
           <p style="margin:0 0 20px;font-size:15px;color:#1a1a1a;">Hi ${clientName || 'there'},</p>
           <p style="margin:0 0 24px;font-size:14px;color:#555;line-height:1.6;">
-            Please find your invoice #${invoiceNumber} from <strong>${bizName}</strong> attached below.
-            You can view the full invoice by clicking the button below.
+            Please find your invoice #${invoiceNumber} from <strong>${bizName}</strong> attached to this email as a PDF.
           </p>
 
           <!-- Invoice # callout -->
           <div style="background:${cream};border:1.5px solid #FFD6E8;border-radius:12px;padding:16px 20px;margin-bottom:28px;">
             <div style="font-size:10px;font-weight:700;color:#aaa;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">Invoice Number</div>
             <div style="font-size:18px;font-weight:600;color:#1a1a1a;">#${invoiceNumber}</div>
-          </div>
-
-          <!-- CTA button -->
-          <div style="text-align:center;margin-bottom:28px;">
-            <a href="${invoiceUrl}" style="display:inline-block;background:${pink};color:white;text-decoration:none;font-size:14px;font-weight:700;padding:14px 32px;border-radius:10px;letter-spacing:0.3px;">
-              View Invoice
-            </a>
           </div>
 
           <!-- Payment note -->
@@ -67,9 +58,6 @@ function brandedEmailHtml({ clientName, bizName, bizEmail, invoiceNumber, invoic
         <!-- Footer -->
         <tr><td style="background:#fafafa;border-top:1px solid #eee;padding:20px 32px;text-align:center;">
           <p style="margin:0;font-size:12px;color:#aaa;">${bizName} · Georgetown, ON</p>
-          <p style="margin:6px 0 0;font-size:12px;color:#ccc;">
-            <a href="${invoiceUrl}" style="color:#ccc;">View online</a>
-          </p>
         </td></tr>
 
       </table>
@@ -124,9 +112,6 @@ export default async function handler(req, res) {
     auth: { user: gmailUser, pass: gmailPass },
   });
 
-  const appBase = process.env.APP_BASE_URL || 'https://supermom-v2.vercel.app';
-  const invoiceUrl = `${appBase}/i/${invoiceId}`;
-
   const fromAddress = 'invoice@supermomforhire.com';
 
   try {
@@ -135,7 +120,7 @@ export default async function handler(req, res) {
       replyTo: fromAddress,
       to: clientEmail,
       subject: `Invoice #${invoiceNumber} from ${bizName || 'Supermom for Hire'}`,
-      html: brandedEmailHtml({ clientName, bizName, bizEmail, invoiceNumber, invoiceUrl }),
+      html: brandedEmailHtml({ clientName, bizName, bizEmail, invoiceNumber }),
       attachments: pdfBuffer ? [{
         filename: `Invoice-${invoiceNumber}.pdf`,
         content: pdfBuffer,

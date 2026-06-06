@@ -185,6 +185,18 @@ export default function Admin() {
     }
   };
 
+  const handleRestoreBiz = async (id, name) => {
+    if (!window.confirm(`Restore "${name}"? This will make it visible and accessible again.`)) return;
+    try {
+      const { error } = await supabase.from('businesses').update({ deleted_at: null }).eq('id', id);
+      if (error) throw error;
+      toast.success(`"${name}" restored.`);
+      refresh();
+    } catch(e) {
+      toast.error(e.message);
+    }
+  };
+
   const handleUpdatePassword = async () => {
     if (!pwForm.pw || pwForm.pw.length < 8) {
       setPwError('Password must be at least 8 characters.');
@@ -310,7 +322,7 @@ export default function Admin() {
             </div>
 
             <SectionLabel>Super Admin: Data Management</SectionLabel>
-            <div style={{ background: '#1C1C1E', border: '1.5px solid #8B0E3F', borderRadius: 16, padding: '14px', marginBottom: 20 }}>
+            <div style={{ background: '#1C1C1E', border: '1.5px solid #8B0E3F', borderRadius: 16, padding: '14px', marginBottom: 12 }}>
               <div style={{ fontSize: 11, color: '#FF78B0', marginBottom: 12, fontWeight: 600 }}>Soft-delete businesses (immediately hides them from UI).</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {(allBusinesses || []).filter(b => !b.deleted_at).map(b => (
@@ -324,6 +336,23 @@ export default function Admin() {
                 ))}
               </div>
             </div>
+
+            {(allBusinesses || []).some(b => b.deleted_at) && (
+              <div style={{ background: '#1C1C1E', border: '1.5px solid #8B0E3F', borderRadius: 16, padding: '14px', marginBottom: 20 }}>
+                <div style={{ fontSize: 11, color: '#FF78B0', marginBottom: 12, fontWeight: 600 }}>Deleted businesses — restore to make them active again.</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {(allBusinesses || []).filter(b => b.deleted_at).map(b => (
+                    <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '10px 12px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)', opacity: 0.8 }}>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ color: '#888', fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.name}</div>
+                        <div style={{ color: '#666', fontSize: 10 }}>{b.owner_name || 'No Owner'} · deleted {new Date(b.deleted_at).toLocaleDateString()}</div>
+                      </div>
+                      <button onClick={() => handleRestoreBiz(b.id, b.name)} style={{ background: 'transparent', border: '1px solid #30A87E', color: '#30A87E', padding: '5px 10px', borderRadius: 8, fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>RESTORE</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </>
         )}
 

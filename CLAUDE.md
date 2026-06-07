@@ -124,12 +124,21 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 ---
 
-## Current version: 0.12.12 — committed Jun 4, 2026
+## Current version: 0.12.13 — committed Jun 6, 2026
 
 All core features are live. The app is in active use by Sandra. See `git log` for full history.
 
 ### ⚠️ Multi-client git discipline
 CLAUDE.md is the only shared truth across online / desktop / CLI sessions. Memory files are local-only. **Always push local commits before starting an online Claude Code session**, and always pull before the online session writes code — otherwise the online session will push stale commits and overwrite newer local work (happened Jun 4, 2026).
+
+### Last session (v0.12.13 — Jun 5–6, 2026)
+- **Calendar readability overhaul** — removed Day view (redundant with Home). Week view: first name at 10px + service word on second line. Agenda: time range prominent at 11.5px bold, address on separate line, removed GCAL badge and UNPAID badge from future-scheduled jobs. Tapping a week-strip day switches to Agenda. GO button removed from Calendar (Home only).
+- **Team labels renamed** — worker → Sidekick 🦸, staff → Wingmom 🌟; DB `person_type` values updated to `'sidekick'`/`'wingmom'`. (Labels are still hardcoded — must be made per-business configurable before tenant #2.)
+- **Home screen UX overhaul** — removed "Tight Transition" banner (urgency now shown inline on the active job card via an "Up Next" strip: next client, leave-by time, drive duration with green/amber/red coloring, "est. from home" label for fallback). `locationDrives` now re-fetches from the job site's GPS on clock-in instead of home. Owing section moved below "Rest of this week" (it's historical debt, not time-sensitive).
+- **GPS drive re-fetch trigger fixed** — re-fetches by time window instead of requiring a manual clock-in, so drive times stay fresh automatically.
+- **Business restore + safe re-provisioning** (merged via PR #1, online session) — Admin panel shows a "Deleted Businesses" section with RESTORE buttons that clear `deleted_at`. `provision.js` now detects existing `auth.users` emails: live business → 409 directing to RESTORE; soft-deleted business → reuses the auth account, updates password, upserts `public.users`, creates a fresh business row. No more "email already registered" crash on re-provisioning.
+- **Duplicate GCal events fixed** — `updateDailyRoutes` was calling `updateJob()` to persist drive-time data, which always triggers `triggerGCalSync`; for same-day first bookings this fired a second sync before `gcal_event_id` saved back to DB, creating two events. Fixed by replacing that call with a new `patchJobAiContext()` helper (`jobsRepo.js`) that does a fresh DB read before merging `ai_context` fields — preserves `gcal_event_id` and concurrent writes, and does not trigger sync.
+- **PDF attached to invoice emails** — clients now receive the invoice as a PDF attachment (generated server-side via `@react-pdf/renderer`, `api/_lib/invoicePdf.js`) instead of just an app link they can't access. Falls back to sending without the attachment if PDF generation fails.
 
 ### Last session (v0.12.12 — Jun 4, 2026)
 - **perf: debounce notifyDataChanged** — 300ms debounce in `useData.js` prevents event-dispatch spam on rapid mutations.
@@ -239,6 +248,9 @@ CLAUDE.md is the only shared truth across online / desktop / CLI sessions. Memor
 ---
 
 ## Parked / not building yet
+
+### Greenfield rewrite spec (parked, drafted Jun 5, 2026)
+`BLUEPRINT.md` and `AI_PROJECT_INSTRUCTIONS.md` are a complete "what would v2 look like" spec written after shipping v0.12.x — full stack swap (Next.js 15 + TypeScript strict + Drizzle ORM + TanStack Query + Zustand + shadcn/ui + Resend + Sentry), clean schema redesign fixing the `flat_rate`/`total_amount` naming confusion, and a documented list of what worked vs. what to never repeat. **Not active work** — the current v0.12.x app is live and serving Sandra. Revisit only if/when a ground-up rebuild becomes the right call (e.g. scaling past Sandra to other tenants makes the v1 architecture's pain points too costly to keep patching).
 
 ### Immediate — in priority order
 - [x] **Gmail SMTP** — `invoice@supermomforhire.com` live + tested. (Jun 2, 2026)

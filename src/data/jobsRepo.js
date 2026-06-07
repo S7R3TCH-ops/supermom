@@ -435,8 +435,12 @@ export async function recordPayment(jobId, amount, method = 'Cash', _paymentStat
 
       if (pastJobs && pastJobs.length > 0) {
         const totalHours = pastJobs.reduce((sum, j) => sum + Number(j.actual_duration), 0);
-        const avgMinutes = Math.round((totalHours / pastJobs.length) * 60);
-        
+        // Jobs run odd actual lengths (e.g. 73 min), but bookings only ever step in
+        // 30-minute increments — snap the learned average to match, so the catalog
+        // and new-job suggestions don't show ugly fractional hours like "2.28".
+        const rawAvgMinutes = (totalHours / pastJobs.length) * 60;
+        const avgMinutes = Math.max(30, Math.round(rawAvgMinutes / 30) * 30);
+
         await supabase
           .from('services')
           .update({ default_duration: avgMinutes })

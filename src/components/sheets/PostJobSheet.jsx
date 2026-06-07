@@ -179,11 +179,13 @@ export default function PostJobSheet({ jobId, onClose }) {
   }
 
   function fmtMins(min) {
-    const h = min / 60;
-    if (h === 0.5) return '½ hr';
-    if (h % 1 === 0.5) return `${Math.floor(h)}½ hrs`;
-    if (h === 1) return '1 hr';
-    return `${h} hrs`;
+    if (!min) return '0 hrs';
+    const h = Math.floor(min / 60);
+    const m = min % 60;
+    if (h === 0) return `${m} min`;
+    if (m === 0) return h === 1 ? '1 hr' : `${h} hrs`;
+    if (m === 30) return h === 1 ? '1½ hrs' : `${h}½ hrs`;
+    return `${h}h ${m}m`;
   }
 
   const isPaidRecord = job?.payment_status === 'Paid';

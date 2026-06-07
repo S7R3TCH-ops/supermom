@@ -197,7 +197,7 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
     // 1. Local deterministic estimate
     const localEstimate = calculateEstimatedDuration(selectedClient, svc.name, services);
     setAiDuration(localEstimate !== Number(svc.default_duration) ? localEstimate : null);
-    if (!durationTouched) setDuration(localEstimate || Number(svc.default_duration) || 120);
+    if (!durationTouched) setDuration(snapToHalfHour(localEstimate || Number(svc.default_duration) || 120));
 
     // 2. Fetch AI smart estimate
     if (selectedClient?.id) {
@@ -209,7 +209,7 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
           setAiDuration(smart.duration_minutes);
           setAiEstimateReason(smart.reasoning);
           if (!durationTouched) {
-            setDuration(smart.duration_minutes);
+            setDuration(snapToHalfHour(smart.duration_minutes));
           }
         }
       } catch (err) {
@@ -478,12 +478,20 @@ function Step1Who({ clients, onPick, onNew, T }) {
   );
 }
 
+// Suggested durations come from raw historical/AI minute values (e.g. 73) — snap them
+// to the nearest half hour so the picker stays in the same clean increments as the +/- stepper.
+function snapToHalfHour(mins) {
+  return Math.max(30, Math.round(mins / 30) * 30);
+}
+
 function fmtMins(min) {
-  const h = min / 60;
-  if (h === 0.5) return '½ hr';
-  if (h % 1 === 0.5) return `${Math.floor(h)}½ hrs`;
-  if (h === 1) return '1 hr';
-  return `${h} hrs`;
+  if (!min) return '0 hrs';
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  if (h === 0) return `${m} min`;
+  if (m === 0) return h === 1 ? '1 hr' : `${h} hrs`;
+  if (m === 30) return h === 1 ? '1½ hrs' : `${h}½ hrs`;
+  return `${h}h ${m}m`;
 }
 
 function Step2What({

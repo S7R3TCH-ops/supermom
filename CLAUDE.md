@@ -3,6 +3,7 @@
 > Read this file at the start of every session. Read `DESIGN.md` before touching any UI code.
 > **Living document rule**: Update this file immediately after any meaningful task. Remove stale entries. Keep it accurate.
 > **Single source of truth**: CLAUDE.md is the authoritative project state. Do NOT rely on memory files for project status — they drift. Update this file instead.
+> **Drift check (every session, before new work)**: Run `git log --oneline -15` and compare against the most recent "Last session" entries below. If commits aren't documented there, write a catch-up entry first — don't stack new undocumented work on top of old undocumented work. (This file was found 6 commits behind on Jun 7, 2026 — a `pre-push` hook now warns when code lands without a CLAUDE.md update, but it can't reach online sessions, so the habit has to hold across every surface.)
 
 ---
 

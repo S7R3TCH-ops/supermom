@@ -19,6 +19,12 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 ---
 
+## Design Context
+
+`PRODUCT.md` (strategic) and `DESIGN.md` (visual) are the source of truth for all design work — read both before touching UI. Quick orientation: register is **product**; brand personality is **"kick-ass Mary Poppins"** (capable, warm, unflappable — makes hard things look effortless, never cutesy or toy-like); primary design lens is Sandra's actual day, not a hypothetical future tenant. Anti-references: AI-slop "vibe-coded" look, cartoon-superhero iconography, cold corporate SaaS. See `PRODUCT.md` for the full Brand Personality / Anti-references / Design Principles sections.
+
+---
+
 ## Tech Stack
 
 | Layer | Choice |
@@ -52,6 +58,7 @@ This is a **managed service product** — Sandra is the first user, but the arch
 ## Security & Environment
 - **CRITICAL**: Never commit `.env`. Gitignored.
 - Client-side vars: `VITE_` prefix. Server-only: no prefix, Vercel env only.
+- `api/sync/gcal.js` intentionally has **no `INTERNAL_API_SECRET` check** — `triggerGCalSync` is called client-side (which can't supply server secrets), and the endpoint is write-only to Google Calendar, so exposure is low.
 
 ---
 
@@ -125,12 +132,20 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 ---
 
-## Current version: 0.12.13 — committed Jun 6, 2026
+## Current version: 0.12.14 — committed Jun 7, 2026
 
 All core features are live. The app is in active use by Sandra. See `git log` for full history.
 
 ### ⚠️ Multi-client git discipline
 CLAUDE.md is the only shared truth across online / desktop / CLI sessions. Memory files are local-only. **Always push local commits before starting an online Claude Code session**, and always pull before the online session writes code — otherwise the online session will push stale commits and overwrite newer local work (happened Jun 4, 2026).
+
+### Last session (v0.12.14 — Jun 7, 2026)
+- **Client `postal_code` field shipped** — was believed done last session but never landed (confirmed absent from forms/selectors/invoices). Added to `NewClientSheet.jsx` + `EditClientSheet.jsx` (placed after CITY, `.toUpperCase()` on save), joined into `selectors.js` `client.address` (flows to Maps links + job displays), and appended to the invoice client-address block in natural Canadian format ("Georgetown, ON L7G 4S5") in both `InvoiceView.jsx` and `api/_lib/invoicePdf.js`. Province intentionally left alone (hardcoded `'ON'` — all clients local).
+- **Invoices now show real payment status** — previously every invoice read "Total Due: $X" even when fully paid. New shared helper `src/lib/invoiceBalances.js` exports `decorateInvoiceWithBalances(supabaseClient, invoice)` (accepts either RLS browser client or service-role server client — mirrors the cross-context import pattern `invoicePdf.js` already used for `financialMath.js`). Computes real `amountPaid`/`balanceOwing`/`isPaidInFull` from the `payments` table (source of truth, never `job.payment_status`). Invoices now render: green "✓ Paid in Full" badge when fully paid, Invoice Total / Paid / Balance Owing breakdown when partially paid, or the original "Total Due" only when nothing has been paid. Wired into both `invoicesRepo.fetchInvoiceById` (browser) and `api/email-invoice.js` (server, PDF attachment path) so web view, PDF download, and emailed PDF all match.
+- **"Other Outstanding Balances" section added to invoices** — when a client has other `Completed` jobs still owing money, the invoice now lists each one (date / service / amount owing) plus a "Combined Balance Owing — All Jobs" running total (`runningTotalOwing`), in both `InvoiceView.jsx` and `api/_lib/invoicePdf.js`. Surfaces even on a paid-in-full invoice if the *same client* has unrelated unpaid jobs — verified against real data (e.g. Jenn Fuller: invoice 2026-011 shows "Paid in Full" for its own job but lists two other $100 jobs owing, combined total $200).
+- **`due_date` now same-day as `invoice_date`** — was hardcoded `scheduled_date + 7 days` in `generateInvoiceForJob` (`invoicesRepo.js`); now `due_date = job.scheduled_date` (matches `invoice_date`). Re-generating an existing invoice (the `existingLink` update path) now also re-patches `due_date`, self-healing any previously-stored `+7day` value.
+- **Latent ESM bug caught + fixed during verification** — `invoiceBalances.js` imported `financialMath` without a `.js` extension. That's the convention for browser-side `src/` files (Vite resolves it), but this helper is also loaded transitively into `api/email-invoice.js` (Vercel serverless, `"type": "module"` → strict Node ESM resolution requires extensions — every other `api/`-reachable import already uses `.js`). Would have thrown `ERR_MODULE_NOT_FOUND` on the emailed-PDF path in production. Caught by writing a throwaway script that ran `decorateInvoiceWithBalances` + `buildInvoicePdfBuffer` against all 18 of Sandra's real invoices end-to-end (script deleted after verification — not committed).
+- **Invoice layout redesign** (follow-on, same session) — restructured the totals section into a clean linear order: Invoice Total → Payments Received (only if any) → Outstanding Balance (always shown, even at $0) → green "✓ Paid in Full" badge. Removed the redundant `$X/hr × Y hrs = $Z` / "Flat Rate" sub-line under the service description (duplicated the Rate/Hours/Amount table columns). Added faint cream (`FAINT = '#F5F1EC'`) header rows to the secondary "Payments Received" and "Other Outstanding Balances" breakdown tables so they read as proper tables, matching the main line-items table's `CREAM` header. Tightened spacing throughout (page padding, row padding, line-heights, margins) so invoices reliably fit on one page — was cutting off the payment section at the bottom. Changed in both `InvoiceView.jsx` and `api/_lib/invoicePdf.js` (web/PDF must mirror). **Found + fixed a react-pdf/Yoga layout bug during verification**: a single-row "Outstanding Balance · Paid in Full · $0.00" overlapped/concatenated because react-pdf measures `letterSpacing` text without its visual width and cannot create negative space with `justify-content: space-between` — it overlaps overflowing text instead of wrapping. Fixed by stacking into two lines (`balanceMainRow` label+value, separate right-aligned `paidBadge` below). Verified via real generated PDFs for two invoices (Jenn Fuller 2026-011, Ann Rae 2026-017) covering payments + paid-in-full + other-outstanding cases — both render correctly on one page. Web view not independently screenshot-verified (RLS blocks anonymous `/i/:id` access in a fresh browser — confirmed `406`/`PGRST116`); recommend Sandra/Joel spot-check live in an authenticated session.
 
 ### Last session (v0.12.13 — Jun 5–6, 2026)
 - **Calendar readability overhaul** — removed Day view (redundant with Home). Week view: first name at 10px + service word on second line. Agenda: time range prominent at 11.5px bold, address on separate line, removed GCAL badge and UNPAID badge from future-scheduled jobs. Tapping a week-strip day switches to Agenda. GO button removed from Calendar (Home only).
@@ -142,59 +157,13 @@ CLAUDE.md is the only shared truth across online / desktop / CLI sessions. Memor
 - **PDF attached to invoice emails** — clients now receive the invoice as a PDF attachment (generated server-side via `@react-pdf/renderer`, `api/_lib/invoicePdf.js`) instead of just an app link they can't access. Falls back to sending without the attachment if PDF generation fails.
 - **PDF formatting polish** (online session, follow-on to the above) — removed the dead in-app invoice link from the email body, enlarged the logo to balance against the business name, and rebuilt the address blocks as single text flows with tightened spacing to match the payment section.
 
-### Last session (v0.12.12 — Jun 4, 2026)
-- **perf: debounce notifyDataChanged** — 300ms debounce in `useData.js` prevents event-dispatch spam on rapid mutations.
-- **perf: stable paymentFetchKey** — `Home.jsx` memo extracts job IDs so payment fetch no longer re-runs on every clock tick (~1440x/day with `now` dependency).
-- **Navigation always → Home** — all `navigate(-1)` back buttons changed to `navigate('/')`: `LogoBar.jsx` back button, `ClientProfile.jsx` hero back button. Login redirects to `/` after success. Viewpoint switch uses `window.location.href = '/'` so it lands on Home instead of staying on current route.
-- **Edit Job additional costs UI** — `JobDetailSheet` EditMode had `additional_costs_json` in form state and save payload but no UI. Added cost rows (amount + description, editable/removable) and `+ ADD COST` button. `saveEdit` now also writes `additional_cost` scalar sum and filters empty rows before saving.
-- **console.warn removed** — `[fetchLocationDrives] failed` debug log removed from `Home.jsx`.
+### Changelog archive
+Session history for v0.12.4 – v0.12.12 (Jun 3–5, 2026) has moved to `docs/changelog/v0.12.4-to-v0.12.12.md`, relocated **verbatim** — not summarized, so exact detail is preserved if ever needed. Anything load-bearing from those sessions (gotchas, root causes, standing facts that explain non-obvious code) has already been promoted into the permanent reference sections in this file — see Security & Environment, Daily briefing email, Drive time architecture, Hourly job conventions, RLS policy state. **Don't read the archive preemptively.** `git log` / `git show <sha>` already cover "what changed, when" with full diffs; the archive exists for the rare "why does this code look like this" question a permanent section doesn't answer — grep it by keyword or version when that comes up.
 
-### Last session (v0.12.11 — Jun 4, 2026)
-- **Full onboarding wizard** — 5-step flow for new business owners: Welcome (provisioned name+email card) → Business Info (first/last name, business name, phone, city, postal, HST — all required with inline validation, saves to both `businesses` + `users` tables) → Quick Tips (calendar, client, booking) → Email Preference (Daily vs Weekly picker, saves to `ai_profile.email_frequency`) → You're Ready (dark mode/privacy/GCal callouts) → navigates to `/settings` on completion.
-- **Command Brief dot removed** — colored status dot removed; Next Up card pulse covers urgency signaling.
-- **Drive-time-aware briefing** — `getBriefingMessage` now scolds Sandra with passive-aggressive messages when she's past her leave window (1–5 min: "Move it!"; 6–15 min: "They're watching the clock"; 16+: "Just call ahead"). Requires live or cached drive time to fire.
-- **`hst_number` in Settings** — was used on invoices but couldn't be edited in Settings. Field now appears when HST is enabled.
-- **Duplicate client error fix** — "email already exists" was incorrectly shown when email was blank (`null === null` bug). Now only says "email" when email was actually populated and matched.
-- **`locationDrives` TDZ crash fixed** — `minsLateToLeave` computation was placed before the `locationDrives` useState declaration; moved to after line 412.
-- **Weekly email preference** — stored in `ai_profile.email_frequency` ('daily'|'weekly'). Weekly email feature itself is parked for next session.
-
-### Last session (v0.12.10 — Jun 4, 2026)
-- **Select-all on numeric input focus** — `onFocus={e => e.target.select()}` added to all number inputs across JobDetailSheet, PostJobSheet, ServiceCatalogSheet, WorkerCatalogSheet, NewExpenseSheet, Settings.
-- **Duration 1.667 bug fixed** — `NewJobSheet` was saving `duration/60` unrounded; now rounds to 2dp. `JobDetailSheet` also rounds `estimated_hours` on load from DB so existing jobs display cleanly (e.g. `1.67` not `1.6666...`).
-- **Full to-do audit** — consolidated all open items into CLAUDE.md "Next session priorities" section. Old stale plan files reviewed; items 16–21 from May plans verified as done except Archive Client (still open).
-
-### Last session (v0.12.9 — Jun 4, 2026)
-- **GO button urgent state** — replaced red gradient on "Leave NOW" with rose pulse animation (`.go-btn-urgent`, `@keyframes goUrgentPulse` in `index.css`). Keeps brand colors, no red clash.
-- **Drive time now matches Maps** — was reading `el.duration` (no-traffic baseline); switched to `el.duration_in_traffic ?? el.duration` so the button shows the same traffic-aware time as Maps.
-- **Fresh GPS on tap** — `handleSupermomGo` now fires a GPS request the instant Sandra taps, races it against the 1.1s animation. Maps URL uses the fresh coords as `&origin=`, so Maps routes from her actual current location, not stale last-fetch coords.
-- **Maps URL params aligned** — added `&travelmode=driving&avoid=tolls` to match Distance Matrix API call params exactly.
-- **Arrive time in subtitle** — button subtitle now shows `"25 mins · arrive 3:45 PM · live traffic"` (GPS) or `"~32 mins · arrive ~3:52 PM · est. from home"` (fallback).
-- **Debug logging** — `fetchLocationDrives` catch block now `console.warn('[fetchLocationDrives] failed:', err)` instead of swallowing silently. Remove before v1.0.
-- **Branding assets committed** — `public/branding/supermom_icon.png` + `supermom_icon_transparent.png` were untracked; now in git.
-- **Conflict resolution** — online Claude.ai session had pushed stale commits (old plain GO button) that conflicted with local v0.12.8. Resolved with force push of local history. Remote is clean.
-
-### Last session (v0.12.8 — Jun 4, 2026)
-- **Job notes fixed** — Next Up card was reading `next.job_notes` but `toDisplayJob()` maps the DB column to `next.notes`. Fixed. Removed duplicate `📌 Job Notes` block below GO button — notes only show inline under service name.
-- **SUPERMOM GO button** (carried from prior session):
-  - Custom Supermom icon (`/branding/supermom_icon_transparent.png`, 44px, drop-shadow)
-  - `supermomLaunch` CSS animation: runway + takeoff. 1.3s. Maps opens at 1.1s.
-  - Leave-by time shown with and without GPS.
-- **Owing jobs redesign** — Replaced amber/red "Needs Action" section and ⚠️ stale banner with a clean collapsible "owing" section:
-  - Collapsed by default, positioned between Next Up and Coming Up Today
-  - Grouped by client with cumulative balance across all owing jobs
-  - Intensity tiers: stale ≥48h completed = dark red (`#DC2626`); fresh completed = app rose; wrap-up only = blush
-  - `+N more` badge when a client has multiple jobs
-  - Privacy mode hides amounts
-  - `DEEP_ROSE = '#B5004E'` hoisted to module-level constant in `Home.jsx`
-
-### Last session (v0.12.7 — Jun 5, 2026)
-- **Google Calendar OAuth fixed** — `APP_BASE_URL` was set to empty string in Vercel, causing redirect to fall back to `localhost`. Fixed: set `APP_BASE_URL=https://app.supermomforhire.com` in Vercel. Added `https://app.supermomforhire.com/api/auth/google/callback` to Google Cloud Console authorized redirect URIs. Redeployed.
-- **GCal sync fixed** — `triggerGCalSync` in `jobsRepo.js` is called client-side and could never send the `INTERNAL_API_SECRET` header. Removed that auth check from `api/sync/gcal.js` — endpoint is write-only to Google Calendar, low exposure risk.
-- **GCal event color** — All synced events now use `colorId: '4'` (Flamingo). Existing events get color on next re-save.
-- **Briefing email overhauled** — Many improvements made this session (see below). Manual trigger confirmed working. Cron auto-fire still unverified (see below).
-- **GCal sync still needs end-to-end test** — Joel connected his Google account (joel@). Sandra still needs to reconnect with `sandra@supermomforhire.com`.
+> **Reorg note (Jun 7, 2026)**: This relocation cut CLAUDE.md from ~32KB to keep it cheap to read every session. While auditing the moved entries against the still-open checklists, found two items in "UX polish — input behaviour" below marked `[ ]` that the v0.12.10 session note (now archived) said were already fixed — verified both against `src/` directly and ticked them. Real drift the session-start check didn't catch because it only ever compares `git log` against the *latest* "Last session" entry, not older ones against open checklists.
 
 ### Daily briefing email — current state (Jun 5, 2026)
+- **Cadence preference**: stored per-business in `ai_profile.email_frequency` (`'daily'`|`'weekly'`), set during onboarding's Email Preference step. Only the daily cron is built — weekly variant is parked.
 - **File**: `api/briefing/daily.js`
 - **Manual test URL**: `https://supermom-s7-r3-tch.vercel.app/api/briefing/daily?secret=supermom_daily_email_updates&to=jlundie@gmail.com`
 - **Cron schedule**: `0 11 * * *` = 7:00 AM EDT daily — defined in `vercel.json`
@@ -209,27 +178,6 @@ CLAUDE.md is the only shared truth across online / desktop / CLI sessions. Memor
   - **Hobby plan caveat**: cron timing is best-effort — the email may land anywhere in the **7:00–8:00 AM EDT** window, not exactly 7:00. Minute-accurate firing requires Pro (not doing this).
   - **DO NOT rapid-redeploy.** Every production deploy re-registers the cron and resets the next-run clock. Deploy once from a clean committed tree and leave it.
   - To re-verify the live schedule any time: **Vercel dashboard → supermom → Settings → Crons**, or query `GET https://api.vercel.com/v9/projects/{projectId}?teamId={teamId}` and read `.crons.definitions`.
-
-### Last session (v0.12.6 — Jun 4, 2026)
-- **Daily briefing email built** — `api/briefing/daily.js` queries today's + tomorrow's jobs and outstanding balances, sends branded HTML email to business owner via Gmail SMTP. Vercel Cron fires at `0 11 * * *` (7am EDT). Secured with `CRON_SECRET` env var. Multi-tenant ready. Added `?to=` override + `?secret=` query param for browser-based test triggers.
-- **ANTHROPIC_API_KEY** — added to Vercel env. AI features now live (no more mocks).
-- **CRON_SECRET** — re-added to Vercel env. ✅
-- **Cleanup** — deleted one-time `run-update-email.bat` + `scripts/update-sandra-email.mjs` (Sandra's auth email was migrated to `sandra@supermomforhire.com`).
-- **Sandra login fix** — Sandra's Supabase Auth email was already correctly set to `sandra@supermomforhire.com`. Login failure was a wrong-password issue (email was changed programmatically). Sent password reset email via Supabase admin API. She can now set a new password and log in.
-- **Google Cloud billing activated** — 90-day trial had expired. Billing re-enabled with credit card. $0 budget alert set (immediate notification on any spend). Unblocks drive times + GCal sync.
-- **Distance Matrix quota cap** — hard limit set to 500 elements/day in Google Cloud Console. Sandra's real usage ~15–30/day; cap stops any runaway bug before it can cause charges.
-- **Google Cloud cleanup** — "My First Project" (where all credentials live, ID: `enhanced-idiom-498212-f6`) renamed to "Supermom For Hire". Empty "Supermom For Hire" project shut down. Console is now clean.
-- **Sandra needs to reconnect Google Calendar** — Settings → Reconnect with `sandra@supermomforhire.com` (billing now active, this will work).
-- **Drive time accuracy fixed** — Distance Matrix API was returning idealized road-speed times (no traffic). Added `departure_time=now` (real-time traffic) and `avoid=tolls` to all Distance Matrix calls. `getNavigationUrl()` also now opens Google Maps with toll avoidance pre-set. Affected: `api/distance.js`, `Home.jsx`, `maps.js`, `NewJobSheet.jsx`.
-
-### Previous session (v0.12.4 — Jun 3, 2026)
-- **GCal sync bug fixed** — `api/sync/gcal.js` was appending `:00` to already-normalized `HH:mm:ss` times, producing invalid datetimes Google rejected. Fixed datetime construction. Merged to main + deployed.
-- **Home screen crash fixed** — `isNowWindow` was defined inside an IIFE in JSX but referenced outside its scope. Hoisted to component level.
-- **Drive time in booking sheet** — `NewJobSheet` Step 3 now fetches real drive time from home to client on load. Replaced hardcoded "Maps not connected yet".
-- **Error message** — ErrorBoundary no longer says "Joel has been notified" — generic message now.
-- **Live drive-time + Leave By (executive assistant mode)** — Home screen auto-fetches GPS on load. Next Up card shows "Leave by X:XX PM" / "Leave in N mins" / "Leave NOW" (urgent red). COMING UP TODAY cards each get a "🚗 Leave by X · N mins away" annotation. Single ↻ button re-fetches from current location. Batch Distance Matrix call (one origin, all upcoming destinations). Falls back to home-based drive time if location denied.
-- **Google Calendar OAuth live** — previously working. Sandra needs to Reconnect in Settings with `sandra@supermomforhire.com` to sync her own calendar.
-- **Google Maps** — `GOOGLE_MAPS_API_KEY` in Vercel env. Distance Matrix + Geocoding APIs enabled. Server-side key — not account-specific.
 
 ### Drive time architecture (v0.12.4)
 - `locationDrives` state in `Home.jsx`: `{ [jobId]: { duration: string, durationValue: number } }` — ephemeral, never persisted
@@ -277,6 +225,7 @@ CLAUDE.md is the only shared truth across online / desktop / CLI sessions. Memor
 > **Watchlist**: Monitor function slot count, Maps quota usage, and cron schedule drift each session. Don't rapid-redeploy (resets cron clock).
 
 ### Next session priorities
+0. **Design system follow-up (flagged Jun 7, 2026, post `$impeccable init`)** — `PRODUCT.md` now exists and shifts the brand voice toward "kick-ass Mary Poppins" (capable/warm/unflappable) and explicitly *away* from literal superhero iconography/copy — but `DESIGN.md` still leans hard into superhero language ("mission control," cape-energy gradient names, etc.). Two follow-ups once UI work resumes: (a) run `$impeccable critique <surface>` on a real screen (no critique has ever been run on this app) and (b) refresh `DESIGN.md` (`$impeccable document`) to bring its voice in line with `PRODUCT.md`'s toned-down personality. Not urgent — do it when doing visual/UI work, not as a standalone task.
 1. **Sandra reconnects Google Calendar** — handled during onboarding/data reset (Sandra action)
 2. ~~**Supabase schema grants**~~ — ✅ Done Jun 4, 2026
 3. ~~**Navigation fixes**~~ — ✅ Done v0.12.12 (back→Home, login→Home, viewpoint switch→Home)
@@ -288,8 +237,8 @@ CLAUDE.md is the only shared truth across online / desktop / CLI sessions. Memor
 9. **Staff app access** — `person_type = 'staff'` in DB. Link `workers.id` → `users` + Supabase Auth. Note: rename "staff" label to something better — TBD with Joel.
 
 ### UX polish — input behaviour (confirmed Jun 4, 2026)
-- [ ] **Select-all on text field focus** — every numeric/amount input across the app (NewJobSheet, EditJob, service catalog, etc.) should select all text when tapped so the user can just start typing. Use `onFocus={e => e.target.select()}` on all `<input type="text|number">` fields.
-- [ ] **Duration defaulting to 1.667h bug** — when adding or editing a job, the duration field sometimes shows `1.667` instead of the service's `default_duration`. Likely a minutes→hours conversion rounding issue (100 min ÷ 60 = 1.6667). Needs investigation in NewJobSheet and EditJob — find where `default_duration` is written to the duration field and ensure it's rounded or stored correctly.
+- [x] **Select-all on text field focus** — `onFocus={e => e.target.select()}` is live on all numeric inputs (JobDetailSheet, PostJobSheet, ServiceCatalogSheet, WorkerCatalogSheet, NewExpenseSheet, Settings). Done v0.12.10 (Jun 4) — this checklist had drifted (still showed open); corrected + re-verified against source Jun 7, 2026.
+- [x] **Duration defaulting to 1.667h bug** — `NewJobSheet` rounds `duration/60` to 2dp on save (`Math.round((duration/60)*100)/100`); `JobDetailSheet` rounds `estimated_hours` on load. Done v0.12.10 (Jun 4) — this checklist had drifted (still showed open); corrected + re-verified against source Jun 7, 2026.
 
 ### Navigation / UX fixes (confirmed Jun 4, 2026)
 - [x] **Logo taps → Home** — back button in `LogoBar.jsx` now navigates to `/`. (v0.12.12)

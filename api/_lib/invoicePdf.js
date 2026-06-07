@@ -11,7 +11,9 @@ function formatDate(dateStr) {
 }
 
 const CREAM   = '#EAE2D8';
+const FAINT   = '#F5F1EC';
 const PINK    = '#E91E6A';
+const PAID    = '#16A34A';
 const INK     = '#1a1a1a';
 const MUTED   = '#555';
 const LIGHT   = '#888';
@@ -23,19 +25,19 @@ const s = StyleSheet.create({
     fontFamily: 'Helvetica',
     fontSize: 10,
     color: INK,
-    paddingTop: 36,
-    paddingBottom: 40,
+    paddingTop: 28,
+    paddingBottom: 32,
     paddingLeft: 40,
     paddingRight: 40,
     backgroundColor: '#ffffff',
   },
   // Header
-  header:  { alignItems: 'center', marginBottom: 24 },
+  header:  { alignItems: 'center', marginBottom: 16 },
   logo:    { width: 140, height: 140, marginBottom: 8 },
   bizName: { fontSize: 16, fontFamily: 'Helvetica-Bold', letterSpacing: 1, textTransform: 'uppercase', color: INK, marginBottom: 3 },
   hst:     { fontSize: 8, color: LABEL_C, letterSpacing: 0.5 },
   // Info row (3 cols)
-  infoRow:   { flexDirection: 'row', marginBottom: 24, gap: 12 },
+  infoRow:   { flexDirection: 'row', marginBottom: 18, gap: 12 },
   infoCol:   { flex: 1 },
   infoLabel: { fontSize: 7, fontFamily: 'Helvetica-Bold', color: LABEL_C, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 5 },
   infoBlock: { fontSize: 10, lineHeight: 1.15 },
@@ -47,9 +49,9 @@ const s = StyleSheet.create({
   metaKey: { fontSize: 7, fontFamily: 'Helvetica-Bold', color: LABEL_C, letterSpacing: 0.8, textTransform: 'uppercase', marginTop: 1 },
   metaVal: { fontFamily: 'Helvetica-Bold', color: INK, fontSize: 10 },
   // Table
-  tableHeaderRow: { flexDirection: 'row', backgroundColor: CREAM, paddingTop: 7, paddingBottom: 7, paddingLeft: 2, paddingRight: 2 },
-  tableRow:       { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: BORDER, paddingTop: 10, paddingBottom: 10, paddingLeft: 2, paddingRight: 2 },
-  tableRowAlt:    { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: BORDER, backgroundColor: '#fafafa', paddingTop: 8, paddingBottom: 8, paddingLeft: 2, paddingRight: 2 },
+  tableHeaderRow: { flexDirection: 'row', backgroundColor: CREAM, paddingTop: 6, paddingBottom: 6, paddingLeft: 2, paddingRight: 2 },
+  tableRow:       { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: BORDER, paddingTop: 8, paddingBottom: 8, paddingLeft: 2, paddingRight: 2 },
+  tableRowAlt:    { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: BORDER, backgroundColor: '#fafafa', paddingTop: 6, paddingBottom: 6, paddingLeft: 2, paddingRight: 2 },
   cDate:  { width: 72, paddingLeft: 8, paddingRight: 4 },
   cDesc:  { flex: 1,   paddingLeft: 4, paddingRight: 4 },
   cRate:  { width: 56, paddingLeft: 4, paddingRight: 4 },
@@ -62,23 +64,46 @@ const s = StyleSheet.create({
   tdCenter:  { fontSize: 10, color: MUTED, textAlign: 'center' },
   tdBold:    { fontSize: 10, fontFamily: 'Helvetica-Bold', color: INK },
   tdRight:   { fontSize: 10, fontFamily: 'Helvetica-Bold', color: INK, textAlign: 'right' },
-  tdSub:     { fontSize: 8, color: LABEL_C, marginTop: 2 },
   tdPink:    { fontSize: 7, fontFamily: 'Helvetica-Bold', color: PINK, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 2 },
   tdRightM:  { fontSize: 10, color: MUTED, textAlign: 'right' },
   // Totals
-  totalsWrap:  { alignItems: 'flex-end', marginTop: 8, marginBottom: 28 },
+  totalsWrap:  { alignItems: 'flex-end', marginTop: 6, marginBottom: 16 },
   totalsInner: { width: 200 },
-  tRow:        { flexDirection: 'row', justifyContent: 'space-between', paddingTop: 4, paddingBottom: 4, paddingLeft: 10, paddingRight: 10 },
+  tRow:        { flexDirection: 'row', justifyContent: 'space-between', paddingTop: 3, paddingBottom: 3, paddingLeft: 10, paddingRight: 10 },
   tLabel:      { fontSize: 10, color: MUTED },
   tVal:        { fontSize: 10, color: MUTED },
-  tDueRow:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: CREAM, paddingTop: 10, paddingBottom: 10, paddingLeft: 10, paddingRight: 10, borderRadius: 4, marginTop: 4 },
+  tDueRow:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: CREAM, paddingTop: 8, paddingBottom: 8, paddingLeft: 10, paddingRight: 10, borderRadius: 4, marginTop: 3 },
   tDueLabel:   { fontSize: 7, fontFamily: 'Helvetica-Bold', color: MUTED, letterSpacing: 1, textTransform: 'uppercase' },
   tDueVal:     { fontSize: 18, fontFamily: 'Helvetica-Bold', color: INK },
+  // Payments received — its own faint-headed breakdown table
+  paymentsWrap:      { marginTop: 6 },
+  paymentsHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', backgroundColor: FAINT, paddingTop: 4, paddingBottom: 4, paddingLeft: 10, paddingRight: 10, borderRadius: 3 },
+  paymentsHeaderText:{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#999', letterSpacing: 0.8, textTransform: 'uppercase' },
+  paymentRow:     { flexDirection: 'row', justifyContent: 'space-between', paddingTop: 3, paddingBottom: 3, paddingLeft: 10, paddingRight: 10 },
+  paymentDate:    { fontSize: 9, color: MUTED },
+  paymentAmt:     { fontSize: 9, fontFamily: 'Helvetica-Bold', color: PAID },
+  // Outstanding balance row — always shown
+  balanceWrap:    { borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 7, paddingBottom: 7, paddingLeft: 10, paddingRight: 10, marginTop: 3 },
+  balanceMainRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  balanceLabel:   { fontSize: 7, fontFamily: 'Helvetica-Bold', color: MUTED, letterSpacing: 1, textTransform: 'uppercase' },
+  balanceVal:     { fontSize: 13, fontFamily: 'Helvetica-Bold' },
+  paidBadge:      { fontSize: 9, fontFamily: 'Helvetica-Bold', color: PAID, textAlign: 'right', marginTop: 3 },
+  // Other outstanding balances — faint-headed breakdown table
+  outstandingWrap: { marginTop: 4, marginBottom: 14 },
+  outHeaderRow:  { flexDirection: 'row', backgroundColor: FAINT, paddingTop: 4, paddingBottom: 4, borderRadius: 3, marginBottom: 2 },
+  outHeaderText: { fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#999', letterSpacing: 0.8, textTransform: 'uppercase' },
+  outRow:      { flexDirection: 'row', justifyContent: 'space-between', paddingTop: 4, paddingBottom: 4 },
+  outDate:     { fontSize: 9, color: MUTED, width: 90 },
+  outDesc:     { fontSize: 9, color: INK, flex: 1 },
+  outAmt:      { fontSize: 9, fontFamily: 'Helvetica-Bold', color: INK, textAlign: 'right', width: 64 },
+  outTotalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: CREAM, paddingTop: 7, paddingBottom: 7, paddingLeft: 10, paddingRight: 10, borderRadius: 4, marginTop: 5 },
+  outTotalLabel: { fontSize: 7, fontFamily: 'Helvetica-Bold', color: MUTED, letterSpacing: 0.8, textTransform: 'uppercase' },
+  outTotalVal:   { fontSize: 13, fontFamily: 'Helvetica-Bold', color: INK },
   // Footer
-  footerBorder: { borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 16, marginBottom: 20 },
-  footerLabel:  { fontSize: 7, fontFamily: 'Helvetica-Bold', color: LABEL_C, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 6 },
-  footerText:   { fontSize: 10, color: '#444', lineHeight: 1.15 },
-  thankYou:     { fontSize: 12, color: '#777', fontFamily: 'Helvetica-Oblique', textAlign: 'center' },
+  footerBorder: { borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 12, marginBottom: 14 },
+  footerLabel:  { fontSize: 7, fontFamily: 'Helvetica-Bold', color: LABEL_C, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 5 },
+  footerText:   { fontSize: 10, color: '#444', lineHeight: 1.1 },
+  thankYou:     { fontSize: 11, color: '#777', fontFamily: 'Helvetica-Oblique', textAlign: 'center', marginTop: 4 },
 });
 
 function el(type, props, ...children) {
@@ -93,8 +118,37 @@ function InvoiceDocument({ invoice }) {
   const job    = invoice.invoice_jobs?.[0]?.jobs || {};
   const f      = computeJobFinancials(job, biz);
 
+  const totalRow = V({ style: s.tDueRow, key: 'total' },
+    T({ style: s.tDueLabel }, 'Invoice Total'),
+    T({ style: s.tDueVal   }, `$${f.total.toFixed(2)}`),
+  );
+
+  const paymentsBlock = invoice.payments?.length > 0
+    ? V({ style: s.paymentsWrap, key: 'payments' },
+        V({ style: s.paymentsHeaderRow },
+          T({ style: s.paymentsHeaderText }, 'Payments Received'),
+          T({ style: s.paymentsHeaderText }, 'Amount'),
+        ),
+        ...invoice.payments.map((p, i) =>
+          V({ key: p.id ?? `pmt-${i}`, style: s.paymentRow },
+            T({ style: s.paymentDate }, formatDate(p.payment_date)),
+            T({ style: s.paymentAmt  }, `+$${Number(p.amount).toFixed(2)}`),
+          )
+        ),
+      )
+    : null;
+
+  const balanceColor = invoice.isPaidInFull ? PAID : invoice.balanceOwing > 0 ? '#DC2626' : INK;
+  const balanceRow = V({ style: s.balanceWrap, key: 'balance' },
+    V({ style: s.balanceMainRow },
+      T({ style: s.balanceLabel }, 'Outstanding Balance'),
+      T({ style: [s.balanceVal, { color: balanceColor }] }, `$${invoice.balanceOwing.toFixed(2)}`),
+    ),
+    invoice.isPaidInFull ? T({ style: s.paidBadge }, '✓ Paid in Full') : null,
+  );
+
   const bizCity    = [biz.city, biz.province].filter(Boolean).join(', ');
-  const clientCity = [client.city, client.province].filter(Boolean).join(', ');
+  const clientCity = [[client.city, client.province].filter(Boolean).join(', '), client.postal_code].filter(Boolean).join(' ');
   const appBase    = process.env.APP_BASE_URL || 'https://app.supermomforhire.com';
   const logoUrl    = biz.logo_url?.startsWith('http') ? biz.logo_url : `${appBase}/branding/logo-final.png`;
 
@@ -153,11 +207,6 @@ function InvoiceDocument({ invoice }) {
         V({ style: s.cDate  }, T({ style: s.tdMuted  }, job.scheduled_date ? formatDate(job.scheduled_date) : '—')),
         V({ style: s.cDesc  },
           T({ style: s.tdBold }, job.service_name || 'Professional Services'),
-          T({ style: s.tdSub  },
-            f.isHourly
-              ? `$${f.rate.toFixed(2)}/hr × ${f.hours.toFixed(1)} hrs = $${f.subtotal.toFixed(2)}`
-              : 'Flat Rate'
-          ),
         ),
         V({ style: s.cRate  }, T({ style: s.tdCenter }, f.isHourly ? `$${f.rate.toFixed(2)}` : '—')),
         V({ style: s.cHours }, T({ style: s.tdCenter }, f.isHourly ? f.hours.toFixed(1) : '—')),
@@ -189,12 +238,34 @@ function InvoiceDocument({ invoice }) {
             T({ style: s.tLabel }, `HST (${(f.taxRate * 100).toFixed(0)}%)`),
             T({ style: s.tVal   }, `$${f.taxAmount.toFixed(2)}`),
           ) : null,
-          V({ style: s.tDueRow },
-            T({ style: s.tDueLabel }, 'Total Due'),
-            T({ style: s.tDueVal   }, `$${f.total.toFixed(2)}`),
-          ),
+          totalRow,
+          paymentsBlock,
+          balanceRow,
         ),
       ),
+
+      // ── Other outstanding balances for this client ──
+      invoice.otherOutstanding?.length > 0 ?
+        V({ style: s.outstandingWrap },
+          T({ style: s.footerLabel }, 'Other Outstanding Balances'),
+          V({ style: s.outHeaderRow },
+            T({ style: [s.outDate, s.outHeaderText] }, 'Date'),
+            T({ style: [s.outDesc, s.outHeaderText] }, 'Service'),
+            T({ style: [s.outAmt,  s.outHeaderText] }, 'Owing'),
+          ),
+          ...invoice.otherOutstanding.map(({ job: otherJob, owing }) =>
+            V({ key: otherJob.id, style: s.outRow },
+              T({ style: s.outDate }, otherJob.scheduled_date ? formatDate(otherJob.scheduled_date) : '—'),
+              T({ style: s.outDesc }, otherJob.service_name || 'Professional Services'),
+              T({ style: s.outAmt  }, `$${owing.toFixed(2)}`),
+            )
+          ),
+          V({ style: s.outTotalRow },
+            T({ style: s.outTotalLabel }, 'Combined Balance Owing — All Jobs'),
+            T({ style: s.outTotalVal   }, `$${invoice.runningTotalOwing.toFixed(2)}`),
+          ),
+        )
+      : null,
 
       // ── Payment footer ──
       V({ style: s.footerBorder },

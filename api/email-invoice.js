@@ -1,6 +1,7 @@
 import nodemailer from 'nodemailer';
 import { createClient } from '@supabase/supabase-js';
 import { buildInvoicePdfBuffer } from './_lib/invoicePdf.js';
+import { decorateInvoiceWithBalances } from '../src/lib/invoiceBalances.js';
 
 function escapeHtml(str) {
   return String(str ?? '')
@@ -101,7 +102,8 @@ export default async function handler(req, res) {
   let pdfBuffer = null;
   if (invoiceData) {
     try {
-      pdfBuffer = await buildInvoicePdfBuffer(invoiceData);
+      const decorated = await decorateInvoiceWithBalances(sb, invoiceData);
+      pdfBuffer = await buildInvoicePdfBuffer(decorated);
     } catch (err) {
       console.error('[email-invoice] PDF generation failed:', err);
     }

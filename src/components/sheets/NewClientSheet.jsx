@@ -20,6 +20,7 @@ export default function NewClientSheet({ onClose, onCreated }) {
   const [email, setEmail] = useState('');
   const [street, setStreet] = useState('');
   const [city, setCity] = useState('Georgetown');
+  const [postalCode, setPostalCode] = useState('');
   const [vip, setVip] = useState(false);
   const [isLead, setIsLead] = useState(false);
   const [recurrence, setRecurrence] = useState(null);
@@ -49,6 +50,7 @@ export default function NewClientSheet({ onClose, onCreated }) {
         street: street.trim() || null,
         city: city.trim() || null,
         province: 'ON',
+        postal_code: postalCode.trim().toUpperCase() || null,
         status: isLead ? 'lead' : 'active',
         notes: notes.trim() || null,
         ai_context: { vip, recurrence },
@@ -129,6 +131,10 @@ export default function NewClientSheet({ onClose, onCreated }) {
           <div>
             <label htmlFor="nc-city" style={label}>CITY</label>
             <input id="nc-city" style={input} value={city} onChange={e => setCity(e.target.value)} />
+          </div>
+          <div>
+            <label htmlFor="nc-postal" style={label}>POSTAL CODE</label>
+            <input id="nc-postal" style={input} value={postalCode} onChange={e => setPostalCode(e.target.value)} placeholder="L7G 4S5" />
           </div>
 
           <div>

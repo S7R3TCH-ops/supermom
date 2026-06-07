@@ -38,6 +38,7 @@ export default function EditClientSheet({ clientId, onClose }) {
   const [email, setEmail] = useState('');
   const [street, setStreet] = useState('');
   const [city, setCity] = useState('');
+  const [postalCode, setPostalCode] = useState('');
   const [status, setStatus] = useState('active');
   const [vip, setVip] = useState(false);
   const [recurrence, setRecurrence] = useState(null);
@@ -60,6 +61,7 @@ export default function EditClientSheet({ clientId, onClose }) {
         setEmail(raw.email || '');
         setStreet(raw.street || '');
         setCity(raw.city || '');
+        setPostalCode(raw.postal_code || '');
         setStatus(raw.status || 'active');
         setVip(!!raw.ai_context?.vip);
         setRecurrence(raw.ai_context?.recurrence || null);
@@ -97,6 +99,7 @@ export default function EditClientSheet({ clientId, onClose }) {
         email: email.trim() || null,
         street: street.trim() || null,
         city: city.trim() || null,
+        postal_code: postalCode.trim().toUpperCase() || null,
         status,
         notes: notes.trim() || null,
         tags,
@@ -235,6 +238,10 @@ export default function EditClientSheet({ clientId, onClose }) {
             <div>
               <label style={labelStyle}>CITY</label>
               <input style={inputStyle} value={city} onChange={e => setCity(e.target.value)} />
+            </div>
+            <div>
+              <label style={labelStyle}>POSTAL CODE</label>
+              <input style={inputStyle} value={postalCode} onChange={e => setPostalCode(e.target.value)} placeholder="L7G 4S5" />
             </div>
 
             {/* Status */}

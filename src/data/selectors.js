@@ -78,7 +78,7 @@ export function toDisplayClient(row, jobs = [], paymentsByJobId = {}) {
     color: clientColor(row),
     phone: row.phone ?? '',
     email: row.email ?? '',
-    address: [row.street, row.city, row.province].filter(Boolean).join(', '),
+    address: [row.street, row.city, row.province, row.postal_code].filter(Boolean).join(', '),
     vip: !!ai.vip,
     recurrence,
     service: lastService,

@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { getCurrentBusinessId } from './currentBusiness';
 import { computeJobTotal } from '../lib/financialMath';
+import { decorateInvoiceWithBalances } from '../lib/invoiceBalances';
 
 /**
  * Generates a formal invoice for a job if one doesn't already exist.
@@ -32,7 +33,7 @@ export async function generateInvoiceForJob(jobId) {
 
   if (existingLink) {
     const { error: updateErr } = await supabase.from('invoices')
-      .update({ total_amount: actualTotal })
+      .update({ total_amount: actualTotal, due_date: job.scheduled_date })
       .eq('id', existingLink.invoice_id)
       .eq('business_id', businessId);
     if (updateErr) throw updateErr;
@@ -59,9 +60,8 @@ export async function generateInvoiceForJob(jobId) {
   const invoiceNumber = `${year}-${String(nextNum).padStart(3, '0')}`;
 
   // 4. Create invoice
-  // Default due date: 7 days after job date
-  const jobDate = new Date(job.scheduled_date);
-  const dueDate = new Date(jobDate.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  // Due date matches the invoice date — same-day terms
+  const dueDate = job.scheduled_date;
 
   const { data: invoice, error: invErr } = await supabase
     .from('invoices')
@@ -112,7 +112,7 @@ export async function fetchInvoiceById(id) {
     .single();
 
   if (error) throw error;
-  return invoice;
+  return decorateInvoiceWithBalances(supabase, invoice);
 }
 
 /**

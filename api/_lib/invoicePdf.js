@@ -31,7 +31,7 @@ const s = StyleSheet.create({
   },
   // Header
   header:  { alignItems: 'center', marginBottom: 24 },
-  logo:    { width: 72, height: 72, marginBottom: 6 },
+  logo:    { width: 140, height: 140, marginBottom: 8 },
   bizName: { fontSize: 16, fontFamily: 'Helvetica-Bold', letterSpacing: 1, textTransform: 'uppercase', color: INK, marginBottom: 3 },
   hst:     { fontSize: 8, color: LABEL_C, letterSpacing: 0.5 },
   // Info row (3 cols)

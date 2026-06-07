@@ -36,11 +36,11 @@ const s = StyleSheet.create({
   hst:     { fontSize: 8, color: LABEL_C, letterSpacing: 0.5 },
   // Info row (3 cols)
   infoRow:   { flexDirection: 'row', marginBottom: 24, gap: 12 },
-  infoCol:   { flex: 1, lineHeight: 1.2 },
+  infoCol:   { flex: 1, lineHeight: 1.05 },
   infoLabel: { fontSize: 7, fontFamily: 'Helvetica-Bold', color: LABEL_C, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 4 },
-  infoBold:  { fontFamily: 'Helvetica-Bold', color: INK, marginBottom: 1, fontSize: 10 },
-  infoMuted: { color: MUTED, marginBottom: 1, fontSize: 10 },
-  infoLight: { color: LIGHT, marginBottom: 1, fontSize: 10 },
+  infoBold:  { fontFamily: 'Helvetica-Bold', color: INK, marginBottom: 0, fontSize: 10 },
+  infoMuted: { color: MUTED, marginBottom: 0, fontSize: 10 },
+  infoLight: { color: LIGHT, marginBottom: 0, fontSize: 10 },
   // Invoice meta rows
   metaRow: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginBottom: 3 },
   metaKey: { fontSize: 7, fontFamily: 'Helvetica-Bold', color: LABEL_C, letterSpacing: 0.8, textTransform: 'uppercase', marginTop: 1 },
@@ -76,7 +76,7 @@ const s = StyleSheet.create({
   // Footer
   footerBorder: { borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 16, marginBottom: 20 },
   footerLabel:  { fontSize: 7, fontFamily: 'Helvetica-Bold', color: LABEL_C, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 6 },
-  footerText:   { fontSize: 10, color: '#444', lineHeight: 1.4 },
+  footerText:   { fontSize: 10, color: '#444', lineHeight: 1.15 },
   thankYou:     { fontSize: 12, color: '#777', fontFamily: 'Helvetica-Oblique', textAlign: 'center' },
 });
 

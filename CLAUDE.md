@@ -132,42 +132,20 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 ---
 
-## Current version: 0.12.15 — committed Jun 7, 2026
+## Current version: 0.12.16 — committed Jun 8, 2026
 
-All core features are live. The app is in active use by Sandra. See `git log` for full history.
+All core features are live. The app is in active use by Sandra.
 
 ### ⚠️ Multi-client git discipline
 CLAUDE.md is the only shared truth across online / desktop / CLI sessions. Memory files are local-only. **Always push local commits before starting an online Claude Code session**, and always pull before the online session writes code — otherwise the online session will push stale commits and overwrite newer local work (happened Jun 4, 2026).
 
-### Last session (v0.12.15 — Jun 7, 2026)
-- **Invoice print layout fixed to fit one page** — the downloaded/printed invoice (`window.print()` on `InvoiceView.jsx` — separate from the emailed-PDF path in `api/_lib/invoicePdf.js`, which uses `@react-pdf/renderer`) was overflowing onto a near-empty 2nd page (only Payment + thank-you footer). Root cause: print page is US Letter (612×792pt) regardless of `invoicePdf.js`'s A4. Tightened header/logo margins, info-grid spacing, table row padding, and totals/payments section margins per a 5-point spacing audit (logo 240→150px, print padding `0.45in/0.5in/0.55in`→`0.4in/0.5in/0.4in`, table row padding 12px→8px, etc.). Verified via a synthetic-data HTML mockup measuring `.invoice-box.scrollHeight` against Letter page height (1056px) — landed at 1057px (1px = font-rendering rounding noise, mockup used Helvetica/Georgia stand-ins for the real `var(--font-ui)`/`var(--font-display)`).
-- **"✓ Paid in Full" badge shortened to "✓ Paid"** with `whiteSpace: 'nowrap'` so it never wraps to two lines — mirrored in `api/_lib/invoicePdf.js` (`balanceValGroup`/`paidBadge` styles) so web, downloaded PDF, and emailed PDF all match.
-- **Emailed PDF filename now includes client last name** — `api/email-invoice.js` attachment filename changed from `Invoice-{number}.pdf` to `{LastName}_Invoice_{number}.pdf` to match the downloaded-PDF naming convention (`document.title` pattern in `InvoiceView.jsx`'s print handler).
-- **`src/index.css` print media query added** — the phone-frame layout (`#root` height/overflow clipping) was cutting off printed content; added `@media print` rules to let `html/body/#root` grow and flow across pages instead of clipping.
-- **Not yet phone/live verified** — changes were verified only via a synthetic-data desktop mockup (per PII handling constraint — do not pull real customer data into local files/transcripts without explicit authorization). Recommend Joel/Sandra spot-check a real downloaded invoice PDF after this deploy.
+### Recent changes — run `git log --oneline -10` for full detail
+- **v0.12.16** (Jun 8) — Home screen critique fixes: `inkMuted` contrast fix (WCAG AA), hero label contrast in light mode, all fontWeight 800/900 → loaded weights, GO button nested-button → `div[role=button]`, refresh tap target → 44×44px, keyboard spacer `height` → `max-height` transition, "Next up" header uses SectionLabel, MissionIntel bgSecondary → T.surface.
+- **v0.12.15** (Jun 7) — Invoice print layout fixed to one page; `✓ Paid` badge no-wrap; emailed PDF filename includes client last name; `@media print` rules in `index.css`. Not yet verified on real phone — Joel/Sandra should spot-check.
+- **v0.12.14** (Jun 7) — `postal_code` field added; invoices show real payment status via `invoiceBalances.js`; "Other Outstanding Balances" section; `due_date` = same-day; ESM `.js` extension bug fixed; invoice layout redesign.
+- **v0.12.13** (Jun 5–6) — Calendar overhaul (no Day view, week/agenda readability); team labels → Sidekick/Wingmom; Home UX overhaul (Up Next strip, drive re-fetch); duplicate GCal events fixed; PDF attached to invoice emails.
 
-### Previous session (v0.12.14 — Jun 7, 2026)
-- **Client `postal_code` field shipped** — was believed done last session but never landed (confirmed absent from forms/selectors/invoices). Added to `NewClientSheet.jsx` + `EditClientSheet.jsx` (placed after CITY, `.toUpperCase()` on save), joined into `selectors.js` `client.address` (flows to Maps links + job displays), and appended to the invoice client-address block in natural Canadian format ("Georgetown, ON L7G 4S5") in both `InvoiceView.jsx` and `api/_lib/invoicePdf.js`. Province intentionally left alone (hardcoded `'ON'` — all clients local).
-- **Invoices now show real payment status** — previously every invoice read "Total Due: $X" even when fully paid. New shared helper `src/lib/invoiceBalances.js` exports `decorateInvoiceWithBalances(supabaseClient, invoice)` (accepts either RLS browser client or service-role server client — mirrors the cross-context import pattern `invoicePdf.js` already used for `financialMath.js`). Computes real `amountPaid`/`balanceOwing`/`isPaidInFull` from the `payments` table (source of truth, never `job.payment_status`). Invoices now render: green "✓ Paid in Full" badge when fully paid, Invoice Total / Paid / Balance Owing breakdown when partially paid, or the original "Total Due" only when nothing has been paid. Wired into both `invoicesRepo.fetchInvoiceById` (browser) and `api/email-invoice.js` (server, PDF attachment path) so web view, PDF download, and emailed PDF all match.
-- **"Other Outstanding Balances" section added to invoices** — when a client has other `Completed` jobs still owing money, the invoice now lists each one (date / service / amount owing) plus a "Combined Balance Owing — All Jobs" running total (`runningTotalOwing`), in both `InvoiceView.jsx` and `api/_lib/invoicePdf.js`. Surfaces even on a paid-in-full invoice if the *same client* has unrelated unpaid jobs — verified against real data (e.g. Jenn Fuller: invoice 2026-011 shows "Paid in Full" for its own job but lists two other $100 jobs owing, combined total $200).
-- **`due_date` now same-day as `invoice_date`** — was hardcoded `scheduled_date + 7 days` in `generateInvoiceForJob` (`invoicesRepo.js`); now `due_date = job.scheduled_date` (matches `invoice_date`). Re-generating an existing invoice (the `existingLink` update path) now also re-patches `due_date`, self-healing any previously-stored `+7day` value.
-- **Latent ESM bug caught + fixed during verification** — `invoiceBalances.js` imported `financialMath` without a `.js` extension. That's the convention for browser-side `src/` files (Vite resolves it), but this helper is also loaded transitively into `api/email-invoice.js` (Vercel serverless, `"type": "module"` → strict Node ESM resolution requires extensions — every other `api/`-reachable import already uses `.js`). Would have thrown `ERR_MODULE_NOT_FOUND` on the emailed-PDF path in production. Caught by writing a throwaway script that ran `decorateInvoiceWithBalances` + `buildInvoicePdfBuffer` against all 18 of Sandra's real invoices end-to-end (script deleted after verification — not committed).
-- **Invoice layout redesign** (follow-on, same session) — restructured the totals section into a clean linear order: Invoice Total → Payments Received (only if any) → Outstanding Balance (always shown, even at $0) → green "✓ Paid in Full" badge. Removed the redundant `$X/hr × Y hrs = $Z` / "Flat Rate" sub-line under the service description (duplicated the Rate/Hours/Amount table columns). Added faint cream (`FAINT = '#F5F1EC'`) header rows to the secondary "Payments Received" and "Other Outstanding Balances" breakdown tables so they read as proper tables, matching the main line-items table's `CREAM` header. Tightened spacing throughout (page padding, row padding, line-heights, margins) so invoices reliably fit on one page — was cutting off the payment section at the bottom. Changed in both `InvoiceView.jsx` and `api/_lib/invoicePdf.js` (web/PDF must mirror). **Found + fixed a react-pdf/Yoga layout bug during verification**: a single-row "Outstanding Balance · Paid in Full · $0.00" overlapped/concatenated because react-pdf measures `letterSpacing` text without its visual width and cannot create negative space with `justify-content: space-between` — it overlaps overflowing text instead of wrapping. Fixed by stacking into two lines (`balanceMainRow` label+value, separate right-aligned `paidBadge` below). Verified via real generated PDFs for two invoices (Jenn Fuller 2026-011, Ann Rae 2026-017) covering payments + paid-in-full + other-outstanding cases — both render correctly on one page. Web view not independently screenshot-verified (RLS blocks anonymous `/i/:id` access in a fresh browser — confirmed `406`/`PGRST116`); recommend Sandra/Joel spot-check live in an authenticated session.
-
-### Last session (v0.12.13 — Jun 5–6, 2026)
-- **Calendar readability overhaul** — removed Day view (redundant with Home). Week view: first name at 10px + service word on second line. Agenda: time range prominent at 11.5px bold, address on separate line, removed GCAL badge and UNPAID badge from future-scheduled jobs. Tapping a week-strip day switches to Agenda. GO button removed from Calendar (Home only).
-- **Team labels renamed** — worker → Sidekick 🦸, staff → Wingmom 🌟; DB `person_type` values updated to `'sidekick'`/`'wingmom'`. (Labels are still hardcoded — must be made per-business configurable before tenant #2.)
-- **Home screen UX overhaul** — removed "Tight Transition" banner (urgency now shown inline on the active job card via an "Up Next" strip: next client, leave-by time, drive duration with green/amber/red coloring, "est. from home" label for fallback). `locationDrives` now re-fetches from the job site's GPS on clock-in instead of home. Owing section moved below "Rest of this week" (it's historical debt, not time-sensitive).
-- **GPS drive re-fetch trigger fixed** — re-fetches by time window instead of requiring a manual clock-in, so drive times stay fresh automatically.
-- **Business restore + safe re-provisioning** (merged via PR #1, online session) — Admin panel shows a "Deleted Businesses" section with RESTORE buttons that clear `deleted_at`. `provision.js` now detects existing `auth.users` emails: live business → 409 directing to RESTORE; soft-deleted business → reuses the auth account, updates password, upserts `public.users`, creates a fresh business row. No more "email already registered" crash on re-provisioning.
-- **Duplicate GCal events fixed** — `updateDailyRoutes` was calling `updateJob()` to persist drive-time data, which always triggers `triggerGCalSync`; for same-day first bookings this fired a second sync before `gcal_event_id` saved back to DB, creating two events. Fixed by replacing that call with a new `patchJobAiContext()` helper (`jobsRepo.js`) that does a fresh DB read before merging `ai_context` fields — preserves `gcal_event_id` and concurrent writes, and does not trigger sync.
-- **PDF attached to invoice emails** — clients now receive the invoice as a PDF attachment (generated server-side via `@react-pdf/renderer`, `api/_lib/invoicePdf.js`) instead of just an app link they can't access. Falls back to sending without the attachment if PDF generation fails.
-- **PDF formatting polish** (online session, follow-on to the above) — removed the dead in-app invoice link from the email body, enlarged the logo to balance against the business name, and rebuilt the address blocks as single text flows with tightened spacing to match the payment section.
-
-### Changelog archive
-Session history for v0.12.4 – v0.12.12 (Jun 3–5, 2026) has moved to `docs/changelog/v0.12.4-to-v0.12.12.md`, relocated **verbatim** — not summarized, so exact detail is preserved if ever needed. Anything load-bearing from those sessions (gotchas, root causes, standing facts that explain non-obvious code) has already been promoted into the permanent reference sections in this file — see Security & Environment, Daily briefing email, Drive time architecture, Hourly job conventions, RLS policy state. **Don't read the archive preemptively.** `git log` / `git show <sha>` already cover "what changed, when" with full diffs; the archive exists for the rare "why does this code look like this" question a permanent section doesn't answer — grep it by keyword or version when that comes up.
-
-> **Reorg note (Jun 7, 2026)**: This relocation cut CLAUDE.md from ~32KB to keep it cheap to read every session. While auditing the moved entries against the still-open checklists, found two items in "UX polish — input behaviour" below marked `[ ]` that the v0.12.10 session note (now archived) said were already fixed — verified both against `src/` directly and ticked them. Real drift the session-start check didn't catch because it only ever compares `git log` against the *latest* "Last session" entry, not older ones against open checklists.
+> Full session notes archived in `docs/changelog/`. Don't read preemptively — use `git log` / `git show <sha>` for diffs.
 
 ### Daily briefing email — current state (Jun 5, 2026)
 - **Cadence preference**: stored per-business in `ai_profile.email_frequency` (`'daily'`|`'weekly'`), set during onboarding's Email Preference step. Only the daily cron is built — weekly variant is parked.
@@ -207,22 +185,11 @@ Session history for v0.12.4 – v0.12.12 (Jun 3–5, 2026) has moved to `docs/ch
 ## Parked / not building yet
 
 ### Greenfield rewrite spec (parked, drafted Jun 5, 2026)
-`BLUEPRINT.md` and `AI_PROJECT_INSTRUCTIONS.md` are a complete "what would v2 look like" spec written after shipping v0.12.x — full stack swap (Next.js 15 + TypeScript strict + Drizzle ORM + TanStack Query + Zustand + shadcn/ui + Resend + Sentry), clean schema redesign fixing the `flat_rate`/`total_amount` naming confusion, and a documented list of what worked vs. what to never repeat. **Not active work** — the current v0.12.x app is live and serving Sandra. Revisit only if/when a ground-up rebuild becomes the right call (e.g. scaling past Sandra to other tenants makes the v1 architecture's pain points too costly to keep patching).
+`docs/archive/BLUEPRINT.md` and `docs/archive/AI_PROJECT_INSTRUCTIONS.md` — full v2 spec (Next.js 15 + TS strict + Drizzle + TanStack Query + Zustand + shadcn/ui + Resend + Sentry). **Not active work.** Revisit only if v1 architecture pain becomes too costly to patch.
 
-### Immediate — in priority order
-- [x] **Gmail SMTP** — `invoice@supermomforhire.com` live + tested. (Jun 2, 2026)
-- [x] **Google Calendar OAuth** — consent screen configured, credentials set, tested working. (Jun 2, 2026)
-- [x] **Google Maps API** — Geocoding + Distance Matrix enabled, key in Vercel + `.env`. (Jun 2, 2026)
-- [x] **Calendar sync** — `api/sync/gcal.js` wired to job create/update/delete. Datetime bug fixed Jun 3. (Jun 3, 2026)
-- [x] **ANTHROPIC_API_KEY** — added to Vercel env. AI features live. (Jun 3, 2026)
-- [x] **Daily briefing email** — built in v0.12.5. Gmail SMTP, Vercel Cron 7am EDT. CRON_SECRET re-added to Vercel. (Jun 3, 2026)
-- [x] **Google Cloud billing** — activated, $0 budget alert set, Distance Matrix quota capped at 500 elements/day. (Jun 4, 2026)
-- [x] **Google Cloud cleanup** — renamed project to "Supermom For Hire", shut down empty duplicate project. (Jun 4, 2026)
-- [x] **Google Calendar OAuth** — fixed and working (Jun 5, 2026). `APP_BASE_URL` corrected in Vercel.
-- [ ] **Sandra reconnects Google Calendar** — Settings → Reconnect with `sandra@supermomforhire.com`
-- [x] **Manual briefing trigger confirmed working** — `?secret=supermom_daily_email_updates&to=jlundie@gmail.com` works. Gmail App Password updated Jun 5.
-- [x] **Auto-cron schedule fixed (Jun 5, 2026)** — live cron now correctly `0 11 * * *` (7am EDT) on a clean deploy; was drifted to a leftover `40 0` test schedule. See Last session notes. Final confirmation = email lands in `jlundie@gmail.com` between 7:00–8:00am EDT (Hobby timing slop).
-- [x] **Supabase public schema grants** — Done Jun 4, 2026. Ran in Supabase SQL Editor (project `lskzzsjmmtsosfneuovt`).
+### Immediate — open items only
+> All pre-launch infra complete as of Jun 5, 2026 (Gmail, GCal, Maps, cron, Supabase grants). See git log for history.
+
 - [ ] **PWA / installable app** — `manifest.json` + service worker. Makes app installable to iPhone home screen (no browser chrome). Prerequisite for push notifications.
 - [ ] **Push notifications** — Fire "Leave in 15 mins for Karen" at leave-time. Requires PWA first. High value for Sandra.
 - [ ] **Staff app access (Phase 2)** — `person_type = 'staff'` tracked in DB. No app login yet. When ready: link `workers.id` → `users` table + add Supabase Auth account.
@@ -232,27 +199,9 @@ Session history for v0.12.4 – v0.12.12 (Jun 3–5, 2026) has moved to `docs/ch
 > **Watchlist**: Monitor function slot count, Maps quota usage, and cron schedule drift each session. Don't rapid-redeploy (resets cron clock).
 
 ### Next session priorities
-0. **Design system follow-up (flagged Jun 7, 2026, post `$impeccable init`)** — `PRODUCT.md` now exists and shifts the brand voice toward "kick-ass Mary Poppins" (capable/warm/unflappable) and explicitly *away* from literal superhero iconography/copy — but `DESIGN.md` still leans hard into superhero language ("mission control," cape-energy gradient names, etc.). Two follow-ups once UI work resumes: (a) run `$impeccable critique <surface>` on a real screen (no critique has ever been run on this app) and (b) refresh `DESIGN.md` (`$impeccable document`) to bring its voice in line with `PRODUCT.md`'s toned-down personality. Not urgent — do it when doing visual/UI work, not as a standalone task.
-1. **Sandra reconnects Google Calendar** — handled during onboarding/data reset (Sandra action)
-2. ~~**Supabase schema grants**~~ — ✅ Done Jun 4, 2026
-3. ~~**Navigation fixes**~~ — ✅ Done v0.12.12 (back→Home, login→Home, viewpoint switch→Home)
-4. ~~**Edit Job parity**~~ — ✅ Done v0.12.12 (additional costs UI added to EditMode)
-5. ~~**Remove debug console.warn**~~ — ✅ Done v0.12.12
-6. ~~**Archive Client & All Jobs**~~ — ✅ Already done (found in audit Jun 4, 2026). Full ui-polish plan (`docs/superpowers/plans/2026-05-18-ui-polish.md`) was complete: `cancelJob` (jobsRepo.js:298), admin danger zone (ClientProfile.jsx:545), Cancel Booking UI + admin delete (JobDetailSheet.jsx:504), Calendar grey cancelled + dynamic timeline (Calendar.jsx:92), TODAY button (Calendar.jsx:222).
-7. ~~**Calendar readability overhaul**~~ — ✅ Done v0.12.13. Removed Day view (redundant with Home). Week view: first name at 10px + service word on second line (was 8px init·service). Agenda: time range prominent at 11.5px bold, address on separate line, removed GCAL badge, removed UNPAID badge from Scheduled (future) jobs. Tapping a week-strip day switches to Agenda. GO button removed from Calendar (Home only).
-8. **PWA setup** → push notifications (prerequisite for push notifs)
-9. **Staff app access** — `person_type = 'staff'` in DB. Link `workers.id` → `users` + Supabase Auth. Note: rename "staff" label to something better — TBD with Joel.
-
-### UX polish — input behaviour (confirmed Jun 4, 2026)
-- [x] **Select-all on text field focus** — `onFocus={e => e.target.select()}` is live on all numeric inputs (JobDetailSheet, PostJobSheet, ServiceCatalogSheet, WorkerCatalogSheet, NewExpenseSheet, Settings). Done v0.12.10 (Jun 4) — this checklist had drifted (still showed open); corrected + re-verified against source Jun 7, 2026.
-- [x] **Duration defaulting to 1.667h bug** — `NewJobSheet` rounds `duration/60` to 2dp on save (`Math.round((duration/60)*100)/100`); `JobDetailSheet` rounds `estimated_hours` on load. Done v0.12.10 (Jun 4) — this checklist had drifted (still showed open); corrected + re-verified against source Jun 7, 2026.
-
-### Navigation / UX fixes (confirmed Jun 4, 2026)
-- [x] **Logo taps → Home** — back button in `LogoBar.jsx` now navigates to `/`. (v0.12.12)
-- [x] **Login always lands on Home** — `Login.jsx` calls `navigate('/')` after successful sign-in. (v0.12.12)
-- [x] **Viewpoint switch → Home** — `ViewpointContext.switchTo` uses `window.location.href = '/'`. (v0.12.12)
-- [x] **Back always goes Home** — `LogoBar.jsx` + `ClientProfile.jsx` back buttons navigate to `/`. (v0.12.12)
-- [x] **Edit Job parity with Add Job** — additional costs UI added to EditMode in `JobDetailSheet.jsx`. (v0.12.12)
+0. **Design system follow-up (in progress, Jun 8, 2026)** — `$impeccable critique` run on **Home screen** ✅ (Jun 8, fixes committed, score 27/40). Next: Job detail, Client profile, Calendar, Finance, Settings, Admin — then run `$impeccable document` once at the very end to refresh DESIGN.md. Run `document` after all screens are done, not between each one.
+1. **PWA setup** → push notifications (prerequisite for push notifs)
+2. **Staff app access** — `person_type = 'staff'` in DB. Link `workers.id` → `users` + Supabase Auth.
 
 ### Features — Phase 2
 - [ ] **AI chat interface** — `api/ai/[action].js` already exists. Need chat UI component + conversation state. `ANTHROPIC_API_KEY` is now set. HIGH PRIORITY.

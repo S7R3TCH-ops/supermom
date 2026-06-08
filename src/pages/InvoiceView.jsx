@@ -172,6 +172,18 @@ export default function InvoiceView() {
           >
             {emailLabel}
           </button>
+          <a
+            href={`/api/download-invoice?id=${id}`}
+            download
+            style={{
+              background: 'var(--pink)', color: 'white', textDecoration: 'none',
+              padding: '8px 14px', borderRadius: 8, fontSize: 13, fontWeight: 700,
+              cursor: 'pointer', boxShadow: '0 4px 12px rgba(233,30,106,0.2)',
+              display: 'inline-block',
+            }}
+          >
+            Download PDF
+          </a>
           <button
             onClick={() => {
               const prev = document.title;
@@ -180,12 +192,12 @@ export default function InvoiceView() {
               setTimeout(() => { document.title = prev; }, 500);
             }}
             style={{
-              background: 'var(--pink)', color: 'white', border: 'none',
+              background: 'white', color: 'var(--ink-muted)', border: '1.5px solid #ddd',
               padding: '8px 14px', borderRadius: 8, fontSize: 13, fontWeight: 700,
-              cursor: 'pointer', boxShadow: '0 4px 12px rgba(233,30,106,0.2)',
+              cursor: 'pointer',
             }}
           >
-            Download PDF / Print
+            Print
           </button>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { buildInvoicePdfBuffer } from './_lib/invoicePdf.js';
+import { decorateInvoiceWithBalances } from '../src/lib/invoiceBalances.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).end();
@@ -26,7 +27,8 @@ export default async function handler(req, res) {
   const filename = `${lastName}_Invoice_${invoiceNumber}.pdf`;
 
   try {
-    const pdfBuffer = await buildInvoicePdfBuffer(invoice);
+    const decorated = await decorateInvoiceWithBalances(sb, invoice);
+    const pdfBuffer = await buildInvoicePdfBuffer(decorated);
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('Content-Length', pdfBuffer.length);

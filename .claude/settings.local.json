@@ -59,7 +59,11 @@
       "Bash(bash /c/Users/joel/.claude/statusline-command.sh)",
       "Bash(git rm *)",
       "Bash(Remove-Item *)",
-      "WebFetch(domain:supermom-s7-r3-tch.vercel.app)"
+      "WebFetch(domain:supermom-s7-r3-tch.vercel.app)",
+      "Bash(vercel ls *)",
+      "Bash(vercel git *)",
+      "Bash(vercel project *)",
+      "Bash(vercel --prod)"
     ]
   }
 }

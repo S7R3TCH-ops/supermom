@@ -71,7 +71,7 @@ function brandedEmailHtml({ clientName, bizName, bizEmail, invoiceNumber }) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
-  const { invoiceId, clientEmail, clientName, invoiceNumber, bizName, bizEmail } = req.body;
+  const { invoiceId, clientEmail, clientName, clientLastName, invoiceNumber, bizName, bizEmail } = req.body;
 
   if (!clientEmail || !invoiceId || !invoiceNumber) {
     return res.status(400).json({ error: 'Missing required fields' });
@@ -124,7 +124,7 @@ export default async function handler(req, res) {
       subject: `Invoice #${invoiceNumber} from ${bizName || 'Supermom for Hire'}`,
       html: brandedEmailHtml({ clientName, bizName, bizEmail, invoiceNumber }),
       attachments: pdfBuffer ? [{
-        filename: `Invoice-${invoiceNumber}.pdf`,
+        filename: `${clientLastName || 'Client'}_Invoice_${invoiceNumber}.pdf`,
         content: pdfBuffer,
         contentType: 'application/pdf',
       }] : [],

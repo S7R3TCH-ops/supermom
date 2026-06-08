@@ -91,6 +91,23 @@ body {
   overflow: hidden;
 }
 
+/* The phone-frame layout clips anything beyond viewport height — printing the
+   invoice needs the page to grow and flow across pages instead of being cut off. */
+@media print {
+  html, body, #root {
+    height: auto !important;
+    overflow: visible !important;
+  }
+  #root {
+    display: block !important;
+    max-width: none !important;
+    margin: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+}
+
 /* On tablets/desktop: center like a phone app */
 @media (min-width: 768px) {
   #root {

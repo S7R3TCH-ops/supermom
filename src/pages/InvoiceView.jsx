@@ -71,6 +71,7 @@ export default function InvoiceView() {
           invoiceId: id,
           clientEmail: client.email,
           clientName: client.first_name,
+          clientLastName: client.last_name,
           invoiceNumber: invoice.invoice_number,
           bizName: biz.name || 'Supermom for Hire',
           bizEmail: biz.email,
@@ -106,7 +107,7 @@ export default function InvoiceView() {
             width: 100% !important;
             max-width: none !important;
             margin: 0 !important;
-            padding: 0.45in 0.5in 0.55in !important;
+            padding: 0.4in 0.5in 0.4in !important;
           }
           .table-wrap { overflow: visible !important; }
           .invoice-footer { page-break-inside: avoid; }
@@ -126,15 +127,15 @@ export default function InvoiceView() {
           display: grid;
           grid-template-columns: 1fr 1fr 1fr;
           gap: 24px;
-          margin-bottom: 28px;
+          margin-bottom: 16px;
           font-size: 13px;
-          line-height: 1.6;
+          line-height: 1.4;
         }
         .table-wrap {
           width: 100%;
           overflow-x: auto;
           -webkit-overflow-scrolling: touch;
-          margin-bottom: 20px;
+          margin-bottom: 10px;
         }
         .table-wrap table {
           width: 100%;
@@ -193,14 +194,14 @@ export default function InvoiceView() {
       <div ref={boxRef} className="invoice-box" style={scale < 1 ? { transform: `scale(${scale})`, transformOrigin: 'top left', width: 800, maxWidth: 'none' } : {}}>
 
         {/* Header */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', marginBottom: 26 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', marginBottom: 10 }}>
           <img
             src={logoSrc}
             alt={biz.name || 'Supermom for Hire'}
-            style={{ width: 240, height: 240, objectFit: 'contain', marginBottom: 4 }}
+            style={{ width: 150, height: 150, objectFit: 'contain', marginBottom: -14 }}
             onError={e => { e.currentTarget.style.display = 'none'; }}
           />
-          <h1 className="inv-display" style={{ fontSize: 28, fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 6px', color: '#1a1a1a' }}>
+          <h1 className="inv-display" style={{ fontSize: 24, fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 3px', color: '#1a1a1a' }}>
             {biz.name || 'Supermom for Hire'}
           </h1>
           {biz.hst_number && (
@@ -216,8 +217,8 @@ export default function InvoiceView() {
             <div style={LABEL}>Issued to</div>
             <div style={{ fontWeight: 600 }}>{client.first_name} {client.last_name}</div>
             {clientCity && <div style={{ color: '#555' }}>{clientCity}</div>}
-            {client.email && <div style={{ color: '#888' }}>{client.email}</div>}
             {client.phone && <div style={{ color: '#888' }}>{client.phone}</div>}
+            {client.email && <div style={{ color: '#888' }}>{client.email}</div>}
           </div>
 
           <div>
@@ -235,7 +236,7 @@ export default function InvoiceView() {
               <div style={{ fontWeight: 600 }}>{invoice.invoice_number}</div>
               <div style={{ fontSize: 10, fontWeight: 700, color: '#aaa', textAlign: 'right', alignSelf: 'center' }}>DATE</div>
               <div>{formatDate(invoice.invoice_date)}</div>
-              <div style={{ fontSize: 10, fontWeight: 700, color: '#aaa', textAlign: 'right', alignSelf: 'center' }}>DUE</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#aaa', textAlign: 'right', alignSelf: 'center' }}>DUE DATE</div>
               <div>{formatDate(invoice.due_date)}</div>
             </div>
           </div>
@@ -246,30 +247,30 @@ export default function InvoiceView() {
           <table>
             <thead>
               <tr style={{ background: '#EAE2D8', fontSize: 10, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#555' }}>
-                <th style={{ textAlign: 'left', padding: '12px 14px', width: 130 }}>Date</th>
-                <th style={{ textAlign: 'left', padding: '12px 14px' }}>Description</th>
-                <th style={{ textAlign: 'center', padding: '12px 14px', width: 85 }}>Rate / Hr</th>
-                <th style={{ textAlign: 'center', padding: '12px 14px', width: 75 }}>Hours</th>
-                <th style={{ textAlign: 'right', padding: '12px 14px', width: 100 }}>Amount</th>
+                <th style={{ textAlign: 'left', padding: '8px 14px', width: 130 }}>Date</th>
+                <th style={{ textAlign: 'left', padding: '8px 14px' }}>Description</th>
+                <th style={{ textAlign: 'center', padding: '8px 14px', width: 85 }}>Rate / Hr</th>
+                <th style={{ textAlign: 'center', padding: '8px 14px', width: 75 }}>Hours</th>
+                <th style={{ textAlign: 'right', padding: '8px 14px', width: 100 }}>Amount</th>
               </tr>
             </thead>
-            <tbody style={{ fontSize: 13, lineHeight: 1.5 }}>
+            <tbody style={{ fontSize: 13, lineHeight: 1.4 }}>
 
               {/* Service row */}
               <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
-                <td style={{ padding: '12px 14px', color: '#555', verticalAlign: 'top' }}>
+                <td style={{ padding: '8px 14px', color: '#555', verticalAlign: 'top' }}>
                   {job.scheduled_date ? formatDate(job.scheduled_date) : '—'}
                 </td>
-                <td style={{ padding: '12px 14px', verticalAlign: 'top' }}>
+                <td style={{ padding: '8px 14px', verticalAlign: 'top' }}>
                   <div style={{ fontWeight: 600 }}>{job.service_name || 'Professional Services'}</div>
                 </td>
-                <td style={{ textAlign: 'center', padding: '12px 14px', color: '#555', verticalAlign: 'top' }}>
+                <td style={{ textAlign: 'center', padding: '8px 14px', color: '#555', verticalAlign: 'top' }}>
                   {financials.isHourly ? `$${financials.rate.toFixed(2)}` : '—'}
                 </td>
-                <td style={{ textAlign: 'center', padding: '12px 14px', color: '#555', verticalAlign: 'top' }}>
+                <td style={{ textAlign: 'center', padding: '8px 14px', color: '#555', verticalAlign: 'top' }}>
                   {financials.isHourly ? financials.hours.toFixed(1) : '—'}
                 </td>
-                <td style={{ textAlign: 'right', padding: '12px 14px', fontWeight: 600, verticalAlign: 'top' }}>
+                <td style={{ textAlign: 'right', padding: '8px 14px', fontWeight: 600, verticalAlign: 'top' }}>
                   ${financials.subtotal.toFixed(2)}
                 </td>
               </tr>
@@ -277,18 +278,20 @@ export default function InvoiceView() {
               {/* Additional cost rows */}
               {financials.activeCosts.map((item, idx) => (
                 <tr key={idx} style={{ borderBottom: '1px solid #f0f0f0', background: '#fafafa' }}>
-                  <td style={{ padding: '9px 14px', color: '#aaa', verticalAlign: 'top' }}>—</td>
-                  <td style={{ padding: '9px 14px', verticalAlign: 'top' }}>
-                    <div style={{ fontSize: 9, fontWeight: 700, color: '#E91E6A', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: 2 }}>
-                      Additional Cost
-                    </div>
-                    <div style={{ fontWeight: 500, color: '#333' }}>
-                      {item.description || 'Miscellaneous'}
+                  <td style={{ padding: '6px 14px', verticalAlign: 'top' }}></td>
+                  <td style={{ padding: '6px 14px', verticalAlign: 'top' }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 9, fontWeight: 700, color: '#E91E6A', letterSpacing: '1px', textTransform: 'uppercase' }}>
+                        Additional Cost
+                      </span>
+                      <span style={{ fontWeight: 500, color: '#333' }}>
+                        {item.description || 'Miscellaneous'}
+                      </span>
                     </div>
                   </td>
-                  <td style={{ textAlign: 'center', padding: '9px 14px', color: '#aaa', verticalAlign: 'top' }}>—</td>
-                  <td style={{ textAlign: 'center', padding: '9px 14px', color: '#aaa', verticalAlign: 'top' }}>—</td>
-                  <td style={{ textAlign: 'right', padding: '9px 14px', fontWeight: 500, verticalAlign: 'top' }}>
+                  <td style={{ textAlign: 'center', padding: '6px 14px', verticalAlign: 'top' }}></td>
+                  <td style={{ textAlign: 'center', padding: '6px 14px', verticalAlign: 'top' }}></td>
+                  <td style={{ textAlign: 'right', padding: '6px 14px', fontWeight: 500, verticalAlign: 'top' }}>
                     ${Number(item.amount).toFixed(2)}
                   </td>
                 </tr>
@@ -299,31 +302,31 @@ export default function InvoiceView() {
         </div>
 
         {/* Totals */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 28 }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 14 }}>
           <div style={{ width: 280 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 14px', fontSize: 13, color: '#555' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 14px', fontSize: 13, color: '#555' }}>
               <div>Subtotal</div>
               <div>${(financials.subtotal + financials.additionalTotal).toFixed(2)}</div>
             </div>
             {financials.taxAmount > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 14px', fontSize: 13, color: '#555' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 14px', fontSize: 13, color: '#555' }}>
                 <div>HST ({(financials.taxRate * 100).toFixed(0)}%)</div>
                 <div>${financials.taxAmount.toFixed(2)}</div>
               </div>
             )}
-            <div style={{ background: '#EAE2D8', padding: '11px 14px', marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: 6 }}>
+            <div style={{ background: '#EAE2D8', padding: '9px 14px', marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: 6 }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#555' }}>Invoice Total</div>
               <div className="inv-display" style={{ fontSize: 22, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>${financials.total.toFixed(2)}</div>
             </div>
 
             {invoice.payments?.length > 0 && (
-              <div style={{ marginTop: 8 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 14px', background: '#F5F1EC', borderRadius: 4, fontSize: 9, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: '#999' }}>
+              <div style={{ marginTop: 6 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 14px', background: '#F5F1EC', borderRadius: 4, fontSize: 9, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: '#999' }}>
                   <div>Payments Received</div>
                   <div>Amount</div>
                 </div>
                 {invoice.payments.map(p => (
-                  <div key={p.id ?? `${p.payment_date}-${p.amount}`} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 14px', fontSize: 12, color: '#555' }}>
+                  <div key={p.id ?? `${p.payment_date}-${p.amount}`} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 14px', fontSize: 12, color: '#555' }}>
                     <div>{formatDate(p.payment_date)}</div>
                     <div style={{ color: '#16A34A', fontWeight: 600 }}>+${Number(p.amount).toFixed(2)}</div>
                   </div>
@@ -331,10 +334,10 @@ export default function InvoiceView() {
               </div>
             )}
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 14px', marginTop: 4, borderTop: '1px solid #eee' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 14px', marginTop: 4, borderTop: '1px solid #eee' }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#555' }}>Outstanding Balance</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                {invoice.isPaidInFull && <div style={{ fontSize: 12, fontWeight: 700, color: '#16A34A' }}>✓ Paid in Full</div>}
+                {invoice.isPaidInFull && <div style={{ fontSize: 12, fontWeight: 700, color: '#16A34A', whiteSpace: 'nowrap' }}>✓ Paid</div>}
                 <div style={{ fontSize: 16, fontWeight: 700, color: invoice.isPaidInFull ? '#16A34A' : invoice.balanceOwing > 0 ? '#DC2626' : '#1a1a1a' }}>
                   ${invoice.balanceOwing.toFixed(2)}
                 </div>
@@ -345,21 +348,21 @@ export default function InvoiceView() {
 
         {/* Other outstanding balances for this client */}
         {invoice.otherOutstanding?.length > 0 && (
-          <div style={{ marginBottom: 28 }}>
-            <div style={{ ...LABEL, marginBottom: 6 }}>Other Outstanding Balances</div>
-            <div style={{ display: 'flex', padding: '6px 0', background: '#F5F1EC', borderRadius: 4, marginBottom: 2, fontSize: 9, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: '#999' }}>
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ ...LABEL, marginBottom: 5 }}>Other Outstanding Balances</div>
+            <div style={{ display: 'flex', padding: '5px 0', background: '#F5F1EC', borderRadius: 4, marginBottom: 2, fontSize: 9, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: '#999' }}>
               <div style={{ width: 110 }}>Date</div>
               <div style={{ flex: 1 }}>Service</div>
               <div style={{ width: 80, textAlign: 'right' }}>Owing</div>
             </div>
             {invoice.otherOutstanding.map(({ job: otherJob, owing }) => (
-              <div key={otherJob.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', fontSize: 12 }}>
+              <div key={otherJob.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 12 }}>
                 <div style={{ color: '#555', width: 110 }}>{otherJob.scheduled_date ? formatDate(otherJob.scheduled_date) : '—'}</div>
                 <div style={{ color: '#1a1a1a', flex: 1 }}>{otherJob.service_name || 'Professional Services'}</div>
                 <div style={{ color: '#1a1a1a', fontWeight: 600, textAlign: 'right', width: 80 }}>${owing.toFixed(2)}</div>
               </div>
             ))}
-            <div style={{ background: '#EAE2D8', padding: '11px 14px', marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: 6 }}>
+            <div style={{ background: '#EAE2D8', padding: '9px 14px', marginTop: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: 6 }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#555' }}>Combined Balance Owing — All Jobs</div>
               <div className="inv-display" style={{ fontSize: 17, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>${invoice.runningTotalOwing.toFixed(2)}</div>
             </div>
@@ -368,7 +371,7 @@ export default function InvoiceView() {
 
         {/* Payment + Thank you — kept together, never split across pages */}
         <div className="invoice-footer">
-          <div style={{ borderTop: '1px solid #eee', paddingTop: 16, marginBottom: 16 }}>
+          <div style={{ borderTop: '1px solid #eee', paddingTop: 9, marginBottom: 6 }}>
             <div style={LABEL}>Payment</div>
             <div style={{ fontSize: 13, color: '#444', lineHeight: 1.6 }}>
               e-Transfer to <strong>{biz.email || 'sandra@supermomforhire.com'}</strong>

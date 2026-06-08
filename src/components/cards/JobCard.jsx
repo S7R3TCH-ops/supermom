@@ -24,13 +24,11 @@ export default function JobCard({ job: j, T, onClick, paid = 0, total = 0, grand
       onClick={onClick}
       style={{
         background: bgColor,
-        border: `1px solid ${borderColor}30`,
-        borderLeft: `4px solid ${borderColor}`,
+        border: `1.5px solid ${borderColor}${subtle ? '30' : '50'}`,
         borderRadius: 16,
         padding: '10px 14px 10px 12px',
         marginBottom: 8,
         cursor: 'pointer',
-        opacity: subtle ? 0.8 : 1,
       }}
     >
       {/* Row 1: name · bold time | status pill */}
@@ -42,11 +40,11 @@ export default function JobCard({ job: j, T, onClick, paid = 0, total = 0, grand
         }}>
           {j.client_name}
         </div>
-        <div style={{ fontSize: 12, fontWeight: 800, color: accentColor, whiteSpace: 'nowrap', flexShrink: 0, letterSpacing: '-0.3px' }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: accentColor, whiteSpace: 'nowrap', flexShrink: 0, letterSpacing: '-0.3px' }}>
           {timeRange}
         </div>
         <span style={{
-          fontFamily: T.font, fontSize: 9, fontWeight: 800,
+          fontFamily: T.font, fontSize: 9, fontWeight: 700,
           textTransform: 'uppercase', letterSpacing: '0.3px',
           background: `${borderColor}22`, color: accentColor,
           padding: '2px 6px', borderRadius: 4, flexShrink: 0, whiteSpace: 'nowrap',
@@ -61,7 +59,7 @@ export default function JobCard({ job: j, T, onClick, paid = 0, total = 0, grand
         {total > 0 && (
           <div style={{
             fontFamily: T.serif, fontSize: 14,
-            fontWeight: isOwing ? 900 : 600,
+            fontWeight: isOwing ? 700 : 600,
             color: accentColor, fontVariantNumeric: 'tabular-nums',
           }}>
             {privacyOn ? '•••' : `$${total.toFixed(0)}`}

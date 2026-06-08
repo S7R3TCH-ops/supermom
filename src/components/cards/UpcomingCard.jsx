@@ -13,8 +13,7 @@ export default function UpcomingCard({ job: j, T, onClick, total = 0, grandTotal
       onClick={onClick}
       style={{
         background: BG,
-        border: `1px solid ${ACCENT}22`,
-        borderLeft: `4px solid ${ACCENT}`,
+        border: `1.5px solid ${ACCENT}45`,
         borderRadius: 16,
         padding: '10px 14px 10px 12px',
         marginBottom: 8,
@@ -30,11 +29,11 @@ export default function UpcomingCard({ job: j, T, onClick, total = 0, grandTotal
         }}>
           {j.client_name}
         </div>
-        <div style={{ fontSize: 12, fontWeight: 800, color: ACCENT, whiteSpace: 'nowrap', flexShrink: 0, letterSpacing: '-0.3px' }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: ACCENT, whiteSpace: 'nowrap', flexShrink: 0, letterSpacing: '-0.3px' }}>
           {timeRange}
         </div>
         <span style={{
-          fontFamily: T.font, fontSize: 9, fontWeight: 800,
+          fontFamily: T.font, fontSize: 9, fontWeight: 700,
           textTransform: 'uppercase', letterSpacing: '0.3px',
           background: `${ACCENT}22`, color: ACCENT,
           padding: '2px 6px', borderRadius: 4, flexShrink: 0,

@@ -24,7 +24,7 @@ const LIGHT_PALETTE = {
   redBorder: '#FCA5A540',
   ink: '#4E342E',         // Warm Cocoa
   inkSub: '#795548',      // Soft Brown
-  inkMuted: '#A1887F',    // Muted Clay
+  inkMuted: '#836459',    // Muted Clay — #836459 achieves ~4.9:1 on #FFF0F3 (WCAG AA pass)
   secLabel: '#8D6E63',
 };
 

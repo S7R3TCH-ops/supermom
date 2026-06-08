@@ -13,8 +13,9 @@ import { updateDailyRoutes } from '../lib/maps';
 import { getBriefingMessage } from '../lib/briefingMessages';
 import { updateJob } from '../data/jobsRepo';
 import { useGeofence } from '../context/GeofenceContext';
+import { useToast } from '../context/ToastContext';
 import { useKeyboardFocus } from '../hooks/useKeyboardFocus';
-import { sameDay, getWeekRange, fmtTime12, fmtTimeRange, dateBrief, fmtDuration } from '../lib/dateUtils';
+import { sameDay, getWeekRange, fmtTime12, dateBrief, fmtDuration } from '../lib/dateUtils';
 import { computeJobTotal, computeJobSubtotal } from '../lib/financialMath';
 import JobCard from '../components/cards/JobCard';
 import UpcomingCard from '../components/cards/UpcomingCard';
@@ -34,6 +35,7 @@ export default function Home() {
   const newJobSheet = useNewJobSheet();
   const authCtx = useAuth();
   const { handleClockOut } = useGeofence();
+  const toast = useToast();
   const bizCtx = useBusiness();
   const isKeyboardFocused = useKeyboardFocus();
 
@@ -403,6 +405,11 @@ export default function Home() {
   const [isFlyingIcon, setIsFlyingIcon] = useState(false);
   const [locationDrives, setLocationDrives] = useState({});
   const [locationLoading, setLocationLoading] = useState(false);
+  const [costModalJob, setCostModalJob] = useState(null);
+  const [costAmount, setCostAmount] = useState('');
+  const [costDesc, setCostDesc] = useState('');
+  const [costErr, setCostErr] = useState(null);
+  const [costSaving, setCostSaving] = useState(false);
 
   const nextDriveValue =
     locationDrives[next?.id]?.durationValue ??
@@ -507,22 +514,42 @@ export default function Home() {
       await updateJob(job.id, { estimated_hours: newHrs });
       notifyDataChanged();
     } catch {
-      alert("Could not add time.");
+      toast.error("Could not add time.");
     }
   };
 
-  const handleAddQuickCost = async (job) => {
-    const amt = window.prompt("Amount to add ($)?");
-    if (!amt || isNaN(parseFloat(amt))) return;
-    const desc = window.prompt("What for?", "Supplies") || "Extra cost";
-    
+  const openAddCost = (job) => {
+    setCostModalJob(job);
+    setCostAmount('');
+    setCostDesc('');
+    setCostErr(null);
+  };
+
+  const closeAddCost = () => {
+    setCostModalJob(null);
+    setCostAmount('');
+    setCostDesc('');
+    setCostErr(null);
+  };
+
+  const handleSaveQuickCost = async () => {
+    const amt = parseFloat(costAmount);
+    if (!amt || amt <= 0) { setCostErr('Enter a valid amount.'); return; }
+    const job = costModalJob;
     const currentCosts = Array.isArray(job.additional_costs_json) ? job.additional_costs_json : [];
-    const newCosts = [...currentCosts, { amount: parseFloat(amt), description: desc }];
-    
+    const newCosts = [...currentCosts, { amount: amt, description: costDesc.trim() || 'Extra cost' }];
+
+    setCostSaving(true);
+    setCostErr(null);
     try {
       await updateJob(job.id, { additional_costs_json: newCosts });
-    } catch {
-      alert("Could not add cost.");
+      notifyDataChanged();
+      toast.success('Cost added.');
+      closeAddCost();
+    } catch (e) {
+      setCostErr(e.message || 'Could not add cost.');
+    } finally {
+      setCostSaving(false);
     }
   };
 
@@ -545,8 +572,8 @@ export default function Home() {
         
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative' }}>
           <div style={{ flex: 1 }}>
-            <SectionLabel style={{ color: mode === 'dark' ? T.pinkLabel : T.pink, marginBottom: 8 }}>
-              ✦ Command Brief · {dateBrief(today)}
+            <SectionLabel style={{ color: mode === 'dark' ? T.pinkLabel : T.ink, marginBottom: 8 }}>
+              Today · {dateBrief(today)}
             </SectionLabel>
             <div style={{ marginTop: 2 }}>
               <div style={{
@@ -609,23 +636,23 @@ export default function Home() {
         {/* TODAY — Active Job */}
         {activeJob ? (
           <div style={{ marginBottom: 24 }}>
-            <SectionLabel color={T.pink}>✦ MISSION ACTIVE · HAPPENING NOW</SectionLabel>
+            <SectionLabel color={T.pink}>Happening now</SectionLabel>
             <div style={{
               background: mode === 'dark' ? '#0D0D0D' : 'white',
               border: `2px solid ${T.pink}`,
               borderRadius: 18,
               padding: '16px',
-              boxShadow: '0 8px 24px rgba(233,30,106,0.2)',
+              boxShadow: '0 4px 8px rgba(233,30,106,0.2)',
               position: 'relative',
               overflow: 'hidden'
             }}>
-              <div style={{ position: 'absolute', top: 12, right: 12, width: 8, height: 8, borderRadius: '50%', background: '#E91E6A', animation: 'pulse 2s infinite' }} />
+              <div className="sm-pulse" style={{ position: 'absolute', top: 12, right: 12, width: 8, height: 8, borderRadius: '50%', background: '#E91E6A' }} />
 
               <div onClick={() => openJob(activeJob.id)} style={{ cursor: 'pointer' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
                   <Title style={{ fontSize: 19, color: T.ink }}>{activeJob.client_name}</Title>
                   <div style={{ textAlign: 'right' }}>
-                    <Text style={{ fontSize: 16, fontWeight: 900, color: T.ink }}>{fmtTime12(activeJob.start).time}</Text>
+                    <Text style={{ fontSize: 16, fontWeight: 700, color: T.ink }}>{fmtTime12(activeJob.start).time}</Text>
                     <Caption style={{ fontWeight: 700, color: T.inkMuted }}>{fmtTime12(activeJob.start).period}</Caption>
                   </div>
                 </div>
@@ -679,7 +706,7 @@ export default function Home() {
                       <div style={{ textAlign: 'right', flexShrink: 0 }}>
                         {leaveBy ? (
                           <>
-                            <div style={{ fontSize: 11, fontWeight: 800, color: urgentColor }}>{leaveBy.text}</div>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: urgentColor }}>{leaveBy.text}</div>
                             {driveDuration && (
                               <div style={{ fontSize: 9, color: T.inkMuted, marginTop: 1 }}>
                                 {driveDuration} drive{!isGPS && driveDuration ? ' · est. from home' : ''}
@@ -699,7 +726,7 @@ export default function Home() {
 
               <div style={{ display: 'flex', gap: 8, marginTop: 14, paddingTop: 14, borderTop: `1px solid ${T.cardBorder}` }}>
                 <button onClick={(e) => { e.stopPropagation(); handleAddTime(activeJob); }} style={{ flex: 1, padding: '10px', borderRadius: 10, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.ink, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>+30 MIN</button>
-                <button onClick={(e) => { e.stopPropagation(); handleAddQuickCost(activeJob); }} style={{ flex: 1, padding: '10px', borderRadius: 10, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.ink, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>+COST</button>
+                <button onClick={(e) => { e.stopPropagation(); openAddCost(activeJob); }} style={{ flex: 1, padding: '10px', borderRadius: 10, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.ink, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>+COST</button>
                 <button onClick={(e) => { e.stopPropagation(); openPostJob(activeJob.id); }} style={{ flex: 2, padding: '10px', borderRadius: 10, background: T.pink, color: 'white', border: 'none', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>WRAP UP</button>
               </div>
             </div>
@@ -713,7 +740,7 @@ export default function Home() {
               return (
                 <>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                    <div style={{ fontSize: 13, fontWeight: 800, color: DEEP_ROSE, textTransform: 'uppercase', letterSpacing: '0.8px' }}>✦ Next Up</div>
+                    <SectionLabel style={{ color: DEEP_ROSE, margin: 0 }}>Next up</SectionLabel>
                     <button
                       onClick={handleReadAloud}
                       style={{ background: isSpeaking ? DEEP_ROSE : 'none', border: `1.5px solid ${DEEP_ROSE}`, borderRadius: 8, padding: '6px 13px', color: isSpeaking ? 'white' : DEEP_ROSE, fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
@@ -725,14 +752,13 @@ export default function Home() {
                     onClick={() => openJob(next.id)}
                     style={{
                       background: mode === 'dark' ? 'linear-gradient(135deg,#1a0008 0%,#200010 100%)' : 'linear-gradient(135deg,#FFF0F4 0%,#fff 60%)',
-                      border: `2.5px solid ${DEEP_ROSE}`,
-                      borderLeft: `6px solid ${DEEP_ROSE}`,
+                      border: `2px solid ${DEEP_ROSE}`,
                       borderRadius: 18,
                       padding: '18px 18px 14px',
                       cursor: 'pointer',
                       position: 'relative',
                       overflow: 'hidden',
-                      boxShadow: `0 8px 28px ${DEEP_ROSE_GLOW}, 0 2px 8px rgba(0,0,0,0.08)`,
+                      boxShadow: `0 4px 8px ${DEEP_ROSE_GLOW}`,
                     }}
                   >
                     <div style={{ position: 'absolute', top: -30, right: -20, width: 120, height: 120, borderRadius: '50%', background: `radial-gradient(circle,${DEEP_ROSE_GLOW} 0%,transparent 70%)`, pointerEvents: 'none' }} />
@@ -751,7 +777,7 @@ export default function Home() {
                         <>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10, position: 'relative' }}>
                             <div style={{ flex: 1, minWidth: 0, paddingRight: 10 }}>
-                              <div style={{ fontFamily: T.serif, fontSize: 26, fontWeight: 700, color: T.ink, lineHeight: 1.1, letterSpacing: '-0.5px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <div style={{ fontFamily: T.serif, fontSize: 26, fontWeight: 600, color: T.ink, lineHeight: 1.1, letterSpacing: '-0.5px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {next.client_name}
                               </div>
                               <div style={{ fontSize: 13, fontWeight: 700, color: DEEP_ROSE, textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: 3 }}>
@@ -767,11 +793,11 @@ export default function Home() {
                               )}
                             </div>
                             <div style={{ flexShrink: 0, textAlign: 'right' }}>
-                              <div style={{ fontSize: 17, fontWeight: 900, color: DEEP_ROSE, fontFamily: T.font, letterSpacing: '-0.5px', lineHeight: 1.2, whiteSpace: 'nowrap' }}>
+                              <div style={{ fontSize: 17, fontWeight: 700, color: DEEP_ROSE, fontFamily: T.font, letterSpacing: '-0.5px', lineHeight: 1.2, whiteSpace: 'nowrap' }}>
                                 {timeRange}
                               </div>
                               {timingLabel && (
-                                <div style={{ fontSize: 10, fontWeight: 800, color: timingColor, marginTop: 4, whiteSpace: 'nowrap' }}>
+                                <div style={{ fontSize: 10, fontWeight: 700, color: timingColor, marginTop: 4, whiteSpace: 'nowrap' }}>
                                   {timingLabel}
                                 </div>
                               )}
@@ -829,9 +855,12 @@ export default function Home() {
                       if (next.address) {
                         return (
                           <div style={{ marginBottom: 10, overflow: 'visible', position: 'relative' }}>
-                            <button
-                              onClick={handleSupermomGo}
-                              disabled={isGoLaunching}
+                            <div
+                              role="button"
+                              tabIndex={0}
+                              onClick={!isGoLaunching ? handleSupermomGo : undefined}
+                              onKeyDown={(e) => { if (!isGoLaunching && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); handleSupermomGo(e); } }}
+                              aria-disabled={isGoLaunching}
                               className={isUrgent && !isGoLaunching ? 'go-btn-urgent' : ''}
                               style={{
                                 width: '100%',
@@ -841,7 +870,6 @@ export default function Home() {
                                   ? 'linear-gradient(90deg,#8B0E3F,#E91E6A,#FF78B0)'
                                   : `linear-gradient(90deg,${DEEP_ROSE},#E91E6A)`,
                                 color: 'white',
-                                border: 'none',
                                 cursor: isGoLaunching ? 'default' : 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
@@ -849,8 +877,8 @@ export default function Home() {
                                 transition: 'background 0.3s, transform 0.15s',
                                 transform: isGoLaunching ? 'scale(0.97)' : 'scale(1)',
                                 boxShadow: isGoLaunching ? 'none' : '0 4px 16px rgba(233,30,106,0.35)',
-                                textAlign: 'left',
                                 overflow: 'visible',
+                                userSelect: 'none',
                               }}
                             >
                               <img
@@ -860,8 +888,8 @@ export default function Home() {
                                 alt=""
                               />
                               <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.3px', transition: 'opacity 0.2s', opacity: isGoLaunching ? 0.7 : 1 }}>
-                                  {isGoLaunching ? 'LAUNCHING…' : driveLabel}
+                                <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.3px', transition: 'opacity 0.2s', opacity: isGoLaunching ? 0.7 : 1 }}>
+                                  {isGoLaunching ? 'On my way…' : driveLabel}
                                 </div>
                                 {!isGoLaunching && driveSubtitle && (
                                   <div style={{ fontSize: 10, opacity: 0.8, marginTop: 2 }}>
@@ -873,13 +901,13 @@ export default function Home() {
                                 <button
                                   onClick={(e) => { e.stopPropagation(); handleRefreshLocation(e); }}
                                   disabled={locationLoading}
-                                  style={{ background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 8, color: 'white', cursor: 'pointer', fontSize: 13, padding: '4px 7px', opacity: locationLoading ? 0.4 : 1, flexShrink: 0 }}
+                                  style={{ background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 8, color: 'white', cursor: 'pointer', fontSize: 13, padding: '10px 12px', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: locationLoading ? 0.4 : 1, flexShrink: 0 }}
                                   title="Refresh location"
                                 >
                                   {locationLoading ? '…' : '↻'}
                                 </button>
                               )}
-                            </button>
+                            </div>
                           </div>
                         );
                       }
@@ -940,94 +968,19 @@ export default function Home() {
         {restOfWeekJobs.length > 0 && (
           <div style={{ marginBottom: 24 }}>
             <SectionLabel style={{ color: T.inkSub, marginBottom: 8 }}>REST OF THIS WEEK</SectionLabel>
-            {restOfWeekJobs.map(j => {
-              const total = computeJobSubtotal(j);
-              const rowHstNote = computeJobTotal(j) > total;
-                const rowDateLabel = j.start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-              const rowTimeRange = fmtTimeRange(j.start, j.end);
-              return (
-                <div
-                  key={j.id}
-                  onClick={() => openJob(j.id)}
-                  style={{
-                    background: mode === 'dark' ? T.card : '#FFF9F5',
-                    border: `1px solid ${T.cardBorder}`,
-                    borderLeft: '3px solid #FFD6E8',
-                    borderRadius: 12,
-                    padding: '10px 14px 10px 12px',
-                    marginBottom: 8,
-                    cursor: 'pointer',
-                  }}
-                >
-                  {/* Row 1: name · bold time | pill */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                    <div style={{
-                      fontFamily: T.serif, fontSize: 16, fontWeight: 600, color: T.ink,
-                      flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                      letterSpacing: '-0.3px',
-                    }}>
-                      {j.client_name}
-                    </div>
-                    <div style={{ fontSize: 12, fontWeight: 800, color: T.pink, whiteSpace: 'nowrap', flexShrink: 0, letterSpacing: '-0.3px' }}>
-                      {rowTimeRange}
-                    </div>
-                    <span style={{
-                      fontFamily: T.font, fontSize: 9, fontWeight: 800,
-                      textTransform: 'uppercase', letterSpacing: '0.3px',
-                      background: `${T.pink}18`, color: T.pink,
-                      padding: '2px 6px', borderRadius: 4, flexShrink: 0,
-                    }}>
-                      SCHEDULED
-                    </span>
-                  </div>
-
-                  {/* Row 2: date | amount */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
-                    <div style={{ fontSize: 11, fontWeight: 500, color: T.inkSub }}>{rowDateLabel}</div>
-                    {!privacyOn && total > 0 && (
-                      <div style={{
-                        fontFamily: T.serif, fontSize: 14, fontWeight: 600,
-                        color: T.inkSub, fontVariantNumeric: 'tabular-nums',
-                      }}>
-                        ${total.toFixed(0)}{rowHstNote && <span style={{ fontSize: 8, fontWeight: 700, opacity: 0.6, marginLeft: 2, fontFamily: T.font, textTransform: 'uppercase' }}> +HST</span>}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Row 3: service */}
-                  <div style={{
-                    fontFamily: T.font, fontSize: 9, fontWeight: 700,
-                    textTransform: 'uppercase', letterSpacing: '0.4px',
-                    background: `${T.pink}18`, color: T.pink,
-                    padding: '2px 6px', borderRadius: 4,
-                    display: 'inline-block', marginBottom: 3,
-                  }}>
-                    {j.service_name}
-                  </div>
-
-                  {/* Worker */}
-                  {j.worker_name && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 10.5, color: T.inkMuted }}>{j.assignee_type === 'staff' ? '🌟 Wingmom:' : '🦸 Sidekick:'} {j.worker_name}</span>
-                      {j.payment_status === 'Paid' && Number(j.raw?.worker_pay) > 0 && !j.raw?.worker_paid && (
-                        <span style={{ fontSize: 8.5, fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: '#FEF3C7', color: '#92400E', textTransform: 'uppercase', letterSpacing: '0.3px' }}>$ Unpaid</span>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Notes */}
-                  {j.notes && (
-                    <div style={{
-                      fontSize: 10, color: T.inkMuted, fontStyle: 'italic', marginTop: 3,
-                      display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-                      overflow: 'hidden', lineHeight: 1.35,
-                    }}>
-                      {j.notes}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            {restOfWeekJobs.map(j => (
+              <JobCard
+                key={j.id}
+                job={j}
+                T={T}
+                onClick={() => openJob(j.id)}
+                paid={paymentMap[j.id] || 0}
+                total={computeJobSubtotal(j)}
+                grandTotal={computeJobTotal(j)}
+                privacyOn={privacyOn}
+                hstNote={computeJobTotal(j) > computeJobSubtotal(j)}
+              />
+            ))}
           </div>
         )}
 
@@ -1085,7 +1038,6 @@ export default function Home() {
                       style={{
                         background: bgColor,
                         borderTop: i > 0 ? `1px solid rgba(181,0,78,0.12)` : 'none',
-                        borderLeft: `3px solid ${accentColor}`,
                         padding: '10px 14px 10px 12px',
                         cursor: 'pointer',
                       }}
@@ -1094,7 +1046,7 @@ export default function Home() {
                         <div style={{ fontFamily: T.serif, fontSize: 16, fontWeight: 600, color: T.ink, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.3px' }}>
                           {g.client_name}
                         </div>
-                        <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 800, color: accentColor, whiteSpace: 'nowrap', marginLeft: 8 }}>
+                        <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 600, color: accentColor, whiteSpace: 'nowrap', marginLeft: 8 }}>
                           {privacyOn ? '•••' : allWrapUp ? `~$${g.totalOwing.toFixed(0)} est.` : `$${g.totalOwing.toFixed(0)} owing`}
                         </div>
                       </div>
@@ -1120,60 +1072,20 @@ export default function Home() {
         {nextWeekJobs.length > 0 && (
           <div style={{ marginBottom: 24 }}>
             <SectionLabel style={{ color: T.inkMuted, marginBottom: 8 }}>COMING UP NEXT WEEK</SectionLabel>
-            {nextWeekJobs.map(j => {
-              const total = computeJobSubtotal(j);
-              const rowHstNote = computeJobTotal(j) > total;
-              const rowDateLabel = j.start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-              const rowTimeRange = fmtTimeRange(j.start, j.end);
-              return (
-                <div
-                  key={j.id}
-                  onClick={() => openJob(j.id)}
-                  style={{
-                    background: mode === 'dark' ? T.card : '#FAFAFA',
-                    border: `1px solid ${T.cardBorder}`,
-                    borderLeft: '3px solid #E2C5D4',
-                    borderRadius: 12,
-                    padding: '10px 14px 10px 12px',
-                    marginBottom: 8,
-                    cursor: 'pointer',
-                    opacity: 0.82,
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                    <div style={{
-                      fontFamily: T.serif, fontSize: 15, fontWeight: 600, color: T.ink,
-                      flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                      letterSpacing: '-0.3px',
-                    }}>
-                      {j.client_name}
-                    </div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: T.inkMuted, whiteSpace: 'nowrap', flexShrink: 0 }}>
-                      {rowTimeRange}
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontSize: 11, fontWeight: 500, color: T.inkMuted }}>{rowDateLabel}</div>
-                    {!privacyOn && total > 0 && (
-                      <div style={{ fontFamily: T.serif, fontSize: 13, fontWeight: 600, color: T.inkMuted, fontVariantNumeric: 'tabular-nums' }}>
-                        ${total.toFixed(0)}{rowHstNote && <span style={{ fontSize: 8, fontWeight: 700, opacity: 0.6, marginLeft: 2, fontFamily: T.font, textTransform: 'uppercase' }}> +HST</span>}
-                      </div>
-                    )}
-                  </div>
-                  {j.service_name && (
-                    <div style={{
-                      fontFamily: T.font, fontSize: 9, fontWeight: 700,
-                      textTransform: 'uppercase', letterSpacing: '0.4px',
-                      background: `${T.inkMuted}18`, color: T.inkMuted,
-                      padding: '2px 6px', borderRadius: 4,
-                      display: 'inline-block', marginTop: 4,
-                    }}>
-                      {j.service_name}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            {nextWeekJobs.map(j => (
+              <JobCard
+                key={j.id}
+                job={j}
+                T={T}
+                onClick={() => openJob(j.id)}
+                paid={paymentMap[j.id] || 0}
+                total={computeJobSubtotal(j)}
+                grandTotal={computeJobTotal(j)}
+                privacyOn={privacyOn}
+                hstNote={computeJobTotal(j) > computeJobSubtotal(j)}
+                subtle
+              />
+            ))}
           </div>
         )}
 
@@ -1205,7 +1117,82 @@ export default function Home() {
 
       </div>
 
-      <div style={{ height: isKeyboardFocused ? 80 : 0, transition: 'height 0.2s ease-out' }} />
+      <div style={{ maxHeight: isKeyboardFocused ? 80 : 0, overflow: 'hidden', transition: 'max-height 0.2s ease-out' }} />
+
+      {costModalJob && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Add a cost"
+          style={{
+            position: 'fixed', inset: 0, zIndex: 300,
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+            background: 'rgba(0,0,0,0.45)',
+          }}
+          onClick={closeAddCost}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: '100%', maxWidth: 480,
+              background: T.bg, color: T.ink,
+              borderRadius: '20px 20px 0 0',
+              border: `1px solid ${T.cardBorder}`, borderBottom: 'none',
+              padding: '20px 18px 28px',
+            }}
+          >
+            <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.9px', textTransform: 'uppercase', color: T.inkMuted, marginBottom: 4 }}>Add a cost</div>
+            <div style={{ fontFamily: T.serif, fontSize: 18, fontWeight: 500, color: T.ink, marginBottom: 16 }}>
+              What did you spend on {costModalJob.client_name || 'this job'}?
+            </div>
+
+            <label htmlFor="qc-amount" style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.7px', textTransform: 'uppercase', color: T.inkMuted, marginBottom: 8, display: 'block' }}>Amount</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 12, padding: '10px 14px', marginBottom: 14 }}>
+              <span style={{ fontFamily: T.serif, fontSize: 18, fontWeight: 500, color: T.inkSub }}>$</span>
+              <input
+                id="qc-amount"
+                type="number"
+                autoFocus
+                value={costAmount}
+                onChange={e => setCostAmount(e.target.value)}
+                onFocus={e => e.target.select()}
+                placeholder="0"
+                min="0"
+                step="0.01"
+                inputMode="decimal"
+                style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontFamily: T.serif, fontSize: 20, fontWeight: 500, color: T.ink, fontVariantNumeric: 'tabular-nums' }}
+              />
+            </div>
+
+            <label htmlFor="qc-desc" style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.7px', textTransform: 'uppercase', color: T.inkMuted, marginBottom: 8, display: 'block' }}>What for</label>
+            <div style={{ background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 12, padding: '10px 14px', marginBottom: costErr ? 10 : 18 }}>
+              <input
+                id="qc-desc"
+                type="text"
+                value={costDesc}
+                onChange={e => setCostDesc(e.target.value)}
+                placeholder="Supplies"
+                style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', fontFamily: T.font, fontSize: 13, color: T.ink }}
+              />
+            </div>
+
+            {costErr && (
+              <div style={{ padding: '8px 12px', borderRadius: 8, background: '#FEE2E2', border: '1px solid #FECACA', fontFamily: T.font, fontSize: 11.5, color: '#991B1B', marginBottom: 14 }}>
+                {costErr}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={closeAddCost} style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: `1.5px solid ${T.cardBorder}`, background: T.card, color: T.inkSub, fontFamily: T.font, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                Cancel
+              </button>
+              <button onClick={handleSaveQuickCost} disabled={costSaving} style={{ flex: 2, padding: '12px 0', borderRadius: 12, border: 'none', background: costSaving ? '#F9C5DB' : T.pink, color: 'white', fontFamily: T.font, fontSize: 13, fontWeight: 700, cursor: costSaving ? 'default' : 'pointer' }}>
+                {costSaving ? 'Adding…' : 'Add cost'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

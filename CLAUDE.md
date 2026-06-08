@@ -125,14 +125,16 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 ### Invoice architecture
 - Public route: `/i/:id` — no auth required (shareable link)
-- `src/pages/InvoiceView.jsx` — renders web view + PDF via `window.print()`
+- `src/pages/InvoiceView.jsx` — renders web preview. "Download PDF" button → `/api/download-invoice`. "Print" button → `window.print()` (physical printer only).
 - `src/data/invoicesRepo.js` — `generateInvoiceForJob(jobId)`, `fetchInvoiceById(id)`, `fetchInvoices()`
 - `api/email-invoice.js` — nodemailer/Gmail SMTP. Env vars: `GMAIL_USER`, `GMAIL_APP_PASSWORD`
+- `api/download-invoice.js` — GET `?id=<invoiceId>`. Generates react-pdf buffer server-side, returns with `Content-Disposition: attachment; filename="LastName_Invoice_YYYY-NNN.pdf"`. Same PDF as the email attachment. Fixes Android Chrome filename + iOS Safari formatting.
+- `api/_lib/invoicePdf.js` — react-pdf document builder. Address blocks use single `<Text>` nodes with `\n`-joined nested children (not stacked `<Text>` elements) — this is intentional; react-pdf gives each stacked Text its own font-metrics line-box, making lineHeight/marginBottom ineffective for inter-line spacing.
 - Logo files: `logo-banner.png` (app bar, 41KB) vs `logo-final.png` (invoice, 492KB) — never mix
 
 ---
 
-## Current version: 0.12.16 — committed Jun 8, 2026
+## Current version: 0.12.17 — committed Jun 8, 2026
 
 All core features are live. The app is in active use by Sandra.
 
@@ -140,6 +142,7 @@ All core features are live. The app is in active use by Sandra.
 CLAUDE.md is the only shared truth across online / desktop / CLI sessions. Memory files are local-only. **Always push local commits before starting an online Claude Code session**, and always pull before the online session writes code — otherwise the online session will push stale commits and overwrite newer local work (happened Jun 4, 2026).
 
 ### Recent changes — run `git log --oneline -10` for full detail
+- **v0.12.17** (Jun 8) — Invoice PDF polish + cross-platform download fix. Removed dead "View Invoice" link from email (clients have no app access). Fixed address block spacing in PDF — root cause was react-pdf stacked-Text line-box behavior; restructured to single `<Text>` with `\n`-joined children. Logo enlarged 72→140px. New `api/download-invoice.js` endpoint fixes Android Chrome filename ("supermom app" → proper `LastName_Invoice_YYYY-NNN.pdf`) and iPhone formatting (Safari `window.print()` rendered HTML; now serves same react-pdf PDF as email). Function slots: 11/12.
 - **v0.12.16** (Jun 8) — Home screen critique fixes: `inkMuted` contrast fix (WCAG AA), hero label contrast in light mode, all fontWeight 800/900 → loaded weights, GO button nested-button → `div[role=button]`, refresh tap target → 44×44px, keyboard spacer `height` → `max-height` transition, "Next up" header uses SectionLabel, MissionIntel bgSecondary → T.surface.
 - **v0.12.15** (Jun 7) — Invoice print layout fixed to one page; `✓ Paid` badge no-wrap; emailed PDF filename includes client last name; `@media print` rules in `index.css`. Not yet verified on real phone — Joel/Sandra should spot-check.
 - **v0.12.14** (Jun 7) — `postal_code` field added; invoices show real payment status via `invoiceBalances.js`; "Other Outstanding Balances" section; `due_date` = same-day; ESM `.js` extension bug fixed; invoice layout redesign.
@@ -194,7 +197,7 @@ CLAUDE.md is the only shared truth across online / desktop / CLI sessions. Memor
 - [ ] **Push notifications** — Fire "Leave in 15 mins for Karen" at leave-time. Requires PWA first. High value for Sandra.
 - [ ] **Staff app access (Phase 2)** — `person_type = 'staff'` tracked in DB. No app login yet. When ready: link `workers.id` → `users` table + add Supabase Auth account.
 
-> Vercel Hobby plan: **10 of 12** serverless functions used. 2 slots remaining. Consider consolidating functions when a new slot is needed.
+> Vercel Hobby plan: **11 of 12** serverless functions used. 1 slot remaining. Consider consolidating functions when a new slot is needed.
 > API cost: Distance Matrix hard-capped at 500 elements/day. $0 budget alert on billing. GCal free. Sandra's real usage ~15–30 elements/day.
 > **Watchlist**: Monitor function slot count, Maps quota usage, and cron schedule drift each session. Don't rapid-redeploy (resets cron clock).
 

@@ -134,7 +134,7 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 ---
 
-## Current version: 0.12.21 — committed Jun 9, 2026
+## Current version: 0.12.22 — committed Jun 9, 2026
 
 Sandra's business is live — data wiped and re-provisioned this session. App is in active use.
 
@@ -142,6 +142,7 @@ Sandra's business is live — data wiped and re-provisioned this session. App is
 CLAUDE.md is the only shared truth across online / desktop / CLI sessions. Memory files are local-only. **Always push local commits before starting an online Claude Code session**, and always pull before the online session writes code — otherwise the online session will push stale commits and overwrite newer local work (happened Jun 4, 2026).
 
 ### Recent changes — run `git log --oneline -10` for full detail
+- **v0.12.22 (Jun 9)** — Dark mode job cards: replaced hardcoded light pastels with theme tokens (`T.amberBg`, `T.redBg`, `T.pinkTint`). Accent/border colors now have dark-mode variants. Worker "$ Unpaid" badge uses `T.amberBg`. Detection via `T.ink === '#FFFFFF'`.
 - **v0.12.21 (Jun 9)** — Production launch: full data wipe + Sandra re-provisioned. Fixed `reset-platform.mjs` FK ordering (workers/skill_types/worker_skills were not being deleted). Fixed service pricing type not propagating to job: (1) `JobDetailSheet` edit mode now sets `pricing_type` when service changes; (2) `NewJobSheet` `liveBreakdown` fallback changed `|| 'Hourly'` → `|| 'Flat'` (both Step2 and Step3); (3) `ServiceCatalogSheet` new service defaults to Flat Rate with blank price, switching type clears price.
 - **v0.12.20 (Jun 9)** — Invoice/Receipt label now large + bold at top-right (web + PDF). Distance columns (`distance_to_km`, `distance_home_km`) written to jobs table from `maps.js`. All v0.12.19 code committed.
 - **Invoice polish (Jun 9)** — Outstanding Balance row: amount now red when > 0, default ink when zero; "✓ Paid" stamp moved to its own line below the balance (was inline). Both web view and PDF updated (`InvoiceView.jsx`, `api/_lib/invoicePdf.js`).

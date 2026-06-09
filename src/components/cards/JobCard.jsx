@@ -7,13 +7,15 @@ export default function JobCard({ job: j, T, onClick, paid = 0, total = 0, grand
   const isUnpaid = isCompleted && !isPaid;
   const isOwing = isUnpaid || isPartial;
 
-  const borderColor = isPartial ? '#F97316' : (isUnpaid && !isPartial) ? '#EF4444' : isPaid ? '#86EFAC' : '#E91E6A';
+  const isDark = T.ink === '#FFFFFF';
+
+  const borderColor = isPartial ? '#F97316' : (isUnpaid && !isPartial) ? '#EF4444' : isPaid ? (isDark ? '#4ADE80' : '#86EFAC') : (isDark ? '#FF70A6' : '#E91E6A');
   const bgColor = subtle ? 'transparent'
-    : isPartial ? '#FFF7ED'
-    : (isUnpaid && !isPartial) ? '#FEF2F2'
-    : isPaid ? '#F0FFF5'
-    : '#FFF0F7';
-  const accentColor = isPartial ? '#C2410C' : (isUnpaid && !isPartial) ? '#991B1B' : isPaid ? '#14532D' : '#E91E6A';
+    : isPartial ? T.amberBg
+    : (isUnpaid && !isPartial) ? T.redBg
+    : isPaid ? (isDark ? 'rgba(22,163,74,0.08)' : '#F0FFF5')
+    : T.pinkTint;
+  const accentColor = isPartial ? (isDark ? '#FB923C' : '#C2410C') : (isUnpaid && !isPartial) ? (isDark ? '#F87171' : '#991B1B') : isPaid ? (isDark ? '#4ADE80' : '#14532D') : (isDark ? '#FF70A6' : '#E91E6A');
   const statusLabel = isPartial ? 'PARTIAL' : isUnpaid ? 'UNPAID' : isPaid ? 'PAID ✓' : 'SCHEDULED';
 
   const timeRange = j.start && j.end ? fmtTimeRange(j.start, j.end) : '—';
@@ -85,7 +87,7 @@ export default function JobCard({ job: j, T, onClick, paid = 0, total = 0, grand
             {j.assignee_type === 'staff' ? '🌟 Wingmom:' : '🦸 Sidekick:'} {j.worker_name}
           </span>
           {isPaid && Number(j.raw?.worker_pay) > 0 && !j.raw?.worker_paid && (
-            <span style={{ fontSize: 8.5, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: '#FEF3C7', color: '#92400E', textTransform: 'uppercase', letterSpacing: '0.3px', flexShrink: 0 }}>
+            <span style={{ fontSize: 8.5, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: T.amberBg, color: isDark ? '#FCD34D' : '#92400E', textTransform: 'uppercase', letterSpacing: '0.3px', flexShrink: 0 }}>
               $ Unpaid
             </span>
           )}

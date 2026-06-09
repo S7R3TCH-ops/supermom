@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { getCurrentBusinessId } from './currentBusiness';
-import { notifyDataChanged } from './useData';
+import { notifyDataChanged } from './events';
 
 let channel = null;
 let subscribing = false;

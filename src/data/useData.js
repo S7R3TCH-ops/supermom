@@ -9,15 +9,9 @@ import { fetchWorkers, fetchWorkersWithSkills, fetchSkillTypes } from './workers
 import { toDisplayClient, toDisplayJob } from './selectors';
 import { initRealtime, stopRealtime } from './realtime';
 import { getBusinessProfile, updateBusinessProfile } from './currentBusiness';
+import { notifyDataChanged, CHANGE_EVENT } from './events';
 
-const CHANGE_EVENT = 'supermom:data-changed';
-let _debounceTimer = null;
-export function notifyDataChanged() {
-  clearTimeout(_debounceTimer);
-  _debounceTimer = setTimeout(() => {
-    window.dispatchEvent(new Event(CHANGE_EVENT));
-  }, 300);
-}
+export { notifyDataChanged };
 
 export function useRealtimeSync() {
   useEffect(() => {

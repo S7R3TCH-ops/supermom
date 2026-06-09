@@ -128,13 +128,13 @@ This is a **managed service product** — Sandra is the first user, but the arch
 - `src/pages/InvoiceView.jsx` — renders web preview. "Download PDF" button → `/api/download-invoice`. "Print" button → `window.print()` (physical printer only).
 - `src/data/invoicesRepo.js` — `generateInvoiceForJob(jobId)`, `fetchInvoiceById(id)`, `fetchInvoices()`
 - `api/email-invoice.js` — nodemailer/Gmail SMTP. Env vars: `GMAIL_USER`, `GMAIL_APP_PASSWORD`
-- `api/download-invoice.js` — GET `?id=<invoiceId>`. Generates react-pdf buffer server-side, returns with `Content-Disposition: attachment; filename="LastName_Invoice_YYYY-NNN.pdf"`. Same PDF as the email attachment. Fixes Android Chrome filename + iOS Safari formatting.
+- `api/download-invoice.js` — GET `?id=<invoiceId>`. Generates react-pdf buffer server-side. Filename is `LastName_Invoice_YYYY-NNN.pdf` or `LastName_Receipt_YYYY-NNN.pdf` depending on payment status. Same PDF as the email attachment. Fixes Android Chrome filename + iOS Safari formatting.
 - `api/_lib/invoicePdf.js` — react-pdf document builder. Address blocks use single `<Text>` nodes with `\n`-joined nested children (not stacked `<Text>` elements) — this is intentional; react-pdf gives each stacked Text its own font-metrics line-box, making lineHeight/marginBottom ineffective for inter-line spacing.
 - Logo files: `logo-banner.png` (app bar, 41KB) vs `logo-final.png` (invoice, 492KB) — never mix
 
 ---
 
-## Current version: 0.12.18 — committed Jun 8, 2026
+## Current version: 0.12.19 — committed Jun 9, 2026
 
 All core features are live. The app is in active use by Sandra.
 
@@ -142,6 +142,7 @@ All core features are live. The app is in active use by Sandra.
 CLAUDE.md is the only shared truth across online / desktop / CLI sessions. Memory files are local-only. **Always push local commits before starting an online Claude Code session**, and always pull before the online session writes code — otherwise the online session will push stale commits and overwrite newer local work (happened Jun 4, 2026).
 
 ### Recent changes — run `git log --oneline -10` for full detail
+- **v0.12.19 (Jun 9)** — Invoice/Receipt two-stage document flow. Invoice auto-generates on job completion (not just on full payment). Once paid, same invoice renders as "RECEIPT" (label, footer, email header, filename). `email-invoice.js` stamps `jobs.invoice_sent_at` or `jobs.receipt_sent_at` after send; sent dates display in InvoiceView toolbar. Schema: `ALTER TABLE jobs ADD COLUMN invoice_sent_at timestamptz, ADD COLUMN receipt_sent_at timestamptz` — must be run manually in Supabase SQL Editor before this goes live.
 - **Cleanup (Jun 9)** — Deleted parked greenfield rewrite spec files (`BLUEPRINT.md`, `AI_PROJECT_INSTRUCTIONS.md`). Added `@media (prefers-reduced-motion)` CSS rule for a11y support (disables animations for users with reduced-motion preferences). Updated `/wrap` command to use flag-based stop hook.
 - **v0.12.18** (Jun 8) — Dev tooling: cross-session git sync infrastructure. Auto-push hook fires after every `git commit`; auto-pull hook fires once per calendar day on first message (flag-file guard). Stop hook + `cc` PowerShell wrapper: `/wrap` now exits Claude CLI and automatically reopens a fresh session — zero extra keystrokes. `.claude/settings.json` committed + tracked (`.gitignore` updated). `/wrap` slash command updated to create `~/.claude/sm-wrap-done.flag`. PowerShell profile created at `$PROFILE` with `cc` function.
 - **v0.12.17** (Jun 8) — Invoice PDF polish + cross-platform download fix. Removed dead "View Invoice" link from email (clients have no app access). Fixed address block spacing in PDF — root cause was react-pdf stacked-Text line-box behavior; restructured to single `<Text>` with `\n`-joined children. Logo enlarged 72→140px. New `api/download-invoice.js` endpoint fixes Android Chrome filename ("supermom app" → proper `LastName_Invoice_YYYY-NNN.pdf`) and iPhone formatting (Safari `window.print()` rendered HTML; now serves same react-pdf PDF as email). Function slots: 11/12.
@@ -204,9 +205,10 @@ Deleted `BLUEPRINT.md` and `AI_PROJECT_INSTRUCTIONS.md` — parked greenfield v2
 > **Watchlist**: Monitor function slot count, Maps quota usage, and cron schedule drift each session. Don't rapid-redeploy (resets cron clock).
 
 ### Next session priorities
-0. **Design system follow-up (in progress, Jun 8, 2026)** — `$impeccable critique` run on **Home screen** ✅ (Jun 8, fixes committed, score 27/40). Next: Job detail, Client profile, Calendar, Finance, Settings, Admin — then run `$impeccable document` once at the very end to refresh DESIGN.md. Run `document` after all screens are done, not between each one.
-1. **PWA setup** → push notifications (prerequisite for push notifs)
-2. **Staff app access** — `person_type = 'staff'` in DB. Link `workers.id` → `users` + Supabase Auth.
+0. **Run SQL migration before testing** — `ALTER TABLE jobs ADD COLUMN invoice_sent_at timestamptz, ADD COLUMN receipt_sent_at timestamptz;` in Supabase SQL Editor. Then test invoice→receipt flow end-to-end before data wipe.
+1. **Data wipe + Sandra goes live** — `node scripts/reset-platform.mjs` then `node scripts/provision-sandra.mjs`. This is the production launch.
+2. **Design system follow-up** — `$impeccable critique` on Job detail, Client profile, Calendar, Finance, Settings, Admin — then `$impeccable document` once at end to refresh DESIGN.md.
+3. **PWA setup** → push notifications (prerequisite for push notifs)
 
 ### Features — Phase 2
 - [ ] **AI chat interface** — `api/ai/[action].js` already exists. Need chat UI component + conversation state. `ANTHROPIC_API_KEY` is now set. HIGH PRIORITY.

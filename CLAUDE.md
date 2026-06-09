@@ -134,7 +134,7 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 ---
 
-## Current version: 0.12.24 — committed Jun 9, 2026
+## Current version: 0.12.25 — committed Jun 9, 2026
 
 Sandra's business is live — data wiped and re-provisioned this session. App is in active use.
 
@@ -142,6 +142,7 @@ Sandra's business is live — data wiped and re-provisioned this session. App is
 CLAUDE.md is the only shared truth across online / desktop / CLI sessions. Memory files are local-only. **Always push local commits before starting an online Claude Code session**, and always pull before the online session writes code — otherwise the online session will push stale commits and overwrite newer local work (happened Jun 4, 2026).
 
 ### Recent changes — run `git log --oneline -10` for full detail
+- **v0.12.25 (Jun 9)** — Leave-time push notifications. Custom SW (`src/sw.js`, `injectManifest` mode) schedules `setTimeout` per job — fires "Leave now for Karen" 15 mins before calculated leave time. Home.jsx re-schedules whenever `todayJobs` or `locationDrives` updates. One-time permission banner in home scroll area. Tapping notification focuses app. No server needed — all local SW scheduling. `vite-plugin-pwa` switched from `generateSW` → `injectManifest`.
 - **v0.12.24 (Jun 9)** — Function consolidation: `distance.js` + `geocode.js` → `api/maps.js` (route via `?type=`); `email-invoice.js` + `download-invoice.js` → `api/invoice.js` (route via GET/POST). Slot count: **9/12**. 3 slots free for push notifications + headroom.
 - **v0.12.24 (Jun 9)** — PWA support: `vite-plugin-pwa` + Workbox SW (autoUpdate), web manifest, `apple-touch-icon`, `theme-color` meta. Icons (192, 512, 180px) generated from `supermom_icon_transparent.png`. Supabase API excluded from SW cache (NetworkOnly). `PWAUpdatePrompt` toast component fires when a new build is available. Installable from Safari share sheet (Sandra's iPhone) and Chrome address bar (Pixel). SW is invisible during `npm run dev` — zero dev workflow impact.
 - **v0.12.23 (Jun 9)** — Settings page shows a proper error state ("account not linked to a business") instead of blank white screen for unprovisioned accounts. `useBusiness` now surfaces errors. Provisioned `joel@test.com` as a business owner (business ID `80daa477`) for testing the owner experience.
@@ -204,7 +205,7 @@ Deleted `BLUEPRINT.md` and `AI_PROJECT_INSTRUCTIONS.md` — parked greenfield v2
 > All pre-launch infra complete as of Jun 5, 2026 (Gmail, GCal, Maps, cron, Supabase grants). See git log for history.
 
 - [x] **PWA / installable app** — ✅ done v0.12.24. `vite-plugin-pwa`, manifest, SW, icons.
-- [ ] **Push notifications** — Fire "Leave in 15 mins for Karen" at leave-time. Requires PWA first. High value for Sandra.
+- [x] **Push notifications** — ✅ done v0.12.25. Local SW scheduling, fires 15 mins before leave time.
 - [ ] **Staff app access (Phase 2)** — `person_type = 'staff'` tracked in DB. No app login yet. When ready: link `workers.id` → `users` table + add Supabase Auth account.
 
 > Vercel Hobby plan: **9 of 12** serverless functions used. 3 slots free. Functions: `maps`, `invoice`, `auth/google/login`, `auth/google/callback`, `briefing/daily`, `sync/gcal`, `ai/[action]`, `transcribe`, `admin/provision`.
@@ -213,7 +214,7 @@ Deleted `BLUEPRINT.md` and `AI_PROJECT_INSTRUCTIONS.md` — parked greenfield v2
 
 ### Next session priorities
 1. **Design system follow-up** — `$impeccable critique` on Job detail, Client profile, Calendar, Finance, Settings, Admin — then `$impeccable document` once at end to refresh DESIGN.md.
-2. **Push notifications** — PWA prerequisite now done (v0.12.24). Needs web-push + VAPID keys + a new serverless function. Will consume the last function slot — consolidate first or upgrade to Pro.
+2. **Design system critique** — `$impeccable critique` on Job detail, Client profile, Calendar, Finance, Settings, Admin → then `$impeccable document` to refresh DESIGN.md.
 
 ### Features — Phase 2
 - [ ] **AI chat interface** — `api/ai/[action].js` already exists. Need chat UI component + conversation state. `ANTHROPIC_API_KEY` is now set. HIGH PRIORITY.

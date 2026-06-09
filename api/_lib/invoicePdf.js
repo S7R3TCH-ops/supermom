@@ -87,7 +87,6 @@ const s = StyleSheet.create({
   balanceMainRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   balanceLabel:   { fontSize: 7, fontFamily: 'Helvetica-Bold', color: MUTED, letterSpacing: 1, textTransform: 'uppercase' },
   balanceVal:     { fontSize: 13, fontFamily: 'Helvetica-Bold' },
-  balanceValGroup:{ flexDirection: 'row', alignItems: 'center', gap: 6 },
   paidBadge:      { fontSize: 9, fontFamily: 'Helvetica-Bold', color: PAID },
   // Other outstanding balances — faint-headed breakdown table
   outstandingWrap: { marginTop: 2, marginBottom: 10 },
@@ -114,10 +113,11 @@ const V = (props, ...children) => el(View, props, ...children);
 const T = (props, ...children) => el(Text, props, ...children);
 
 function InvoiceDocument({ invoice }) {
-  const biz    = invoice.businesses || {};
-  const client = invoice.clients    || {};
-  const job    = invoice.invoice_jobs?.[0]?.jobs || {};
-  const f      = computeJobFinancials(job, biz);
+  const biz      = invoice.businesses || {};
+  const client   = invoice.clients    || {};
+  const job      = invoice.invoice_jobs?.[0]?.jobs || {};
+  const f        = computeJobFinancials(job, biz);
+  const isReceipt = !!invoice.isPaidInFull;
 
   const totalRow = V({ style: s.tDueRow, key: 'total' },
     T({ style: s.tDueLabel }, 'Invoice Total'),
@@ -139,15 +139,15 @@ function InvoiceDocument({ invoice }) {
       )
     : null;
 
-  const balanceColor = invoice.isPaidInFull ? PAID : invoice.balanceOwing > 0 ? '#DC2626' : INK;
+  const balanceColor = invoice.balanceOwing > 0 ? '#DC2626' : INK;
   const balanceRow = V({ style: s.balanceWrap, key: 'balance' },
     V({ style: s.balanceMainRow },
       T({ style: s.balanceLabel }, 'Outstanding Balance'),
-      V({ style: s.balanceValGroup },
-        invoice.isPaidInFull ? T({ style: s.paidBadge }, '✓ Paid') : null,
-        T({ style: [s.balanceVal, { color: balanceColor }] }, `$${invoice.balanceOwing.toFixed(2)}`),
-      ),
+      T({ style: [s.balanceVal, { color: balanceColor }] }, `$${invoice.balanceOwing.toFixed(2)}`),
     ),
+    invoice.isPaidInFull
+      ? T({ style: [s.paidBadge, { textAlign: 'right', marginTop: 4 }] }, '✓ Paid')
+      : null,
   );
 
   const bizCity    = [biz.city, biz.province].filter(Boolean).join(', ');
@@ -187,9 +187,9 @@ function InvoiceDocument({ invoice }) {
             biz.email ? '\n' : null, biz.email ? T({ style: s.infoLight }, biz.email) : null,
           ),
         ),
-        // Invoice meta
+        // Invoice / Receipt meta
         V({ style: [s.infoCol, { alignItems: 'flex-end' }] },
-          T({ style: [s.infoLabel, { textAlign: 'right' }] }, 'Invoice'),
+          T({ style: [s.infoLabel, { textAlign: 'right' }] }, isReceipt ? 'Receipt' : 'Invoice'),
           V({ style: s.metaRow }, T({ style: s.metaKey }, 'NO'),   T({ style: s.metaVal }, invoice.invoice_number || '—')),
           V({ style: s.metaRow }, T({ style: s.metaKey }, 'DATE'), T({ style: s.metaVal }, formatDate(invoice.invoice_date))),
           V({ style: s.metaRow }, T({ style: s.metaKey }, 'DUE DATE'), T({ style: s.metaVal }, formatDate(invoice.due_date))),
@@ -274,9 +274,11 @@ function InvoiceDocument({ invoice }) {
 
       // ── Payment footer ──
       V({ style: s.footerBorder },
-        T({ style: s.footerLabel }, 'Payment'),
+        T({ style: s.footerLabel }, isReceipt ? 'Payment Received' : 'Payment'),
         T({ style: s.footerText  },
-          `e-Transfer to ${biz.email || 'sandra@supermomforhire.com'}\nReference: Invoice #${invoice.invoice_number}`
+          isReceipt
+            ? `Payment received in full. Thank you!\nReceipt #${invoice.invoice_number}`
+            : `e-Transfer to ${biz.email || 'sandra@supermomforhire.com'}\nReference: Invoice #${invoice.invoice_number}`
         ),
       ),
       T({ style: s.thankYou }, 'Thank you for letting Supermom save the day.'),

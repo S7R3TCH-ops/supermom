@@ -19,6 +19,8 @@ export default function InvoiceView() {
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState(null);
   const [emailState, setEmailState] = useState('idle');
+  const [invoiceSentAt, setInvoiceSentAt] = useState(null);
+  const [receiptSentAt, setReceiptSentAt] = useState(null);
   const wrapRef = useRef(null);
   const boxRef = useRef(null);
   const [scale, setScale] = useState(1);
@@ -42,7 +44,12 @@ export default function InvoiceView() {
 
   useEffect(() => {
     fetchInvoiceById(id)
-      .then(setInvoice)
+      .then(inv => {
+        setInvoice(inv);
+        const j = inv.invoice_jobs?.[0]?.jobs || {};
+        setInvoiceSentAt(j.invoice_sent_at || null);
+        setReceiptSentAt(j.receipt_sent_at || null);
+      })
       .catch(err => { console.error('Failed to load invoice:', err); setError(err.message); })
       .finally(() => setLoading(false));
   }, [id]);
@@ -51,9 +58,10 @@ export default function InvoiceView() {
   if (error)   return <div style={{ padding: 40, textAlign: 'center', fontFamily: 'var(--font-ui)', color: 'var(--red)' }}>Error: {error}</div>;
   if (!invoice) return <div style={{ padding: 40, textAlign: 'center', fontFamily: 'var(--font-ui)', color: 'var(--ink-muted)' }}>Invoice not found.</div>;
 
-  const biz    = invoice.businesses || {};
-  const client = invoice.clients    || {};
-  const job    = invoice.invoice_jobs?.[0]?.jobs || {};
+  const biz       = invoice.businesses || {};
+  const client    = invoice.clients    || {};
+  const job       = invoice.invoice_jobs?.[0]?.jobs || {};
+  const isReceipt = !!invoice.isPaidInFull;
 
   const financials = computeJobFinancials(job, biz);
   const logoSrc    = biz.logo_url || '/branding/logo-final.png';
@@ -78,6 +86,9 @@ export default function InvoiceView() {
         }),
       });
       if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      if (data.isReceipt) setReceiptSentAt(new Date().toISOString());
+      else setInvoiceSentAt(new Date().toISOString());
       setEmailState('sent');
       setTimeout(() => setEmailState('idle'), 4000);
     } catch (e) {
@@ -87,10 +98,11 @@ export default function InvoiceView() {
     }
   }
 
+  const docLabel   = isReceipt ? 'Receipt' : 'Invoice';
   const emailLabel = emailState === 'sending' ? 'Sending…'
     : emailState === 'sent'    ? '✓ Sent!'
     : emailState === 'error'   ? '✗ Failed — retry'
-    : client.email             ? '✉ Email to Client'
+    : client.email             ? `✉ Email ${docLabel}`
     : '✉ No Email on File';
 
   return (
@@ -156,7 +168,19 @@ export default function InvoiceView() {
 
       {/* Toolbar */}
       <div className="no-print" style={{ maxWidth: 800, margin: '0 auto 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-        <div style={{ fontSize: 12, color: 'var(--ink-muted)', fontWeight: 600 }}>✦ PREVIEW</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <div style={{ fontSize: 12, color: 'var(--ink-muted)', fontWeight: 600 }}>✦ PREVIEW</div>
+          {invoiceSentAt && (
+            <div style={{ fontSize: 11, color: '#888' }}>
+              Invoice sent {new Date(invoiceSentAt).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' })}
+            </div>
+          )}
+          {receiptSentAt && (
+            <div style={{ fontSize: 11, color: '#16A34A', fontWeight: 600 }}>
+              ✓ Receipt sent {new Date(receiptSentAt).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' })}
+            </div>
+          )}
+        </div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <button
             onClick={handleEmail}
@@ -187,7 +211,7 @@ export default function InvoiceView() {
           <button
             onClick={() => {
               const prev = document.title;
-              document.title = `${client.last_name || 'Client'}_Invoice_${invoice.invoice_number || 'Invoice'}`;
+              document.title = `${client.last_name || 'Client'}_${docLabel}_${invoice.invoice_number || docLabel}`;
               window.print();
               setTimeout(() => { document.title = prev; }, 500);
             }}
@@ -242,7 +266,7 @@ export default function InvoiceView() {
           </div>
 
           <div className="info-col-right" style={{ textAlign: 'right' }}>
-            <div style={{ ...LABEL, textAlign: 'right' }}>Invoice</div>
+            <div style={{ ...LABEL, textAlign: 'right' }}>{docLabel}</div>
             <div className="invoice-meta" style={{ display: 'grid', gridTemplateColumns: 'auto auto', gap: '5px 14px', justifyContent: 'end' }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: '#aaa', textAlign: 'right', alignSelf: 'center' }}>NO</div>
               <div style={{ fontWeight: 600 }}>{invoice.invoice_number}</div>
@@ -346,14 +370,16 @@ export default function InvoiceView() {
               </div>
             )}
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 14px', marginTop: 4, borderTop: '1px solid #eee' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#555' }}>Outstanding Balance</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                {invoice.isPaidInFull && <div style={{ fontSize: 12, fontWeight: 700, color: '#16A34A', whiteSpace: 'nowrap' }}>✓ Paid</div>}
-                <div style={{ fontSize: 16, fontWeight: 700, color: invoice.isPaidInFull ? '#16A34A' : invoice.balanceOwing > 0 ? '#DC2626' : '#1a1a1a' }}>
+            <div style={{ padding: '7px 14px', marginTop: 4, borderTop: '1px solid #eee' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#555' }}>Outstanding Balance</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: invoice.balanceOwing > 0 ? '#DC2626' : '#1a1a1a' }}>
                   ${invoice.balanceOwing.toFixed(2)}
                 </div>
               </div>
+              {invoice.isPaidInFull && (
+                <div style={{ textAlign: 'right', marginTop: 5, fontSize: 13, fontWeight: 700, color: '#16A34A' }}>✓ Paid</div>
+              )}
             </div>
           </div>
         </div>
@@ -384,11 +410,22 @@ export default function InvoiceView() {
         {/* Payment + Thank you — kept together, never split across pages */}
         <div className="invoice-footer">
           <div style={{ borderTop: '1px solid #eee', paddingTop: 9, marginBottom: 6 }}>
-            <div style={LABEL}>Payment</div>
-            <div style={{ fontSize: 13, color: '#444', lineHeight: 1.6 }}>
-              e-Transfer to <strong>{biz.email || 'sandra@supermomforhire.com'}</strong>
-              <div style={{ color: '#888', fontSize: 12 }}>Reference: Invoice #{invoice.invoice_number}</div>
-            </div>
+            {isReceipt ? (
+              <>
+                <div style={LABEL}>Payment Received</div>
+                <div style={{ fontSize: 13, color: '#16A34A', fontWeight: 600 }}>
+                  ✓ Paid in full — Receipt #{invoice.invoice_number}
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={LABEL}>Payment</div>
+                <div style={{ fontSize: 13, color: '#444', lineHeight: 1.6 }}>
+                  e-Transfer to <strong>{biz.email || 'sandra@supermomforhire.com'}</strong>
+                  <div style={{ color: '#888', fontSize: 12 }}>Reference: Invoice #{invoice.invoice_number}</div>
+                </div>
+              </>
+            )}
           </div>
 
           <div style={{ textAlign: 'center', paddingTop: 2 }}>

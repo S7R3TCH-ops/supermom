@@ -36,7 +36,7 @@ export async function updateDailyRoutes(jobsForDay) {
   const destinations = stops.join('|');
 
   try {
-    const res = await fetch(`/api/distance?origins=${encodeURIComponent(origins)}&destinations=${encodeURIComponent(destinations)}&avoid=tolls`);
+    const res = await fetch(`/api/maps?type=distance&origins=${encodeURIComponent(origins)}&destinations=${encodeURIComponent(destinations)}&avoid=tolls`);
     const data = await res.json();
 
     if (data.status !== 'OK') {
@@ -115,7 +115,7 @@ export function getNavigationUrl(address) {
 export async function geocodeAddress(address) {
   if (!address) return null;
   try {
-    const res = await fetch(`/api/geocode?address=${encodeURIComponent(address)}`);
+    const res = await fetch(`/api/maps?type=geocode&address=${encodeURIComponent(address)}`);
     const data = await res.json();
     if (data.status === 'OK' && data.results.length > 0) {
       return data.results[0].geometry.location; // { lat, lng }

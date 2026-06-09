@@ -7,7 +7,7 @@ import { computeJobFinancials } from './financialMath.js';
  *
  * Accepts any Supabase client (browser RLS-scoped client or a server-side
  * service-role client) so it can run from both `invoicesRepo.fetchInvoiceById`
- * and `api/email-invoice.js`.
+ * and `api/invoice.js`.
  */
 export async function decorateInvoiceWithBalances(supabase, invoice) {
   const job = invoice.invoice_jobs?.[0]?.jobs || null;

@@ -72,7 +72,7 @@ export default function InvoiceView() {
     if (!client.email) return;
     setEmailState('sending');
     try {
-      const res = await fetch('/api/email-invoice', {
+      const res = await fetch('/api/invoice', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -197,7 +197,7 @@ export default function InvoiceView() {
             {emailLabel}
           </button>
           <a
-            href={`/api/download-invoice?id=${id}`}
+            href={`/api/invoice?id=${id}`}
             download
             style={{
               background: 'var(--pink)', color: 'white', textDecoration: 'none',

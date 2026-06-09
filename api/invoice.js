@@ -81,9 +81,46 @@ function brandedEmailHtml({ clientName, bizName, bizEmail, invoiceNumber, isRece
 </html>`;
 }
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).end();
+function makeSupabase() {
+  return createClient(
+    process.env.VITE_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    { auth: { persistSession: false } }
+  );
+}
 
+async function handleDownload(req, res) {
+  const { id } = req.query;
+  if (!id) return res.status(400).json({ error: 'Missing id' });
+
+  const sb = makeSupabase();
+  const { data: invoice, error } = await sb
+    .from('invoices')
+    .select('*, clients(*), businesses(*), invoice_jobs(job_id, jobs(*))')
+    .eq('id', id)
+    .single();
+
+  if (error || !invoice) return res.status(404).json({ error: 'Invoice not found' });
+
+  const lastName = invoice.clients?.last_name || 'Client';
+  const invoiceNumber = invoice.invoice_number || 'Invoice';
+
+  try {
+    const decorated = await decorateInvoiceWithBalances(sb, invoice);
+    const label = decorated.isPaidInFull ? 'Receipt' : 'Invoice';
+    const filename = `${lastName}_${label}_${invoiceNumber}.pdf`;
+    const pdfBuffer = await buildInvoicePdfBuffer(decorated);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+    return res.status(200).send(pdfBuffer);
+  } catch (err) {
+    console.error('[invoice/download] PDF generation failed:', err);
+    return res.status(500).json({ error: 'Failed to generate PDF' });
+  }
+}
+
+async function handleEmail(req, res) {
   const { invoiceId, clientEmail, clientName, clientLastName, invoiceNumber, bizName, bizEmail } = req.body;
 
   if (!clientEmail || !invoiceId || !invoiceNumber) {
@@ -94,24 +131,17 @@ export default async function handler(req, res) {
   const gmailPass = process.env.GMAIL_APP_PASSWORD;
 
   if (!gmailUser || !gmailPass) {
-    console.warn('[email-invoice] Gmail credentials not configured — email not sent');
-    // Return success in dev so the UI flow can be tested without real creds
+    console.warn('[invoice/email] Gmail credentials not configured — email not sent');
     return res.status(200).json({ ok: true, mock: true });
   }
 
-  // Fetch full invoice data server-side (needed for PDF generation)
-  const sb = createClient(
-    process.env.VITE_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY,
-    { auth: { persistSession: false } }
-  );
+  const sb = makeSupabase();
   const { data: invoiceData } = await sb
     .from('invoices')
     .select('*, clients(*), businesses(*), invoice_jobs(job_id, jobs(*))')
     .eq('id', invoiceId)
     .single();
 
-  // Generate PDF — fall back to sending without attachment if it fails
   let pdfBuffer = null;
   let isReceipt = false;
   let jobId = null;
@@ -122,7 +152,7 @@ export default async function handler(req, res) {
       jobId = invoiceData.invoice_jobs?.[0]?.job_id || null;
       pdfBuffer = await buildInvoicePdfBuffer(decorated);
     } catch (err) {
-      console.error('[email-invoice] PDF generation failed:', err);
+      console.error('[invoice/email] PDF generation failed:', err);
     }
   }
 
@@ -148,7 +178,6 @@ export default async function handler(req, res) {
       }] : [],
     });
 
-    // Stamp the sent timestamp on the job
     if (jobId) {
       const sentField = isReceipt ? 'receipt_sent_at' : 'invoice_sent_at';
       await sb.from('jobs').update({ [sentField]: new Date().toISOString() }).eq('id', jobId);
@@ -156,7 +185,13 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ ok: true, isReceipt });
   } catch (err) {
-    console.error('[email-invoice] Send error:', err);
+    console.error('[invoice/email] Send error:', err);
     return res.status(500).json({ error: err.message });
   }
+}
+
+export default async function handler(req, res) {
+  if (req.method === 'GET') return handleDownload(req, res);
+  if (req.method === 'POST') return handleEmail(req, res);
+  return res.status(405).end();
 }

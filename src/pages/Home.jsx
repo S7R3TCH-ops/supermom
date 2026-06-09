@@ -479,7 +479,7 @@ export default function Home() {
       const origin = `${position.coords.latitude},${position.coords.longitude}`;
       setLastKnownOrigin(origin);
       const destinations = targets.map(j => j.address).join('|');
-      const res = await fetch(`/api/distance?origins=${encodeURIComponent(origin)}&destinations=${encodeURIComponent(destinations)}&departure_time=now&avoid=tolls`);
+      const res = await fetch(`/api/maps?type=distance&origins=${encodeURIComponent(origin)}&destinations=${encodeURIComponent(destinations)}&departure_time=now&avoid=tolls`);
       const data = await res.json();
       if (data?.status !== 'OK') return;
       const newDrives = {};

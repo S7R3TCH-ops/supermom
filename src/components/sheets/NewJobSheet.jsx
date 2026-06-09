@@ -141,7 +141,7 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
     let cancelled = false;
     setDriveTimeLoading(true);
     setDriveTime(null);
-    fetch(`/api/distance?origins=${encodeURIComponent('Georgetown, ON, Canada')}&destinations=${encodeURIComponent(dest)}&departure_time=now&avoid=tolls`)
+    fetch(`/api/maps?type=distance&origins=${encodeURIComponent('Georgetown, ON, Canada')}&destinations=${encodeURIComponent(dest)}&departure_time=now&avoid=tolls`)
       .then(r => r.json())
       .then(data => {
         if (cancelled) return;

@@ -524,7 +524,7 @@ function Step2What({
   const effectiveRate = customPrice !== null && customPrice !== '' ? Number(customPrice) : defaultRate;
 
   const liveBreakdown = selectedSvc ? {
-    pricing_type: selectedSvc.pricing_type || 'Hourly',
+    pricing_type: selectedSvc.pricing_type || 'Flat',
     flat_rate: effectiveRate,
     estimated_hours: (duration || 0) / 60,
     hourly_rate: effectiveRate,
@@ -842,7 +842,7 @@ function Step3Review({
   const effectiveRate = customPrice !== null && customPrice !== '' ? Number(customPrice) : defaultRate;
 
   const liveBreakdown = service ? {
-    pricing_type: service.pricing_type || 'Hourly',
+    pricing_type: service.pricing_type || 'Flat',
     flat_rate: effectiveRate,
     estimated_hours: (duration || 0) / 60,
     hourly_rate: effectiveRate,

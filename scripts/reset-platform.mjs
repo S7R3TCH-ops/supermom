@@ -25,14 +25,17 @@ async function reset() {
     'communication_log',
     'notification_log',
     'template_schedule',
-    'job_templates',
     'invoice_jobs',
     'invoices',
     'payments',
     'expense_log',
-    'jobs',
-    'clients',
+    'jobs',         // must come before job_templates (jobs.template_id → job_templates)
+    'job_templates', // must come before clients (job_templates.client_id → clients)
+    'clients',      // must come before businesses (clients.business_id → businesses)
     'services',
+    'worker_skills', // must come before workers + skill_types
+    'workers',       // must come before businesses
+    'skill_types',   // must come before businesses
     'config'
   ];
 

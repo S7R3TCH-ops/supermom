@@ -84,7 +84,12 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const handleUpdate = (id, field, val) => {
-    setFormServices(prev => prev.map(s => s.id === id ? { ...s, [field]: val } : s));
+    setFormServices(prev => prev.map(s => {
+      if (s.id !== id) return s;
+      const updates = { [field]: val };
+      if (field === 'pricing_type') updates.default_price = '';
+      return { ...s, ...updates };
+    }));
   };
 
   const handleToggleDelete = (id) => {
@@ -103,9 +108,9 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
     const newSvc = {
       id: crypto.randomUUID(),
       name: '',
-      pricing_type: 'Hourly',
-      use_business_default: true,
-      default_price: String(business?.hourly_rate || 60),
+      pricing_type: 'Flat',
+      use_business_default: false,
+      default_price: '',
       default_duration: '2',
       active: true,
       isNew: true

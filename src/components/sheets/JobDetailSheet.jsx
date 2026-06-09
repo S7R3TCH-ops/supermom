@@ -599,7 +599,8 @@ function EditMode({ job, form, setForm, services, workers, business, T, mode, bu
       ? (business?.hourly_rate || 60)
       : svc.default_price;
 
-    if (form.pricing_type === 'Flat') set('total_amount', String(resolvedPrice || ''));
+    set('pricing_type', svc.pricing_type || 'Flat');
+    if (svc.pricing_type === 'Flat') set('total_amount', String(resolvedPrice || ''));
     if (!form.hoursTouched) set('estimated_hours', (Number(svc.default_duration || 120) / 60).toFixed(1));
 
     // Re-auto-fill worker pay when service changes and a worker is assigned

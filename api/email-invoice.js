@@ -12,13 +12,16 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
-function brandedEmailHtml({ clientName, bizName, bizEmail, invoiceNumber }) {
+function brandedEmailHtml({ clientName, bizName, bizEmail, invoiceNumber, isReceipt }) {
   clientName   = escapeHtml(clientName);
   bizName      = escapeHtml(bizName);
   bizEmail     = escapeHtml(bizEmail);
   invoiceNumber = escapeHtml(invoiceNumber);
-  const pink = '#E91E6A';
+  const pink  = '#E91E6A';
+  const green = '#16A34A';
   const cream = '#FFF9F5';
+  const docLabel = isReceipt ? 'Receipt' : 'Invoice';
+  const headerColor = isReceipt ? green : pink;
   return `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -28,24 +31,33 @@ function brandedEmailHtml({ clientName, bizName, bizEmail, invoiceNumber }) {
       <table width="100%" style="max-width:560px;background:white;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08);">
 
         <!-- Header -->
-        <tr><td style="background:${pink};padding:28px 32px;text-align:center;">
+        <tr><td style="background:${headerColor};padding:28px 32px;text-align:center;">
           <img src="https://supermom-v2.vercel.app/branding/logo-final.png" alt="${bizName}" height="80" style="display:block;margin:0 auto 12px;" />
-          <div style="color:white;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;opacity:.85;">Invoice</div>
+          <div style="color:white;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;opacity:.85;">${docLabel}</div>
         </td></tr>
 
         <!-- Body -->
         <tr><td style="padding:32px;">
           <p style="margin:0 0 20px;font-size:15px;color:#1a1a1a;">Hi ${clientName || 'there'},</p>
           <p style="margin:0 0 24px;font-size:14px;color:#555;line-height:1.6;">
-            Please find your invoice #${invoiceNumber} from <strong>${bizName}</strong> attached to this email as a PDF.
+            ${isReceipt
+              ? `Please find your receipt #${invoiceNumber} from <strong>${bizName}</strong> attached. Your payment has been received in full — thank you!`
+              : `Please find your invoice #${invoiceNumber} from <strong>${bizName}</strong> attached to this email as a PDF.`
+            }
           </p>
 
-          <!-- Invoice # callout -->
-          <div style="background:${cream};border:1.5px solid #FFD6E8;border-radius:12px;padding:16px 20px;margin-bottom:28px;">
-            <div style="font-size:10px;font-weight:700;color:#aaa;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">Invoice Number</div>
+          <!-- Doc # callout -->
+          <div style="background:${cream};border:1.5px solid ${isReceipt ? '#BBF7D0' : '#FFD6E8'};border-radius:12px;padding:16px 20px;margin-bottom:28px;">
+            <div style="font-size:10px;font-weight:700;color:#aaa;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">${docLabel} Number</div>
             <div style="font-size:18px;font-weight:600;color:#1a1a1a;">#${invoiceNumber}</div>
           </div>
 
+          ${isReceipt ? `
+          <!-- Paid confirmation -->
+          <div style="border-top:1px solid #eee;padding-top:20px;">
+            <p style="margin:0;font-size:13px;color:#16A34A;font-weight:600;">✓ Paid in Full</p>
+          </div>
+          ` : `
           <!-- Payment note -->
           <div style="border-top:1px solid #eee;padding-top:20px;">
             <div style="font-size:10px;font-weight:700;color:#aaa;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Payment</div>
@@ -54,6 +66,7 @@ function brandedEmailHtml({ clientName, bizName, bizEmail, invoiceNumber }) {
               <span style="color:#888;">Reference: Invoice #${invoiceNumber}</span>
             </p>
           </div>
+          `}
         </td></tr>
 
         <!-- Footer -->
@@ -100,9 +113,13 @@ export default async function handler(req, res) {
 
   // Generate PDF — fall back to sending without attachment if it fails
   let pdfBuffer = null;
+  let isReceipt = false;
+  let jobId = null;
   if (invoiceData) {
     try {
       const decorated = await decorateInvoiceWithBalances(sb, invoiceData);
+      isReceipt = !!decorated.isPaidInFull;
+      jobId = invoiceData.invoice_jobs?.[0]?.job_id || null;
       pdfBuffer = await buildInvoicePdfBuffer(decorated);
     } catch (err) {
       console.error('[email-invoice] PDF generation failed:', err);
@@ -115,22 +132,29 @@ export default async function handler(req, res) {
   });
 
   const fromAddress = 'invoice@supermomforhire.com';
+  const docLabel = isReceipt ? 'Receipt' : 'Invoice';
 
   try {
     await transporter.sendMail({
       from: `"${bizName || 'Supermom for Hire'}" <${fromAddress}>`,
       replyTo: fromAddress,
       to: clientEmail,
-      subject: `Invoice #${invoiceNumber} from ${bizName || 'Supermom for Hire'}`,
-      html: brandedEmailHtml({ clientName, bizName, bizEmail, invoiceNumber }),
+      subject: `${docLabel} #${invoiceNumber} from ${bizName || 'Supermom for Hire'}`,
+      html: brandedEmailHtml({ clientName, bizName, bizEmail, invoiceNumber, isReceipt }),
       attachments: pdfBuffer ? [{
-        filename: `${clientLastName || 'Client'}_Invoice_${invoiceNumber}.pdf`,
+        filename: `${clientLastName || 'Client'}_${docLabel}_${invoiceNumber}.pdf`,
         content: pdfBuffer,
         contentType: 'application/pdf',
       }] : [],
     });
 
-    return res.status(200).json({ ok: true });
+    // Stamp the sent timestamp on the job
+    if (jobId) {
+      const sentField = isReceipt ? 'receipt_sent_at' : 'invoice_sent_at';
+      await sb.from('jobs').update({ [sentField]: new Date().toISOString() }).eq('id', jobId);
+    }
+
+    return res.status(200).json({ ok: true, isReceipt });
   } catch (err) {
     console.error('[email-invoice] Send error:', err);
     return res.status(500).json({ error: err.message });

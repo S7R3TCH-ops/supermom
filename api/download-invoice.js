@@ -24,10 +24,11 @@ export default async function handler(req, res) {
 
   const lastName = invoice.clients?.last_name || 'Client';
   const invoiceNumber = invoice.invoice_number || 'Invoice';
-  const filename = `${lastName}_Invoice_${invoiceNumber}.pdf`;
 
   try {
     const decorated = await decorateInvoiceWithBalances(sb, invoice);
+    const label = decorated.isPaidInFull ? 'Receipt' : 'Invoice';
+    const filename = `${lastName}_${label}_${invoiceNumber}.pdf`;
     const pdfBuffer = await buildInvoicePdfBuffer(decorated);
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);

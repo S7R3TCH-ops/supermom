@@ -454,13 +454,11 @@ export async function recordPayment(jobId, amount, method = 'Cash', _paymentStat
     }
   }
 
-  // Auto-generate invoice only when fully paid
-  if (status === 'Paid') {
-    try {
-      await generateInvoiceForJob(jobId);
-    } catch (invErr) {
-      console.error('Auto Invoice Generation Error:', invErr);
-    }
+  // Generate or update invoice on every completion (creates on first complete, upgrades to Paid on full payment)
+  try {
+    await generateInvoiceForJob(jobId);
+  } catch (invErr) {
+    console.error('Auto Invoice Generation Error:', invErr);
   }
 
   triggerLearningEnrichment(job.client_id);
@@ -526,7 +524,7 @@ export function findConflicts(allJobs, scheduledAtISO, durationMin, windowMinute
 // Use this instead of updateJob when only updating route/drive data.
 // Does a fresh DB read before merging to avoid clobbering gcal_event_id
 // written concurrently by the GCal sync handler.
-export async function patchJobAiContext(id, contextPatch) {
+export async function patchJobAiContext(id, contextPatch, columnPatch = {}) {
   const businessId = await getCurrentBusinessId();
   const { data: current } = await supabase
     .from('jobs')
@@ -539,7 +537,7 @@ export async function patchJobAiContext(id, contextPatch) {
 
   await supabase
     .from('jobs')
-    .update({ ai_context: merged, updated_at: new Date().toISOString() })
+    .update({ ai_context: merged, updated_at: new Date().toISOString(), ...columnPatch })
     .eq('id', id)
     .eq('business_id', businessId);
 }

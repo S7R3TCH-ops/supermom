@@ -79,10 +79,18 @@ export async function updateDailyRoutes(jobsForDay) {
         }
       }
 
+      const columnPatch = {};
+      if (driveTo && driveTo.distanceValue != null) {
+        columnPatch.distance_to_km = Math.round(driveTo.distanceValue / 10) / 100;
+      }
+      if (driveHome && driveHome.distanceValue != null) {
+        columnPatch.distance_home_km = Math.round(driveHome.distanceValue / 10) / 100;
+      }
+
       await patchJobAiContext(job.id, {
         drive_to: driveTo,
         ...(driveHome ? { drive_home: driveHome } : {})
-      });
+      }, columnPatch);
     }
   } catch (error) {
     console.error('[maps] updateDailyRoutes failed:', error);

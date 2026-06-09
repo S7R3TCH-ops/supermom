@@ -32,8 +32,9 @@ export async function generateInvoiceForJob(jobId) {
   const actualTotal = Math.round(computeJobTotal(job) * 100) / 100;
 
   if (existingLink) {
+    const statusPatch = job.payment_status === 'Paid' ? { status: 'Paid' } : {};
     const { error: updateErr } = await supabase.from('invoices')
-      .update({ total_amount: actualTotal, due_date: job.scheduled_date })
+      .update({ total_amount: actualTotal, due_date: job.scheduled_date, ...statusPatch })
       .eq('id', existingLink.invoice_id)
       .eq('business_id', businessId);
     if (updateErr) throw updateErr;

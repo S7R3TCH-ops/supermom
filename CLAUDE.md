@@ -134,7 +134,7 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 ---
 
-## Current version: 0.12.19 — committed Jun 9, 2026
+## Current version: 0.12.20 — committed Jun 9, 2026
 
 All core features are live. The app is in active use by Sandra.
 
@@ -142,6 +142,7 @@ All core features are live. The app is in active use by Sandra.
 CLAUDE.md is the only shared truth across online / desktop / CLI sessions. Memory files are local-only. **Always push local commits before starting an online Claude Code session**, and always pull before the online session writes code — otherwise the online session will push stale commits and overwrite newer local work (happened Jun 4, 2026).
 
 ### Recent changes — run `git log --oneline -10` for full detail
+- **v0.12.20 (Jun 9)** — Invoice/Receipt label now large + bold at top-right (web + PDF). Distance columns (`distance_to_km`, `distance_home_km`) written to jobs table from `maps.js`. All v0.12.19 code committed. ⚠️ Requires SQL migration (4 columns) — see Next session priorities.
 - **Invoice polish (Jun 9)** — Outstanding Balance row: amount now red when > 0, default ink when zero; "✓ Paid" stamp moved to its own line below the balance (was inline). Both web view and PDF updated (`InvoiceView.jsx`, `api/_lib/invoicePdf.js`).
 - **v0.12.19 (Jun 9)** — Invoice/Receipt two-stage document flow. Invoice auto-generates on job completion (not just on full payment). Once paid, same invoice renders as "RECEIPT" (label, footer, email header, filename). `email-invoice.js` stamps `jobs.invoice_sent_at` or `jobs.receipt_sent_at` after send; sent dates display in InvoiceView toolbar. Schema: `ALTER TABLE jobs ADD COLUMN invoice_sent_at timestamptz, ADD COLUMN receipt_sent_at timestamptz` — must be run manually in Supabase SQL Editor before this goes live.
 - **Cleanup (Jun 9)** — Deleted parked greenfield rewrite spec files (`BLUEPRINT.md`, `AI_PROJECT_INSTRUCTIONS.md`). Added `@media (prefers-reduced-motion)` CSS rule for a11y support (disables animations for users with reduced-motion preferences). Updated `/wrap` command to use flag-based stop hook.
@@ -206,7 +207,14 @@ Deleted `BLUEPRINT.md` and `AI_PROJECT_INSTRUCTIONS.md` — parked greenfield v2
 > **Watchlist**: Monitor function slot count, Maps quota usage, and cron schedule drift each session. Don't rapid-redeploy (resets cron clock).
 
 ### Next session priorities
-0. **Run SQL migration before testing** — `ALTER TABLE jobs ADD COLUMN invoice_sent_at timestamptz, ADD COLUMN receipt_sent_at timestamptz;` in Supabase SQL Editor. Then test invoice→receipt flow end-to-end before data wipe.
+0. **Run SQL migration before testing** — Run in Supabase SQL Editor:
+   ```sql
+   ALTER TABLE jobs ADD COLUMN IF NOT EXISTS invoice_sent_at timestamptz;
+   ALTER TABLE jobs ADD COLUMN IF NOT EXISTS receipt_sent_at timestamptz;
+   ALTER TABLE jobs ADD COLUMN IF NOT EXISTS distance_to_km numeric(7,2);
+   ALTER TABLE jobs ADD COLUMN IF NOT EXISTS distance_home_km numeric(7,2);
+   ```
+   Then test invoice→receipt flow end-to-end before data wipe.
 1. **Data wipe + Sandra goes live** — `node scripts/reset-platform.mjs` then `node scripts/provision-sandra.mjs`. This is the production launch.
 2. **Design system follow-up** — `$impeccable critique` on Job detail, Client profile, Calendar, Finance, Settings, Admin — then `$impeccable document` once at end to refresh DESIGN.md.
 3. **PWA setup** → push notifications (prerequisite for push notifs)

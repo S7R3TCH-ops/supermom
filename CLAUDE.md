@@ -142,6 +142,7 @@ All core features are live. The app is in active use by Sandra.
 CLAUDE.md is the only shared truth across online / desktop / CLI sessions. Memory files are local-only. **Always push local commits before starting an online Claude Code session**, and always pull before the online session writes code — otherwise the online session will push stale commits and overwrite newer local work (happened Jun 4, 2026).
 
 ### Recent changes — run `git log --oneline -10` for full detail
+- **Cleanup (Jun 9)** — Deleted parked greenfield rewrite spec files (`BLUEPRINT.md`, `AI_PROJECT_INSTRUCTIONS.md`). Added `@media (prefers-reduced-motion)` CSS rule for a11y support (disables animations for users with reduced-motion preferences). Updated `/wrap` command to use flag-based stop hook.
 - **v0.12.18** (Jun 8) — Dev tooling: cross-session git sync infrastructure. Auto-push hook fires after every `git commit`; auto-pull hook fires once per calendar day on first message (flag-file guard). Stop hook + `cc` PowerShell wrapper: `/wrap` now exits Claude CLI and automatically reopens a fresh session — zero extra keystrokes. `.claude/settings.json` committed + tracked (`.gitignore` updated). `/wrap` slash command updated to create `~/.claude/sm-wrap-done.flag`. PowerShell profile created at `$PROFILE` with `cc` function.
 - **v0.12.17** (Jun 8) — Invoice PDF polish + cross-platform download fix. Removed dead "View Invoice" link from email (clients have no app access). Fixed address block spacing in PDF — root cause was react-pdf stacked-Text line-box behavior; restructured to single `<Text>` with `\n`-joined children. Logo enlarged 72→140px. New `api/download-invoice.js` endpoint fixes Android Chrome filename ("supermom app" → proper `LastName_Invoice_YYYY-NNN.pdf`) and iPhone formatting (Safari `window.print()` rendered HTML; now serves same react-pdf PDF as email). Function slots: 11/12.
 - **v0.12.16** (Jun 8) — Home screen critique fixes: `inkMuted` contrast fix (WCAG AA), hero label contrast in light mode, all fontWeight 800/900 → loaded weights, GO button nested-button → `div[role=button]`, refresh tap target → 44×44px, keyboard spacer `height` → `max-height` transition, "Next up" header uses SectionLabel, MissionIntel bgSecondary → T.surface.
@@ -188,8 +189,8 @@ CLAUDE.md is the only shared truth across online / desktop / CLI sessions. Memor
 
 ## Parked / not building yet
 
-### Greenfield rewrite spec (parked, drafted Jun 5, 2026)
-`docs/archive/BLUEPRINT.md` and `docs/archive/AI_PROJECT_INSTRUCTIONS.md` — full v2 spec (Next.js 15 + TS strict + Drizzle + TanStack Query + Zustand + shadcn/ui + Resend + Sentry). **Not active work.** Revisit only if v1 architecture pain becomes too costly to patch.
+### Greenfield rewrite spec (archived Jun 9, 2026)
+Deleted `BLUEPRINT.md` and `AI_PROJECT_INSTRUCTIONS.md` — parked greenfield v2 spec (Next.js 15 + TS strict + Drizzle + TanStack Query + Zustand + shadcn/ui + Resend + Sentry) no longer maintained. Was: full architecture overhaul. **Not active work.** Revisit only if v1 architecture pain becomes too costly to patch.
 
 ### Immediate — open items only
 > All pre-launch infra complete as of Jun 5, 2026 (Gmail, GCal, Maps, cron, Supabase grants). See git log for history.

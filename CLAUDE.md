@@ -212,7 +212,7 @@ Deleted `BLUEPRINT.md` and `AI_PROJECT_INSTRUCTIONS.md` — parked greenfield v2
 
 ### Next session priorities
 1. **Design system follow-up** — `$impeccable critique` on Job detail, Client profile, Calendar, Finance, Settings, Admin — then `$impeccable document` once at end to refresh DESIGN.md.
-2. **PWA setup** → push notifications (prerequisite for push notifs)
+2. **Push notifications** — PWA prerequisite now done (v0.12.24). Needs web-push + VAPID keys + a new serverless function. Will consume the last function slot — consolidate first or upgrade to Pro.
 
 ### Features — Phase 2
 - [ ] **AI chat interface** — `api/ai/[action].js` already exists. Need chat UI component + conversation state. `ANTHROPIC_API_KEY` is now set. HIGH PRIORITY.

@@ -207,14 +207,6 @@ Deleted `BLUEPRINT.md` and `AI_PROJECT_INSTRUCTIONS.md` — parked greenfield v2
 > **Watchlist**: Monitor function slot count, Maps quota usage, and cron schedule drift each session. Don't rapid-redeploy (resets cron clock).
 
 ### Next session priorities
-0. **Run SQL migration before testing** — Run in Supabase SQL Editor:
-   ```sql
-   ALTER TABLE jobs ADD COLUMN IF NOT EXISTS invoice_sent_at timestamptz;
-   ALTER TABLE jobs ADD COLUMN IF NOT EXISTS receipt_sent_at timestamptz;
-   ALTER TABLE jobs ADD COLUMN IF NOT EXISTS distance_to_km numeric(7,2);
-   ALTER TABLE jobs ADD COLUMN IF NOT EXISTS distance_home_km numeric(7,2);
-   ```
-   Then test invoice→receipt flow end-to-end before data wipe.
 1. **Data wipe + Sandra goes live** — `node scripts/reset-platform.mjs` then `node scripts/provision-sandra.mjs`. This is the production launch.
 2. **Design system follow-up** — `$impeccable critique` on Job detail, Client profile, Calendar, Finance, Settings, Admin — then `$impeccable document` once at end to refresh DESIGN.md.
 3. **PWA setup** → push notifications (prerequisite for push notifs)

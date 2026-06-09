@@ -272,16 +272,20 @@ export default async function handler(req, res) {
       auth: { user: gmailUser, pass: gmailPass },
     });
 
-    await transporter.sendMail({
-      from: `"Supermom for Hire" <${gmailUser}>`,
-      replyTo: 'noreply@supermomforhire.com',
-      to: toEmail,
-      subject,
-      html,
-    });
-
-    console.log(`[briefing] Sent to ${toEmail} — ${todayCount} jobs today`);
-    results.push({ business: biz.id, sent: true, to: toEmail, todayCount });
+    try {
+      await transporter.sendMail({
+        from: `"Supermom for Hire" <${gmailUser}>`,
+        replyTo: 'noreply@supermomforhire.com',
+        to: toEmail,
+        subject,
+        html,
+      });
+      console.log(`[briefing] Sent to ${toEmail} — ${todayCount} jobs today`);
+      results.push({ business: biz.id, sent: true, to: toEmail, todayCount });
+    } catch (mailErr) {
+      console.error(`[briefing] sendMail failed for ${toEmail}:`, mailErr.message);
+      results.push({ business: biz.id, sent: false, to: toEmail, error: mailErr.message, todayCount });
+    }
   }
 
   return res.status(200).json({ ok: true, results, date: today });

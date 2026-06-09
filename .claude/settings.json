@@ -1,0 +1,35 @@
+{
+  "worktree": {
+    "bgIsolation": "none"
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "git -C 'C:/Projects/supermom' push 2>&1; exit 0",
+            "if": "Bash(git commit *)",
+            "shell": "powershell",
+            "statusMessage": "Pushing commits to remote...",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$d='C:\\Users\\Joel\\.claude'; $t=(Get-Date -f yyyyMMdd); $f=\"$d\\sm-pulled-$t.flag\"; if(!(Test-Path $f)){Write-Host 'Pulling latest from remote...'; git -C 'C:/Projects/supermom' pull --ff-only 2>&1|Out-Host; New-Item $f -ItemType File -Force|Out-Null; Get-ChildItem \"$d\\sm-pulled-*.flag\"|Where-Object {$_.Name -ne \"sm-pulled-$t.flag\"}|Remove-Item -Force -ErrorAction SilentlyContinue}; exit 0",
+            "shell": "powershell",
+            "statusMessage": "Checking for remote updates...",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

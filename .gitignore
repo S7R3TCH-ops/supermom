@@ -37,7 +37,8 @@ docs/*
 /playwright/.auth/
 /test-screenshots/
 
-.claude/
+.claude/*
+!.claude/settings.json
 \
 .worktrees/\
 !docs/minxymomma-dashboard.html

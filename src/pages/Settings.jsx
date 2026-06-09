@@ -43,7 +43,7 @@ export default function Settings() {
   const toast = useToast();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { business, refreshBusiness } = useBusiness();
+  const { business, loading: bizLoading, error: bizError, refreshBusiness } = useBusiness();
   const isKeyboardFocused = useKeyboardFocus();
 
   const [busy, setBusy] = useState(false);
@@ -194,7 +194,22 @@ export default function Settings() {
     fontFamily: 'var(--font-ui)',
   };
 
-  if (!form) return null;
+  if (bizLoading) return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--ink-muted)', fontSize: 13 }}>
+      Loading…
+    </div>
+  );
+
+  if (!form) return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: 32, textAlign: 'center', gap: 12 }}>
+      <div style={{ fontSize: 32 }}>⚠️</div>
+      <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)' }}>Account not fully set up</div>
+      <div style={{ fontSize: 13, color: 'var(--ink-muted)', maxWidth: 280 }}>
+        This account isn't linked to a business. Ask your admin to provision it via the Admin panel.
+      </div>
+      {bizError && <div style={{ fontSize: 11, color: '#EF4444', marginTop: 8, fontFamily: 'monospace', wordBreak: 'break-all' }}>{bizError.message}</div>}
+    </div>
+  );
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: T.bg ?? 'var(--pink-pale)', color: T.ink ?? 'var(--ink)' }}>

@@ -294,9 +294,9 @@ export function useBusiness() {
     try {
       const data = await getBusinessProfile();
       setBusiness(data);
-    } catch {
-      // If error is just "no business", that's fine for admins
+    } catch (err) {
       setBusiness(null);
+      setError(err);
     } finally {
       setLoading(false);
     }

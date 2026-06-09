@@ -13,4 +13,5 @@ Wrap up this session:
    - Update "Next session priorities" if the focus has shifted
 4. Run: `git add CLAUDE.md package.json && git diff --cached --stat`
 5. If there are staged changes, commit and push: `git commit -m "docs: session wrap" && git push`
-6. Output exactly: "Wrapped ✓ — type /clear to start the next session fresh."
+6. Run: `New-Item 'C:\Users\Joel\.claude\sm-wrap-done.flag' -ItemType File -Force | Out-Null`
+7. Output exactly: "Wrapped ✓"

@@ -194,3 +194,9 @@ button:active,
     font-size: 16px !important;
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .sm-pulse, .go-btn-urgent, .sm-hero-icon.flying, .sm-hero-icon.launching {
+    animation: none !important;
+  }
+}

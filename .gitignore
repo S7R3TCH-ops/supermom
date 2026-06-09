@@ -39,6 +39,7 @@ docs/*
 
 .claude/*
 !.claude/settings.json
+!.claude/commands/
 \
 .worktrees/\
 !docs/minxymomma-dashboard.html

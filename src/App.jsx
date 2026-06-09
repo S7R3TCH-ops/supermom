@@ -1,5 +1,6 @@
 import { Component, lazy, Suspense, useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { useRegisterSW } from 'virtual:pwa-register/react';
 import { supabase } from './lib/supabase';
 import { AppThemeProvider } from './context/AppTheme';
 import { useAppTheme } from './context/AppThemeContext';
@@ -19,6 +20,31 @@ import BottomNav from './components/layout/BottomNav';
 import OnboardingWalkthrough from './components/layout/OnboardingWalkthrough';
 import FAB from './components/ui/FAB';
 import { useRealtimeSync } from './data/useData';
+
+function PWAUpdatePrompt() {
+  const { needRefresh: [needRefresh], updateServiceWorker } = useRegisterSW();
+  if (!needRefresh) return null;
+  return (
+    <div style={{
+      position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)',
+      background: '#1C1C1E', color: '#fff', borderRadius: 12, padding: '10px 16px',
+      display: 'flex', alignItems: 'center', gap: 12, zIndex: 9999,
+      boxShadow: '0 4px 20px rgba(0,0,0,0.4)', fontSize: 13, fontFamily: 'Inter, sans-serif',
+      whiteSpace: 'nowrap',
+    }}>
+      <span>New version available</span>
+      <button
+        onClick={() => updateServiceWorker(true)}
+        style={{
+          background: '#FF70A6', color: '#fff', border: 'none',
+          borderRadius: 8, padding: '5px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+        }}
+      >
+        Reload
+      </button>
+    </div>
+  );
+}
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -334,6 +360,7 @@ export default function App() {
   return (
     <AppThemeProvider>
       <ToastProvider>
+      <PWAUpdatePrompt />
       <BrowserRouter>
         <AuthProvider>
           <ViewpointProvider>

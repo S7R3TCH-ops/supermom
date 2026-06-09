@@ -213,8 +213,8 @@ Deleted `BLUEPRINT.md` and `AI_PROJECT_INSTRUCTIONS.md` — parked greenfield v2
 > **Watchlist**: Monitor function slot count, Maps quota usage, and cron schedule drift each session. Don't rapid-redeploy (resets cron clock).
 
 ### Next session priorities
-1. **Design system follow-up** — `$impeccable critique` on Job detail, Client profile, Calendar, Finance, Settings, Admin — then `$impeccable document` once at end to refresh DESIGN.md.
-2. **Design system critique** — `$impeccable critique` on Job detail, Client profile, Calendar, Finance, Settings, Admin → then `$impeccable document` to refresh DESIGN.md.
+1. **Design system critique** — `$impeccable critique` on Job detail, Client profile, Calendar, Finance, Settings, Admin → then `$impeccable document` to refresh DESIGN.md.
+2. **AI chat interface** — `api/ai/[action].js` + `ANTHROPIC_API_KEY` already in place. Needs chat UI + convo state. HIGH PRIORITY.
 
 ### Features — Phase 2
 - [ ] **AI chat interface** — `api/ai/[action].js` already exists. Need chat UI component + conversation state. `ANTHROPIC_API_KEY` is now set. HIGH PRIORITY.

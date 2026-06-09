@@ -396,6 +396,34 @@ export default function Home() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentWindowJobId]);
 
+  // Schedule leave-time notifications whenever jobs or drive times update
+  useEffect(() => {
+    if (notifPermission !== 'granted') return;
+    const sw = navigator.serviceWorker?.controller;
+    if (!sw) return;
+
+    const now = Date.now();
+    const jobs = todayJobs
+      .filter(j => j.status === 'Scheduled')
+      .flatMap(j => {
+        const driveValue =
+          locationDrives[j.id]?.durationValue ??
+          j.raw?.ai_context?.drive_to?.durationValue;
+        if (!driveValue) return [];
+        const fireAt = j.start.getTime() - driveValue * 1000 - 15 * 60 * 1000;
+        if (fireAt <= now) return [];
+        const driveMins = Math.round(driveValue / 60);
+        return [{
+          id: j.id,
+          clientName: j.client_name || 'your client',
+          fireAt,
+          body: `${driveMins} min drive · job at ${j.start.toLocaleTimeString('en-CA', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/Toronto' })}`,
+        }];
+      });
+
+    sw.postMessage({ type: 'SCHEDULE_LEAVE_NOTIFICATIONS', jobs });
+  }, [todayJobs, locationDrives, notifPermission]);
+
   const openJob = detailSheet?.openJob;
   const openPostJob = postJobSheet?.openPostJob;
   const openDetail = financeSheet?.open;
@@ -410,6 +438,13 @@ export default function Home() {
   const [costDesc, setCostDesc] = useState('');
   const [costErr, setCostErr] = useState(null);
   const [costSaving, setCostSaving] = useState(false);
+
+  const [notifPermission, setNotifPermission] = useState(() =>
+    typeof Notification !== 'undefined' ? Notification.permission : 'denied'
+  );
+  const [notifBannerDismissed, setNotifBannerDismissed] = useState(() =>
+    localStorage.getItem('notif-banner-dismissed') === 'true'
+  );
 
   const nextDriveValue =
     locationDrives[next?.id]?.durationValue ??
@@ -632,6 +667,46 @@ export default function Home() {
 
       <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '16px 14px' }}>
 
+        {/* Notification permission banner — shown once until dismissed */}
+        {notifPermission === 'default' && !notifBannerDismissed && (
+          <div style={{
+            background: T.card, border: `1.5px solid ${T.cardBorder}`,
+            borderRadius: 14, padding: '12px 14px',
+            display: 'flex', alignItems: 'center', gap: 10,
+            marginBottom: 16,
+          }}>
+            <span style={{ fontSize: 20 }}>🔔</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ font: `600 13px/1.2 ${T.font}`, color: T.ink }}>Leave-time reminders</div>
+              <div style={{ font: `12px/1.4 ${T.font}`, color: T.inkSub, marginTop: 2 }}>Get notified 15 mins before you need to leave for each job.</div>
+            </div>
+            <button
+              onClick={async () => {
+                const result = await Notification.requestPermission();
+                setNotifPermission(result);
+                if (result !== 'granted') {
+                  localStorage.setItem('notif-banner-dismissed', 'true');
+                  setNotifBannerDismissed(true);
+                }
+              }}
+              style={{
+                background: T.pink, color: '#fff', border: 'none',
+                borderRadius: 8, padding: '6px 12px',
+                font: `600 12px/1 ${T.font}`, cursor: 'pointer', whiteSpace: 'nowrap',
+              }}
+            >Enable</button>
+            <button
+              onClick={() => {
+                localStorage.setItem('notif-banner-dismissed', 'true');
+                setNotifBannerDismissed(true);
+              }}
+              style={{
+                background: 'transparent', border: 'none', color: T.inkMuted,
+                fontSize: 18, cursor: 'pointer', padding: '0 2px', lineHeight: 1,
+              }}
+            >×</button>
+          </div>
+        )}
 
         {/* TODAY — Active Job */}
         {activeJob ? (

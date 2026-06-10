@@ -134,7 +134,7 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 ---
 
-## Current version: 0.12.28 — committed Jun 10, 2026
+## Current version: 0.12.29 — committed Jun 10, 2026
 
 Sandra's business is live — data wiped and re-provisioned Jun 9. App is in active use.
 
@@ -142,6 +142,7 @@ Sandra's business is live — data wiped and re-provisioned Jun 9. App is in act
 CLAUDE.md is the only shared truth across online / desktop / CLI sessions. Memory files are local-only. **Always push local commits before starting an online Claude Code session**, and always pull before the online session writes code — otherwise the online session will push stale commits and overwrite newer local work (happened Jun 4, 2026).
 
 ### Recent changes — run `git log --oneline -10` for full detail
+- **v0.12.29 (Jun 10)** — PWA crash root cause found and fixed. The circular import fix (v0.12.26) broke the `useData↔realtime` cycle but missed the REAL TDZ: `locationDrives` and `notifPermission` `useState` declarations in `Home.jsx` were physically placed AFTER the `useEffect` that listed them as dependencies. Minifier turned `locationDrives` into `Y`, evaluated the dep array before `let [Y,tt]=useState(…)` ran → `Cannot access 'Y' before initialization`. Fix: moved the three `useState` declarations above the effect. Deployed.
 - **v0.12.28 (Jun 10)** — Finance page critique pass (21/40 score). Period toggle → dark plum bg (#2C2C2E) + solid pink active, matching DESIGN.md spec. Loading state → pulse skeleton (hero + 2×2 grid + chart + rows). Activity list cap removed (was slice(0,20)); count shown in section label. Both dead CTAs (VIEW ALL INVOICES, Download CSV) marked disabled + "Coming soon" — no more silent failures. Next critique target: Calendar.
 - **v0.12.27 (Jun 10)** — Settings page critique pass (20→? score). Dark mode: all 4 card `background: white` → `T.card`, borders → `T.cardBorder`, inputStyle now uses T tokens. Added Address, City, Postal Code, and AI Signature inputs (were silently in form state/DB but had no UI). Replaced native checkbox with `ToggleSwitch` component for tax_enabled. Added `isDirty` state + unsaved-changes pill. Hero heading `'Config & Profile'` → `'Settings'`, dropped kicker. Added Sign Out button in Security section. Suppressed raw `bizError.message` leak. System SectionLabel placed correctly above its card. Build clean.
 - **v0.12.26 (Jun 10)** — PWA crash fix (still unverified on device — see ⚠️ below). Broke circular import `useData.js` ↔ `realtime.js` that caused "cannot access Y before initialization" TDZ error in minified prod build (`Home-*.js:1:18766`). Extracted `notifyDataChanged` + `CHANGE_EVENT` into `src/data/events.js`; both files now import from there; `useData.js` re-exports for backward compat. Added `skipWaiting()` on SW install so new SW activates immediately without waiting for all tabs to close — this was why the old broken bundle kept serving despite deploys. Added SW activate listener to clear all caches + `clients.claim()`. Replaced PWA icons (192, 512, 180px) from `public/branding/supermom_app.jpg`. Vercel is **not** auto-deploying from GitHub — must run `vercel --prod` manually each session.
@@ -215,8 +216,8 @@ Deleted `BLUEPRINT.md` and `AI_PROJECT_INSTRUCTIONS.md` — parked greenfield v2
 > API cost: Distance Matrix hard-capped at 500 elements/day. $0 budget alert on billing. GCal free. Sandra's real usage ~15–30 elements/day.
 > **Watchlist**: Monitor function slot count, Maps quota usage, and cron schedule drift each session. Don't rapid-redeploy (resets cron clock).
 
-### ⚠️ PWA crash — fix deployed Jun 10, unconfirmed on device
-Root cause confirmed via DevTools: `Cannot access 'Y' before initialization` at `Home-B54UpG89.js:1:18766`. Two fixes deployed: (1) circular import broken, (2) `skipWaiting()` added so new SW takes over immediately. Latest deploy is live — Joel needs to reload the browser to pick up the new SW and confirm the crash is gone.
+### PWA crash — resolved v0.12.29
+Root cause was NOT the circular import (that was a red herring). The actual TDZ: `locationDrives` / `notifPermission` / `notifBannerDismissed` `useState` calls were placed after the `useEffect` that lists them as deps in `Home.jsx`. Minifier evaluated the dep array before the `let` bindings ran → TDZ crash. Fixed by moving the declarations above the effect. Deployed Jun 10.
 
 ### Next session priorities
 1. **Design system critique (in progress)** — `$impeccable critique` sequence. Admin done (23/40, Jun 10), Settings done (20/40, Jun 10, all issues fixed), Finance done (21/40, Jun 10, all P0/P1 fixed). Next: **Calendar** → Client profile → Job detail → then `$impeccable document` to refresh DESIGN.md.

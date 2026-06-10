@@ -217,9 +217,8 @@ Deleted `BLUEPRINT.md` and `AI_PROJECT_INSTRUCTIONS.md` — parked greenfield v2
 "Cannot access y before initialization" crash is still happening on Joel's phone after the Jun 10 fix + `vercel --prod` deploy. Circular import was fixed and caches cleared, but device hasn't successfully loaded the new build yet. Phone may need a full cache wipe for `app.supermomforhire.com` specifically (Chrome → three-dot → Settings → Site settings → All sites → find the site → Clear & reset), then re-add shortcut. If error persists after a confirmed fresh install, there may be another TDZ error deeper in the bundle — needs F12 console to capture the exact stack trace.
 
 ### Next session priorities
-1. **⚠️ Fix PWA crash** — confirm fix is live on device. If still broken after fresh install, get exact stack trace from Chrome DevTools and find remaining TDZ.
+1. **Design system critique (in progress)** — `$impeccable critique` sequence. Admin done (23/40, all issues fixed, committed Jun 10). Next: **Settings** → Finance → Calendar → Client profile → Job detail → then `$impeccable document` to refresh DESIGN.md.
 2. **AI chat interface** — `api/ai/[action].js` + `ANTHROPIC_API_KEY` already in place. Needs chat UI + convo state. HIGH PRIORITY.
-3. **Design system critique** — `$impeccable critique` on Job detail, Client profile, Calendar, Finance, Settings, Admin → then `$impeccable document` to refresh DESIGN.md.
 
 ### Features — Phase 2
 - [ ] **AI chat interface** — `api/ai/[action].js` already exists. Need chat UI component + conversation state. `ANTHROPIC_API_KEY` is now set. HIGH PRIORITY.

@@ -5,6 +5,12 @@ import { NetworkFirst, CacheFirst, NetworkOnly } from 'workbox-strategies'
 cleanupOutdatedCaches()
 precacheAndRoute(self.__WB_MANIFEST)
 
+// On install: skip waiting so the new SW activates immediately (doesn't wait
+// for all tabs to close before taking over).
+self.addEventListener('install', () => {
+  self.skipWaiting()
+})
+
 // On activation: nuke all old caches and immediately claim clients so the
 // new bundle is served right away without requiring a manual reload.
 self.addEventListener('activate', (event) => {

@@ -134,7 +134,7 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 ---
 
-## Current version: 0.12.29 — committed Jun 10, 2026
+## Current version: 0.12.30 — committed Jun 10, 2026
 
 Sandra's business is live — data wiped and re-provisioned Jun 9. App is in active use.
 
@@ -142,6 +142,7 @@ Sandra's business is live — data wiped and re-provisioned Jun 9. App is in act
 CLAUDE.md is the only shared truth across online / desktop / CLI sessions. Memory files are local-only. **Always push local commits before starting an online Claude Code session**, and always pull before the online session writes code — otherwise the online session will push stale commits and overwrite newer local work (happened Jun 4, 2026).
 
 ### Recent changes — run `git log --oneline -10` for full detail
+- **v0.12.30 (Jun 10)** — Calendar page: Week grid view hidden per Sandra's request (she uses Google Calendar directly). Agenda view is now the only visible view — opens directly on navigation, no toggle shown. `WeekView` + `LegendDot` renamed to `_*_PARKED` (not deleted) in `src/pages/Calendar.jsx`. Restore: rename back + uncomment `VIEWS` const + swipe handlers + view toggle UI + WeekView render line.
 - **v0.12.29 (Jun 10)** — PWA crash root cause found and fixed. The circular import fix (v0.12.26) broke the `useData↔realtime` cycle but missed the REAL TDZ: `locationDrives` and `notifPermission` `useState` declarations in `Home.jsx` were physically placed AFTER the `useEffect` that listed them as dependencies. Minifier turned `locationDrives` into `Y`, evaluated the dep array before `let [Y,tt]=useState(…)` ran → `Cannot access 'Y' before initialization`. Fix: moved the three `useState` declarations above the effect. Deployed.
 - **v0.12.28 (Jun 10)** — Finance page critique pass (21/40 score). Period toggle → dark plum bg (#2C2C2E) + solid pink active, matching DESIGN.md spec. Loading state → pulse skeleton (hero + 2×2 grid + chart + rows). Activity list cap removed (was slice(0,20)); count shown in section label. Both dead CTAs (VIEW ALL INVOICES, Download CSV) marked disabled + "Coming soon" — no more silent failures. Next critique target: Calendar.
 - **v0.12.27 (Jun 10)** — Settings page critique pass (20→? score). Dark mode: all 4 card `background: white` → `T.card`, borders → `T.cardBorder`, inputStyle now uses T tokens. Added Address, City, Postal Code, and AI Signature inputs (were silently in form state/DB but had no UI). Replaced native checkbox with `ToggleSwitch` component for tax_enabled. Added `isDirty` state + unsaved-changes pill. Hero heading `'Config & Profile'` → `'Settings'`, dropped kicker. Added Sign Out button in Security section. Suppressed raw `bizError.message` leak. System SectionLabel placed correctly above its card. Build clean.

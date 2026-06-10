@@ -413,7 +413,7 @@ export default function Finance() {
   }, [revenueItems, outstandingItems, periodExpenses, workerCostItems, periodLabel, openFinanceDetail]);
 
   if (loading && (!allJobs || allJobs.length === 0)) {
-    return <div style={{ padding: 20, background: T.bg, color: T.inkMuted }}>Loading finances…</div>;
+    return <FinanceSkeleton T={T} />;
   }
 
   return (
@@ -443,17 +443,17 @@ export default function Finance() {
 
       <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '16px 14px' }}>
         {/* Period Selector */}
-        <div style={{ display: 'flex', background: T.card, borderRadius: 12, padding: 4, marginBottom: 16, border: `1px solid ${T.cardBorder}` }}>
+        <div style={{ display: 'flex', background: '#2C2C2E', borderRadius: 12, padding: 3, marginBottom: 16 }}>
           {periods.map(p => (
             <button
               key={p}
               onClick={() => setPeriod(p)}
               style={{
-                flex: 1, padding: '8px 0', borderRadius: 8, border: 'none',
-                background: period === p ? (mode === 'dark' ? 'rgba(255,255,255,0.1)' : T.pinkPale) : 'transparent',
-                color: period === p ? T.pink : T.inkMuted,
+                flex: 1, padding: '8px 0', borderRadius: 9, border: 'none',
+                background: period === p ? T.pink : 'transparent',
+                color: period === p ? 'white' : 'rgba(255,255,255,0.55)',
                 fontFamily: T.font, fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                transition: 'all 0.2s',
+                transition: 'background 0.15s, color 0.15s',
               }}
             >
               {p}
@@ -475,7 +475,7 @@ export default function Finance() {
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <SectionLabel style={{ marginBottom: 0 }}>Activity · {periodLabel}</SectionLabel>
+          <SectionLabel style={{ marginBottom: 0 }}>Activity · {periodLabel}{transactions.length > 0 ? ` · ${transactions.length}` : ''}</SectionLabel>
           <button
             onClick={() => setShowNewExpense(true)}
             style={{ background: 'transparent', border: `1px solid ${T.cardBorder}`, borderRadius: 8, padding: '4px 10px', fontSize: 10, fontWeight: 700, color: T.pink, cursor: 'pointer' }}
@@ -491,7 +491,7 @@ export default function Finance() {
               <div style={{ marginTop: 12, fontSize: 13, color: T.inkMuted }}>No transactions for this period.</div>
             </div>
           ) : (
-            transactions.slice(0, 20).map((tx, i) => (
+            transactions.map((tx, i) => (
               <TransactionRow key={`${tx.type}-${tx.rawId}-${i}`} tx={tx} T={T} privacyOn={privacyOn} onPress={handleJobPress} />
             ))
           )}
@@ -513,7 +513,7 @@ export default function Finance() {
                   </div>
                 </div>
               ))}
-              <button style={{ width: '100%', marginTop: 8, background: 'transparent', border: 'none', color: T.pink, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>VIEW ALL INVOICES ›</button>
+              <button disabled style={{ width: '100%', marginTop: 8, background: 'transparent', border: 'none', color: T.inkMuted, fontSize: 11, fontWeight: 700, cursor: 'default', opacity: 0.5 }}>VIEW ALL INVOICES · Coming soon</button>
             </div>
           ) : (
             <div style={{ textAlign: 'center', padding: '20px 0' }}>
@@ -533,18 +533,42 @@ export default function Finance() {
           <div style={{ fontSize: 13, color: T.ink, lineHeight: 1.4, marginBottom: 16 }}>
             Download your full financial history for the current year, categorized for easy tax filing.
           </div>
-          <button style={{
+          <button disabled style={{
             width: '100%', padding: '12px', borderRadius: 12,
-            background: T.pink, color: 'white', border: 'none',
-            fontSize: 13, fontWeight: 700, cursor: 'pointer',
-            boxShadow: '0 4px 12px rgba(233,30,106,0.2)',
+            background: T.inkMuted, color: 'white', border: 'none',
+            fontSize: 13, fontWeight: 700, cursor: 'not-allowed',
+            opacity: 0.5,
           }}>
-            Download {now.getFullYear()} CSV
+            Download {now.getFullYear()} CSV · Coming Soon
           </button>
         </div>
       </div>
 
       <NewExpenseSheet isOpen={showNewExpense} onClose={() => setShowNewExpense(false)} />
+    </div>
+  );
+}
+
+function FinanceSkeleton({ T }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: T.bg }}>
+      <style>{`@keyframes sm-pulse{0%,100%{opacity:1}50%{opacity:0.45}}`}</style>
+      <div style={{ background: T.hero, borderBottom: '3px solid #E91E6A', padding: '13px 15px 15px' }}>
+        <div style={{ width: 110, height: 10, borderRadius: 5, background: T.cardBorder, animation: 'sm-pulse 1.5s ease-in-out infinite', marginBottom: 10 }} />
+        <div style={{ width: 190, height: 22, borderRadius: 7, background: T.cardBorder, animation: 'sm-pulse 1.5s ease-in-out infinite 0.1s' }} />
+      </div>
+      <div style={{ padding: '16px 14px' }}>
+        <div style={{ height: 38, borderRadius: 12, background: '#2C2C2E', animation: 'sm-pulse 1.5s ease-in-out infinite 0.05s', marginBottom: 16 }} />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+          {[0, 1, 2, 3].map(i => (
+            <div key={i} style={{ height: 80, borderRadius: 15, background: T.card, border: `1.5px solid ${T.cardBorder}`, animation: `sm-pulse 1.5s ease-in-out infinite ${i * 0.07}s` }} />
+          ))}
+        </div>
+        <div style={{ height: 130, borderRadius: 16, background: T.card, border: `1px solid ${T.cardBorder}`, animation: 'sm-pulse 1.5s ease-in-out infinite 0.2s', marginBottom: 24 }} />
+        {[0, 1, 2, 3, 4].map(i => (
+          <div key={i} style={{ height: 52, borderRadius: 11, background: T.card, border: `1px solid ${T.cardBorder}`, animation: `sm-pulse 1.5s ease-in-out infinite ${0.25 + i * 0.06}s`, marginBottom: 6 }} />
+        ))}
+      </div>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useAppTheme } from '../context/AppThemeContext';
 import { useJobs } from '../data/useData';
 import { useJobDetailSheet } from '../context/JobDetailSheetContext';
@@ -22,7 +22,7 @@ function useNow() {
   return now;
 }
 
-const VIEWS = ['Week', 'Agenda'];
+// const VIEWS = ['Week', 'Agenda']; // PARKED: week view hidden per Sandra's request — restore toggle to re-enable
 
 // Extract the Toronto calendar date as "YYYY-MM-DD" — used for day comparisons and grouping.
 function torontoDateKey(d) {
@@ -130,7 +130,7 @@ function findSameDayConflicts(jobsOnDay) {
 export default function Calendar() {
   const { T, mode, privacyOn } = useAppTheme();
   const now = useNow();
-  const [view, setView] = useState('Week');
+  const [view, setView] = useState('Agenda');
   const [selectedDay, setSelectedDay] = useState(() => NOW());
   const [weekStart, setWeekStart] = useState(() => startOfWeek(NOW()));
   const [agendaDayFilter, setAgendaDayFilter] = useState(null);
@@ -162,29 +162,14 @@ export default function Calendar() {
     setSelectedDay(today);
   };
 
-  // Swipe between Day / Week / Agenda
-  const swipeRef = useRef({ x: 0, y: 0 });
-  const handleSwipeStart = useCallback((e) => {
-    swipeRef.current.x = e.touches[0].clientX;
-    swipeRef.current.y = e.touches[0].clientY;
-  }, []);
-  const handleSwipeEnd = useCallback((e) => {
-    const dx = e.changedTouches[0].clientX - swipeRef.current.x;
-    const dy = e.changedTouches[0].clientY - swipeRef.current.y;
-    if (Math.abs(dx) < 50 || Math.abs(dy) > Math.abs(dx) * 0.8) return;
-    setView(v => {
-      const i = VIEWS.indexOf(v);
-      const nextView = dx < 0 ? VIEWS[(i + 1) % VIEWS.length] : VIEWS[(i + VIEWS.length - 1) % VIEWS.length];
-      if (nextView === 'Agenda') setAgendaDayFilter(null);
-      return nextView;
-    });
-  }, []);
+  // PARKED: swipe-to-change-view removed (week view hidden) — restore with VIEWS + toggle to re-enable
+  // const swipeRef = useRef({ x: 0, y: 0 });
+  // const handleSwipeStart = useCallback((e) => { ... }, []);
+  // const handleSwipeEnd = useCallback((e) => { ... }, []);
 
   return (
     <div
       style={{ display: 'flex', flexDirection: 'column', height: '100%', background: T.bg, color: T.ink }}
-      onTouchStart={handleSwipeStart}
-      onTouchEnd={handleSwipeEnd}
     >
       {/* Dark hero */}
       <div style={{ 
@@ -233,18 +218,7 @@ export default function Calendar() {
           variant="calendar"
         />
 
-        {/* View toggle */}
-        <div style={{ display: 'flex', background: mode === 'dark' ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.04)', borderRadius: 9, padding: 3 }}>
-          {VIEWS.map(v => (
-            <button key={v} onClick={() => { setView(v); if (v === 'Agenda') setAgendaDayFilter(null); }} aria-pressed={view === v} style={{
-              flex: 1, padding: '6px 0', borderRadius: 7, textAlign: 'center',
-              background: view === v ? '#E91E6A' : 'transparent',
-              fontFamily: T.font, fontSize: 11, fontWeight: 600,
-              color: view === v ? 'white' : (mode === 'dark' ? 'rgba(255,255,255,0.55)' : T.inkMuted),
-              cursor: 'pointer', border: 'none',
-            }}>{v}</button>
-          ))}
-        </div>
+        {/* PARKED: view toggle (Week/Agenda) — restore VIEWS + swipe handler + WeekView render to re-enable */}
       </div>
 
 
@@ -257,15 +231,16 @@ export default function Calendar() {
         </div>
       )}
 
-      {view === 'Week'   && <WeekView   T={T} mode={mode} weekDays={weekDays} allJobs={allJobs} onPickDay={handlePickDay} onJobPress={handleJobPress} now={now} />}
+      {/* PARKED WeekView render — restore: view === 'Week' && WeekView with weekDays/allJobs/onPickDay/onJobPress/now */}
       {view === 'Agenda' && <AgendaView T={T} mode={mode} privacyOn={privacyOn} allJobs={allJobs} nextUpcoming={nextUpcoming} onJobPress={handleJobPress} dayFilter={agendaDayFilter} onClearFilter={() => setAgendaDayFilter(null)} />}
     </div>
   );
 }
 
-/* ------------------------------ WEEK VIEW ------------------------------ */
-
-function WeekView({ T, mode, weekDays, allJobs, onJobPress, now }) {
+/* ------------------------------ WEEK VIEW (PARKED) ------------------------------ */
+// Restore: rename _WeekView_PARKED → WeekView + re-add VIEWS const + swipe handlers + view toggle UI + WeekView render line
+// eslint-disable-next-line no-unused-vars
+function _WeekView_PARKED({ T, mode, weekDays, allJobs, onJobPress, now }) {
   const slotH = 46, startH = 6, endH = 22;
   const hours = Array.from({ length: endH - startH + 1 }, (_, i) => startH + i);
 
@@ -375,16 +350,17 @@ function WeekView({ T, mode, weekDays, allJobs, onJobPress, now }) {
 
       {/* Legend */}
       <div style={{ display: 'flex', gap: 10, marginTop: 12, padding: '6px 10px', background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 10 }}>
-        <LegendDot T={T} color="#E91E6A" label="Scheduled" />
-        <LegendDot T={T} color="#22C55E" label="Paid" />
-        <LegendDot T={T} color="#F59E0B" label="Unpaid" />
-        <LegendDot T={T} color="#9CA3AF" label="Cancelled" />
+        <_LegendDot_PARKED T={T} color="#E91E6A" label="Scheduled" />
+        <_LegendDot_PARKED T={T} color="#22C55E" label="Paid" />
+        <_LegendDot_PARKED T={T} color="#F59E0B" label="Unpaid" />
+        <_LegendDot_PARKED T={T} color="#9CA3AF" label="Cancelled" />
       </div>
     </div>
   );
 }
 
-function LegendDot({ T, color, label }) {
+// eslint-disable-next-line no-unused-vars
+function _LegendDot_PARKED({ T, color, label }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
       <div style={{ width: 8, height: 8, borderRadius: 2, background: color }} />

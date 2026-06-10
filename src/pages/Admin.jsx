@@ -7,6 +7,7 @@ import { useJobs, useBusiness, useClients } from '../data/useData';
 import { useToast } from '../context/ToastContext';
 import { SectionLabel } from '../components/ui/typography';
 import { useViewpoint } from '../context/ViewpointContext';
+import { computeJobSubtotal } from '../lib/financialMath';
 import ServiceCatalogSheet from '../components/sheets/ServiceCatalogSheet';
 import WorkerCatalogSheet from '../components/sheets/WorkerCatalogSheet';
 
@@ -15,6 +16,7 @@ function ToggleBtn({ show, onToggle, color }) {
     <button
       type="button"
       onClick={onToggle}
+      aria-label={show ? 'Hide password' : 'Show password'}
       style={{
         position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
         background: 'transparent', border: 'none', cursor: 'pointer',
@@ -88,7 +90,7 @@ export default function Admin() {
 
   const revenueYtd = (jobs || [])
     .filter(j => j.raw?.job_status === 'Completed')
-    .reduce((sum, j) => sum + Number(j.raw?.total_amount || 0), 0);
+    .reduce((sum, j) => sum + computeJobSubtotal(j), 0);
 
   const aiStyle = pendingStyle || business?.ai_profile?.style || 'professional';
 
@@ -253,23 +255,42 @@ export default function Admin() {
       </div>
 
       <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '16px 14px' }}>
+        {isSuperAdmin && (
+          <>
+            {viewingAsId && (
+              <div style={{ marginBottom: 12 }}>
+                <button
+                  onClick={reset}
+                  style={{
+                    width: '100%', padding: '12px', borderRadius: 12,
+                    background: 'var(--pink)', color: 'white',
+                    border: 'none', fontWeight: 700, fontSize: 13, cursor: 'pointer'
+                  }}
+                >
+                  ← Reset to My Real View
+                </button>
+              </div>
+            )}
+          </>
+        )}
+
         {isSuperAdmin && !viewingAsId && (
           <>
             <SectionLabel>Super Admin: Viewpoint</SectionLabel>
             <div style={{
-              background: '#1C1C1E', border: '1.5px solid #8B0E3F',
+              background: 'var(--plum-dark)', border: '1.5px solid var(--pink-mid)',
               borderRadius: 16, padding: '14px', marginBottom: 20,
             }}>
-              <div style={{ fontSize: 11, color: '#FF78B0', marginBottom: 12, fontWeight: 600 }}>
+              <div style={{ fontSize: 11, color: 'var(--pink-label)', marginBottom: 12, fontWeight: 600 }}>
                 Switch your viewpoint to see what another business owner sees.
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
-                <select 
-                  value={selectedBizId} 
+                <select
+                  value={selectedBizId}
                   onChange={e => setSelectedBizId(e.target.value)}
                   style={{
-                    flex: 1, padding: '10px', borderRadius: 12, background: '#2C2C2E',
-                    border: '1px solid #8B0E3F', color: 'white', fontSize: 13, outline: 'none'
+                    flex: 1, padding: '10px', borderRadius: 12, background: 'var(--plum-mid)',
+                    border: '1px solid var(--pink-mid)', color: 'white', fontSize: 13, outline: 'none'
                   }}
                 >
                   <option value="">Select a business...</option>
@@ -277,11 +298,11 @@ export default function Admin() {
                     <option key={b.id} value={b.id}>{b.name} ({b.owner_name || 'No Owner Name'})</option>
                   ))}
                 </select>
-                <button 
+                <button
                   onClick={handleSwitch}
                   disabled={!selectedBizId}
                   style={{
-                    padding: '0 16px', borderRadius: 12, background: '#E91E6A',
+                    padding: '0 16px', borderRadius: 12, background: 'var(--pink)',
                     color: 'white', border: 'none', fontWeight: 700, fontSize: 12,
                     cursor: selectedBizId ? 'pointer' : 'default', opacity: selectedBizId ? 1 : 0.5
                   }}
@@ -289,65 +310,53 @@ export default function Admin() {
                   Switch
                 </button>
               </div>
-              {viewingAsId && (
-                <button 
-                  onClick={reset}
-                  style={{
-                    marginTop: 10, width: '100%', padding: '10px', borderRadius: 12,
-                    background: 'transparent', border: '1px solid #8B0E3F',
-                    color: '#FF5A9D', fontWeight: 600, fontSize: 12, cursor: 'pointer'
-                  }}
-                >
-                  Reset to My Real View
-                </button>
-              )}
             </div>
 
             <SectionLabel>Super Admin: Provisioning</SectionLabel>
-            <div style={{ background: '#1C1C1E', border: '1.5px solid #8B0E3F', borderRadius: 16, padding: '14px', marginBottom: 20 }}>
-              <div style={{ fontSize: 11, color: '#FF78B0', marginBottom: 12, fontWeight: 600 }}>Create a new business and owner account.</div>
+            <div style={{ background: 'var(--plum-dark)', border: '1.5px solid var(--pink-mid)', borderRadius: 16, padding: '14px', marginBottom: 20 }}>
+              <div style={{ fontSize: 11, color: 'var(--pink-label)', marginBottom: 12, fontWeight: 600 }}>Create a new business and owner account.</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <input placeholder="Business Name" value={provForm.biz} onChange={e => setProvForm(p => ({...p, biz: e.target.value}))} style={{ padding: '10px', borderRadius: 12, background: '#2C2C2E', border: '1px solid #8B0E3F', color: 'white', fontSize: 13, outline: 'none' }} />
-                <input placeholder="Owner Full Name" value={provForm.owner} onChange={e => setProvForm(p => ({...p, owner: e.target.value}))} style={{ padding: '10px', borderRadius: 12, background: '#2C2C2E', border: '1px solid #8B0E3F', color: 'white', fontSize: 13, outline: 'none' }} />
-                <input placeholder="Owner Email" value={provForm.email} onChange={e => setProvForm(p => ({...p, email: e.target.value}))} style={{ padding: '10px', borderRadius: 12, background: '#2C2C2E', border: '1px solid #8B0E3F', color: 'white', fontSize: 13, outline: 'none' }} />
+                <input placeholder="Business Name" value={provForm.biz} onChange={e => setProvForm(p => ({...p, biz: e.target.value}))} style={{ padding: '10px', borderRadius: 12, background: 'var(--plum-mid)', border: '1px solid var(--pink-mid)', color: 'white', fontSize: 13, outline: 'none' }} />
+                <input placeholder="Owner Full Name" value={provForm.owner} onChange={e => setProvForm(p => ({...p, owner: e.target.value}))} style={{ padding: '10px', borderRadius: 12, background: 'var(--plum-mid)', border: '1px solid var(--pink-mid)', color: 'white', fontSize: 13, outline: 'none' }} />
+                <input placeholder="Owner Email" value={provForm.email} onChange={e => setProvForm(p => ({...p, email: e.target.value}))} style={{ padding: '10px', borderRadius: 12, background: 'var(--plum-mid)', border: '1px solid var(--pink-mid)', color: 'white', fontSize: 13, outline: 'none' }} />
                 <div style={{ position: 'relative' }}>
-                  <input type={showPw ? "text" : "password"} placeholder="Temp Password" value={provForm.pw} onChange={e => setProvForm(p => ({...p, pw: e.target.value}))} style={{ width: '100%', padding: '10px', paddingRight: 36, borderRadius: 12, background: '#2C2C2E', border: '1px solid #8B0E3F', color: 'white', fontSize: 13, outline: 'none' }} />
-                  <ToggleBtn show={showPw} onToggle={() => setShowPw(!showPw)} />
+                  <input type={showPw ? "text" : "password"} placeholder="Temp Password" value={provForm.pw} onChange={e => setProvForm(p => ({...p, pw: e.target.value}))} style={{ width: '100%', padding: '10px', paddingRight: 36, borderRadius: 12, background: 'var(--plum-mid)', border: '1px solid var(--pink-mid)', color: 'white', fontSize: 13, outline: 'none' }} />
+                  <ToggleBtn show={showPw} onToggle={() => setShowPw(!showPw)} color="var(--pink-label)" />
                 </div>
-                <button onClick={handleProvision} disabled={isProv || !provForm.biz || !provForm.email} style={{ padding: '12px', borderRadius: 12, background: '#E91E6A', color: 'white', border: 'none', fontWeight: 700, fontSize: 13, cursor: isProv ? 'default' : 'pointer', opacity: (isProv || !provForm.biz || !provForm.email) ? 0.5 : 1 }}>
+                <button onClick={handleProvision} disabled={isProv || !provForm.biz || !provForm.email} style={{ padding: '12px', borderRadius: 12, background: 'var(--pink)', color: 'white', border: 'none', fontWeight: 700, fontSize: 13, cursor: isProv ? 'default' : 'pointer', opacity: (isProv || !provForm.biz || !provForm.email) ? 0.5 : 1 }}>
                   {isProv ? 'Provisioning…' : 'Create Business & Owner'}
                 </button>
-                {provMsg && <div style={{ color: '#FF78B0', fontSize: 11, padding: '4px 8px', textAlign: 'center' }}>{provMsg}</div>}
+                {provMsg && <div style={{ color: 'var(--pink-label)', fontSize: 11, padding: '4px 8px', textAlign: 'center' }}>{provMsg}</div>}
               </div>
             </div>
 
             <SectionLabel>Super Admin: Data Management</SectionLabel>
-            <div style={{ background: '#1C1C1E', border: '1.5px solid #8B0E3F', borderRadius: 16, padding: '14px', marginBottom: 12 }}>
-              <div style={{ fontSize: 11, color: '#FF78B0', marginBottom: 12, fontWeight: 600 }}>Soft-delete businesses (immediately hides them from UI).</div>
+            <div style={{ background: 'var(--plum-dark)', border: '1.5px solid var(--pink-mid)', borderRadius: 16, padding: '14px', marginBottom: 12 }}>
+              <div style={{ fontSize: 11, color: 'var(--pink-label)', marginBottom: 12, fontWeight: 600 }}>Soft-delete businesses (immediately hides them from UI).</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {(allBusinesses || []).filter(b => !b.deleted_at).map(b => (
                   <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '10px 12px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)' }}>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ color: 'white', fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.name}</div>
-                      <div style={{ color: '#FF5A9D', fontSize: 10 }}>{b.owner_name || 'No Owner'}</div>
+                      <div style={{ color: 'var(--pink-label)', fontSize: 10 }}>{b.owner_name || 'No Owner'}</div>
                     </div>
-                    <button onClick={() => handleSoftDeleteBiz(b.id, b.name)} style={{ background: 'transparent', border: '1px solid #E91E6A', color: '#E91E6A', padding: '5px 10px', borderRadius: 8, fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>DELETE</button>
+                    <button onClick={() => handleSoftDeleteBiz(b.id, b.name)} style={{ background: 'transparent', border: '1px solid var(--pink)', color: 'var(--pink)', padding: '5px 10px', borderRadius: 8, fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>DELETE</button>
                   </div>
                 ))}
               </div>
             </div>
 
             {(allBusinesses || []).some(b => b.deleted_at) && (
-              <div style={{ background: '#1C1C1E', border: '1.5px solid #8B0E3F', borderRadius: 16, padding: '14px', marginBottom: 20 }}>
-                <div style={{ fontSize: 11, color: '#FF78B0', marginBottom: 12, fontWeight: 600 }}>Deleted businesses — restore to make them active again.</div>
+              <div style={{ background: 'var(--plum-dark)', border: '1.5px solid var(--pink-mid)', borderRadius: 16, padding: '14px', marginBottom: 20 }}>
+                <div style={{ fontSize: 11, color: 'var(--pink-label)', marginBottom: 12, fontWeight: 600 }}>Deleted businesses — restore to make them active again.</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {(allBusinesses || []).filter(b => b.deleted_at).map(b => (
                     <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '10px 12px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)', opacity: 0.8 }}>
                       <div style={{ minWidth: 0 }}>
-                        <div style={{ color: '#888', fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.name}</div>
-                        <div style={{ color: '#666', fontSize: 10 }}>{b.owner_name || 'No Owner'} · deleted {new Date(b.deleted_at).toLocaleDateString()}</div>
+                        <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.name}</div>
+                        <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: 10 }}>{b.owner_name || 'No Owner'} · deleted {new Date(b.deleted_at).toLocaleDateString()}</div>
                       </div>
-                      <button onClick={() => handleRestoreBiz(b.id, b.name)} style={{ background: 'transparent', border: '1px solid #30A87E', color: '#30A87E', padding: '5px 10px', borderRadius: 8, fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>RESTORE</button>
+                      <button onClick={() => handleRestoreBiz(b.id, b.name)} style={{ background: 'transparent', border: '1px solid var(--green)', color: 'var(--green)', padding: '5px 10px', borderRadius: 8, fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>RESTORE</button>
                     </div>
                   ))}
                 </div>
@@ -358,8 +367,8 @@ export default function Admin() {
 
         <SectionLabel>Overview</SectionLabel>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
-          <StatCard T={T} label="Total Clients" value={clientsLoading ? '...' : (clients || []).length} />
-          <StatCard T={T} label="Revenue YTD" value={jobsLoading ? '...' : `$${revenueYtd.toFixed(0)}`} />
+          <StatCard T={T} label="Total Clients" value={clientsLoading ? '…' : (clients || []).length} />
+          <StatCard T={T} label="Revenue YTD" value={jobsLoading ? '…' : `$${revenueYtd.toLocaleString('en-CA', { maximumFractionDigits: 0 })}`} />
         </div>
 
         <SectionLabel>AI Persona & Style</SectionLabel>
@@ -387,9 +396,13 @@ export default function Admin() {
                   { id: 'coach', label: 'Encouraging Coach', desc: 'Warm, supportive, and motivating.' },
                   { id: 'casual', label: 'Casual Pal', desc: 'Relaxed, friendly, and low-key.' },
                 ].map(s => (
-                  <div 
+                  <div
                     key={s.id}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => !isSaving && handleStyleChange(s.id)}
+                    onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && !isSaving && handleStyleChange(s.id)}
+                    aria-pressed={aiStyle === s.id}
                     style={{
                       padding: '10px 12px', borderRadius: 12, cursor: isSaving ? 'default' : 'pointer',
                       background: aiStyle === s.id ? T.pinkTint : 'rgba(255,255,255,0.03)',
@@ -423,11 +436,12 @@ export default function Admin() {
                     {isTesting ? 'Testing Persona…' : 'Test Selected Persona'}
                   </button>
                   {testResult && (
-                    <div style={{ 
-                      marginTop: 12, padding: '12px', borderRadius: 12, 
-                      background: mode === 'dark' ? 'rgba(255,255,255,0.05)' : '#FFF0F7', 
-                      fontStyle: 'italic', fontSize: 13, color: T.ink, 
-                      borderLeft: `3px solid ${T.pink}`, lineHeight: 1.4
+                    <div style={{
+                      marginTop: 12, padding: '12px', borderRadius: 12,
+                      background: T.pinkTint,
+                      border: `1.5px solid ${T.cardBorder}`,
+                      fontStyle: 'italic', fontSize: 13, color: T.ink,
+                      lineHeight: 1.4
                     }}>
                       "{testResult}"
                     </div>
@@ -441,7 +455,6 @@ export default function Admin() {
         <SectionLabel>Tools</SectionLabel>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
           <ToolRow T={T} icon="⚙" label="Business Settings" sub="Profile, rates, Google Calendar" onClick={() => navigate('/settings')} />
-          <ToolRow T={T} icon="📊" label="Detailed Reports" sub="Coming soon" />
           <ToolRow T={T} icon="👥" label="Staff Management" sub="Workers, staff, skills &amp; pay rates" onClick={() => setShowWorkers(true)} />
           <ToolRow T={T} icon="🗂" label="Service Catalog" sub="Manage defaults, rates, durations" onClick={() => setShowServices(true)} />
         </div>
@@ -497,7 +510,7 @@ export default function Admin() {
             </div>
 
             {pwError && (
-              <div style={{ fontSize: 11, color: '#E91E6A', background: 'rgba(239,68,68,0.1)', padding: '8px', borderRadius: 8 }}>
+              <div role="alert" style={{ fontSize: 11, color: '#B91C1C', background: 'rgba(239,68,68,0.08)', padding: '8px', borderRadius: 8 }}>
                 {pwError}
               </div>
             )}
@@ -543,20 +556,6 @@ export default function Admin() {
     </div>
   );
 }
-
-const RESET_TABLES = [
-  'audit_log',
-  'communication_log',
-  'notification_log',
-  'payments',
-  'invoice_jobs',
-  'invoices',
-  'jobs',
-  'job_templates',
-  'template_schedule',
-  'clients',
-  'expense_log'
-];
 
 function StatCard({ T, label, value }) {
   return (

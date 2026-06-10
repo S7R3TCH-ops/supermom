@@ -396,6 +396,14 @@ export default function Home() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentWindowJobId]);
 
+  const [locationDrives, setLocationDrives] = useState({});
+  const [notifPermission, setNotifPermission] = useState(() =>
+    typeof Notification !== 'undefined' ? Notification.permission : 'denied'
+  );
+  const [notifBannerDismissed, setNotifBannerDismissed] = useState(() =>
+    localStorage.getItem('notif-banner-dismissed') === 'true'
+  );
+
   // Schedule leave-time notifications whenever jobs or drive times update
   useEffect(() => {
     if (notifPermission !== 'granted') return;
@@ -431,20 +439,12 @@ export default function Home() {
   const [isRefreshingTraffic, setIsRefreshingTraffic] = useState(false);
   const [isGoLaunching, setIsGoLaunching] = useState(false);
   const [isFlyingIcon, setIsFlyingIcon] = useState(false);
-  const [locationDrives, setLocationDrives] = useState({});
   const [locationLoading, setLocationLoading] = useState(false);
   const [costModalJob, setCostModalJob] = useState(null);
   const [costAmount, setCostAmount] = useState('');
   const [costDesc, setCostDesc] = useState('');
   const [costErr, setCostErr] = useState(null);
   const [costSaving, setCostSaving] = useState(false);
-
-  const [notifPermission, setNotifPermission] = useState(() =>
-    typeof Notification !== 'undefined' ? Notification.permission : 'denied'
-  );
-  const [notifBannerDismissed, setNotifBannerDismissed] = useState(() =>
-    localStorage.getItem('notif-banner-dismissed') === 'true'
-  );
 
   const nextDriveValue =
     locationDrives[next?.id]?.durationValue ??

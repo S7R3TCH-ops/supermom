@@ -5,6 +5,16 @@ import { NetworkFirst, CacheFirst, NetworkOnly } from 'workbox-strategies'
 cleanupOutdatedCaches()
 precacheAndRoute(self.__WB_MANIFEST)
 
+// On activation: nuke all old caches and immediately claim clients so the
+// new bundle is served right away without requiring a manual reload.
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys()
+      .then(keys => Promise.all(keys.map(k => caches.delete(k))))
+      .then(() => self.clients.claim())
+  )
+})
+
 // SPA fallback — navigations go to index.html
 registerRoute(
   new NavigationRoute(new NetworkFirst(), {

@@ -134,14 +134,15 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 ---
 
-## Current version: 0.12.25 — committed Jun 9, 2026
+## Current version: 0.12.26 — committed Jun 10, 2026
 
-Sandra's business is live — data wiped and re-provisioned this session. App is in active use.
+Sandra's business is live — data wiped and re-provisioned Jun 9. App is in active use.
 
 ### ⚠️ Multi-client git discipline
 CLAUDE.md is the only shared truth across online / desktop / CLI sessions. Memory files are local-only. **Always push local commits before starting an online Claude Code session**, and always pull before the online session writes code — otherwise the online session will push stale commits and overwrite newer local work (happened Jun 4, 2026).
 
 ### Recent changes — run `git log --oneline -10` for full detail
+- **v0.12.26 (Jun 10)** — PWA crash fix (still unverified on device — see ⚠️ below). Broke circular import `useData.js` ↔ `realtime.js` that caused "cannot access y before initialization" TDZ error in minified prod build. Extracted `notifyDataChanged` + `CHANGE_EVENT` into `src/data/events.js`; both files now import from there; `useData.js` re-exports for backward compat. Added SW activate listener to clear all caches on new SW install (evicts stale broken bundles). Replaced PWA icons (192, 512, 180px) with artwork from `public/branding/supermom_app.jpg`. Vercel was **not** auto-deploying from GitHub — had to run `vercel --prod` manually this session.
 - **v0.12.25 (Jun 9)** — Leave-time push notifications. Custom SW (`src/sw.js`, `injectManifest` mode) schedules `setTimeout` per job — fires "Leave now for Karen" 15 mins before calculated leave time. Home.jsx re-schedules whenever `todayJobs` or `locationDrives` updates. One-time permission banner in home scroll area. Tapping notification focuses app. No server needed — all local SW scheduling. `vite-plugin-pwa` switched from `generateSW` → `injectManifest`.
 - **v0.12.24 (Jun 9)** — Function consolidation: `distance.js` + `geocode.js` → `api/maps.js` (route via `?type=`); `email-invoice.js` + `download-invoice.js` → `api/invoice.js` (route via GET/POST). Slot count: **9/12**. 3 slots free for push notifications + headroom.
 - **v0.12.24 (Jun 9)** — PWA support: `vite-plugin-pwa` + Workbox SW (autoUpdate), web manifest, `apple-touch-icon`, `theme-color` meta. Icons (192, 512, 180px) generated from `supermom_icon_transparent.png`. Supabase API excluded from SW cache (NetworkOnly). `PWAUpdatePrompt` toast component fires when a new build is available. Installable from Safari share sheet (Sandra's iPhone) and Chrome address bar (Pixel). SW is invisible during `npm run dev` — zero dev workflow impact.
@@ -204,7 +205,7 @@ Deleted `BLUEPRINT.md` and `AI_PROJECT_INSTRUCTIONS.md` — parked greenfield v2
 ### Immediate — open items only
 > All pre-launch infra complete as of Jun 5, 2026 (Gmail, GCal, Maps, cron, Supabase grants). See git log for history.
 
-- [x] **PWA / installable app** — ✅ done v0.12.24. `vite-plugin-pwa`, manifest, SW, icons.
+- [~] **PWA / installable app** — code done v0.12.24, icons updated Jun 10, but still crashing on device (see ⚠️ above).
 - [x] **Push notifications** — ✅ done v0.12.25. Local SW scheduling, fires 15 mins before leave time.
 - [ ] **Staff app access (Phase 2)** — `person_type = 'staff'` tracked in DB. No app login yet. When ready: link `workers.id` → `users` table + add Supabase Auth account.
 
@@ -212,9 +213,13 @@ Deleted `BLUEPRINT.md` and `AI_PROJECT_INSTRUCTIONS.md` — parked greenfield v2
 > API cost: Distance Matrix hard-capped at 500 elements/day. $0 budget alert on billing. GCal free. Sandra's real usage ~15–30 elements/day.
 > **Watchlist**: Monitor function slot count, Maps quota usage, and cron schedule drift each session. Don't rapid-redeploy (resets cron clock).
 
+### ⚠️ PWA still broken — next session priority #1
+"Cannot access y before initialization" crash is still happening on Joel's phone after the Jun 10 fix + `vercel --prod` deploy. Circular import was fixed and caches cleared, but device hasn't successfully loaded the new build yet. Phone may need a full cache wipe for `app.supermomforhire.com` specifically (Chrome → three-dot → Settings → Site settings → All sites → find the site → Clear & reset), then re-add shortcut. If error persists after a confirmed fresh install, there may be another TDZ error deeper in the bundle — needs F12 console to capture the exact stack trace.
+
 ### Next session priorities
-1. **Design system critique** — `$impeccable critique` on Job detail, Client profile, Calendar, Finance, Settings, Admin → then `$impeccable document` to refresh DESIGN.md.
+1. **⚠️ Fix PWA crash** — confirm fix is live on device. If still broken after fresh install, get exact stack trace from Chrome DevTools and find remaining TDZ.
 2. **AI chat interface** — `api/ai/[action].js` + `ANTHROPIC_API_KEY` already in place. Needs chat UI + convo state. HIGH PRIORITY.
+3. **Design system critique** — `$impeccable critique` on Job detail, Client profile, Calendar, Finance, Settings, Admin → then `$impeccable document` to refresh DESIGN.md.
 
 ### Features — Phase 2
 - [ ] **AI chat interface** — `api/ai/[action].js` already exists. Need chat UI component + conversation state. `ANTHROPIC_API_KEY` is now set. HIGH PRIORITY.

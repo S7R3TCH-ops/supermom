@@ -442,10 +442,11 @@ function Step1Who({ clients, onPick, onNew, T }) {
   const [search, setSearch] = useState('');
   const filtered = useMemo(() => {
     const s = search.toLowerCase();
-    return clients.filter(c => 
-      (c.first_name + ' ' + c.last_name).toLowerCase().includes(s) ||
-      (c.address || '').toLowerCase().includes(s)
-    );
+    return clients.filter(c => {
+      const addr = [c.street, c.city, c.province, c.postal_code].filter(Boolean).join(', ');
+      return (c.first_name + ' ' + c.last_name).toLowerCase().includes(s) ||
+        addr.toLowerCase().includes(s);
+    });
   }, [clients, search]);
 
   return (
@@ -471,7 +472,7 @@ function Step1Who({ clients, onPick, onNew, T }) {
           {clients.slice(0, 5).map(c => (
             <div key={c.id} onClick={() => onPick(c.id)} style={{ minWidth: 80, textAlign: 'center', cursor: 'pointer' }}>
               <div style={{ width: 48, height: 48, borderRadius: '50%', background: T.pinkTint, border: `1.5px solid ${T.pink}`, margin: '0 auto 6px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>
-                {c.first_name?.[0]}
+                {(c.first_name || c.last_name || '?')[0].toUpperCase()}
               </div>
               <div style={{ fontSize: 11, fontWeight: 600, color: T.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.first_name}</div>
             </div>
@@ -482,7 +483,7 @@ function Step1Who({ clients, onPick, onNew, T }) {
         {filtered.map(c => (
           <div key={c.id} onClick={() => onPick(c.id)} style={{ padding: '12px', borderRadius: 12, background: T.card, border: `1px solid ${T.cardBorder}`, cursor: 'pointer' }}>
             <div style={{ fontWeight: 700, color: T.ink, fontSize: 14 }}>{c.first_name} {c.last_name}</div>
-            <div style={{ fontSize: 11, color: T.inkMuted }}>{c.address || 'No address'}</div>
+            <div style={{ fontSize: 11, color: T.inkMuted }}>{[c.street, c.city, c.province, c.postal_code].filter(Boolean).join(', ') || 'No address'}</div>
           </div>
         ))}
       </div>

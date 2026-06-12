@@ -72,7 +72,7 @@ export default function Settings() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, signOut } = useAuth();
-  const { business, loading: bizLoading, error: bizError, refreshBusiness } = useBusiness();
+  const { business, loading: bizLoading, error: bizError, refresh: refreshBusiness } = useBusiness();
   const isKeyboardFocused = useKeyboardFocus();
 
   const [busy, setBusy] = useState(false);

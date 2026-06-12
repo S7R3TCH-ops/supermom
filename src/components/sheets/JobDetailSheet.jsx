@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useKeyboardFocus } from '../../hooks/useKeyboardFocus';
@@ -392,6 +393,7 @@ function ReadMode({
   onClose, onMarkComplete, onMarkPaid, onMarkWorkerPaid, onCancelConfirm, onConfirmDelete, onDismissConfirm, onEdit, onUpdate, onDeepPrep,
   hardDeleteConfirm, onHardDeleteConfirm, onHardDeleteCancel, onHardDelete,
 }) {
+  const navigate = useNavigate();
   const statusC = STATUS_COLORS[job.job_status] || STATUS_COLORS.Scheduled;
   const payKey  = job.payment_status || '';
   const payC    = PAY_COLORS[payKey] || PAY_COLORS[''];
@@ -425,7 +427,10 @@ function ReadMode({
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
           </button>
         </div>
-        <div style={{ fontFamily: T.serif, fontSize: 22, fontWeight: 500, color: mode === 'dark' ? 'white' : T.ink, marginBottom: 6, position: 'relative' }}>{job.client_name || 'Unknown'}</div>
+        <div
+          onClick={() => { if (job.client_id) { onClose(); navigate('/clients/' + job.client_id); } }}
+          style={{ fontFamily: T.serif, fontSize: 22, fontWeight: 500, color: mode === 'dark' ? 'white' : T.ink, marginBottom: 6, position: 'relative', cursor: job.client_id ? 'pointer' : 'default', textDecoration: job.client_id ? 'underline' : 'none', textDecorationStyle: 'dotted', textUnderlineOffset: 3 }}
+        >{job.client_name || 'Unknown'}</div>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, opacity: 0.9, position: 'relative' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>

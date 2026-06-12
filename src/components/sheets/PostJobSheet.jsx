@@ -31,6 +31,7 @@ export default function PostJobSheet({ jobId, onClose }) {
   const [jobPayments, setJobPayments] = useState([]);
   const [costs, setCosts] = useState([{ amount: '', description: '' }]);
   const [workerPaid, setWorkerPaid] = useState(false);
+  const [taxEnabled, setTaxEnabled] = useState(false);
   const { panelRef: swipePanelRef, scrollRef: swipeScrollRef, handlers: swipeHandlers } = useSwipeToDismiss(onClose);
 
   // Derived state defined early to satisfy linter and simplify logic
@@ -49,11 +50,11 @@ export default function PostJobSheet({ jobId, onClose }) {
 
   const liveHst = useMemo(() => {
     if (!job) return 0;
-    if (business?.tax_enabled) {
+    if (taxEnabled) {
       return Math.round(liveSubtotal * Number(business?.hst_rate ?? 0.13) * 100) / 100;
     }
-    return Math.round(Number(job?.hst_amount || 0) * 100) / 100;
-  }, [job, business, liveSubtotal]);
+    return 0;
+  }, [job, taxEnabled, liveSubtotal, business]);
 
   const liveTotal = useMemo(() => {
     return Math.round((liveSubtotal + liveHst) * 100) / 100;
@@ -66,11 +67,12 @@ export default function PostJobSheet({ jobId, onClose }) {
       estimated_hours: actualMinutes / 60,
       hourly_rate: isHourly ? hourlyRate : undefined,
       total_amount: isHourly ? undefined : totalAmt,
+      tax_enabled: taxEnabled,
       additional_costs_json: costs
         .filter(c => parseFloat(c.amount) > 0)
         .map(c => ({ amount: parseFloat(c.amount), description: c.description })),
     };
-  }, [job, actualMinutes, isHourly, hourlyRate, totalAmt, costs]);
+  }, [job, actualMinutes, isHourly, hourlyRate, totalAmt, taxEnabled, costs]);
 
   const alreadyPaid = useMemo(
     () => jobPayments.reduce((s, p) => s + Number(p.amount), 0),
@@ -87,6 +89,7 @@ export default function PostJobSheet({ jobId, onClose }) {
           setJob(j);
           setJobNotes(j?.completion_notes || '');
           setWorkerPaid(!!j?.worker_paid);
+          setTaxEnabled(j?.tax_enabled ?? (business?.tax_enabled ?? false));
           supabase
             .from('payments')
             .select('amount, payment_date, payment_method')
@@ -158,7 +161,7 @@ export default function PostJobSheet({ jobId, onClose }) {
         .filter(c => parseFloat(c.amount) > 0)
         .map(c => ({ amount: parseFloat(c.amount), description: c.description }));
 
-      await recordPayment(jobId, paidAmt, method, ps, totalDuration, null, validCosts, jobNotes, job?.worker_name ? workerPaid : null);
+      await recordPayment(jobId, paidAmt, method, ps, totalDuration, null, validCosts, jobNotes, job?.worker_name ? workerPaid : null, taxEnabled);
 
       const { data } = await supabase
         .from('invoice_jobs')
@@ -442,7 +445,28 @@ export default function PostJobSheet({ jobId, onClose }) {
           </div>
           )}
 
-          {/* Section 6: Completion Notes */}
+          {/* Section 6: HST Toggle — only show when business has HST enabled */}
+          {business?.tax_enabled && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: T.card, padding: '12px 16px', borderRadius: 14, border: `1px solid ${T.cardBorder}` }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: T.ink }}>Charge HST</div>
+              <div style={{ fontSize: 10, color: T.inkMuted, marginTop: 2 }}>
+                {taxEnabled ? `+$${liveHst.toFixed(2)} HST included in total` : 'No HST on this job'}
+              </div>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={taxEnabled}
+              onClick={() => setTaxEnabled(v => !v)}
+              style={{ width: 44, height: 26, borderRadius: 13, background: taxEnabled ? T.pink : T.inkMuted, border: 'none', cursor: 'pointer', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }}
+            >
+              <span style={{ position: 'absolute', top: 3, left: taxEnabled ? 21 : 3, width: 20, height: 20, borderRadius: '50%', background: 'white', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.25)', display: 'block' }} />
+            </button>
+          </div>
+          )}
+
+          {/* Section 7: Completion Notes */}
           <div>
           <SectionLabel>Post-Job Notes</SectionLabel>
           <textarea

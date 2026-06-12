@@ -179,7 +179,7 @@ CREATE TABLE public.jobs (
   actual_duration numeric,
   flat_rate numeric,
   surcharge numeric DEFAULT 0,
-  tax_enabled boolean DEFAULT false,
+  tax_enabled boolean DEFAULT NULL, -- NULL = inherit from business.tax_enabled; true/false = per-job override
   hst_rate numeric DEFAULT 0.13,
   subtotal numeric DEFAULT 0,
   hst_amount numeric DEFAULT 0,

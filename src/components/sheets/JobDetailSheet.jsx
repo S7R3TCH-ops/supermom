@@ -220,6 +220,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
         worker_id:       form.worker_id || null,
         worker_pay:      form.worker_id && form.worker_pay !== '' ? Number(form.worker_pay) : null,
         worker_paid:     form.worker_paid ?? false,
+        tax_enabled:     form.tax_enabled,
         ai_context: {
           ...(job.ai_context || {}),
           payment_method:  form.payment_method,
@@ -270,6 +271,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
       worker_id:       job.worker_id || null,
       worker_pay:      job.worker_pay != null ? String(job.worker_pay) : '',
       worker_paid:     job.worker_paid ?? false,
+      tax_enabled:     job.tax_enabled ?? (business?.tax_enabled ?? false),
     });
     setEditMode(true);
   }
@@ -770,6 +772,22 @@ function EditMode({ job, form, setForm, services, workers, business, T, mode, bu
             >
               {form.worker_paid ? 'Paid ✓' : 'Not Yet Paid'}
             </button>
+          </Field>
+        )}
+        {business?.tax_enabled && (
+          <Field T={T} label="Charge HST on This Job">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={form.tax_enabled}
+                onClick={() => set('tax_enabled', !form.tax_enabled)}
+                style={{ width: 44, height: 26, borderRadius: 13, background: form.tax_enabled ? T.pink : T.inkMuted, border: 'none', cursor: 'pointer', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }}
+              >
+                <span style={{ position: 'absolute', top: 3, left: form.tax_enabled ? 21 : 3, width: 20, height: 20, borderRadius: '50%', background: 'white', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.25)', display: 'block' }} />
+              </button>
+              <span style={{ fontSize: 12, color: T.inkMuted }}>{form.tax_enabled ? 'HST applies' : 'No HST'}</span>
+            </div>
           </Field>
         )}
         <SeriesPicker show={showSeriesPicker} onChoice={onSeriesChoice} onCancel={() => onSeriesChoice(null)} busy={busy} T={T} mode={mode} />

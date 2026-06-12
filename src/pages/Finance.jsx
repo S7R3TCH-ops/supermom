@@ -466,7 +466,7 @@ export default function Finance() {
           <StatCard T={T} mode={mode} label="Total Revenue" value={stats.revenue} color={T.pink} privacyOn={privacyOn} onClick={() => handleStatClick('revenue')} count={revenueItems.length} />
           <StatCard T={T} mode={mode} label="Expenses" value={stats.expenses} color="#6B7280" privacyOn={privacyOn} onClick={() => handleStatClick('expenses')} count={periodExpenses.length} />
           <StatCard T={T} mode={mode} label="Outstanding" value={stats.outstanding} color="#F59E0B" privacyOn={privacyOn} onClick={() => handleStatClick('outstanding')} count={outstandingItems.length} />
-          <StatCard T={T} mode={mode} label="Est. Profit" value={stats.profit} color="#10B981" privacyOn={privacyOn} onClick={() => handleStatClick('profit')} workerCosts={stats.workerCosts} />
+          <StatCard T={T} mode={mode} label="Profit" value={stats.profit} color="#10B981" privacyOn={privacyOn} onClick={() => handleStatClick('profit')} workerCosts={stats.workerCosts} />
         </div>
 
         {/* Trend Chart */}
@@ -529,17 +529,49 @@ export default function Finance() {
           border: `1.5px solid ${mode === 'dark' ? '#8B0E3F' : '#F9A8D4'}`,
           borderRadius: 16, padding: '16px', marginBottom: 30,
         }}>
-          <div style={{ fontSize: 11, color: T.pink, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>✦ CSV Export Ready</div>
+          <div style={{ fontSize: 11, color: T.pink, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>✦ CSV Export</div>
           <div style={{ fontSize: 13, color: T.ink, lineHeight: 1.4, marginBottom: 16 }}>
-            Download your full financial history for the current year, categorized for easy tax filing.
+            Download your financial history for the selected period, including sidekick pay and HST, categorized for tax filing.
           </div>
-          <button disabled style={{
-            width: '100%', padding: '12px', borderRadius: 12,
-            background: T.inkMuted, color: 'white', border: 'none',
-            fontSize: 13, fontWeight: 700, cursor: 'not-allowed',
-            opacity: 0.5,
-          }}>
-            Download {now.getFullYear()} CSV · Coming Soon
+          <button
+            onClick={() => {
+              const rows = [
+                ['Date', 'Client', 'Service', 'Pricing', 'Duration (hrs)', 'Subtotal', 'HST', 'Total', 'Payment Method', 'Payment Status', 'Sidekick', 'Sidekick Pay', 'Sidekick Paid'],
+              ];
+              completedPeriodJobs.forEach(j => {
+                const f = computeJobFinancials(j);
+                rows.push([
+                  j.raw?.scheduled_date || '',
+                  j.client_name || '',
+                  j.raw?.service_name || '',
+                  j.raw?.pricing_type || '',
+                  j.raw?.actual_duration ?? j.raw?.estimated_hours ?? '',
+                  f.subtotal.toFixed(2),
+                  f.taxAmount.toFixed(2),
+                  f.total.toFixed(2),
+                  j.raw?.payment_method || '',
+                  j.raw?.payment_status || '',
+                  j.worker_name || '',
+                  j.raw?.worker_pay != null ? Number(j.raw.worker_pay).toFixed(2) : '',
+                  j.raw?.worker_paid ? 'Yes' : (j.raw?.worker_pay != null ? 'No' : ''),
+                ]);
+              });
+              const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+              const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `Supermom_${period === 'All' ? 'AllTime' : period}_${now.getFullYear()}.csv`;
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+            style={{
+              width: '100%', padding: '12px', borderRadius: 12,
+              background: T.pink, color: 'white', border: 'none',
+              fontSize: 13, fontWeight: 700, cursor: 'pointer',
+            }}
+          >
+            Download {period} CSV ({completedPeriodJobs.length} jobs)
           </button>
         </div>
       </div>

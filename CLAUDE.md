@@ -134,7 +134,7 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 ---
 
-## Current version: 0.12.30 — committed Jun 10, 2026
+## Current version: 0.12.31 — committed Jun 12, 2026
 
 Sandra's business is live — data wiped and re-provisioned Jun 9. App is in active use.
 
@@ -142,6 +142,7 @@ Sandra's business is live — data wiped and re-provisioned Jun 9. App is in act
 CLAUDE.md is the only shared truth across online / desktop / CLI sessions. Memory files are local-only. **Always push local commits before starting an online Claude Code session**, and always pull before the online session writes code — otherwise the online session will push stale commits and overwrite newer local work (happened Jun 4, 2026).
 
 ### Recent changes — run `git log --oneline -10` for full detail
+- **v0.12.31 (Jun 12)** — Three Sandra requests: (1) Per-job HST toggle — `jobs.tax_enabled` is now nullable; NULL = inherit from `business.tax_enabled`, true/false = explicit per-job override. Toggle appears in NewJobSheet Step 2, JobDetailSheet edit mode, and PostJobSheet completion screen (only when global HST is on). `computeJobFinancials` + `recordPayment` updated. **Manual Supabase migration required**: `ALTER TABLE jobs ALTER COLUMN tax_enabled DROP DEFAULT; UPDATE jobs SET tax_enabled = NULL;` (2) Removed all EST/est. labels from money values — Home.jsx × 3 + Finance.jsx "Est. Profit" → "Profit". (3) CSV export in Finance now live — was disabled "Coming Soon" button; generates Date/Client/Service/Pricing/Duration/Subtotal/HST/Total/Payment Method/Status/Sidekick/Sidekick Pay/Sidekick Paid. Client-side Blob download, no new API endpoint.
 - **v0.12.30 (Jun 10)** — Calendar page: Week grid view hidden per Sandra's request (she uses Google Calendar directly). Agenda view is now the only visible view — opens directly on navigation, no toggle shown. `WeekView` + `LegendDot` renamed to `_*_PARKED` (not deleted) in `src/pages/Calendar.jsx`. Restore: rename back + uncomment `VIEWS` const + swipe handlers + view toggle UI + WeekView render line.
 - **v0.12.29 (Jun 10)** — PWA crash root cause found and fixed. The circular import fix (v0.12.26) broke the `useData↔realtime` cycle but missed the REAL TDZ: `locationDrives` and `notifPermission` `useState` declarations in `Home.jsx` were physically placed AFTER the `useEffect` that listed them as dependencies. Minifier turned `locationDrives` into `Y`, evaluated the dep array before `let [Y,tt]=useState(…)` ran → `Cannot access 'Y' before initialization`. Fix: moved the three `useState` declarations above the effect. Deployed.
 - **v0.12.28 (Jun 10)** — Finance page critique pass (21/40 score). Period toggle → dark plum bg (#2C2C2E) + solid pink active, matching DESIGN.md spec. Loading state → pulse skeleton (hero + 2×2 grid + chart + rows). Activity list cap removed (was slice(0,20)); count shown in section label. Both dead CTAs (VIEW ALL INVOICES, Download CSV) marked disabled + "Coming soon" — no more silent failures. Next critique target: Calendar.
@@ -210,7 +211,7 @@ Deleted `BLUEPRINT.md` and `AI_PROJECT_INSTRUCTIONS.md` — parked greenfield v2
 > All pre-launch infra complete as of Jun 5, 2026 (Gmail, GCal, Maps, cron, Supabase grants). See git log for history.
 
 - [~] **PWA / installable app** — code done v0.12.24, icons updated Jun 10, but still crashing on device (see ⚠️ above).
-- [x] **Push notifications** — ✅ done v0.12.25. Local SW scheduling, fires 15 mins before leave time.
+- [x] **Push notifications** — ✅ done v0.12.25. Local SW scheduling, fires 15 mins before leave time. ⚠️ setTimeout-in-SW is unreliable on iOS (SW gets killed in background) — needs upgrade to proper Web Push (VAPID keys + server-triggered via `web-push` npm + 5-min Vercel cron). Works on Android today; iOS needs the upgrade. Parked.
 - [ ] **Staff app access (Phase 2)** — `person_type = 'staff'` tracked in DB. No app login yet. When ready: link `workers.id` → `users` table + add Supabase Auth account.
 
 > Vercel Hobby plan: **9 of 12** serverless functions used. 3 slots free. Functions: `maps`, `invoice`, `auth/google/login`, `auth/google/callback`, `briefing/daily`, `sync/gcal`, `ai/[action]`, `transcribe`, `admin/provision`.

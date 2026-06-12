@@ -347,7 +347,7 @@ export async function hardDeleteJob(id) {
 }
 
 // eslint-disable-next-line no-unused-vars
-export async function recordPayment(jobId, amount, method = 'Cash', _paymentStatus = null, duration = null, jobNotes = null, additionalCosts = [], completionNotes = null, workerPaid = null) {
+export async function recordPayment(jobId, amount, method = 'Cash', _paymentStatus = null, duration = null, jobNotes = null, additionalCosts = [], completionNotes = null, workerPaid = null, taxOverride = null) {
   const businessId = await getCurrentBusinessId();
 
   // 1. Get job info (need full fields for computeJobTotal to work correctly on hourly jobs)
@@ -397,6 +397,7 @@ export async function recordPayment(jobId, amount, method = 'Cash', _paymentStat
     job_status: 'Completed',
     actual_duration: duration,
     ...(validCosts.length > 0 ? { additional_costs_json: validCosts, additional_cost: costSum } : {}),
+    ...(taxOverride !== null ? { tax_enabled: taxOverride } : {}),
   };
   const financials = computeJobFinancials(liveJob);
   const total = financials.total;
@@ -412,6 +413,7 @@ export async function recordPayment(jobId, amount, method = 'Cash', _paymentStat
     hst_amount: financials.taxAmount,
     total_amount: financials.total,
     ...(workerPaid !== null ? { worker_paid: workerPaid } : {}),
+    ...(taxOverride !== null ? { tax_enabled: taxOverride } : {}),
   };
   if (validCosts.length > 0) {
     jobPatch.additional_costs_json = validCosts;

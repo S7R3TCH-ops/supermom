@@ -134,6 +134,14 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
   const [workerPay, setWorkerPay] = useState('');
   const [driveTime, setDriveTime] = useState(null);
   const [driveTimeLoading, setDriveTimeLoading] = useState(false);
+  const [taxEnabled, setTaxEnabled] = useState(false);
+  const taxInitRef = useRef(false);
+  useEffect(() => {
+    if (!taxInitRef.current && business !== null && business !== undefined) {
+      taxInitRef.current = true;
+      setTaxEnabled(business.tax_enabled ?? false);
+    }
+  }, [business]);
 
   useEffect(() => {
     const dest = selectedClient?.address;
@@ -270,6 +278,7 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
         additional_cost: validCosts.reduce((s, c) => s + c.amount, 0),
         worker_id: workerId || null,
         worker_pay: workerId && workerPay !== '' ? Number(workerPay) : null,
+        tax_enabled: taxEnabled,
         ...(recurrence ? { ai_context: { recurrence_rule: recurrence } } : {}),
       };
       await createJob(payload);
@@ -359,6 +368,8 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
               setWorkerId={setWorkerId}
               workerPay={workerPay}
               setWorkerPay={setWorkerPay}
+              taxEnabled={taxEnabled}
+              setTaxEnabled={setTaxEnabled}
               T={T}
             />
           ) : (
@@ -383,6 +394,7 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
               workers={workerOptions}
               workerId={workerId}
               workerPay={workerPay}
+              taxEnabled={taxEnabled}
               driveTime={driveTime}
               driveTimeLoading={driveTimeLoading}
               T={T}
@@ -501,6 +513,7 @@ function Step2What({
   aiDuration, aiLoading, aiReason, suggestedTime,
   business, customPrice, setCustomPrice, additionalCosts, setAdditionalCosts,
   workers, workerId, setWorkerId, workerPay, setWorkerPay,
+  taxEnabled, setTaxEnabled,
   T
 }) {
   const selectedSvc = services.find(s => s.id === serviceId);
@@ -528,6 +541,7 @@ function Step2What({
     flat_rate: effectiveRate,
     estimated_hours: (duration || 0) / 60,
     hourly_rate: effectiveRate,
+    tax_enabled: taxEnabled,
     additional_costs_json: additionalCosts
       .filter(c => parseFloat(c.amount) > 0)
       .map(c => ({ amount: parseFloat(c.amount), description: c.description })),
@@ -722,6 +736,19 @@ function Step2What({
         />
       )}
 
+      {/* HST toggle — only when business has HST enabled globally */}
+      {business?.tax_enabled && liveBreakdown && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: T.card, padding: '12px 16px', borderRadius: 14, border: `1px solid ${T.cardBorder}` }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: T.ink }}>Charge HST</div>
+            <div style={{ fontSize: 10, color: T.inkMuted, marginTop: 2 }}>{taxEnabled ? 'HST will be added to this job' : 'No HST on this job'}</div>
+          </div>
+          <button type="button" role="switch" aria-checked={taxEnabled} onClick={() => setTaxEnabled(v => !v)} style={{ width: 44, height: 26, borderRadius: 13, background: taxEnabled ? T.pink : T.inkMuted, border: 'none', cursor: 'pointer', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }}>
+            <span style={{ position: 'absolute', top: 3, left: taxEnabled ? 21 : 3, width: 20, height: 20, borderRadius: '50%', background: 'white', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.25)', display: 'block' }} />
+          </button>
+        </div>
+      )}
+
       {/* Recurrence */}
       <div>
         <SectionLabel>Recurrence</SectionLabel>
@@ -826,6 +853,7 @@ function Step3Review({
   isPastBooking, pastConfirmed, setPastConfirmed,
   customPrice, additionalCosts,
   workers, workerId, workerPay,
+  taxEnabled,
   driveTime, driveTimeLoading,
   T
 }) {
@@ -846,6 +874,7 @@ function Step3Review({
     flat_rate: effectiveRate,
     estimated_hours: (duration || 0) / 60,
     hourly_rate: effectiveRate,
+    tax_enabled: taxEnabled,
     additional_costs_json: (additionalCosts || [])
       .filter(c => parseFloat(c.amount) > 0)
       .map(c => ({ amount: parseFloat(c.amount), description: c.description })),

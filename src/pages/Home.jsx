@@ -734,7 +734,7 @@ export default function Home() {
 
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
                   <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: T.pinkTint, color: T.pink, textTransform: 'uppercase' }}>{activeJob.service_name || 'General Service'}</span>
-                  <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.inkMuted }}>{activeJob.estimated_hours}h EST</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.inkMuted }}>{activeJob.estimated_hours}h</span>
                 </div>
 
                 <LiveTimer startTime={activeJob.ai_context.clock_in_time} />
@@ -878,7 +878,7 @@ export default function Home() {
                               )}
                               {!privacyOn && computeJobSubtotal(next) > 0 && (
                                 <div style={{ fontSize: 11, fontWeight: 600, color: DEEP_ROSE, opacity: 0.65, marginTop: 4, whiteSpace: 'nowrap' }}>
-                                  Est. ${computeJobSubtotal(next).toFixed(0)}{computeJobTotal(next) > computeJobSubtotal(next) && <span style={{ fontSize: 8, fontWeight: 700, opacity: 0.7, marginLeft: 2 }}> +HST</span>}
+                                  ${computeJobSubtotal(next).toFixed(0)}{computeJobTotal(next) > computeJobSubtotal(next) && <span style={{ fontSize: 8, fontWeight: 700, opacity: 0.7, marginLeft: 2 }}> +HST</span>}
                                 </div>
                               )}
                             </div>
@@ -1122,7 +1122,7 @@ export default function Home() {
                           {g.client_name}
                         </div>
                         <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 600, color: accentColor, whiteSpace: 'nowrap', marginLeft: 8 }}>
-                          {privacyOn ? '•••' : allWrapUp ? `~$${g.totalOwing.toFixed(0)} est.` : `$${g.totalOwing.toFixed(0)} owing`}
+                          {privacyOn ? '•••' : `$${g.totalOwing.toFixed(0)} owing`}
                         </div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>

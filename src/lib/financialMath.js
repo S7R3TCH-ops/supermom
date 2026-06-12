@@ -63,16 +63,21 @@ export function computeJobFinancials(job, business = null, liveForm = null) {
   const additionalTotal = activeCosts.reduce((s, c) => s + (Number(c.amount) || 0), 0);
 
   // 6. Taxes
-  let taxEnabled = business?.tax_enabled ?? false;
+  // Per-job override takes priority; null/undefined = inherit from business
+  const perJobTax = liveForm?.tax_enabled ?? src?.tax_enabled;
+  const hasTaxOverride = perJobTax !== null && perJobTax !== undefined;
+  let taxEnabled = false;
   let taxRate = Number(business?.hst_rate ?? 0.13);
   let taxAmount = 0;
 
-  // If we have business info, use its settings (Live math path)
-  if (business) {
+  if (hasTaxOverride) {
+    taxEnabled = perJobTax;
     taxAmount = taxEnabled ? (subtotal + additionalTotal) * taxRate : 0;
-  } 
-  // If we don't have business info (Repo/Data path), fall back to the saved hst_amount on the job
-  else if (Number(src?.hst_amount) > 0) {
+  } else if (business) {
+    taxEnabled = business.tax_enabled ?? false;
+    taxAmount = taxEnabled ? (subtotal + additionalTotal) * taxRate : 0;
+  } else if (Number(src?.hst_amount) > 0) {
+    // No business info and no per-job setting — use stored value for old completed jobs
     taxAmount = Number(src.hst_amount);
     taxEnabled = true;
   }

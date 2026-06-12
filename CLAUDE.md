@@ -225,8 +225,8 @@ Deleted `BLUEPRINT.md` and `AI_PROJECT_INSTRUCTIONS.md` — parked greenfield v2
 Root cause was NOT the circular import (that was a red herring). The actual TDZ: `locationDrives` / `notifPermission` / `notifBannerDismissed` `useState` calls were placed after the `useEffect` that lists them as deps in `Home.jsx`. Minifier evaluated the dep array before the `let` bindings ran → TDZ crash. Fixed by moving the declarations above the effect. Deployed Jun 10.
 
 ### Next session priorities
-1. **⚠️ Device verification** — v0.12.32 Android perf fix (bog-down + Sandra-view freeze on Pixel) and v0.12.33 five fixes (NewClientSheet full form, Read Brief service+time+drive, Calendar week scope, GCal tappable address) not yet phone-tested. Do these first.
-2. **Design system critique (in progress)** — `$impeccable critique` sequence. Admin (23/40), Settings (done), Finance (done), Calendar (23/40, polished). Next: **Client profile** → Job detail → `$impeccable document` to refresh DESIGN.md.
+1. **⚠️ Device verification** — v0.12.32 Android perf fix (bog-down + Sandra-view freeze on Pixel) and v0.12.33+v0.12.34 fixes not yet phone-tested. Do these first.
+2. **Design system critique (in progress)** — Next: **Client profile** → Job detail → `$impeccable document` to refresh DESIGN.md.
 3. **AI chat interface** — `api/ai/[action].js` + `ANTHROPIC_API_KEY` already in place. Needs chat UI + convo state. HIGH PRIORITY.
 
 ### Features — Phase 2
@@ -236,4 +236,4 @@ Root cause was NOT the circular import (that was a red herring). The actual TDZ:
 - [ ] **Self-serve client booking link** — no self-serve portal yet. Low priority.
 - [ ] **Offline mode** — app crashes if Supabase unreachable on first load. Better `Suspense` fallbacks needed.
 - [ ] **Client engagement tools** — AI follow-up / re-booking reminders.
-- [ ] **Swipe to delete on job cards** — client request, low priority, may not do.
+- [x] **Swipe to delete on job cards** — removed by design; delete via job detail sheet only (v0.12.34).

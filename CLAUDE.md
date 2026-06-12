@@ -224,11 +224,9 @@ Deleted `BLUEPRINT.md` and `AI_PROJECT_INSTRUCTIONS.md` — parked greenfield v2
 Root cause was NOT the circular import (that was a red herring). The actual TDZ: `locationDrives` / `notifPermission` / `notifBannerDismissed` `useState` calls were placed after the `useEffect` that lists them as deps in `Home.jsx`. Minifier evaluated the dep array before the `let` bindings ran → TDZ crash. Fixed by moving the declarations above the effect. Deployed Jun 10.
 
 ### Next session priorities
-0. **⚠️ FIRST THING: ask Joel how the Android verification went.** v0.12.32 perf fixes deployed Jun 12 but were NOT device-verified before session end. Joel said he'd report back right off the bat: did the Android bog-down stop, and does switching to Sandra's viewpoint now load cleanly (no freeze) on the Pixel? If still broken, the next suspects are realtime subscription churn on viewpoint switch and the `fetchLocationDrives` GPS path. Then move to iOS testing (never tried yet).
-1. **Design system critique (in progress)** — `$impeccable critique` sequence. Admin done (23/40, Jun 10), Settings done (20/40, Jun 10, all issues fixed), Finance done (21/40, Jun 10, all P0/P1 fixed). Next: **Calendar** → Client profile → Job detail → then `$impeccable document` to refresh DESIGN.md.
-2. **AI chat interface** — `api/ai/[action].js` + `ANTHROPIC_API_KEY` already in place. Needs chat UI + convo state. HIGH PRIORITY.
-3. **Phone-test v0.12.33** — NewClientSheet full form (create client with all intel fields, confirm no red error), Read Brief (service+time+drive spoken), Calendar week scope, GCal event Location on next job sync. Also verify v0.12.32 Android performance fix (Pixel bog-down + Sandra-view freeze).
-4. **⚠️ Vercel auto-deploy** — pushes to `main` now deploy automatically. Verify at Vercel dashboard → supermom → Deployments after each push.
+1. **⚠️ Device verification** — v0.12.32 Android perf fix (bog-down + Sandra-view freeze on Pixel) and v0.12.33 five fixes (NewClientSheet full form, Read Brief service+time+drive, Calendar week scope, GCal tappable address) not yet phone-tested. Do these first.
+2. **Design system critique (in progress)** — `$impeccable critique` sequence. Admin (23/40), Settings (done), Finance (done). Next: **Calendar** → Client profile → Job detail → `$impeccable document` to refresh DESIGN.md.
+3. **AI chat interface** — `api/ai/[action].js` + `ANTHROPIC_API_KEY` already in place. Needs chat UI + convo state. HIGH PRIORITY.
 
 ### Features — Phase 2
 - [ ] **AI chat interface** — `api/ai/[action].js` already exists. Need chat UI component + conversation state. `ANTHROPIC_API_KEY` is now set. HIGH PRIORITY.

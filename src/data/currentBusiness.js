@@ -7,46 +7,77 @@ import { supabase } from '../lib/supabase';
 let cachedBusinessId = null;
 let cachedAuthId = null;
 let cachedRole = null;
+// cachedEffectiveId: the resolved business ID actually returned (covers admin override too).
+// Cleared by clearBusinessCache() and setSuperOverride() so the override is always fresh.
+let cachedEffectiveId = null;
 let superOverrideId = sessionStorage.getItem('superViewId') || null;
+// In-flight resolution promise — all concurrent callers share one DB roundtrip on cold start.
+let resolutionPromise = null;
 
 export function setSuperOverride(id) {
   superOverrideId = id;
+  cachedEffectiveId = null;
+  resolutionPromise = null;
   if (id) sessionStorage.setItem('superViewId', id);
   else sessionStorage.removeItem('superViewId');
 }
 
 export async function getCurrentBusinessId() {
-  const { data: { user }, error: authErr } = await supabase.auth.getUser();
-  if (authErr) throw authErr;
-  if (!user) throw new Error('Not signed in');
-
-  // Fast path: non-admin users always use their own business_id, never the super override
-  if (cachedBusinessId && cachedAuthId === user.id && cachedRole && cachedRole !== 'admin') {
-    return cachedBusinessId;
+  // Fast path: getSession() reads from localStorage — no network call.
+  if (cachedEffectiveId !== null && cachedAuthId) {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user?.id === cachedAuthId) {
+      return cachedEffectiveId;
+    }
+    // Auth user changed — drop cache and re-resolve.
+    clearBusinessCache();
   }
 
-  const { data, error } = await supabase
-    .from('users')
-    .select('business_id, role')
-    .eq('id', user.id)
-    .maybeSingle();
-  if (error) throw error;
+  // Deduplicate: if a slow-path resolution is already in flight (e.g. 8 hooks
+  // mounting simultaneously), all callers share the same promise instead of
+  // each firing their own getUser() + users-table query.
+  if (resolutionPromise) return resolutionPromise;
 
-  // Only admins can use the Super Admin viewpoint override
-  if (data?.role === 'admin') {
-    const overrideId = superOverrideId || sessionStorage.getItem('superViewId') || window.__SUPER_VIEW_ID;
-    if (overrideId && overrideId !== 'null') return overrideId;
-    if (!data?.business_id) return null; // Global Admin with no viewpoint selected
-  }
+  resolutionPromise = (async () => {
+    try {
+      const { data: { user }, error: authErr } = await supabase.auth.getUser();
+      if (authErr) throw authErr;
+      if (!user) throw new Error('Not signed in');
 
-  if (!data?.business_id) {
-    throw new Error(`User ${user.email} has no linked business — run scripts/seed.mjs to provision`);
-  }
+      const { data, error } = await supabase
+        .from('users')
+        .select('business_id, role')
+        .eq('id', user.id)
+        .maybeSingle();
+      if (error) throw error;
 
-  cachedAuthId = user.id;
-  cachedBusinessId = data.business_id;
-  cachedRole = data.role;
-  return cachedBusinessId;
+      cachedAuthId = user.id;
+      cachedRole = data?.role;
+
+      if (data?.role === 'admin') {
+        const overrideId = superOverrideId || sessionStorage.getItem('superViewId') || window.__SUPER_VIEW_ID;
+        if (overrideId && overrideId !== 'null') {
+          cachedEffectiveId = overrideId;
+          return overrideId;
+        }
+        if (!data?.business_id) return null; // Global Admin, no viewpoint selected — don't cache null
+        cachedEffectiveId = data.business_id;
+        return data.business_id;
+      }
+
+      if (!data?.business_id) {
+        throw new Error(`User ${user.email} has no linked business — run scripts/seed.mjs to provision`);
+      }
+
+      cachedBusinessId = data.business_id;
+      cachedEffectiveId = data.business_id;
+      return data.business_id;
+    } finally {
+      resolutionPromise = null;
+    }
+  })();
+
+  return resolutionPromise;
 }
 
 export async function getBusinessProfile() {
@@ -78,4 +109,5 @@ export function clearBusinessCache() {
   cachedBusinessId = null;
   cachedAuthId = null;
   cachedRole = null;
+  cachedEffectiveId = null;
 }

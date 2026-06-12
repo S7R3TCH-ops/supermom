@@ -509,7 +509,7 @@ export default function Home() {
     setLocationLoading(true);
     try {
       const position = await new Promise((resolve, reject) =>
-        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 8000 })
+        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000, maximumAge: 90000 })
       );
       const origin = `${position.coords.latitude},${position.coords.longitude}`;
       setLastKnownOrigin(origin);

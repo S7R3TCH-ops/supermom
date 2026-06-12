@@ -226,8 +226,11 @@ Root cause was NOT the circular import (that was a red herring). The actual TDZ:
 
 ### Next session priorities
 1. **⚠️ Device verification** — v0.12.32 Android perf fix (bog-down + Sandra-view freeze on Pixel) and v0.12.33+v0.12.34 fixes not yet phone-tested. Do these first.
-2. **Design system critique (in progress)** — Next: **Client profile** → Job detail → `$impeccable document` to refresh DESIGN.md.
-3. **AI chat interface** — `api/ai/[action].js` + `ANTHROPIC_API_KEY` already in place. Needs chat UI + convo state. HIGH PRIORITY.
+2. **Home.jsx drive-time + background-resume bugs (diagnosed, not yet fixed)** — Two issues, two separate commits:
+   - **Fix 1 (wrong leave time on first load):** Cold GPS loses the 5s timeout race → `catch` swallows it silently → stale DB `drive_to` value shown instead of real-time drive. Fix: increase GPS timeout to 12000ms in `fetchLocationDrives`; add `locationFetchAttempted` state (set in `finally`) so display shows "Calculating…" instead of stale time until first attempt resolves. Active-job card (lines 759-792) has no loading state at all — needs one too.
+   - **Fix 2 (wonky after long absence):** No `visibilitychange` handler exists. After 30+ min backgrounded, Supabase auth token expires, realtime socket drops, `today` date is frozen at mount, clock interval is throttled. Fix: add `visibilitychange` handler — always `setNow(new Date())` on resume; `window.location.reload()` if away > 30 min OR date changed. Guard drive re-fetch behind a timing check (last fetch > 10 min) to protect Maps quota.
+3. **Design system critique (in progress)** — Next: **Client profile** → Job detail → `$impeccable document` to refresh DESIGN.md.
+4. **AI chat interface** — `api/ai/[action].js` + `ANTHROPIC_API_KEY` already in place. Needs chat UI + convo state. HIGH PRIORITY.
 
 ### Features — Phase 2
 - [ ] **AI chat interface** — `api/ai/[action].js` already exists. Need chat UI component + conversation state. `ANTHROPIC_API_KEY` is now set. HIGH PRIORITY.

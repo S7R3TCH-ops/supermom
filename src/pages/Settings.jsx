@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAppTheme } from '../context/AppThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -70,6 +70,7 @@ export default function Settings() {
   const { T, mode } = useAppTheme();
   const toast = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, signOut } = useAuth();
   const { business, loading: bizLoading, error: bizError, refreshBusiness } = useBusiness();
   const isKeyboardFocused = useKeyboardFocus();
@@ -124,6 +125,50 @@ export default function Settings() {
     checkIntegration();
   }, [user]);
 
+  // Handle OAuth callback params (?sync=success or ?error=...)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const sync = params.get('sync');
+    const oauthError = params.get('error');
+    if (!sync && !oauthError) return;
+
+    // Clear URL params immediately
+    navigate('/settings', { replace: true });
+
+    if (oauthError) {
+      toast.error(`Google Calendar connect failed: ${oauthError}`);
+      return;
+    }
+
+    if (sync === 'success') {
+      toast.success('Google Calendar connected!');
+      setGcalOn(true);
+      // Trigger sync for upcoming jobs so they appear in GCal immediately
+      async function syncUpcomingJobs() {
+        const businessId = await getCurrentBusinessId();
+        if (!businessId) return;
+        const today = new Date().toISOString().slice(0, 10);
+        const { data: jobs } = await supabase
+          .from('jobs')
+          .select('id')
+          .eq('business_id', businessId)
+          .is('deleted_at', null)
+          .gte('scheduled_date', today)
+          .order('scheduled_date', { ascending: true })
+          .limit(30);
+        if (!jobs?.length) return;
+        jobs.forEach(j => {
+          fetch('/api/sync/gcal', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ jobId: j.id, action: 'upsert' }),
+          }).catch(err => console.error('GCal re-sync error:', err));
+        });
+      }
+      syncUpcomingJobs();
+    }
+  }, [location.search]); // eslint-disable-line react-hooks/exhaustive-deps
+
   async function handleSave() {
     if (!form.name.trim()) { setError('Business name is required.'); return; }
     setBusy(true); setError(null);
@@ -152,7 +197,8 @@ export default function Settings() {
       formInitialized.current = false; // allow re-init so isDirty resets
       refreshBusiness();
       toast.success('Settings saved!');
-    } catch {
+    } catch (err) {
+      console.error('Settings save error:', err);
       setError('Failed to save settings. Please try again.');
     } finally {
       setBusy(false);

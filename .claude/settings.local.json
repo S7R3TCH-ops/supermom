@@ -63,7 +63,9 @@
       "Bash(vercel ls *)",
       "Bash(vercel git *)",
       "Bash(vercel project *)",
-      "Bash(vercel --prod)"
+      "Bash(vercel --prod)",
+      "Bash(npx madge *)",
+      "Bash(git rebase *)"
     ]
   }
 }

@@ -18,8 +18,17 @@ jobs:
 
       - run: npm ci
 
+      - name: Resolve Vercel org ID from token
+        run: |
+          ORG_ID=$(curl -sf -H "Authorization: Bearer ${{ secrets.VERCEL_TOKEN }}" \
+            https://api.vercel.com/v2/user | jq -r '.user.id')
+          echo "VERCEL_ORG_ID=$ORG_ID" >> $GITHUB_ENV
+
+      - name: Create Vercel project link
+        run: |
+          mkdir -p .vercel
+          echo "{\"projectId\":\"${{ secrets.VERCEL_PROJECT_ID }}\",\"orgId\":\"$VERCEL_ORG_ID\"}" \
+            > .vercel/project.json
+
       - name: Deploy to Vercel
         run: npx vercel --prod --token=${{ secrets.VERCEL_TOKEN }} --yes
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}

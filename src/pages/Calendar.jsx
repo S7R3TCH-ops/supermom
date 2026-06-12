@@ -3,10 +3,7 @@ import { useAppTheme } from '../context/AppThemeContext';
 import { useJobs } from '../data/useData';
 import { useJobDetailSheet } from '../context/JobDetailSheetContext';
 import { EmptySchedule } from '../components/ui/Illustrations';
-import Swipeable from '../components/ui/Swipeable';
 import WeekStrip from '../components/ui/WeekStrip';
-import { softDeleteJob } from '../data/jobsRepo';
-import { notifyDataChanged } from '../data/useData';
 import { getNavigationUrl } from '../lib/maps';
 
 // Real "now" — was previously a hard-coded prototype anchor.
@@ -94,6 +91,11 @@ function weekRangeLabel(weekStart) {
   return `${startMon} ${startD} – ${endMon} ${endD}`;
 }
 
+function fmtMoney(v) {
+  const n = parseFloat(v);
+  return Number.isFinite(n) ? `$${n.toFixed(2)}` : '—';
+}
+
 // Adapt display jobs (from useJobs) into the shape the views expect:
 // { ...job, client: { name, init, color, address }, service: { label }, start, end, color, paid }
 function enrichDisplayJobs(displayJobs, clientLookup) {
@@ -178,26 +180,55 @@ export default function Calendar() {
   // const handleSwipeStart = useCallback((e) => { ... }, []);
   // const handleSwipeEnd = useCallback((e) => { ... }, []);
 
+  // Shared nav button style — 44×44px hit area, 22×22px visual
+  const navBtnStyle = {
+    background: 'transparent',
+    border: 'none',
+    padding: 11,
+    margin: -11,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    flexShrink: 0,
+  };
+  const navBtnInner = {
+    background: mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.4)',
+    borderRadius: 4,
+    width: 22,
+    height: 22,
+    color: mode === 'dark' ? 'white' : T.ink,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: 14,
+    lineHeight: 1,
+    userSelect: 'none',
+  };
+
   return (
     <div
       style={{ display: 'flex', flexDirection: 'column', height: '100%', background: T.bg, color: T.ink }}
     >
       {/* Dark hero */}
-      <div style={{ 
-        background: T.hero, 
+      <div style={{
+        background: T.hero,
         borderBottom: mode === 'dark' ? '3px solid #E91E6A' : 'none',
-        padding: '11px 13px 13px', 
-        position: 'relative', 
-        overflow: 'hidden', 
-        flexShrink: 0 
+        padding: '11px 13px 13px',
+        position: 'relative',
+        overflow: 'hidden',
+        flexShrink: 0
       }}>
         <div style={{ position: 'absolute', top: -40, right: -20, width: 120, height: 120, borderRadius: '50%', background: `radial-gradient(circle,${T.pinkGlow} 0%,transparent 70%)`, pointerEvents: 'none' }} />
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <button
               onClick={handlePrevWeek}
-              style={{ background: mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.4)', border: 'none', borderRadius: 4, width: 22, height: 22, color: mode === 'dark' ? 'white' : T.ink, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-            >‹</button>
+              aria-label="Previous week"
+              style={navBtnStyle}
+            >
+              <span style={navBtnInner}>‹</span>
+            </button>
             <div>
               <div style={{ fontFamily: T.serif, fontSize: 17, fontWeight: 500, letterSpacing: '-0.4px', color: mode === 'dark' ? 'white' : T.ink }}>{monthYear}</div>
               <div style={{ fontFamily: T.font, fontSize: 10, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', color: mode === 'dark' ? 'rgba(255,255,255,0.55)' : T.inkMuted, marginTop: 1 }}>
@@ -206,13 +237,29 @@ export default function Calendar() {
             </div>
             <button
               onClick={handleNextWeek}
-              style={{ background: mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.4)', border: 'none', borderRadius: 4, width: 22, height: 22, color: mode === 'dark' ? 'white' : T.ink, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-            >›</button>
+              aria-label="Next week"
+              style={navBtnStyle}
+            >
+              <span style={navBtnInner}>›</span>
+            </button>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <button 
+            <button
               onClick={handleToday}
-              style={{ background: mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.4)', border: `1px solid ${mode === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.05)'}`, borderRadius: 6, padding: '3px 7px', color: mode === 'dark' ? 'white' : T.ink, fontFamily: T.font, fontSize: 9, fontWeight: 700, cursor: 'pointer' }}
+              style={{
+                background: mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.4)',
+                border: `1px solid ${mode === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.05)'}`,
+                borderRadius: 6,
+                padding: '10px 10px',
+                minHeight: 44,
+                display: 'flex',
+                alignItems: 'center',
+                color: mode === 'dark' ? 'white' : T.ink,
+                fontFamily: T.font,
+                fontSize: 9,
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
             >TODAY</button>
             <div style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.28)', borderRadius: 20, padding: '3px 9px', display: 'flex', alignItems: 'center', gap: 4 }}>
               <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#22C55E' }} />
@@ -238,9 +285,6 @@ export default function Calendar() {
       </div>
 
 
-      {loading && (
-        <div style={{ padding: '10px 13px', color: T.inkMuted, fontFamily: T.font, fontSize: 12 }}>Loading…</div>
-      )}
       {error && (
         <div style={{ margin: '6px 13px', padding: '10px 12px', borderRadius: 10, background: T.redBg, border: `1px solid ${T.redBorder}`, fontFamily: T.font, fontSize: 12, color: T.ink }}>
           {error.message || 'Could not load calendar.'}
@@ -248,7 +292,21 @@ export default function Calendar() {
       )}
 
       {/* PARKED WeekView render — restore: view === 'Week' && WeekView with weekDays/allJobs/onPickDay/onJobPress/now */}
-      {view === 'Agenda' && <AgendaView T={T} mode={mode} privacyOn={privacyOn} allJobs={allJobs} nextUpcoming={nextUpcoming} onJobPress={handleJobPress} dayFilter={agendaDayFilter} onClearFilter={() => setAgendaDayFilter(null)} weekStart={weekStart} />}
+      {view === 'Agenda' && (
+        <AgendaView
+          T={T}
+          mode={mode}
+          privacyOn={privacyOn}
+          allJobs={allJobs}
+          nextUpcoming={nextUpcoming}
+          onJobPress={handleJobPress}
+          dayFilter={agendaDayFilter}
+          onClearFilter={() => setAgendaDayFilter(null)}
+          onSetFilter={(d) => setAgendaDayFilter(d)}
+          weekStart={weekStart}
+          loading={loading}
+        />
+      )}
     </div>
   );
 }
@@ -387,7 +445,7 @@ function _LegendDot_PARKED({ T, color, label }) {
 
 /* ------------------------------ AGENDA VIEW ------------------------------ */
 
-function AgendaView({ T, mode, privacyOn, allJobs, nextUpcoming, onJobPress, dayFilter, onClearFilter, weekStart }) {
+function AgendaView({ T, mode, privacyOn, allJobs, nextUpcoming, onJobPress, dayFilter, onClearFilter, onSetFilter, weekStart, loading }) {
   const grouped = useMemo(() => {
     const weekStartKey = torontoDateKey(weekStart);
     const weekEndKey   = torontoDateKey(addDays(weekStart, 6));
@@ -421,20 +479,33 @@ function AgendaView({ T, mode, privacyOn, allJobs, nextUpcoming, onJobPress, day
     return { collected, owed, booked };
   }, [grouped]);
 
-  const handleDeleteJob = async (jobId) => {
-    if (!window.confirm('Delete this job?')) return;
-    try {
-      await softDeleteJob(jobId);
-      notifyDataChanged();
-    } catch (e) {
-      console.error('Failed to delete job:', e);
-      alert('Could not delete job.');
+  const allWeekConflicts = useMemo(() => {
+    const out = [];
+    for (const group of grouped) {
+      out.push(...findSameDayConflicts(group.jobs));
     }
-  };
+    return out;
+  }, [grouped]);
 
   const chipLabel = dayFilter
     ? dayFilter.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'America/Toronto' })
     : 'Whole week';
+
+  if (loading) {
+    return (
+      <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '8px 13px 80px' }}>
+        <style>{`@keyframes sm-pulse{0%,100%{opacity:1}50%{opacity:0.45}}`}</style>
+        {[0, 1].map(g => (
+          <div key={g} style={{ marginBottom: 14 }}>
+            <div style={{ height: 13, width: 130, borderRadius: 6, background: mode === 'dark' ? 'rgba(255,255,255,0.08)' : T.cardBorder, animation: 'sm-pulse 1.5s ease-in-out infinite', marginBottom: 10 }} />
+            {[0, 1].map(c => (
+              <div key={c} style={{ height: 72, borderRadius: 14, background: T.card, border: `1.5px solid ${T.cardBorder}`, animation: `sm-pulse 1.5s ease-in-out infinite ${0.1 + c * 0.1}s`, marginBottom: 6 }} />
+            ))}
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '8px 13px 80px', contain: 'layout style paint' }}>
@@ -459,6 +530,32 @@ function AgendaView({ T, mode, privacyOn, allJobs, nextUpcoming, onJobPress, day
         </div>
       </div>
 
+      {/* Conflict banner — only show when viewing the whole week */}
+      {allWeekConflicts.length > 0 && !dayFilter && (
+        <div
+          onClick={() => onSetFilter(allWeekConflicts[0].a.start)}
+          style={{
+            marginBottom: 10,
+            padding: '9px 12px',
+            borderRadius: 10,
+            background: mode === 'dark' ? 'rgba(245,158,11,0.1)' : '#FFFBEB',
+            border: `1.5px solid #F59E0B`,
+            display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
+          }}
+        >
+          <span style={{ fontSize: 14, lineHeight: 1 }}>⚠️</span>
+          <div style={{ flex: 1 }}>
+            <span style={{ fontFamily: T.font, fontSize: 11, fontWeight: 700, color: '#B45309' }}>
+              {allWeekConflicts.length} job {allWeekConflicts.length === 1 ? 'overlap' : 'overlaps'} this week
+            </span>
+            <span style={{ fontFamily: T.font, fontSize: 10, color: '#92400E', marginLeft: 4, opacity: 0.8 }}>
+              · tap to review
+            </span>
+          </div>
+          <span style={{ fontFamily: T.font, fontSize: 11, fontWeight: 700, color: '#F59E0B' }}>›</span>
+        </div>
+      )}
+
       {(summary.collected > 0 || summary.owed > 0 || summary.booked > 0) && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10, paddingBottom: 8, borderBottom: mode === 'dark' ? '1px solid rgba(255,255,255,0.06)' : '1px solid #FFE8F2' }}>
           {!dayFilter && <span style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, color: T.inkMuted, letterSpacing: '0.5px', textTransform: 'uppercase' }}>This week</span>}
@@ -468,8 +565,8 @@ function AgendaView({ T, mode, privacyOn, allJobs, nextUpcoming, onJobPress, day
             </span>
           )}
           {summary.owed > 0 && (
-            <span style={{ fontFamily: T.font, fontSize: 10.5, fontWeight: 600, color: '#B45309' }}>
-              Owed <span style={{ fontFamily: T.serif, fontVariantNumeric: 'tabular-nums' }}>{privacyOn ? '•••' : `$${summary.owed.toFixed(2)}`}</span>
+            <span style={{ fontFamily: T.font, fontSize: 10.5, fontWeight: 700, color: '#B45309' }}>
+              Owed <span style={{ fontFamily: T.serif, fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>{privacyOn ? '•••' : `$${summary.owed.toFixed(2)}`}</span>
             </span>
           )}
           {summary.booked > 0 && (
@@ -481,10 +578,13 @@ function AgendaView({ T, mode, privacyOn, allJobs, nextUpcoming, onJobPress, day
       )}
 
       {grouped.length === 0 && (
-        <div style={{ padding: '40px 20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
+        <div style={{ padding: '40px 20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
           <EmptySchedule size={100} />
           <div style={{ fontFamily: T.font, fontSize: 13, color: T.inkMuted, maxWidth: 220, lineHeight: 1.5 }}>
             {dayFilter ? `Nothing scheduled for ${fmtDateHead(dayFilter)}.` : 'No jobs this week.'}
+          </div>
+          <div style={{ fontFamily: T.font, fontSize: 11, color: T.pink, fontWeight: 600 }}>
+            Tap + to book a job
           </div>
         </div>
       )}
@@ -492,11 +592,14 @@ function AgendaView({ T, mode, privacyOn, allJobs, nextUpcoming, onJobPress, day
       {grouped.map(group => {
         const isToday = sameDay(group.date, NOW());
         const conflicts = findSameDayConflicts(group.jobs);
+        const dateLabel = isToday
+          ? `Today, ${group.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Toronto' })}`
+          : fmtDateHead(group.date);
         return (
           <div key={group.date.toISOString()} style={{ marginBottom: 14 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 6 }}>
               <div style={{ fontFamily: T.serif, fontSize: 13, fontWeight: 500, letterSpacing: '-0.2px', color: T.ink }}>
-                {isToday ? 'Today · ' : ''}{fmtDateHead(group.date)}
+                {dateLabel}
               </div>
               <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', color: T.inkMuted }}>
                 {group.jobs.length} job{group.jobs.length > 1 ? 's' : ''}
@@ -507,15 +610,14 @@ function AgendaView({ T, mode, privacyOn, allJobs, nextUpcoming, onJobPress, day
               const conflict = conflicts.find(c => c.a.id === j.id || c.b.id === j.id);
               const isNext = nextUpcoming && j.id === nextUpcoming.id;
               return (
-                <Swipeable key={j.id} onDelete={() => handleDeleteJob(j.id)}>
-                  <AgendaCard
-                    T={T} mode={mode} privacyOn={privacyOn}
-                    job={j}
-                    isNext={isNext}
-                    conflict={conflict}
-                    onPress={onJobPress}
-                  />
-                </Swipeable>
+                <AgendaCard
+                  key={j.id}
+                  T={T} mode={mode} privacyOn={privacyOn}
+                  job={j}
+                  isNext={isNext}
+                  conflict={conflict}
+                  onPress={onJobPress}
+                />
               );
             })}
 
@@ -559,9 +661,9 @@ const AgendaCard = memo(function AgendaCard({ T, mode, privacyOn, job, isNext, c
     if (paid)   badges.push({ text: 'PAID ✓', bg: '#DCFCE7', fg: '#14532D' });
     else if (isUnpaidCompleted) badges.push({ text: 'UNPAID', bg: '#F59E0B', fg: 'white' });
   }
-  
+
   if (job.status === 'Completed' && !job.actual_duration) {
-    badges.push({ text: '⚠ HOURS NEEDED', bg: '#FEF3C7', fg: '#B45309' });
+    badges.push({ text: 'LOG HOURS', bg: '#FEF3C7', fg: '#B45309' });
   }
 
   if (job.recurrence_rule) {
@@ -608,7 +710,7 @@ const AgendaCard = memo(function AgendaCard({ T, mode, privacyOn, job, isNext, c
           )}
         </div>
         <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 500, color: T.ink, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
-          {privacyOn ? '•••' : `$${job.total}`}
+          {privacyOn ? '•••' : fmtMoney(job.total)}
         </div>
       </div>
 
@@ -624,6 +726,7 @@ const AgendaCard = memo(function AgendaCard({ T, mode, privacyOn, job, isNext, c
         {job.client?.address && (
           <button
             onClick={(e) => { e.stopPropagation(); window.open(getNavigationUrl(job.client.address), '_blank'); }}
+            aria-label={`Get directions to ${job.client.address}`}
             style={{
               marginLeft: 'auto', fontFamily: T.font, fontSize: 9, fontWeight: 700,
               letterSpacing: '0.4px', textTransform: 'uppercase',

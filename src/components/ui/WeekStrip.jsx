@@ -127,10 +127,13 @@ export default function WeekStrip({
       return (
         <div
           key={d.toISOString()}
+          role="button"
+          aria-label={`${d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}${dots > 0 ? `, ${dots} job${dots > 1 ? 's' : ''}` : ''}`}
           onClick={() => onDaySelect(d)}
           style={{
             textAlign: 'center',
             padding: '4px 2px 5px',
+            minHeight: 44,
             borderRadius: 8,
             background: isSelected
               ? '#E91E6A'
@@ -197,10 +200,10 @@ export default function WeekStrip({
           transition: 'background 0.15s ease, border-color 0.15s ease',
         }}
       >
-        <div style={{ fontSize: 9, fontWeight: 800, color: isSelected ? 'white' : T.inkSub, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+        <div style={{ fontSize: 9, fontWeight: 700, color: isSelected ? 'white' : T.inkSub, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
           {d.toLocaleDateString('en-US', { weekday: 'short' })}
         </div>
-        <div style={{ fontSize: 17, fontWeight: 800, color: isSelected ? 'white' : T.ink, marginTop: 1 }}>
+        <div style={{ fontSize: 17, fontWeight: 700, color: isSelected ? 'white' : T.ink, marginTop: 1 }}>
           {d.getDate()}
         </div>
         {dots > 0 && (

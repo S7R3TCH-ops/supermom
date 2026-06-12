@@ -1,19 +1,21 @@
 // Local AI logic for generating briefings and smart suggestions.
+import { fmtTime12 } from '../lib/dateUtils';
 
 /**
  * Generates a structured "Command Brief" for a job.
  * Returns an object with headline, bullets, and speechText.
  */
-export function generateCommandBrief(job, businessProfile = null) {
+export function generateCommandBrief(job, businessProfile = null, options = {}) {
   if (!job) return null;
 
-  const ai = job.ai_context || {}; 
+  const ai = job.ai_context || {};
   const clientAi = job.client_ai_context || {};
   const notes = job.client_notes || '';
   const tags = Array.isArray(job.client_tags) ? job.client_tags : [];
   const clientName = (typeof job.client_name === 'string' ? job.client_name : '').split(' ')[0] || 'Client';
 
   const style = businessProfile?.ai_profile?.style || 'professional';
+  const { driveText } = options;
 
   const bullets = [];
   let speechText = '';
@@ -25,6 +27,46 @@ export function generateCommandBrief(job, businessProfile = null) {
     speechText = `Alright, heading over to assist ${clientName} next. `;
   } else {
     speechText = `Next objective: ${clientName}. `;
+  }
+
+  // Service + time
+  const serviceName = job.service_name || '';
+  const startDate = job.start instanceof Date ? job.start
+    : (job.scheduled_at ? new Date(job.scheduled_at) : null);
+  const endDate = job.end instanceof Date ? job.end
+    : (startDate && job.duration_est ? new Date(startDate.getTime() + job.duration_est * 60000) : null);
+
+  if (serviceName || startDate) {
+    let timeLine = '';
+    if (startDate && !isNaN(startDate.getTime())) {
+      const s = fmtTime12(startDate);
+      if (endDate && !isNaN(endDate.getTime())) {
+        const e = fmtTime12(endDate);
+        const rangeStr = s.period === e.period
+          ? `${s.time} to ${e.time} ${e.period}`
+          : `${s.time} ${s.period} to ${e.time} ${e.period}`;
+        timeLine = rangeStr;
+      } else {
+        timeLine = `${s.time} ${s.period}`;
+      }
+    }
+
+    if (serviceName && timeLine) {
+      bullets.push({ icon: '🗓', text: `${serviceName} · ${timeLine}` });
+      speechText += `${serviceName} at ${timeLine}. `;
+    } else if (serviceName) {
+      bullets.push({ icon: '🗓', text: serviceName });
+      speechText += `${serviceName}. `;
+    } else if (timeLine) {
+      bullets.push({ icon: '🕐', text: timeLine });
+      speechText += `Scheduled at ${timeLine}. `;
+    }
+  }
+
+  // Drive / leave-by
+  if (driveText) {
+    bullets.push({ icon: '🚗', text: driveText });
+    speechText += `About a ${driveText} drive. `;
   }
 
   // 1. High-priority flags

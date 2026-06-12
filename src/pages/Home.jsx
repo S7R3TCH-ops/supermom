@@ -345,7 +345,11 @@ export default function Home() {
       stopSpeaking();
       setIsSpeaking(false);
     } else {
-      const brief = generateCommandBrief(next, business);
+      const driveText =
+        locationDrives[next?.id]?.duration ||
+        next?.raw?.ai_context?.drive_to?.duration ||
+        null;
+      const brief = generateCommandBrief(next, business, driveText ? { driveText } : {});
       if (brief?.speechText) {
         setIsSpeaking(true);
         speakBrief(brief.speechText, () => setIsSpeaking(false));

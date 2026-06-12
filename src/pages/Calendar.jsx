@@ -83,6 +83,17 @@ function fmtDateHead(d) {
   return d.toLocaleDateString('en-US', opts);
 }
 
+// Returns "JUN 8 – 14" or "JUN 29 – JUL 5" for the week range label.
+function weekRangeLabel(weekStart) {
+  const endDay = addDays(weekStart, 6);
+  const startMon = weekStart.toLocaleDateString('en-US', { month: 'short', timeZone: 'America/Toronto' }).toUpperCase();
+  const endMon   = endDay.toLocaleDateString('en-US', { month: 'short', timeZone: 'America/Toronto' }).toUpperCase();
+  const startD   = parseInt(new Intl.DateTimeFormat('en-CA', { day: 'numeric', timeZone: 'America/Toronto' }).format(weekStart), 10);
+  const endD     = parseInt(new Intl.DateTimeFormat('en-CA', { day: 'numeric', timeZone: 'America/Toronto' }).format(endDay), 10);
+  if (startMon === endMon) return `${startMon} ${startD} – ${endD}`;
+  return `${startMon} ${startD} – ${endMon} ${endD}`;
+}
+
 // Adapt display jobs (from useJobs) into the shape the views expect:
 // { ...job, client: { name, init, color, address }, service: { label }, start, end, color, paid }
 function enrichDisplayJobs(displayJobs, clientLookup) {
@@ -183,12 +194,17 @@ export default function Calendar() {
         <div style={{ position: 'absolute', top: -40, right: -20, width: 120, height: 120, borderRadius: '50%', background: `radial-gradient(circle,${T.pinkGlow} 0%,transparent 70%)`, pointerEvents: 'none' }} />
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <button 
+            <button
               onClick={handlePrevWeek}
               style={{ background: mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.4)', border: 'none', borderRadius: 4, width: 22, height: 22, color: mode === 'dark' ? 'white' : T.ink, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
             >‹</button>
-            <div style={{ fontFamily: T.serif, fontSize: 17, fontWeight: 500, letterSpacing: '-0.4px', color: mode === 'dark' ? 'white' : T.ink }}>{monthYear}</div>
-            <button 
+            <div>
+              <div style={{ fontFamily: T.serif, fontSize: 17, fontWeight: 500, letterSpacing: '-0.4px', color: mode === 'dark' ? 'white' : T.ink }}>{monthYear}</div>
+              <div style={{ fontFamily: T.font, fontSize: 10, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', color: mode === 'dark' ? 'rgba(255,255,255,0.55)' : T.inkMuted, marginTop: 1 }}>
+                {weekRangeLabel(weekStart)}
+              </div>
+            </div>
+            <button
               onClick={handleNextWeek}
               style={{ background: mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.4)', border: 'none', borderRadius: 4, width: 22, height: 22, color: mode === 'dark' ? 'white' : T.ink, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
             >›</button>
@@ -232,7 +248,7 @@ export default function Calendar() {
       )}
 
       {/* PARKED WeekView render — restore: view === 'Week' && WeekView with weekDays/allJobs/onPickDay/onJobPress/now */}
-      {view === 'Agenda' && <AgendaView T={T} mode={mode} privacyOn={privacyOn} allJobs={allJobs} nextUpcoming={nextUpcoming} onJobPress={handleJobPress} dayFilter={agendaDayFilter} onClearFilter={() => setAgendaDayFilter(null)} />}
+      {view === 'Agenda' && <AgendaView T={T} mode={mode} privacyOn={privacyOn} allJobs={allJobs} nextUpcoming={nextUpcoming} onJobPress={handleJobPress} dayFilter={agendaDayFilter} onClearFilter={() => setAgendaDayFilter(null)} weekStart={weekStart} />}
     </div>
   );
 }
@@ -371,21 +387,24 @@ function _LegendDot_PARKED({ T, color, label }) {
 
 /* ------------------------------ AGENDA VIEW ------------------------------ */
 
-function AgendaView({ T, mode, privacyOn, allJobs, nextUpcoming, onJobPress, dayFilter, onClearFilter }) {
+function AgendaView({ T, mode, privacyOn, allJobs, nextUpcoming, onJobPress, dayFilter, onClearFilter, weekStart }) {
   const grouped = useMemo(() => {
+    const weekStartKey = torontoDateKey(weekStart);
+    const weekEndKey   = torontoDateKey(addDays(weekStart, 6));
     const map = new Map();
     for (const j of allJobs) {
       if (dayFilter) {
         if (!sameDay(j.start, dayFilter)) continue;
       } else {
-        if (j.end < NOW()) continue;
+        const k = torontoDateKey(j.start);
+        if (k < weekStartKey || k > weekEndKey) continue;
       }
       const key = torontoDateKey(j.start);
       if (!map.has(key)) map.set(key, { date: j.start, jobs: [] });
       map.get(key).jobs.push(j);
     }
     return Array.from(map.values()).sort((a, b) => a.date - b.date);
-  }, [allJobs, dayFilter]);
+  }, [allJobs, dayFilter, weekStart]);
 
   const summary = useMemo(() => {
     let collected = 0, owed = 0, booked = 0;
@@ -413,17 +432,36 @@ function AgendaView({ T, mode, privacyOn, allJobs, nextUpcoming, onJobPress, day
     }
   };
 
+  const chipLabel = dayFilter
+    ? dayFilter.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'America/Toronto' })
+    : 'Whole week';
+
   return (
     <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '8px 13px 80px', contain: 'layout style paint' }}>
-      {dayFilter && (
-        <div onClick={onClearFilter} style={{ padding: '2px 0 10px', fontFamily: T.font, fontSize: 11, fontWeight: 600, color: T.pink, cursor: 'pointer' }}>
-          ← All upcoming
+      <div style={{ marginBottom: 10 }}>
+        <div
+          onClick={dayFilter ? onClearFilter : undefined}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 5,
+            background: dayFilter ? T.pink : (mode === 'dark' ? '#2C2C2E' : T.cardBorder),
+            color: dayFilter ? 'white' : (mode === 'dark' ? 'rgba(255,255,255,0.55)' : T.inkMuted),
+            borderRadius: 100,
+            padding: '4px 10px',
+            fontFamily: T.font, fontSize: 10.5, fontWeight: 600,
+            cursor: dayFilter ? 'pointer' : 'default',
+            userSelect: 'none',
+          }}
+        >
+          {chipLabel}
+          {dayFilter && (
+            <span style={{ fontSize: 12, lineHeight: 1, opacity: 0.85 }}>×</span>
+          )}
         </div>
-      )}
+      </div>
 
       {(summary.collected > 0 || summary.owed > 0 || summary.booked > 0) && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10, paddingBottom: 8, borderBottom: mode === 'dark' ? '1px solid rgba(255,255,255,0.06)' : '1px solid #FFE8F2' }}>
-          {!dayFilter && <span style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, color: T.inkMuted, letterSpacing: '0.5px', textTransform: 'uppercase' }}>Upcoming</span>}
+          {!dayFilter && <span style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, color: T.inkMuted, letterSpacing: '0.5px', textTransform: 'uppercase' }}>This week</span>}
           {summary.collected > 0 && (
             <span style={{ fontFamily: T.font, fontSize: 10.5, fontWeight: 600, color: '#16A34A' }}>
               Collected <span style={{ fontFamily: T.serif, fontVariantNumeric: 'tabular-nums' }}>{privacyOn ? '•••' : `$${summary.collected.toFixed(2)}`}</span>
@@ -446,7 +484,7 @@ function AgendaView({ T, mode, privacyOn, allJobs, nextUpcoming, onJobPress, day
         <div style={{ padding: '40px 20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
           <EmptySchedule size={100} />
           <div style={{ fontFamily: T.font, fontSize: 13, color: T.inkMuted, maxWidth: 220, lineHeight: 1.5 }}>
-            {dayFilter ? `Nothing scheduled for ${fmtDateHead(dayFilter)}.` : 'No upcoming jobs on your schedule.'}
+            {dayFilter ? `Nothing scheduled for ${fmtDateHead(dayFilter)}.` : 'No jobs this week.'}
           </div>
         </div>
       )}

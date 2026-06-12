@@ -53,7 +53,15 @@ export default async function handler(req, res) {
     // 4. Map Job to GCal Event
     const clientName = [job.clients.first_name, job.clients.last_name].filter(Boolean).join(' ');
     const summary = `${job.service_name} - ${clientName}`;
-    const description = `${job.job_notes || ''}\n\nSynced from Supermom for Hire`;
+
+    const descLines = [];
+    if (job.service_name) descLines.push(`Service: ${job.service_name}`);
+    if (clientName)       descLines.push(`Client: ${clientName}`);
+    if (job.clients.phone) descLines.push(`Phone: ${job.clients.phone}`);
+    if (job.clients.email) descLines.push(`Email: ${job.clients.email}`);
+    if (job.job_notes)    descLines.push('', job.job_notes);
+    descLines.push('', 'Synced from Supermom for Hire');
+    const description = descLines.join('\n');
     
     const timeHHMM = (job.scheduled_time || '09:00').slice(0, 5);
     const startTime = `${job.scheduled_date}T${timeHHMM}:00`;
@@ -65,7 +73,7 @@ export default async function handler(req, res) {
 
     const event = {
       summary,
-      location: job.clients.address || '',
+      location: (() => { const { street, city, province, postal_code } = job.clients; return [street, city, province, postal_code].filter(Boolean).join(', ') || null; })(),
       description,
       colorId: '4', // Flamingo
       start: { dateTime: startTime, timeZone: 'America/Toronto' },

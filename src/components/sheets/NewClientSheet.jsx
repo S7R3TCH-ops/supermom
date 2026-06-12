@@ -7,24 +7,40 @@ import { useKeyboardFocus } from '../../hooks/useKeyboardFocus';
 import { useToast } from '../../context/ToastContext';
 import GrabBar from '../ui/GrabBar';
 
+const STATUS_OPTIONS = [
+  { value: 'active',   label: 'Active' },
+  { value: 'lead',     label: 'Lead' },
+  { value: 'inactive', label: 'Inactive' },
+  { value: 'archived', label: 'Archived' },
+];
+
+const SYSTEM_TAGS = ['Lead', 'VIP ★', '⚠ Overdue'];
+
 export default function NewClientSheet({ onClose, onCreated }) {
   const { T, mode } = useAppTheme();
   const toast = useToast();
   const isKeyboardFocused = useKeyboardFocus();
   const sheetRef = useRef(null);
+  const submittingRef = useRef(false);
   useFocusTrap(sheetRef, true, onClose);
-  
+
   const [first, setFirst] = useState('');
   const [last, setLast] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [street, setStreet] = useState('');
-  const [city, setCity] = useState('Georgetown');
+  const [city, setCity] = useState('');
   const [postalCode, setPostalCode] = useState('');
+  const [status, setStatus] = useState('active');
   const [vip, setVip] = useState(false);
-  const [isLead, setIsLead] = useState(false);
   const [recurrence, setRecurrence] = useState(null);
+  const [tags, setTags] = useState([]);
+  const [tagInput, setTagInput] = useState('');
   const [notes, setNotes] = useState('');
+  const [prefs, setPrefs] = useState('');
+  const [access, setAccess] = useState('');
+  const [comms, setComms] = useState('');
+  const [personal, setPersonal] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
@@ -37,9 +53,22 @@ export default function NewClientSheet({ onClose, onCreated }) {
   };
   const label = { fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', color: T.inkMuted, marginBottom: 4 };
 
+  function addTag() {
+    const t = tagInput.trim();
+    if (!t || tags.includes(t) || SYSTEM_TAGS.includes(t)) return;
+    setTags(prev => [...prev, t]);
+    setTagInput('');
+  }
+
+  function removeTag(t) {
+    setTags(prev => prev.filter(x => x !== t));
+  }
+
   async function submit(e) {
     e.preventDefault();
+    if (submittingRef.current) return;
     if (!first.trim()) { setErr('First name required'); return; }
+    submittingRef.current = true;
     setBusy(true); setErr('');
     try {
       const created = await createClient({
@@ -51,9 +80,17 @@ export default function NewClientSheet({ onClose, onCreated }) {
         city: city.trim() || null,
         province: 'ON',
         postal_code: postalCode.trim().toUpperCase() || null,
-        status: isLead ? 'lead' : 'active',
+        status,
         notes: notes.trim() || null,
-        ai_context: { vip, recurrence },
+        tags,
+        ai_context: {
+          vip,
+          recurrence,
+          prefs: prefs.trim() || null,
+          access: access.trim() || null,
+          comms: comms.trim() || null,
+          personal: personal.trim() || null,
+        },
       });
       toast.success(`${first.trim()} added!`);
       if (onCreated) onCreated(created);
@@ -62,6 +99,7 @@ export default function NewClientSheet({ onClose, onCreated }) {
       const msg = e2.message || String(e2);
       setErr(msg);
       toast.error(msg);
+      submittingRef.current = false;
       setBusy(false);
     }
   }
@@ -138,6 +176,19 @@ export default function NewClientSheet({ onClose, onCreated }) {
           </div>
 
           <div>
+            <div style={label}>STATUS</div>
+            <select
+              value={status}
+              onChange={e => setStatus(e.target.value)}
+              style={{ ...input, width: '100%' }}
+            >
+              {STATUS_OPTIONS.map(s => (
+                <option key={s.value} value={s.value}>{s.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
             <div id="nc-recurrence-label" style={label}>RECURRENCE</div>
             <div role="group" aria-labelledby="nc-recurrence-label" style={{ display: 'flex', background: mode === 'dark' ? 'rgba(255,255,255,0.04)' : T.pinkTint, borderRadius: 10, padding: 3 }}>
               {RECURRENCE.map(r => {
@@ -158,14 +209,72 @@ export default function NewClientSheet({ onClose, onCreated }) {
             <input type="checkbox" checked={vip} onChange={e => setVip(e.target.checked)} />
             Mark as VIP ★
           </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontFamily: T.font, fontSize: 12, color: T.ink }}>
-            <input type="checkbox" checked={isLead} onChange={e => setIsLead(e.target.checked)} />
-            Mark as Lead
-          </label>
 
           <div>
-            <div style={label}>NOTES</div>
-            <textarea style={{ ...input, minHeight: 60, resize: 'vertical' }} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Quirks, access info, dog name…" />
+            <div style={label}>TAGS</div>
+            {tags.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                {tags.map(t => (
+                  <span
+                    key={t}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 5,
+                      background: mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(233,30,106,0.08)',
+                      border: `1px solid ${T.cardBorder}`,
+                      borderRadius: 20, padding: '3px 10px 3px 10px',
+                      fontFamily: T.font, fontSize: 11, color: T.ink,
+                    }}
+                  >
+                    {t}
+                    <button
+                      type="button"
+                      onClick={() => removeTag(t)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: T.inkMuted, lineHeight: 1, fontSize: 13 }}
+                    >×</button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                style={{ ...input, flex: 1 }}
+                value={tagInput}
+                onChange={e => setTagInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }}
+                placeholder="Add tag…"
+              />
+              <button
+                type="button"
+                onClick={addTag}
+                style={{
+                  padding: '0 14px', borderRadius: 12, border: 'none',
+                  background: T.pink, color: 'white',
+                  fontFamily: T.font, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                }}
+              >Add</button>
+            </div>
+          </div>
+
+          <div style={{ borderTop: `1px solid ${T.cardBorder}`, paddingTop: 10, marginTop: 4 }}>
+            <div style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#FF78B0', marginBottom: 10 }}>✦ Intel</div>
+            {[
+              { label: 'NOTES', value: notes, set: setNotes },
+              { label: 'PREFS', value: prefs, set: setPrefs },
+              { label: 'ACCESS', value: access, set: setAccess },
+              { label: 'COMMS', value: comms, set: setComms },
+              { label: 'PERSONAL', value: personal, set: setPersonal },
+            ].map(f => (
+              <div key={f.label} style={{ marginBottom: 10 }}>
+                <div style={label}>{f.label}</div>
+                <textarea
+                  value={f.value}
+                  onChange={e => f.set(e.target.value)}
+                  placeholder={`Enter ${f.label.toLowerCase()}…`}
+                  rows={2}
+                  style={{ ...input, minHeight: 44, resize: 'none' }}
+                />
+              </div>
+            ))}
           </div>
 
           {err && (

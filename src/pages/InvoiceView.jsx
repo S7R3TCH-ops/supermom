@@ -353,12 +353,12 @@ export default function InvoiceView() {
             )}
             <div style={{ background: '#EAE2D8', padding: '9px 14px', marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: 6 }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#555' }}>Invoice Total</div>
-              <div className="inv-display" style={{ fontSize: 22, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>${financials.total.toFixed(2)}</div>
+              <div className="inv-display" style={{ fontSize: 17, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>${financials.total.toFixed(2)}</div>
             </div>
 
             {invoice.payments?.length > 0 && (
               <div style={{ marginTop: 6 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 14px', background: '#F5F1EC', borderRadius: 4, fontSize: 9, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: '#999' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 14px', fontSize: 9, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: '#999' }}>
                   <div>Payments Received</div>
                   <div>Amount</div>
                 </div>
@@ -374,7 +374,7 @@ export default function InvoiceView() {
             <div style={{ padding: '7px 14px', marginTop: 4, borderTop: '1px solid #eee' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#555' }}>Outstanding Balance</div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: invoice.balanceOwing > 0 ? '#DC2626' : '#1a1a1a' }}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: invoice.balanceOwing > 0 ? '#DC2626' : '#1a1a1a' }}>
                   ${invoice.balanceOwing.toFixed(2)}
                 </div>
               </div>
@@ -404,9 +404,9 @@ export default function InvoiceView() {
                 <div style={{ color: '#DC2626', fontWeight: 700, textAlign: 'right', width: 80 }}>${owing.toFixed(2)}</div>
               </div>
             ))}
-            <div style={{ background: '#FEF3C7', border: '1px solid #FDE68A', padding: '10px 14px', marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: 6 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#92400E' }}>Total Owed — All Jobs</div>
-              <div className="inv-display" style={{ fontSize: 22, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#DC2626' }}>${invoice.runningTotalOwing.toFixed(2)}</div>
+            <div style={{ background: '#EAE2D8', padding: '10px 14px', marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: 6 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#555' }}>Total Owed — All Jobs</div>
+              <div className="inv-display" style={{ fontSize: 18, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#DC2626' }}>${invoice.runningTotalOwing.toFixed(2)}</div>
             </div>
           </div>
         )}

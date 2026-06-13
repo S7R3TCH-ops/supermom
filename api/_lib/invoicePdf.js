@@ -141,16 +141,16 @@ function InvoiceDocument({ invoice }) {
       )
     : null;
 
-  const balanceColor = invoice.balanceOwing > 0 ? '#DC2626' : INK;
-  const balanceRow = V({ style: s.balanceWrap, key: 'balance' },
-    V({ style: s.balanceMainRow },
-      T({ style: s.balanceLabel }, 'Outstanding Balance'),
-      T({ style: [s.balanceVal, { color: balanceColor }] }, `$${invoice.balanceOwing.toFixed(2)}`),
-    ),
-    invoice.isPaidInFull
-      ? T({ style: [s.paidBadge, { textAlign: 'right', marginTop: 4 }] }, '✓ Paid')
-      : null,
-  );
+  const balanceRow = invoice.payments?.length > 0
+    ? V({ style: s.balanceWrap, key: 'balance' },
+        invoice.isPaidInFull
+          ? T({ style: [s.paidBadge, { textAlign: 'right' }] }, '✓ Paid in Full')
+          : V({ style: s.balanceMainRow },
+              T({ style: s.balanceLabel }, 'Remaining'),
+              T({ style: [s.balanceVal, { color: '#DC2626' }] }, `$${invoice.balanceOwing.toFixed(2)}`),
+            ),
+      )
+    : null;
 
   const bizCity    = [biz.city, biz.province].filter(Boolean).join(', ');
   const clientCity = [[client.city, client.province].filter(Boolean).join(', '), client.postal_code].filter(Boolean).join(' ');

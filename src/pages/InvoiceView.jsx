@@ -368,20 +368,18 @@ export default function InvoiceView() {
                     <div style={{ color: '#16A34A', fontWeight: 600 }}>+${Number(p.amount).toFixed(2)}</div>
                   </div>
                 ))}
-              </div>
-            )}
-
-            <div style={{ padding: '7px 14px', marginTop: 4, borderTop: '1px solid #eee' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#555' }}>Outstanding Balance</div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: invoice.balanceOwing > 0 ? '#DC2626' : '#1a1a1a' }}>
-                  ${invoice.balanceOwing.toFixed(2)}
+                <div style={{ padding: '7px 14px', marginTop: 4, borderTop: '1px solid #eee' }}>
+                  {invoice.isPaidInFull ? (
+                    <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#16A34A' }}>✓ Paid in Full</div>
+                  ) : (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#555' }}>Remaining</div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: '#DC2626' }}>${invoice.balanceOwing.toFixed(2)}</div>
+                    </div>
+                  )}
                 </div>
               </div>
-              {invoice.isPaidInFull && (
-                <div style={{ textAlign: 'right', marginTop: 5, fontSize: 13, fontWeight: 700, color: '#16A34A' }}>✓ Paid</div>
-              )}
-            </div>
+            )}
           </div>
         </div>
 

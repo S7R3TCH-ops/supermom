@@ -252,6 +252,7 @@ export default function InvoiceView() {
           <div>
             <div style={LABEL}>Issued to</div>
             <div style={{ fontWeight: 600 }}>{client.first_name} {client.last_name}</div>
+            {client.street && <div style={{ color: '#555' }}>{client.street}</div>}
             {clientCity && <div style={{ color: '#555' }}>{clientCity}</div>}
             {client.phone && <div style={{ color: '#888' }}>{client.phone}</div>}
             {client.email && <div style={{ color: '#888' }}>{client.email}</div>}
@@ -386,23 +387,26 @@ export default function InvoiceView() {
 
         {/* Other outstanding balances for this client */}
         {invoice.otherOutstanding?.length > 0 && (
-          <div style={{ marginBottom: 14 }}>
-            <div style={{ ...LABEL, marginBottom: 5 }}>Other Outstanding Balances</div>
-            <div style={{ display: 'flex', padding: '5px 0', background: '#F5F1EC', borderRadius: 4, marginBottom: 2, fontSize: 9, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: '#999' }}>
+          <div style={{ marginBottom: 14, borderTop: '2px solid #EAE2D8', paddingTop: 14 }}>
+            <div style={{ marginBottom: 8 }}>
+              <div style={{ ...LABEL, marginBottom: 3 }}>Also Outstanding for This Client</div>
+              <div style={{ fontSize: 11, color: '#888' }}>Other completed jobs with unpaid balances</div>
+            </div>
+            <div style={{ display: 'flex', padding: '5px 6px', background: '#F5F1EC', borderRadius: 4, marginBottom: 2, fontSize: 9, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: '#999' }}>
               <div style={{ width: 110 }}>Date</div>
               <div style={{ flex: 1 }}>Service</div>
               <div style={{ width: 80, textAlign: 'right' }}>Owing</div>
             </div>
             {invoice.otherOutstanding.map(({ job: otherJob, owing }) => (
-              <div key={otherJob.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 12 }}>
+              <div key={otherJob.id} style={{ display: 'flex', padding: '5px 6px', fontSize: 12, borderBottom: '1px solid #f5f5f5' }}>
                 <div style={{ color: '#555', width: 110 }}>{otherJob.scheduled_date ? formatDate(otherJob.scheduled_date) : '—'}</div>
                 <div style={{ color: '#1a1a1a', flex: 1 }}>{otherJob.service_name || 'Professional Services'}</div>
-                <div style={{ color: '#1a1a1a', fontWeight: 600, textAlign: 'right', width: 80 }}>${owing.toFixed(2)}</div>
+                <div style={{ color: '#DC2626', fontWeight: 700, textAlign: 'right', width: 80 }}>${owing.toFixed(2)}</div>
               </div>
             ))}
-            <div style={{ background: '#EAE2D8', padding: '9px 14px', marginTop: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: 6 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#555' }}>Combined Balance Owing — All Jobs</div>
-              <div className="inv-display" style={{ fontSize: 17, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>${invoice.runningTotalOwing.toFixed(2)}</div>
+            <div style={{ background: '#FEF3C7', border: '1px solid #FDE68A', padding: '10px 14px', marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: 6 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#92400E' }}>Total Owed — All Jobs</div>
+              <div className="inv-display" style={{ fontSize: 22, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#DC2626' }}>${invoice.runningTotalOwing.toFixed(2)}</div>
             </div>
           </div>
         )}

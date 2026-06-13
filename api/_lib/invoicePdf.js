@@ -89,16 +89,18 @@ const s = StyleSheet.create({
   balanceVal:     { fontSize: 13, fontFamily: 'Helvetica-Bold' },
   paidBadge:      { fontSize: 9, fontFamily: 'Helvetica-Bold', color: PAID },
   // Other outstanding balances — faint-headed breakdown table
-  outstandingWrap: { marginTop: 2, marginBottom: 10 },
-  outHeaderRow:  { flexDirection: 'row', backgroundColor: FAINT, paddingTop: 4, paddingBottom: 4, borderRadius: 3, marginBottom: 2 },
+  outstandingWrap: { marginTop: 2, marginBottom: 10, borderTopWidth: 2, borderTopColor: CREAM, paddingTop: 12 },
+  outSectionLabel: { fontSize: 7, fontFamily: 'Helvetica-Bold', color: LABEL_C, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 3 },
+  outSectionDesc:  { fontSize: 8, color: LIGHT, marginBottom: 7 },
+  outHeaderRow:  { flexDirection: 'row', backgroundColor: FAINT, paddingTop: 4, paddingBottom: 4, paddingLeft: 6, paddingRight: 6, borderRadius: 3, marginBottom: 2 },
   outHeaderText: { fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#999', letterSpacing: 0.8, textTransform: 'uppercase' },
-  outRow:      { flexDirection: 'row', justifyContent: 'space-between', paddingTop: 4, paddingBottom: 4 },
+  outRow:      { flexDirection: 'row', justifyContent: 'space-between', paddingTop: 4, paddingBottom: 4, paddingLeft: 6, paddingRight: 6, borderBottomWidth: 1, borderBottomColor: '#f5f5f5' },
   outDate:     { fontSize: 9, color: MUTED, width: 90 },
   outDesc:     { fontSize: 9, color: INK, flex: 1 },
-  outAmt:      { fontSize: 9, fontFamily: 'Helvetica-Bold', color: INK, textAlign: 'right', width: 64 },
-  outTotalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: CREAM, paddingTop: 7, paddingBottom: 7, paddingLeft: 10, paddingRight: 10, borderRadius: 4, marginTop: 5 },
-  outTotalLabel: { fontSize: 7, fontFamily: 'Helvetica-Bold', color: MUTED, letterSpacing: 0.8, textTransform: 'uppercase' },
-  outTotalVal:   { fontSize: 13, fontFamily: 'Helvetica-Bold', color: INK },
+  outAmt:      { fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#DC2626', textAlign: 'right', width: 64 },
+  outTotalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#FEF3C7', borderWidth: 1, borderColor: '#FDE68A', paddingTop: 8, paddingBottom: 8, paddingLeft: 10, paddingRight: 10, borderRadius: 4, marginTop: 7 },
+  outTotalLabel: { fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#92400E', letterSpacing: 0.8, textTransform: 'uppercase' },
+  outTotalVal:   { fontSize: 16, fontFamily: 'Helvetica-Bold', color: '#DC2626' },
   // Footer
   footerBorder: { borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 9, marginBottom: 10 },
   footerLabel:  { fontSize: 7, fontFamily: 'Helvetica-Bold', color: LABEL_C, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 5 },
@@ -172,6 +174,7 @@ function InvoiceDocument({ invoice }) {
           T({ style: s.infoLabel }, 'Issued to'),
           T({ style: s.infoBlock },
             T({ style: s.infoBold }, `${client.first_name || ''} ${client.last_name || ''}`.trim() || '—'),
+            client.street ? '\n' : null, client.street ? T({ style: s.infoMuted }, client.street) : null,
             clientCity   ? '\n' : null, clientCity   ? T({ style: s.infoMuted }, clientCity)   : null,
             client.phone ? '\n' : null, client.phone ? T({ style: s.infoLight }, client.phone) : null,
             client.email ? '\n' : null, client.email ? T({ style: s.infoLight }, client.email) : null,
@@ -252,7 +255,8 @@ function InvoiceDocument({ invoice }) {
       // ── Other outstanding balances for this client ──
       invoice.otherOutstanding?.length > 0 ?
         V({ style: s.outstandingWrap },
-          T({ style: s.footerLabel }, 'Other Outstanding Balances'),
+          T({ style: s.outSectionLabel }, 'Also Outstanding for This Client'),
+          T({ style: s.outSectionDesc  }, 'Other completed jobs with unpaid balances'),
           V({ style: s.outHeaderRow },
             T({ style: [s.outDate, s.outHeaderText] }, 'Date'),
             T({ style: [s.outDesc, s.outHeaderText] }, 'Service'),
@@ -266,7 +270,7 @@ function InvoiceDocument({ invoice }) {
             )
           ),
           V({ style: s.outTotalRow },
-            T({ style: s.outTotalLabel }, 'Combined Balance Owing — All Jobs'),
+            T({ style: s.outTotalLabel }, 'Total Owed — All Jobs'),
             T({ style: s.outTotalVal   }, `$${invoice.runningTotalOwing.toFixed(2)}`),
           ),
         )

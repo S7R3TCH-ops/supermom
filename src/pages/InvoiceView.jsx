@@ -486,27 +486,27 @@ export default function InvoiceView() {
         </div>
 
         {/* Totals */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14, gap: 20 }}>
-          {/* Left — payments received, uses the white space beside the totals column */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 14, gap: 20 }}>
+          {/* Left — payments received, compact, bottom-aligned with the totals column */}
           {invoice.payments?.length > 0 ? (
-            <div style={{ flex: 1, paddingTop: 2 }}>
-              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: '#999', marginBottom: 5 }}>
+            <div style={{ minWidth: 140, maxWidth: 210 }}>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: '#999', marginBottom: 4 }}>
                 Payments Received
               </div>
               {invoice.payments.map(p => (
-                <div key={p.id ?? `${p.payment_date}-${p.amount}`} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', fontSize: 12, color: '#555' }}>
+                <div key={p.id ?? `${p.payment_date}-${p.amount}`} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '1px 0', fontSize: 12, color: '#555' }}>
                   <div>{formatDate(p.payment_date)}</div>
                   <div style={{ fontVariantNumeric: 'tabular-nums' }}>${Number(p.amount).toFixed(2)}</div>
                 </div>
               ))}
               {invoice.alsoPaid?.length > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', marginTop: 4, borderTop: '1px solid #eee', fontSize: 11, color: '#999' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '1px 0', marginTop: 3, borderTop: '1px solid #eee', fontSize: 11, color: '#999' }}>
                   <div>Settlement total</div>
                   <div style={{ fontVariantNumeric: 'tabular-nums' }}>${invoice.totalPaidAllJobs.toFixed(2)}</div>
                 </div>
               )}
             </div>
-          ) : <div style={{ flex: 1 }} />}
+          ) : <div />}
 
           {/* Right — subtotal / HST / invoice total / remaining */}
           <div style={{ width: 280, flexShrink: 0 }}>

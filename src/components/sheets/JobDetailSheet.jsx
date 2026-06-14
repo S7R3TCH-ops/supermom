@@ -629,7 +629,7 @@ function ReadMode({
 
           {invoiceId && (
             <div style={{ marginTop: 4, background: mode === 'dark' ? 'rgba(233,30,106,0.05)' : '#FFF0F7', borderRadius: 16, border: `1px solid ${T.pink}40`, padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: T.ink }}>Invoice Ready</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: T.ink }}>{isPaid ? 'Receipt Ready' : 'Invoice Ready'}</div>
               <button onClick={() => window.open(`/i/${invoiceId}`, '_blank')} style={{ background: T.pink, color: 'white', border: 'none', padding: '6px 14px', borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>VIEW</button>
             </div>
           )}

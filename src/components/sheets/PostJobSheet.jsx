@@ -497,7 +497,7 @@ export default function PostJobSheet({ jobId, onClose }) {
           {invoiceId && (
             <div style={{ background: T.pinkTint, padding: '12px 16px', borderRadius: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: T.pink }}>Invoice Ready</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: T.pink }}>{payStatus === 'paid' ? 'Receipt Ready' : 'Invoice Ready'}</div>
                 <div style={{ fontSize: 10, color: T.pink }}>Job will be added to invoice automatically.</div>
               </div>
               <button onClick={() => window.open(`/i/${invoiceId}`, '_blank')} style={{ background: T.pink, color: 'white', border: 'none', padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>VIEW</button>

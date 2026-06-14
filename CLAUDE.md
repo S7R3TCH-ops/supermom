@@ -171,22 +171,15 @@ Sandra's business is live — data wiped and re-provisioned Jun 9. App in active
 
 ### Next session priorities
 
-#### Invoice remaining work (impeccable critique score: 24/40 — Jun 13; layout improved Jun 14 but items below still open)
-1. **WCAG contrast on `#aaa` labels — P1** (client-facing public document). `LABEL` in `InvoiceView.jsx` + `LABEL_C = '#aaa'` in PDF fail WCAG AA (2.32:1). Fix: change both to `#6b7280`. "Additional Cost" pink (`#E91E6A` 9px on `#fafafa` = 4.13:1) → `#B01550`.
-2. **Flat-rate jobs show dead Rate/Hr + Hours columns — P1.** Conditionally hide header + cells when `!financials.isHourly`. Both web and PDF.
-3. **Raw error exposed to clients — P1.** Line 58 `InvoiceView.jsx`: `Error: {error}` → friendly static message referencing `biz.phone`.
-4. **"NO" label for invoice number** — change to "#" (web + PDF). P3.
-5. **fontWeight 800 on "INVOICE"/"RECEIPT"** — Inter only loads 400–700. Change to 700. (InvoiceView.jsx line 270.)
-6. `InvoiceView.jsx` and `api/_lib/invoicePdf.js` must stay in sync on every invoice change.
+> `InvoiceView.jsx` and `api/_lib/invoicePdf.js` must always stay in sync on every invoice change.
 
-#### Other open items
-7. **⚠️ Device verification** — v0.12.32 Android perf fix and all Jun 12 fixes not yet phone-tested.
-8. **GCal sync failures silent** — `triggerGCalSync` is fire-and-forget. Likely cause: OAuth "Testing" mode → refresh tokens expire after 7 days. Sandra should reconnect (Settings → Google Calendar → CONNECT).
-9. **Home.jsx drive-time + background-resume bugs (diagnosed, not fixed)**:
+1. **⚠️ Device verification** — v0.12.32 Android perf fix and all Jun 12 fixes not yet phone-tested.
+2. **GCal sync failures silent** — `triggerGCalSync` is fire-and-forget. Likely cause: OAuth "Testing" mode → refresh tokens expire after 7 days. Sandra should reconnect (Settings → Google Calendar → CONNECT).
+3. **Home.jsx drive-time + background-resume bugs (diagnosed, not fixed)**:
    - Fix 1 (wrong leave time): increase GPS timeout to 12000ms; add `locationFetchAttempted` state to show "Calculating…" until resolved.
    - Fix 2 (wonky after long absence): add `visibilitychange` handler — `setNow(new Date())` on resume; `reload()` if away > 30 min or date changed; guard drive re-fetch (last fetch > 10 min) to protect Maps quota.
-10. **Design system critique** — Next target: Client profile → Job detail → `$impeccable document`.
-11. **AI chat interface** — `api/ai/[action].js` + `ANTHROPIC_API_KEY` in place. Needs chat UI + convo state. HIGH PRIORITY.
+4. **Design system critique** — Next target: Client profile → Job detail → `$impeccable document`.
+5. **AI chat interface** — `api/ai/[action].js` + `ANTHROPIC_API_KEY` in place. Needs chat UI + convo state. HIGH PRIORITY.
 
 ### Phase 2 features
 - [ ] **AI chat interface** — HIGH PRIORITY. API endpoint + key already set. Need chat UI + conversation state.

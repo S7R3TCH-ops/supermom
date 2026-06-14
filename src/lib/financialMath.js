@@ -2,7 +2,7 @@
 //
 // Field conventions (from CLAUDE.md):
 //   flat_rate   = $/hr rate for Hourly jobs (NewJobSheet never writes hourly_rate)
-//   total_amount = booking-time estimate; never updated after completion — don't use as actual total
+//   total_amount = tax-inclusive grand total written by recordPayment; never use as pre-tax subtotal
 //   actual_duration = completed hours (use over estimated_hours for completed jobs)
 
 /**
@@ -45,7 +45,7 @@ export function computeJobFinancials(job, business = null, liveForm = null) {
     subtotal = hours * rate;
   } else {
     // For flat rate, fallback from form -> job flat_rate -> job total_amount
-    const flat = liveForm?.flat_rate ?? liveForm?.total_amount ?? src?.flat_rate ?? src?.total_amount ?? 0;
+    const flat = liveForm?.flat_rate ?? src?.flat_rate ?? src?.subtotal ?? 0;
     const flatNum = Number(flat);
     subtotal = isNaN(flatNum) ? 0 : flatNum;
   }

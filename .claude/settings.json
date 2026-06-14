@@ -3,18 +3,6 @@
     "bgIsolation": "none"
   },
   "hooks": {
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$f='C:\\Users\\Joel\\.claude\\sm-wrap-done.flag'; if(Test-Path $f){$p=(Get-Process -Id $PID).Parent; if($p -and $p.Name -match '^(node|claude)$'){Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue}}; exit 0",
-            "shell": "powershell",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
     "UserPromptSubmit": [
       {
         "hooks": [

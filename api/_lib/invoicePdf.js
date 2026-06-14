@@ -126,7 +126,10 @@ function InvoiceDocument({ invoice }) {
 
   const totalRow = V({ style: s.tDueRow, key: 'total' },
     T({ style: s.tDueLabel }, 'Invoice Total'),
-    T({ style: s.tDueVal   }, `$${f.total.toFixed(2)}`),
+    V({ style: { flexDirection: 'row', alignItems: 'center' } },
+      T({ style: [s.tDueVal, isReceipt ? { color: PAID } : {}] }, `$${f.total.toFixed(2)}`),
+      isReceipt ? T({ style: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: PAID, marginLeft: 4 } }, '✓ Paid') : null,
+    ),
   );
 
   const paymentsBlock = invoice.payments?.length > 0
@@ -144,14 +147,12 @@ function InvoiceDocument({ invoice }) {
       )
     : null;
 
-  const balanceRow = invoice.payments?.length > 0
+  const balanceRow = (invoice.payments?.length > 0 && !invoice.isPaidInFull)
     ? V({ style: s.balanceWrap, key: 'balance' },
-        invoice.isPaidInFull
-          ? T({ style: [s.paidBadge, { textAlign: 'right' }] }, '✓ Paid in Full')
-          : V({ style: s.balanceMainRow },
-              T({ style: s.balanceLabel }, 'Remaining'),
-              T({ style: [s.balanceVal, { color: '#DC2626' }] }, `$${invoice.balanceOwing.toFixed(2)}`),
-            ),
+        V({ style: s.balanceMainRow },
+          T({ style: s.balanceLabel }, 'Remaining'),
+          T({ style: [s.balanceVal, { color: '#DC2626' }] }, `$${invoice.balanceOwing.toFixed(2)}`),
+        ),
       )
     : null;
 
@@ -287,18 +288,21 @@ function InvoiceDocument({ invoice }) {
           V({ style: s.outHeaderRow },
             T({ style: [s.outDate, s.outHeaderText] }, 'Date'),
             T({ style: [s.outDesc, s.outHeaderText] }, 'Service'),
-            T({ style: [s.paidAmt, s.outHeaderText] }, 'Paid'),
+            T({ style: [s.paidAmt, s.outHeaderText] }, 'Amount'),
           ),
           ...invoice.alsoPaid.map(({ job: paidJob, total }) =>
             V({ key: paidJob.id, style: s.outRow },
               T({ style: s.outDate }, paidJob.scheduled_date ? formatDate(paidJob.scheduled_date) : '—'),
               T({ style: s.outDesc }, paidJob.service_name || 'Professional Services'),
-              T({ style: s.paidAmt }, `$${total.toFixed(2)}`),
+              T({ style: s.paidAmt }, `✓ $${total.toFixed(2)}`),
             )
           ),
           V({ style: s.outTotalRow },
-            T({ style: s.outTotalLabel }, 'Total Paid — All Jobs'),
-            T({ style: s.paidTotalVal  }, `$${invoice.totalPaidAllJobs.toFixed(2)}`),
+            T({ style: s.outTotalLabel }, 'Total Owing — All Jobs'),
+            V({ style: { flexDirection: 'row', alignItems: 'center' } },
+              T({ style: s.paidTotalVal  }, `$${invoice.totalPaidAllJobs.toFixed(2)}`),
+              T({ style: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: PAID, marginLeft: 4 } }, '✓ Paid'),
+            ),
           ),
         )
       : null,

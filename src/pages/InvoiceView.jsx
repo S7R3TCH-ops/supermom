@@ -500,7 +500,10 @@ export default function InvoiceView() {
             )}
             <div style={{ background: '#EAE2D8', padding: '9px 14px', marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: 6 }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#555' }}>Invoice Total</div>
-              <div className="inv-display" style={{ fontSize: 17, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>${financials.total.toFixed(2)}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div className="inv-display" style={{ fontSize: 17, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: invoice.isPaidInFull ? '#16A34A' : 'inherit' }}>${financials.total.toFixed(2)}</div>
+                {invoice.isPaidInFull && <div style={{ fontSize: 11, fontWeight: 700, color: '#16A34A' }}>✓ Paid</div>}
+              </div>
             </div>
 
             {invoice.payments?.length > 0 && (
@@ -515,16 +518,14 @@ export default function InvoiceView() {
                     <div style={{ color: '#16A34A', fontWeight: 600 }}>+${Number(p.amount).toFixed(2)}</div>
                   </div>
                 ))}
-                <div style={{ padding: '7px 14px', marginTop: 4, borderTop: '1px solid #eee' }}>
-                  {invoice.isPaidInFull ? (
-                    <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#16A34A' }}>✓ Paid in Full</div>
-                  ) : (
+                {!invoice.isPaidInFull && (
+                  <div style={{ padding: '7px 14px', marginTop: 4, borderTop: '1px solid #eee' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#555' }}>Remaining</div>
                       <div style={{ fontSize: 15, fontWeight: 700, color: '#DC2626' }}>${invoice.balanceOwing.toFixed(2)}</div>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -566,7 +567,7 @@ export default function InvoiceView() {
             <div style={{ display: 'flex', padding: '5px 6px', background: '#F5F1EC', borderRadius: 4, marginBottom: 2, fontSize: 9, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: '#999' }}>
               <div style={{ width: 110 }}>Date</div>
               <div style={{ flex: 1 }}>Service</div>
-              <div style={{ width: 80, textAlign: 'right' }}>Paid</div>
+              <div style={{ width: 80, textAlign: 'right' }}>Amount</div>
             </div>
             {invoice.alsoPaid.map(({ job: paidJob, total }) => (
               <div key={paidJob.id} style={{ display: 'flex', padding: '5px 6px', fontSize: 12, borderBottom: '1px solid #f5f5f5' }}>
@@ -576,8 +577,11 @@ export default function InvoiceView() {
               </div>
             ))}
             <div style={{ background: '#EAE2D8', padding: '10px 14px', marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: 6 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#555' }}>Total Paid — All Jobs</div>
-              <div className="inv-display" style={{ fontSize: 18, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#16A34A' }}>${invoice.totalPaidAllJobs.toFixed(2)}</div>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#555' }}>Total Owing — All Jobs</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div className="inv-display" style={{ fontSize: 18, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#16A34A' }}>${invoice.totalPaidAllJobs.toFixed(2)}</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#16A34A' }}>✓ Paid</div>
+              </div>
             </div>
           </div>
         )}

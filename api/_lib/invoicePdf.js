@@ -243,7 +243,7 @@ function InvoiceDocument({ invoice }) {
       V({ style: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: 4, marginBottom: 10 } },
         // Left — payments received, fills white space beside totals column
         invoice.payments?.length > 0
-          ? V({ style: { flex: 1, marginRight: 16 } },
+          ? V({ style: { width: 160, marginRight: 16 } },
               T({ style: { fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#999', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 5 } }, 'Payments Received'),
               ...invoice.payments.map((p, i) =>
                 V({ key: p.id ?? `pmt-${i}`, style: { flexDirection: 'row', justifyContent: 'space-between', paddingTop: 2, paddingBottom: 2 } },
@@ -258,7 +258,7 @@ function InvoiceDocument({ invoice }) {
                   )
                 : null,
             )
-          : V({ style: { flex: 1 } }),
+          : V({ style: {} }),
         // Right — subtotal / HST / invoice total / remaining
         V({ style: { width: 200 } },
           V({ style: s.tRow },

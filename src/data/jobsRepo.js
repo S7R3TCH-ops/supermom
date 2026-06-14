@@ -352,7 +352,7 @@ export async function markJobUnpaid(id) {
   if (delErr) throw delErr;
   const { error } = await supabase
     .from('jobs')
-    .update({ payment_status: 'Unpaid', payment_method: null })
+    .update({ payment_status: '', payment_method: null })
     .eq('id', id)
     .eq('business_id', businessId);
   if (error) throw error;

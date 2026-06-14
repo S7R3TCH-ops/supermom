@@ -13,7 +13,7 @@ function formatDate(dateStr) {
   return `${MONTHS[parseInt(m, 10) - 1]} ${parseInt(d, 10)}, ${y}`;
 }
 
-const LABEL = { fontSize: 10, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 8 };
+const LABEL = { fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 8 };
 
 export default function InvoiceView() {
   const { id } = useParams();
@@ -89,7 +89,7 @@ export default function InvoiceView() {
   }, [session, invoice]);
 
   if (loading) return <div style={{ padding: 40, textAlign: 'center', fontFamily: 'var(--font-ui)', color: 'var(--ink-muted)' }}>Loading Invoice…</div>;
-  if (error)   return <div style={{ padding: 40, textAlign: 'center', fontFamily: 'var(--font-ui)', color: 'var(--red)' }}>Error: {error}</div>;
+  if (error)   return <div style={{ padding: 40, textAlign: 'center', fontFamily: 'var(--font-ui)', color: 'var(--ink-muted)' }}>This invoice couldn't be loaded. Please contact Sandra at (416) 738-0309.</div>;
   if (!invoice) return <div style={{ padding: 40, textAlign: 'center', fontFamily: 'var(--font-ui)', color: 'var(--ink-muted)' }}>Invoice not found.</div>;
 
   const biz       = invoice.businesses || {};
@@ -414,13 +414,13 @@ export default function InvoiceView() {
           </div>
 
           <div className="info-col-right" style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 30, fontWeight: 800, color: isReceipt ? '#16A34A' : '#1a1a1a', letterSpacing: '3px', textTransform: 'uppercase', lineHeight: 1, marginBottom: 12 }}>{docLabel}</div>
+            <div style={{ fontSize: 30, fontWeight: 700, color: isReceipt ? '#16A34A' : '#1a1a1a', letterSpacing: '3px', textTransform: 'uppercase', lineHeight: 1, marginBottom: 12 }}>{docLabel}</div>
             <div className="invoice-meta" style={{ display: 'grid', gridTemplateColumns: 'auto auto', gap: '5px 14px', justifyContent: 'end' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: '#aaa', textAlign: 'right', alignSelf: 'center' }}>NO</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textAlign: 'right', alignSelf: 'center' }}>NO</div>
               <div style={{ fontWeight: 600 }}>{invoice.invoice_number}</div>
-              <div style={{ fontSize: 10, fontWeight: 700, color: '#aaa', textAlign: 'right', alignSelf: 'center' }}>DATE</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textAlign: 'right', alignSelf: 'center' }}>DATE</div>
               <div>{formatDate(invoice.invoice_date)}</div>
-              <div style={{ fontSize: 10, fontWeight: 700, color: '#aaa', textAlign: 'right', alignSelf: 'center' }}>DUE DATE</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textAlign: 'right', alignSelf: 'center' }}>DUE DATE</div>
               <div>{formatDate(invoice.due_date)}</div>
             </div>
           </div>
@@ -433,8 +433,8 @@ export default function InvoiceView() {
               <tr style={{ background: '#EAE2D8', fontSize: 10, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#555' }}>
                 <th style={{ textAlign: 'left', padding: '8px 14px', width: 130 }}>Date</th>
                 <th style={{ textAlign: 'left', padding: '8px 14px' }}>Description</th>
-                <th style={{ textAlign: 'center', padding: '8px 14px', width: 85 }}>Rate / Hr</th>
-                <th style={{ textAlign: 'center', padding: '8px 14px', width: 75 }}>Hours</th>
+                {financials.isHourly && <th style={{ textAlign: 'center', padding: '8px 14px', width: 85 }}>Rate / Hr</th>}
+                {financials.isHourly && <th style={{ textAlign: 'center', padding: '8px 14px', width: 75 }}>Hours</th>}
                 <th style={{ textAlign: 'right', padding: '8px 14px', width: 100 }}>Amount</th>
               </tr>
             </thead>
@@ -448,12 +448,8 @@ export default function InvoiceView() {
                 <td style={{ padding: '8px 14px', verticalAlign: 'top' }}>
                   <div style={{ fontWeight: 600 }}>{job.service_name || 'Professional Services'}</div>
                 </td>
-                <td style={{ textAlign: 'center', padding: '8px 14px', color: '#555', verticalAlign: 'top' }}>
-                  {financials.isHourly ? `$${financials.rate.toFixed(2)}` : '—'}
-                </td>
-                <td style={{ textAlign: 'center', padding: '8px 14px', color: '#555', verticalAlign: 'top' }}>
-                  {financials.isHourly ? financials.hours.toFixed(1) : '—'}
-                </td>
+                {financials.isHourly && <td style={{ textAlign: 'center', padding: '8px 14px', color: '#555', verticalAlign: 'top' }}>${financials.rate.toFixed(2)}</td>}
+                {financials.isHourly && <td style={{ textAlign: 'center', padding: '8px 14px', color: '#555', verticalAlign: 'top' }}>{financials.hours.toFixed(1)}</td>}
                 <td style={{ textAlign: 'right', padding: '8px 14px', fontWeight: 600, verticalAlign: 'top' }}>
                   ${financials.subtotal.toFixed(2)}
                 </td>
@@ -465,7 +461,7 @@ export default function InvoiceView() {
                   <td style={{ padding: '6px 14px', verticalAlign: 'top' }}></td>
                   <td style={{ padding: '6px 14px', verticalAlign: 'top' }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 9, fontWeight: 700, color: '#E91E6A', letterSpacing: '1px', textTransform: 'uppercase' }}>
+                      <span style={{ fontSize: 9, fontWeight: 700, color: '#B01550', letterSpacing: '1px', textTransform: 'uppercase' }}>
                         Additional Cost
                       </span>
                       <span style={{ fontWeight: 500, color: '#333' }}>
@@ -473,8 +469,8 @@ export default function InvoiceView() {
                       </span>
                     </div>
                   </td>
-                  <td style={{ textAlign: 'center', padding: '6px 14px', verticalAlign: 'top' }}></td>
-                  <td style={{ textAlign: 'center', padding: '6px 14px', verticalAlign: 'top' }}></td>
+                  {financials.isHourly && <td style={{ textAlign: 'center', padding: '6px 14px', verticalAlign: 'top' }}></td>}
+                  {financials.isHourly && <td style={{ textAlign: 'center', padding: '6px 14px', verticalAlign: 'top' }}></td>}
                   <td style={{ textAlign: 'right', padding: '6px 14px', fontWeight: 500, verticalAlign: 'top' }}>
                     ${Number(item.amount).toFixed(2)}
                   </td>

@@ -12,12 +12,12 @@ function formatDate(dateStr) {
 
 const CREAM   = '#EAE2D8';
 const FAINT   = '#F5F1EC';
-const PINK    = '#E91E6A';
+const PINK    = '#B01550';
 const PAID    = '#16A34A';
 const INK     = '#1a1a1a';
 const MUTED   = '#555';
 const LIGHT   = '#888';
-const LABEL_C = '#aaa';
+const LABEL_C = '#6b7280';
 const BORDER  = '#f0f0f0';
 
 const s = StyleSheet.create({
@@ -207,8 +207,8 @@ function InvoiceDocument({ invoice }) {
       V({ style: s.tableHeaderRow },
         V({ style: s.cDate  }, T({ style: s.thText   }, 'Date')),
         V({ style: s.cDesc  }, T({ style: s.thText   }, 'Description')),
-        V({ style: s.cRate  }, T({ style: s.thCenter }, 'Rate / Hr')),
-        V({ style: s.cHours }, T({ style: s.thCenter }, 'Hours')),
+        f.isHourly ? V({ style: s.cRate  }, T({ style: s.thCenter }, 'Rate / Hr')) : null,
+        f.isHourly ? V({ style: s.cHours }, T({ style: s.thCenter }, 'Hours')) : null,
         V({ style: s.cAmt   }, T({ style: s.thRight  }, 'Amount')),
       ),
 
@@ -218,8 +218,8 @@ function InvoiceDocument({ invoice }) {
         V({ style: s.cDesc  },
           T({ style: s.tdBold }, job.service_name || 'Professional Services'),
         ),
-        V({ style: s.cRate  }, T({ style: s.tdCenter }, f.isHourly ? `$${f.rate.toFixed(2)}` : '—')),
-        V({ style: s.cHours }, T({ style: s.tdCenter }, f.isHourly ? f.hours.toFixed(1) : '—')),
+        f.isHourly ? V({ style: s.cRate  }, T({ style: s.tdCenter }, `$${f.rate.toFixed(2)}`)) : null,
+        f.isHourly ? V({ style: s.cHours }, T({ style: s.tdCenter }, f.hours.toFixed(1))) : null,
         V({ style: s.cAmt   }, T({ style: s.tdRight  }, `$${f.subtotal.toFixed(2)}`)),
       ),
 
@@ -233,8 +233,8 @@ function InvoiceDocument({ invoice }) {
               item.description || 'Miscellaneous',
             ),
           ),
-          V({ style: s.cRate  }),
-          V({ style: s.cHours }),
+          f.isHourly ? V({ style: s.cRate  }) : null,
+          f.isHourly ? V({ style: s.cHours }) : null,
           V({ style: s.cAmt   }, T({ style: s.tdRightM }, `$${Number(item.amount).toFixed(2)}`)),
         )
       ),

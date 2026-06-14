@@ -555,12 +555,12 @@ export default function InvoiceView() {
         {/* Also paid for this client — jobs settled together on this receipt */}
         {invoice.alsoPaid?.length > 0 && (
           <div style={{ marginBottom: 14, borderTop: '2px solid #EAE2D8', paddingTop: 14 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, paddingBottom: 8, borderBottom: '1px solid #eee' }}>
-              <div style={{ ...LABEL }}>Also Paid for This Client</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#16A34A' }}>✓ Paid</div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: '#16A34A', fontVariantNumeric: 'tabular-nums' }}>${invoice.totalPaidAllJobs.toFixed(2)}</div>
-              </div>
+            <div style={{ marginBottom: 10 }}>
+              <span style={{ fontSize: 13, color: '#555' }}>
+                Remaining{' '}
+                <strong style={{ color: '#1a1a1a', fontVariantNumeric: 'tabular-nums' }}>${invoice.alsoPaid.reduce((s, { total }) => s + total, 0).toFixed(2)}</strong>
+                {' '}from this payment was also applied to:
+              </span>
             </div>
             <div style={{ display: 'flex', padding: '5px 6px', background: '#F5F1EC', borderRadius: 4, marginBottom: 2, fontSize: 9, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: '#999' }}>
               <div style={{ width: 110 }}>Date</div>
@@ -579,24 +579,15 @@ export default function InvoiceView() {
 
         {/* Payment + Thank you — kept together, never split across pages */}
         <div className="invoice-footer">
-          <div style={{ borderTop: '1px solid #eee', paddingTop: 9, marginBottom: 6 }}>
-            {isReceipt ? (
-              <>
-                <div style={LABEL}>Payment Received</div>
-                <div style={{ fontSize: 13, color: '#16A34A', fontWeight: 600 }}>
-                  ✓ Paid in full — Receipt #{invoice.invoice_number}
-                </div>
-              </>
-            ) : (
-              <>
-                <div style={LABEL}>Payment</div>
-                <div style={{ fontSize: 13, color: '#444', lineHeight: 1.6 }}>
-                  e-Transfer to <strong>{biz.email || 'sandra@supermomforhire.com'}</strong>
-                  <div style={{ color: '#888', fontSize: 12 }}>Reference: Invoice #{invoice.invoice_number}</div>
-                </div>
-              </>
-            )}
-          </div>
+          {!isReceipt && (
+            <div style={{ borderTop: '1px solid #eee', paddingTop: 9, marginBottom: 6 }}>
+              <div style={LABEL}>Payment</div>
+              <div style={{ fontSize: 13, color: '#444', lineHeight: 1.6 }}>
+                e-Transfer to <strong>{biz.email || 'sandra@supermomforhire.com'}</strong>
+                <div style={{ color: '#888', fontSize: 12 }}>Reference: Invoice #{invoice.invoice_number}</div>
+              </div>
+            </div>
+          )}
 
           <div style={{ textAlign: 'center', paddingTop: 2 }}>
             <div className="inv-display" style={{ fontSize: 17, fontWeight: 500, color: '#777', fontStyle: 'italic' }}>

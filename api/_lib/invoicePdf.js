@@ -295,12 +295,10 @@ function InvoiceDocument({ invoice }) {
       // ── Also paid for this client (jobs settled together on this receipt) ──
       invoice.alsoPaid?.length > 0 ?
         V({ style: s.outstandingWrap },
-          V({ style: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, paddingBottom: 4, borderBottomWidth: 1, borderBottomColor: '#eee' } },
-            T({ style: s.outSectionLabel }, 'Also Paid for This Client'),
-            V({ style: { flexDirection: 'row', alignItems: 'center' } },
-              T({ style: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: PAID, marginRight: 3 } }, '✓ Paid'),
-              T({ style: { fontSize: 10, fontFamily: 'Helvetica-Bold', color: PAID } }, `$${invoice.totalPaidAllJobs.toFixed(2)}`),
-            ),
+          T({ style: { fontSize: 10, color: MUTED, marginBottom: 7 } },
+            'Remaining ',
+            T({ style: { fontFamily: 'Helvetica-Bold', color: INK } }, `$${invoice.alsoPaid.reduce((s, { total }) => s + total, 0).toFixed(2)}`),
+            ' from this payment was also applied to:',
           ),
           V({ style: s.outHeaderRow },
             T({ style: [s.outDate, s.outHeaderText] }, 'Date'),
@@ -317,15 +315,11 @@ function InvoiceDocument({ invoice }) {
         )
       : null,
 
-      // ── Payment footer ──
-      V({ style: s.footerBorder },
-        T({ style: s.footerLabel }, isReceipt ? 'Payment Received' : 'Payment'),
-        T({ style: s.footerText  },
-          isReceipt
-            ? `Payment received in full. Thank you!\nReceipt #${invoice.invoice_number}`
-            : `e-Transfer to ${biz.email || 'sandra@supermomforhire.com'}\nReference: Invoice #${invoice.invoice_number}`
-        ),
-      ),
+      // ── Payment footer (only on unpaid invoices) ──
+      !isReceipt ? V({ style: s.footerBorder },
+        T({ style: s.footerLabel }, 'Payment'),
+        T({ style: s.footerText  }, `e-Transfer to ${biz.email || 'sandra@supermomforhire.com'}\nReference: Invoice #${invoice.invoice_number}`),
+      ) : null,
       T({ style: s.thankYou }, 'Thank you for letting Supermom save the day.'),
     )
   );

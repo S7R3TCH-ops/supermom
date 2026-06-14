@@ -138,13 +138,14 @@ A mobile-first CRM & operations web app for **Sandra**, a solo personal-life-ope
 
 ---
 
-## Current version: 0.12.46 — Jun 14, 2026
+## Current version: 0.12.47 — Jun 14, 2026
 
 Sandra's business is live — data wiped and re-provisioned Jun 9. App in active use.
 
 **⚠️ Multi-client git discipline**: Always push local commits before starting an online Claude Code session; always pull before the online session writes code.
 
 ### Recent changes (full history in `docs/changelog/` + `git log`)
+- **v0.12.47 (Jun 14)** — Settlement section header: "Also Paid for This Client / ✓ Paid $X" → plain sentence "Remaining **$X** from this payment was also applied to:" (amount bold, no green check). Footer: "Payment Received / Paid in Full" block removed for receipts — was redundant with the ✓ Paid mark on Invoice Total row; payment instructions only show on unpaid invoices now.
 - **v0.12.46 (Jun 14)** — Invoice WCAG/polish pass: `#aaa` label color → `#6b7280` (web + PDF, WCAG AA); "Additional Cost" pink → `#B01550`; flat-rate invoices no longer show dead Rate/Hr + Hours columns (hidden in both web table and PDF); raw Supabase error no longer exposed to clients — friendly message instead; INVOICE/RECEIPT heading `fontWeight 800` → `700`.
 - **v0.12.45 (Jun 14)** — Settlement total moved to top of "Also Paid" block header; removed redundant cream bar; PDF totals row `alignItems: flex-end`.
 - **v0.12.44 (Jun 14)** — PDF Payments Received column: `flex:1` → `width:160` to stay compact.

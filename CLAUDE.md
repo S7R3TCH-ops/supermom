@@ -133,7 +133,7 @@ This is a **managed service product** — Sandra is the first user, but the arch
 
 ---
 
-## Current version: 0.12.44 — Jun 14, 2026
+## Current version: 0.12.45 — Jun 14, 2026
 
 Sandra's business is live — data wiped and re-provisioned Jun 9. App is in active use.
 
@@ -141,6 +141,7 @@ Sandra's business is live — data wiped and re-provisioned Jun 9. App is in act
 CLAUDE.md is the only shared truth across online / desktop / CLI sessions. Memory files are local-only. **Always push local commits before starting an online Claude Code session**, and always pull before the online session writes code — otherwise the online session will push stale commits and overwrite newer local work (happened Jun 4, 2026).
 
 ### Recent changes — run `git log --oneline -10` for full detail
+- **v0.12.45 (Jun 14)** — Invoice settlement total layout fix. Removed confusing "Settlement total" row from inside the Payments Received column (it sat right beside "Invoice Total" with a different number). Now shows as a header-level "Also Paid for This Client / ✓ Paid $X" summary at the top of the "Also Paid" block, above the per-job rows. Removed the redundant "Total Owing — All Jobs" cream bar at the bottom of that block. PDF totals row: `alignItems: flex-start` → `flex-end` so the Payments Received column bottom-aligns with the Invoice Total row (now matches web behaviour).
 - **v0.12.44 (Jun 14)** — PDF receipt Payments Received column fix. Left column was `flex:1` in `api/_lib/invoicePdf.js`, making it fill the full white space beside the totals. Changed to `width:160` so it stays compact, matching the web view fix from v0.12.43.
 - **v0.12.43 (Jun 14)** — Invoice/receipt layout tightening + tooling. Payments Received column no longer fills the left white space — removed `flex:1`, now `maxWidth:210px`, content-sized. Container changed to `alignItems:flex-end` so the payment list grows upward from the bottom of the Invoice Total row. "Invoice Ready" banner in `PostJobSheet` now reads "Receipt Ready" when `payStatus === 'paid'`; in `JobDetailSheet` reads "Receipt Ready" when `isPaid` is true. Pre-push hook (`.git/hooks/pre-push`) upgraded from soft warning → hard block: pushes to `src/`, `api/`, `scripts/`, or `package.json` are now rejected unless CLAUDE.md is also in the push range. Bypass: `git push --no-verify`.
 - **v0.12.42 (Jun 14)** — Admin "Mark as Unpaid" + receipt layout polish. (1) `JobDetailSheet` admin section: new "Mark as Unpaid (Admin)" button (visible only on Paid/Partial jobs) with two-tap confirm — deletes all `payments` rows for the job and resets `payment_status = ''` (empty string is the unpaid sentinel; check constraint rejects `'Unpaid'`). Added `markJobUnpaid(id)` to `jobsRepo.js`. (2) Receipt layout: Payments Received section moved to LEFT white space beside the totals column (both web + PDF) — plain date + amount, no green, no `+`. `✓ Paid` label now appears BEFORE the amount on Invoice Total and grand total bar. When `alsoPaid.length > 0`, a grey "Settlement total" secondary line appears below the payment rows showing the combined amount across all settled jobs. "Also Paid" column header changed from "Paid" → "Amount". Grand total bar label changed from "Total Paid — All Jobs" → "Total Owing — All Jobs". `InvoiceView.jsx` and `api/_lib/invoicePdf.js` kept in sync.

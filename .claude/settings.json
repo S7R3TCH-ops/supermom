@@ -15,21 +15,6 @@
         ]
       }
     ],
-    "PostToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "git -C 'C:/Projects/supermom' push 2>&1; exit 0",
-            "if": "Bash(git commit *)",
-            "shell": "powershell",
-            "statusMessage": "Pushing commits to remote...",
-            "timeout": 30
-          }
-        ]
-      }
-    ],
     "UserPromptSubmit": [
       {
         "hooks": [

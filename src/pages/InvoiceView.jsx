@@ -499,6 +499,12 @@ export default function InvoiceView() {
                   <div style={{ fontVariantNumeric: 'tabular-nums' }}>${Number(p.amount).toFixed(2)}</div>
                 </div>
               ))}
+              {invoice.alsoPaid?.length > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', marginTop: 4, borderTop: '1px solid #eee', fontSize: 11, color: '#999' }}>
+                  <div>Settlement total</div>
+                  <div style={{ fontVariantNumeric: 'tabular-nums' }}>${invoice.totalPaidAllJobs.toFixed(2)}</div>
+                </div>
+              )}
             </div>
           ) : <div style={{ flex: 1 }} />}
 

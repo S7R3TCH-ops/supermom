@@ -251,6 +251,12 @@ function InvoiceDocument({ invoice }) {
                   T({ style: { fontSize: 9, color: INK    } }, `$${Number(p.amount).toFixed(2)}`),
                 )
               ),
+              invoice.alsoPaid?.length > 0
+                ? V({ style: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4, paddingTop: 3, borderTopWidth: 1, borderTopColor: '#eee' } },
+                    T({ style: { fontSize: 8, color: LIGHT } }, 'Settlement total'),
+                    T({ style: { fontSize: 8, color: LIGHT } }, `$${invoice.totalPaidAllJobs.toFixed(2)}`),
+                  )
+                : null,
             )
           : V({ style: { flex: 1 } }),
         // Right — subtotal / HST / invoice total / remaining

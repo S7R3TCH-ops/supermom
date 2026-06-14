@@ -127,8 +127,8 @@ function InvoiceDocument({ invoice }) {
   const totalRow = V({ style: s.tDueRow, key: 'total' },
     T({ style: s.tDueLabel }, 'Invoice Total'),
     V({ style: { flexDirection: 'row', alignItems: 'center' } },
+      isReceipt ? T({ style: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: PAID, marginRight: 4 } }, '✓ Paid') : null,
       T({ style: [s.tDueVal, isReceipt ? { color: PAID } : {}] }, `$${f.total.toFixed(2)}`),
-      isReceipt ? T({ style: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: PAID, marginLeft: 4 } }, '✓ Paid') : null,
     ),
   );
 
@@ -239,9 +239,22 @@ function InvoiceDocument({ invoice }) {
         )
       ),
 
-      // ── Totals ──
-      V({ style: s.totalsWrap },
-        V({ style: s.totalsInner },
+      // ── Totals (two-column: payments left, subtotal/total right) ──
+      V({ style: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: 4, marginBottom: 10 } },
+        // Left — payments received, fills white space beside totals column
+        invoice.payments?.length > 0
+          ? V({ style: { flex: 1, marginRight: 16 } },
+              T({ style: { fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#999', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 5 } }, 'Payments Received'),
+              ...invoice.payments.map((p, i) =>
+                V({ key: p.id ?? `pmt-${i}`, style: { flexDirection: 'row', justifyContent: 'space-between', paddingTop: 2, paddingBottom: 2 } },
+                  T({ style: { fontSize: 9, color: MUTED } }, formatDate(p.payment_date)),
+                  T({ style: { fontSize: 9, color: INK    } }, `$${Number(p.amount).toFixed(2)}`),
+                )
+              ),
+            )
+          : V({ style: { flex: 1 } }),
+        // Right — subtotal / HST / invoice total / remaining
+        V({ style: { width: 200 } },
           V({ style: s.tRow },
             T({ style: s.tLabel }, 'Subtotal'),
             T({ style: s.tVal   }, `$${(f.subtotal + f.additionalTotal).toFixed(2)}`),
@@ -251,7 +264,6 @@ function InvoiceDocument({ invoice }) {
             T({ style: s.tVal   }, `$${f.taxAmount.toFixed(2)}`),
           ) : null,
           totalRow,
-          paymentsBlock,
           balanceRow,
         ),
       ),
@@ -300,8 +312,8 @@ function InvoiceDocument({ invoice }) {
           V({ style: s.outTotalRow },
             T({ style: s.outTotalLabel }, 'Total Owing — All Jobs'),
             V({ style: { flexDirection: 'row', alignItems: 'center' } },
+              T({ style: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: PAID, marginRight: 4 } }, '✓ Paid'),
               T({ style: s.paidTotalVal  }, `$${invoice.totalPaidAllJobs.toFixed(2)}`),
-              T({ style: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: PAID, marginLeft: 4 } }, '✓ Paid'),
             ),
           ),
         )

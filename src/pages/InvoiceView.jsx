@@ -486,8 +486,24 @@ export default function InvoiceView() {
         </div>
 
         {/* Totals */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 14 }}>
-          <div style={{ width: 280 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14, gap: 20 }}>
+          {/* Left — payments received, uses the white space beside the totals column */}
+          {invoice.payments?.length > 0 ? (
+            <div style={{ flex: 1, paddingTop: 2 }}>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: '#999', marginBottom: 5 }}>
+                Payments Received
+              </div>
+              {invoice.payments.map(p => (
+                <div key={p.id ?? `${p.payment_date}-${p.amount}`} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', fontSize: 12, color: '#555' }}>
+                  <div>{formatDate(p.payment_date)}</div>
+                  <div style={{ fontVariantNumeric: 'tabular-nums' }}>${Number(p.amount).toFixed(2)}</div>
+                </div>
+              ))}
+            </div>
+          ) : <div style={{ flex: 1 }} />}
+
+          {/* Right — subtotal / HST / invoice total / remaining */}
+          <div style={{ width: 280, flexShrink: 0 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 14px', fontSize: 13, color: '#555' }}>
               <div>Subtotal</div>
               <div>${(financials.subtotal + financials.additionalTotal).toFixed(2)}</div>
@@ -501,31 +517,14 @@ export default function InvoiceView() {
             <div style={{ background: '#EAE2D8', padding: '9px 14px', marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: 6 }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#555' }}>Invoice Total</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div className="inv-display" style={{ fontSize: 17, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: invoice.isPaidInFull ? '#16A34A' : 'inherit' }}>${financials.total.toFixed(2)}</div>
                 {invoice.isPaidInFull && <div style={{ fontSize: 11, fontWeight: 700, color: '#16A34A' }}>✓ Paid</div>}
+                <div className="inv-display" style={{ fontSize: 17, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: invoice.isPaidInFull ? '#16A34A' : 'inherit' }}>${financials.total.toFixed(2)}</div>
               </div>
             </div>
-
-            {invoice.payments?.length > 0 && (
-              <div style={{ marginTop: 6 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 14px', fontSize: 9, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: '#999' }}>
-                  <div>Payments Received</div>
-                  <div>Amount</div>
-                </div>
-                {invoice.payments.map(p => (
-                  <div key={p.id ?? `${p.payment_date}-${p.amount}`} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 14px', fontSize: 12, color: '#555' }}>
-                    <div>{formatDate(p.payment_date)}</div>
-                    <div style={{ color: '#16A34A', fontWeight: 600 }}>+${Number(p.amount).toFixed(2)}</div>
-                  </div>
-                ))}
-                {!invoice.isPaidInFull && (
-                  <div style={{ padding: '7px 14px', marginTop: 4, borderTop: '1px solid #eee' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#555' }}>Remaining</div>
-                      <div style={{ fontSize: 15, fontWeight: 700, color: '#DC2626' }}>${invoice.balanceOwing.toFixed(2)}</div>
-                    </div>
-                  </div>
-                )}
+            {!invoice.isPaidInFull && invoice.payments?.length > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 14px', marginTop: 2 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#555' }}>Remaining</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: '#DC2626' }}>${invoice.balanceOwing.toFixed(2)}</div>
               </div>
             )}
           </div>
@@ -579,8 +578,8 @@ export default function InvoiceView() {
             <div style={{ background: '#EAE2D8', padding: '10px 14px', marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: 6 }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#555' }}>Total Owing — All Jobs</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div className="inv-display" style={{ fontSize: 18, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#16A34A' }}>${invoice.totalPaidAllJobs.toFixed(2)}</div>
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#16A34A' }}>✓ Paid</div>
+                <div className="inv-display" style={{ fontSize: 18, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#16A34A' }}>${invoice.totalPaidAllJobs.toFixed(2)}</div>
               </div>
             </div>
           </div>

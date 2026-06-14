@@ -346,6 +346,18 @@ export async function hardDeleteJob(id) {
   if (error) throw error;
 }
 
+export async function markJobUnpaid(id) {
+  const businessId = await getCurrentBusinessId();
+  const { error: delErr } = await supabase.from('payments').delete().eq('job_id', id);
+  if (delErr) throw delErr;
+  const { error } = await supabase
+    .from('jobs')
+    .update({ payment_status: 'Unpaid', payment_method: null })
+    .eq('id', id)
+    .eq('business_id', businessId);
+  if (error) throw error;
+}
+
 // eslint-disable-next-line no-unused-vars
 export async function recordPayment(jobId, amount, method = 'Cash', _paymentStatus = null, duration = null, jobNotes = null, additionalCosts = [], completionNotes = null, workerPaid = null, taxOverride = null) {
   const businessId = await getCurrentBusinessId();

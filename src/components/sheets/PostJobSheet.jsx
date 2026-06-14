@@ -35,7 +35,9 @@ export default function PostJobSheet({ jobId, onClose }) {
   const { panelRef: swipePanelRef, scrollRef: swipeScrollRef, handlers: swipeHandlers } = useSwipeToDismiss(onClose);
 
   // Derived state defined early to satisfy linter and simplify logic
-  const totalAmt = parseFloat(job?.total_amount ?? job?.flat_rate ?? 0);
+  // Use flat_rate (pre-tax base set at booking) or subtotal DB column (pre-tax base written by recordPayment).
+  // Never use total_amount — it becomes tax-inclusive after recordPayment runs, causing double-HST.
+  const totalAmt = parseFloat(job?.flat_rate ?? job?.subtotal ?? 0);
   const isHourly = job?.pricing_type === 'Hourly';
   const hourlyRate = useMemo(() => {
     if (!job) return 0;

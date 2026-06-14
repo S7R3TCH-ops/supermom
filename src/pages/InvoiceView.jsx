@@ -499,12 +499,6 @@ export default function InvoiceView() {
                   <div style={{ fontVariantNumeric: 'tabular-nums' }}>${Number(p.amount).toFixed(2)}</div>
                 </div>
               ))}
-              {invoice.alsoPaid?.length > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '1px 0', marginTop: 3, borderTop: '1px solid #eee', fontSize: 11, color: '#999' }}>
-                  <div>Settlement total</div>
-                  <div style={{ fontVariantNumeric: 'tabular-nums' }}>${invoice.totalPaidAllJobs.toFixed(2)}</div>
-                </div>
-              )}
             </div>
           ) : <div />}
 
@@ -565,9 +559,12 @@ export default function InvoiceView() {
         {/* Also paid for this client — jobs settled together on this receipt */}
         {invoice.alsoPaid?.length > 0 && (
           <div style={{ marginBottom: 14, borderTop: '2px solid #EAE2D8', paddingTop: 14 }}>
-            <div style={{ marginBottom: 8 }}>
-              <div style={{ ...LABEL, marginBottom: 3 }}>Also Paid for This Client</div>
-              <div style={{ fontSize: 11, color: '#888' }}>Other completed jobs settled with this payment</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, paddingBottom: 8, borderBottom: '1px solid #eee' }}>
+              <div style={{ ...LABEL }}>Also Paid for This Client</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#16A34A' }}>✓ Paid</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: '#16A34A', fontVariantNumeric: 'tabular-nums' }}>${invoice.totalPaidAllJobs.toFixed(2)}</div>
+              </div>
             </div>
             <div style={{ display: 'flex', padding: '5px 6px', background: '#F5F1EC', borderRadius: 4, marginBottom: 2, fontSize: 9, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: '#999' }}>
               <div style={{ width: 110 }}>Date</div>
@@ -581,13 +578,6 @@ export default function InvoiceView() {
                 <div style={{ color: '#16A34A', fontWeight: 700, textAlign: 'right', width: 80 }}>✓ ${total.toFixed(2)}</div>
               </div>
             ))}
-            <div style={{ background: '#EAE2D8', padding: '10px 14px', marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: 6 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#555' }}>Total Owing — All Jobs</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#16A34A' }}>✓ Paid</div>
-                <div className="inv-display" style={{ fontSize: 18, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#16A34A' }}>${invoice.totalPaidAllJobs.toFixed(2)}</div>
-              </div>
-            </div>
           </div>
         )}
 

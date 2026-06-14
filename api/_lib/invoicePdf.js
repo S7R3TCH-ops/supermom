@@ -240,7 +240,7 @@ function InvoiceDocument({ invoice }) {
       ),
 
       // ── Totals (two-column: payments left, subtotal/total right) ──
-      V({ style: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: 4, marginBottom: 10 } },
+      V({ style: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 4, marginBottom: 10 } },
         // Left — payments received, fills white space beside totals column
         invoice.payments?.length > 0
           ? V({ style: { width: 160, marginRight: 16 } },
@@ -251,12 +251,6 @@ function InvoiceDocument({ invoice }) {
                   T({ style: { fontSize: 9, color: INK    } }, `$${Number(p.amount).toFixed(2)}`),
                 )
               ),
-              invoice.alsoPaid?.length > 0
-                ? V({ style: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4, paddingTop: 3, borderTopWidth: 1, borderTopColor: '#eee' } },
-                    T({ style: { fontSize: 8, color: LIGHT } }, 'Settlement total'),
-                    T({ style: { fontSize: 8, color: LIGHT } }, `$${invoice.totalPaidAllJobs.toFixed(2)}`),
-                  )
-                : null,
             )
           : V({ style: {} }),
         // Right — subtotal / HST / invoice total / remaining
@@ -301,8 +295,13 @@ function InvoiceDocument({ invoice }) {
       // ── Also paid for this client (jobs settled together on this receipt) ──
       invoice.alsoPaid?.length > 0 ?
         V({ style: s.outstandingWrap },
-          T({ style: s.outSectionLabel }, 'Also Paid for This Client'),
-          T({ style: s.outSectionDesc  }, 'Other completed jobs settled with this payment'),
+          V({ style: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, paddingBottom: 4, borderBottomWidth: 1, borderBottomColor: '#eee' } },
+            T({ style: s.outSectionLabel }, 'Also Paid for This Client'),
+            V({ style: { flexDirection: 'row', alignItems: 'center' } },
+              T({ style: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: PAID, marginRight: 3 } }, '✓ Paid'),
+              T({ style: { fontSize: 10, fontFamily: 'Helvetica-Bold', color: PAID } }, `$${invoice.totalPaidAllJobs.toFixed(2)}`),
+            ),
+          ),
           V({ style: s.outHeaderRow },
             T({ style: [s.outDate, s.outHeaderText] }, 'Date'),
             T({ style: [s.outDesc, s.outHeaderText] }, 'Service'),
@@ -314,13 +313,6 @@ function InvoiceDocument({ invoice }) {
               T({ style: s.outDesc }, paidJob.service_name || 'Professional Services'),
               T({ style: s.paidAmt }, `✓ $${total.toFixed(2)}`),
             )
-          ),
-          V({ style: s.outTotalRow },
-            T({ style: s.outTotalLabel }, 'Total Owing — All Jobs'),
-            V({ style: { flexDirection: 'row', alignItems: 'center' } },
-              T({ style: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: PAID, marginRight: 4 } }, '✓ Paid'),
-              T({ style: s.paidTotalVal  }, `$${invoice.totalPaidAllJobs.toFixed(2)}`),
-            ),
           ),
         )
       : null,

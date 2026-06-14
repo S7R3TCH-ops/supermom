@@ -151,7 +151,7 @@ export function toDisplayJob(jobRow, clientLookup = {}, workerLookup = {}, payme
     service_name: jobRow.service_name || 'Service',
     scheduled_at: jobRow.scheduled_at,
     duration_est: jobRow.duration_est,
-    total: Number(jobRow.total_amount || 0),
+    total: computeJobTotal(jobRow),
     amount_paid: paymentsByJobId[jobRow.id] || 0,
     status: jobRow.job_status || 'Scheduled',
     payment_status: jobRow.payment_status || '',

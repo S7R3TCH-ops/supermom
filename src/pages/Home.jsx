@@ -292,7 +292,7 @@ export default function Home() {
 
   const collectedThisWeek = useMemo(() => {
     return allWeekJobs.reduce((s, j) => {
-      if (j.payment_status === 'Paid') return s + computeJobSubtotal(j);
+      if (j.payment_status === 'Paid') return s + computeJobTotal(j);
       if (j.payment_status === 'Partial') return s + (paymentMap[j.id] || 0);
       return s;
     }, 0);

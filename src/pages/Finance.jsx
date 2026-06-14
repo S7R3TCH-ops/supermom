@@ -312,7 +312,11 @@ export default function Finance() {
   const outstandingItems = useMemo(() =>
     completedPeriodJobs
       .filter(j => j.payment_status !== 'Paid')
-      .map(j => ({ ...j.raw, client_name: j.client_name, total: computeJobFinancials(j).total })),
+      .map(j => {
+        const total = computeJobFinancials(j).total;
+        const owing = Math.max(0, total - (j.amount_paid || 0));
+        return { ...j.raw, client_name: j.client_name, total: owing };
+      }),
     [completedPeriodJobs],
   );
 

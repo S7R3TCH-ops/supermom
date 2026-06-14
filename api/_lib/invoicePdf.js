@@ -101,6 +101,9 @@ const s = StyleSheet.create({
   outTotalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: CREAM, paddingTop: 8, paddingBottom: 8, paddingLeft: 10, paddingRight: 10, borderRadius: 4, marginTop: 7 },
   outTotalLabel: { fontSize: 7, fontFamily: 'Helvetica-Bold', color: MUTED, letterSpacing: 0.8, textTransform: 'uppercase' },
   outTotalVal:   { fontSize: 15, fontFamily: 'Helvetica-Bold', color: '#DC2626' },
+  // Also paid for this client — same layout as outstanding, paid (green) amounts
+  paidAmt:      { fontSize: 9, fontFamily: 'Helvetica-Bold', color: PAID, textAlign: 'right', width: 64 },
+  paidTotalVal: { fontSize: 15, fontFamily: 'Helvetica-Bold', color: PAID },
   // Footer
   footerBorder: { borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 9, marginBottom: 10 },
   footerLabel:  { fontSize: 7, fontFamily: 'Helvetica-Bold', color: LABEL_C, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 5 },
@@ -272,6 +275,30 @@ function InvoiceDocument({ invoice }) {
           V({ style: s.outTotalRow },
             T({ style: s.outTotalLabel }, 'Total Owed — All Jobs'),
             T({ style: s.outTotalVal   }, `$${invoice.runningTotalOwing.toFixed(2)}`),
+          ),
+        )
+      : null,
+
+      // ── Also paid for this client (jobs settled together on this receipt) ──
+      invoice.alsoPaid?.length > 0 ?
+        V({ style: s.outstandingWrap },
+          T({ style: s.outSectionLabel }, 'Also Paid for This Client'),
+          T({ style: s.outSectionDesc  }, 'Other completed jobs settled with this payment'),
+          V({ style: s.outHeaderRow },
+            T({ style: [s.outDate, s.outHeaderText] }, 'Date'),
+            T({ style: [s.outDesc, s.outHeaderText] }, 'Service'),
+            T({ style: [s.paidAmt, s.outHeaderText] }, 'Paid'),
+          ),
+          ...invoice.alsoPaid.map(({ job: paidJob, total }) =>
+            V({ key: paidJob.id, style: s.outRow },
+              T({ style: s.outDate }, paidJob.scheduled_date ? formatDate(paidJob.scheduled_date) : '—'),
+              T({ style: s.outDesc }, paidJob.service_name || 'Professional Services'),
+              T({ style: s.paidAmt }, `$${total.toFixed(2)}`),
+            )
+          ),
+          V({ style: s.outTotalRow },
+            T({ style: s.outTotalLabel }, 'Total Paid — All Jobs'),
+            T({ style: s.paidTotalVal  }, `$${invoice.totalPaidAllJobs.toFixed(2)}`),
           ),
         )
       : null,

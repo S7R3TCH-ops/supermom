@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { fetchInvoiceById } from '../data/invoicesRepo';
+import { fetchInvoiceById, settleInvoiceOutstanding, voidInvoiceSettlement } from '../data/invoicesRepo';
 import { computeJobFinancials } from '../lib/financialMath';
+import { useAuth } from '../context/AuthContext';
+import { getCurrentBusinessId } from '../data/currentBusiness';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
@@ -15,12 +17,19 @@ const LABEL = { fontSize: 10, fontWeight: 700, color: '#aaa', textTransform: 'up
 
 export default function InvoiceView() {
   const { id } = useParams();
+  const { session } = useAuth();
   const [invoice, setInvoice]       = useState(null);
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState(null);
   const [emailState, setEmailState] = useState('idle');
   const [invoiceSentAt, setInvoiceSentAt] = useState(null);
   const [receiptSentAt, setReceiptSentAt] = useState(null);
+  const [isOwner, setIsOwner]       = useState(false);
+  const [settleState, setSettleState] = useState('idle'); // idle | saving | error
+  const [method, setMethod]         = useState('e-Transfer');
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [confirmUndo, setConfirmUndo] = useState(false);
+  const settlingRef = useRef(false);
   const wrapRef = useRef(null);
   const boxRef = useRef(null);
   const [scale, setScale] = useState(1);
@@ -42,17 +51,42 @@ export default function InvoiceView() {
     return () => ro.disconnect();
   }, [invoice]);
 
-  useEffect(() => {
-    fetchInvoiceById(id)
+  function reload() {
+    return fetchInvoiceById(id)
       .then(inv => {
         setInvoice(inv);
         const j = inv.invoice_jobs?.[0]?.jobs || {};
         setInvoiceSentAt(j.invoice_sent_at || null);
         setReceiptSentAt(j.receipt_sent_at || null);
-      })
+        // Default every outstanding job to selected on (re)load.
+        const ids = [];
+        if (j?.id && inv.balanceOwing > 0.01) ids.push(j.id);
+        (inv.otherOutstanding ?? []).forEach(b => ids.push(b.job.id));
+        setSelectedIds(new Set(ids));
+        return inv;
+      });
+  }
+
+  useEffect(() => {
+    reload()
       .catch(err => { console.error('Failed to load invoice:', err); setError(err.message); })
       .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Owner-only actions: this page is public (/i/:id), so gate mutating UI behind a logged-in
+  // session whose business matches the invoice. Mutations are also RLS-protected server-side.
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      if (!session || !invoice) { if (alive) setIsOwner(false); return; }
+      try {
+        const bid = await getCurrentBusinessId();
+        if (alive) setIsOwner(!!bid && bid === invoice.business_id);
+      } catch { if (alive) setIsOwner(false); }
+    })();
+    return () => { alive = false; };
+  }, [session, invoice]);
 
   if (loading) return <div style={{ padding: 40, textAlign: 'center', fontFamily: 'var(--font-ui)', color: 'var(--ink-muted)' }}>Loading Invoice…</div>;
   if (error)   return <div style={{ padding: 40, textAlign: 'center', fontFamily: 'var(--font-ui)', color: 'var(--red)' }}>Error: {error}</div>;
@@ -67,6 +101,64 @@ export default function InvoiceView() {
   const logoSrc    = biz.logo_url || '/branding/logo-final.png';
   const bizCity    = [biz.city, biz.province].filter(Boolean).join(', ');
   const clientCity = [[client.city, client.province].filter(Boolean).join(', '), client.postal_code].filter(Boolean).join(' ');
+
+  // Outstanding jobs that the owner can settle from this invoice (current job + others).
+  const outstandingJobs = [];
+  if (job?.id && invoice.balanceOwing > 0.01) {
+    outstandingJobs.push({ id: job.id, label: job.service_name || 'Professional Services', date: job.scheduled_date, owing: invoice.balanceOwing, isCurrent: true });
+  }
+  (invoice.otherOutstanding ?? []).forEach(b => {
+    outstandingJobs.push({ id: b.job.id, label: b.job.service_name || 'Professional Services', date: b.job.scheduled_date, owing: b.owing, isCurrent: false });
+  });
+  const selectedTotal = outstandingJobs
+    .filter(j => selectedIds.has(j.id))
+    .reduce((s, j) => s + j.owing, 0);
+  const showSettlePanel = isOwner && outstandingJobs.length > 0;
+  const showUndo = isOwner && (invoice.settlementCount || 0) > 0;
+
+  function toggleJob(jobId) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(jobId)) next.delete(jobId); else next.add(jobId);
+      return next;
+    });
+  }
+
+  async function handleSettle() {
+    if (settlingRef.current || selectedIds.size === 0) return;
+    settlingRef.current = true;
+    setSettleState('saving');
+    try {
+      await settleInvoiceOutstanding(id, method, [...selectedIds]);
+      await reload();
+      setSettleState('idle');
+    } catch (e) {
+      console.error('Settle error:', e);
+      setSettleState('error');
+      setTimeout(() => setSettleState('idle'), 4000);
+    } finally {
+      settlingRef.current = false;
+    }
+  }
+
+  async function handleUndo() {
+    if (settlingRef.current) return;
+    if (!confirmUndo) { setConfirmUndo(true); setTimeout(() => setConfirmUndo(false), 4000); return; }
+    setConfirmUndo(false);
+    settlingRef.current = true;
+    setSettleState('saving');
+    try {
+      await voidInvoiceSettlement(id);
+      await reload();
+      setSettleState('idle');
+    } catch (e) {
+      console.error('Undo error:', e);
+      setSettleState('error');
+      setTimeout(() => setSettleState('idle'), 4000);
+    } finally {
+      settlingRef.current = false;
+    }
+  }
 
   async function handleEmail() {
     if (!client.email) return;
@@ -225,6 +317,61 @@ export default function InvoiceView() {
           </button>
         </div>
       </div>
+
+      {/* Owner-only payment panel — never printed / not on PDF */}
+      {showSettlePanel && (
+        <div className="no-print" style={{ maxWidth: 800, margin: '0 auto 15px', background: 'white', border: '1.5px solid #FFD6E8', borderRadius: 12, padding: '14px 16px' }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--pink)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 10 }}>Record Payment</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+            {outstandingJobs.map(j => (
+              <label key={j.id} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, color: '#333' }}>
+                <input type="checkbox" checked={selectedIds.has(j.id)} onChange={() => toggleJob(j.id)} style={{ width: 18, height: 18, accentColor: '#E91E6A' }} />
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  {j.isCurrent && <span style={{ fontSize: 9, fontWeight: 700, color: '#E91E6A', textTransform: 'uppercase', marginRight: 6 }}>This Invoice</span>}
+                  {j.label}
+                  <span style={{ color: '#999' }}>{j.date ? ` · ${formatDate(j.date)}` : ''}</span>
+                </span>
+                <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>${j.owing.toFixed(2)}</span>
+              </label>
+            ))}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <select value={method} onChange={e => setMethod(e.target.value)} style={{ padding: '8px 10px', borderRadius: 8, border: '1.5px solid #ddd', fontSize: 13, fontWeight: 600, color: '#333' }}>
+              <option value="e-Transfer">e-Transfer</option>
+              <option value="Cash">Cash</option>
+            </select>
+            <button
+              onClick={handleSettle}
+              disabled={selectedIds.size === 0 || settleState === 'saving'}
+              style={{
+                flex: 1, minWidth: 180,
+                background: settleState === 'saving' ? '#ccc' : selectedIds.size === 0 ? '#eee' : '#16A34A',
+                color: selectedIds.size === 0 ? '#aaa' : 'white', border: 'none',
+                padding: '10px 14px', borderRadius: 8, fontSize: 14, fontWeight: 700,
+                cursor: selectedIds.size === 0 || settleState === 'saving' ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {settleState === 'saving' ? 'Saving…' : settleState === 'error' ? '✗ Failed — retry' : `Mark Paid — $${selectedTotal.toFixed(2)}`}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showUndo && (
+        <div className="no-print" style={{ maxWidth: 800, margin: '0 auto 15px', display: 'flex', justifyContent: 'flex-end' }}>
+          <button
+            onClick={handleUndo}
+            disabled={settleState === 'saving'}
+            style={{
+              background: 'white', color: confirmUndo ? '#DC2626' : 'var(--ink-muted)',
+              border: `1.5px solid ${confirmUndo ? '#DC2626' : '#ddd'}`,
+              padding: '7px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+            }}
+          >
+            {settleState === 'saving' ? 'Working…' : confirmUndo ? 'Tap again to undo payment' : '↩ Undo Payment'}
+          </button>
+        </div>
+      )}
 
       <div ref={wrapRef} className="invoice-scale-wrap" style={{ overflow: 'hidden', height: scale < 1 && boxNaturalH ? boxNaturalH * scale : 'auto' }}>
       <div ref={boxRef} className="invoice-box" style={scale < 1 ? { transform: `scale(${scale})`, transformOrigin: 'top left', width: 800, maxWidth: 'none' } : {}}>
@@ -405,6 +552,32 @@ export default function InvoiceView() {
             <div style={{ background: '#EAE2D8', padding: '10px 14px', marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: 6 }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#555' }}>Total Owed — All Jobs</div>
               <div className="inv-display" style={{ fontSize: 18, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#DC2626' }}>${invoice.runningTotalOwing.toFixed(2)}</div>
+            </div>
+          </div>
+        )}
+
+        {/* Also paid for this client — jobs settled together on this receipt */}
+        {invoice.alsoPaid?.length > 0 && (
+          <div style={{ marginBottom: 14, borderTop: '2px solid #EAE2D8', paddingTop: 14 }}>
+            <div style={{ marginBottom: 8 }}>
+              <div style={{ ...LABEL, marginBottom: 3 }}>Also Paid for This Client</div>
+              <div style={{ fontSize: 11, color: '#888' }}>Other completed jobs settled with this payment</div>
+            </div>
+            <div style={{ display: 'flex', padding: '5px 6px', background: '#F5F1EC', borderRadius: 4, marginBottom: 2, fontSize: 9, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: '#999' }}>
+              <div style={{ width: 110 }}>Date</div>
+              <div style={{ flex: 1 }}>Service</div>
+              <div style={{ width: 80, textAlign: 'right' }}>Paid</div>
+            </div>
+            {invoice.alsoPaid.map(({ job: paidJob, total }) => (
+              <div key={paidJob.id} style={{ display: 'flex', padding: '5px 6px', fontSize: 12, borderBottom: '1px solid #f5f5f5' }}>
+                <div style={{ color: '#555', width: 110 }}>{paidJob.scheduled_date ? formatDate(paidJob.scheduled_date) : '—'}</div>
+                <div style={{ color: '#1a1a1a', flex: 1 }}>{paidJob.service_name || 'Professional Services'}</div>
+                <div style={{ color: '#16A34A', fontWeight: 700, textAlign: 'right', width: 80 }}>✓ ${total.toFixed(2)}</div>
+              </div>
+            ))}
+            <div style={{ background: '#EAE2D8', padding: '10px 14px', marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: 6 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#555' }}>Total Paid — All Jobs</div>
+              <div className="inv-display" style={{ fontSize: 18, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#16A34A' }}>${invoice.totalPaidAllJobs.toFixed(2)}</div>
             </div>
           </div>
         )}

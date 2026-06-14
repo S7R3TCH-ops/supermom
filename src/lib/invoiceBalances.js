@@ -14,7 +14,7 @@ export async function decorateInvoiceWithBalances(supabase, invoice) {
   const clientId = invoice.client_id;
   const business = invoice.businesses || null;
 
-  const empty = { amountPaid: 0, balanceOwing: 0, isPaidInFull: false, payments: [], otherOutstanding: [], runningTotalOwing: 0 };
+  const empty = { amountPaid: 0, balanceOwing: 0, isPaidInFull: false, payments: [], otherOutstanding: [], alsoPaid: [], runningTotalOwing: 0, totalPaidAllJobs: 0, settlementCount: 0 };
   if (!job || !clientId) return { ...invoice, ...empty };
 
   const [{ data: clientJobs, error: jobsErr }, { data: clientPayments, error: paymentsErr }] = await Promise.all([
@@ -23,7 +23,7 @@ export async function decorateInvoiceWithBalances(supabase, invoice) {
       .eq('business_id', invoice.business_id)
       .eq('job_status', 'Completed')
       .is('deleted_at', null),
-    supabase.from('payments').select('id, job_id, amount, payment_date')
+    supabase.from('payments').select('id, job_id, amount, payment_date, invoice_id')
       .eq('client_id', clientId)
       .eq('business_id', invoice.business_id)
       .eq('is_void', false)
@@ -38,6 +38,16 @@ export async function decorateInvoiceWithBalances(supabase, invoice) {
   });
   const payments = (clientPayments ?? []).filter(p => p.job_id === job.id);
 
+  // Jobs settled together via THIS invoice's "Record Payment" action are tagged with
+  // payment.invoice_id = invoice.id. Surface the *other* such jobs so the receipt can show
+  // an "Also Paid for This Client" section (the mirror of "Also Outstanding").
+  const alsoPaidJobIds = new Set(
+    (clientPayments ?? [])
+      .filter(p => p.invoice_id === invoice.id && p.job_id !== job.id)
+      .map(p => p.job_id)
+  );
+  const settlementCount = (clientPayments ?? []).filter(p => p.invoice_id === invoice.id).length;
+
   const balances = (clientJobs ?? []).map(j => {
     // Pass `business` so this matches the same total shown elsewhere on the invoice as
     // "Invoice Total" (computeJobFinancials(job, biz)) — without it, jobs completed before
@@ -50,8 +60,14 @@ export async function decorateInvoiceWithBalances(supabase, invoice) {
 
   const current = balances.find(b => b.job.id === job.id) || null;
   const otherOutstanding = balances.filter(b => b.job.id !== job.id && b.owing > 0.01);
+  const alsoPaid = balances
+    .filter(b => alsoPaidJobIds.has(b.job.id))
+    .map(b => ({ job: b.job, total: b.total, paid: b.paid }));
   const runningTotalOwing = Math.round(
     ((current?.owing || 0) + otherOutstanding.reduce((sum, b) => sum + b.owing, 0)) * 100
+  ) / 100;
+  const totalPaidAllJobs = Math.round(
+    ((current?.total || 0) + alsoPaid.reduce((sum, b) => sum + b.total, 0)) * 100
   ) / 100;
 
   return {
@@ -61,6 +77,9 @@ export async function decorateInvoiceWithBalances(supabase, invoice) {
     isPaidInFull: !!current && current.owing <= 0.01 && current.paid > 0,
     payments,
     otherOutstanding,
+    alsoPaid,
     runningTotalOwing,
+    totalPaidAllJobs,
+    settlementCount,
   };
 }

@@ -187,7 +187,7 @@ Sandra's business is live — data wiped and re-provisioned Jun 9. App in active
 
 1. **🎨 Impeccable critique/polish pass — IN PROGRESS** — Run `/impeccable critique` then `/impeccable polish` on each page before moving to the next. Critique snapshots in `.impeccable/critique/`. Remaining order:
    - `Clients` (list view) ✅ v0.12.56
-   - `Finance` ✅ v0.12.57
+   - `Finance` ✅ v0.12.57–58
    - `Settings` ✅ v0.12.59
    - `Calendar` ← **start here**
    - Secondary sheets (FinanceDetailSheet, EditClientSheet, PostJobSheet, PrepNoteSheet, etc.)

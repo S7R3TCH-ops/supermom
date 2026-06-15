@@ -65,7 +65,12 @@
       "Bash(vercel project *)",
       "Bash(vercel --prod)",
       "Bash(npx madge *)",
-      "Bash(git rebase *)"
+      "Bash(git rebase *)",
+      "Bash(rm -rf .git/rebase-merge && git status)",
+      "Bash(git *)"
+    ],
+    "additionalDirectories": [
+      "C:\\Projects\\supermom\\.git\\rebase-merge"
     ]
   }
 }

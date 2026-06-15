@@ -52,7 +52,7 @@ const s = StyleSheet.create({
   tableHeaderRow: { flexDirection: 'row', backgroundColor: CREAM, paddingTop: 5, paddingBottom: 5, paddingLeft: 2, paddingRight: 2 },
   tableRow:       { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: BORDER, paddingTop: 7, paddingBottom: 7, paddingLeft: 2, paddingRight: 2 },
   tableRowAlt:    { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: BORDER, backgroundColor: '#fafafa', paddingTop: 5, paddingBottom: 5, paddingLeft: 2, paddingRight: 2 },
-  cDate:  { width: 72, paddingLeft: 8, paddingRight: 4 },
+  cDate:  { width: 88, paddingLeft: 8, paddingRight: 4 },
   cDesc:  { flex: 1,   paddingLeft: 4, paddingRight: 4 },
   cRate:  { width: 56, paddingLeft: 4, paddingRight: 4 },
   cHours: { width: 44, paddingLeft: 4, paddingRight: 4 },

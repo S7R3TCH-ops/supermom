@@ -255,25 +255,6 @@ export default function Admin() {
       </div>
 
       <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '16px 14px' }}>
-        {isSuperAdmin && (
-          <>
-            {viewingAsId && (
-              <div style={{ marginBottom: 12 }}>
-                <button
-                  onClick={reset}
-                  style={{
-                    width: '100%', padding: '12px', borderRadius: 12,
-                    background: 'var(--pink)', color: 'white',
-                    border: 'none', fontWeight: 700, fontSize: 13, cursor: 'pointer'
-                  }}
-                >
-                  ← Reset to My Real View
-                </button>
-              </div>
-            )}
-          </>
-        )}
-
         {isSuperAdmin && !viewingAsId && (
           <>
             <SectionLabel>Super Admin: Viewpoint</SectionLabel>

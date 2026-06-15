@@ -124,7 +124,7 @@ export default function InvoiceView() {
   const selectedTotal = outstandingJobs
     .filter(j => selectedIds.has(j.id))
     .reduce((s, j) => s + j.owing, 0);
-  const showSettlePanel = isOwner && outstandingJobs.length > 0;
+  const showSettlePanel = isOwner && outstandingJobs.length > 0 && !!(invoiceSentAt || receiptSentAt);
   const showUndo = isOwner && (invoice.settlementCount || 0) > 0;
 
   function toggleJob(jobId) {
@@ -310,7 +310,7 @@ export default function InvoiceView() {
         </div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => { if (window.history.length > 1) navigate(-1); else window.close(); }}
             style={{
               background: 'white', color: 'var(--ink-muted)', border: '1.5px solid #ddd',
               padding: '8px 14px', borderRadius: 8, fontSize: 13, fontWeight: 700,
@@ -498,9 +498,9 @@ export default function InvoiceView() {
               <div style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textAlign: 'right', alignSelf: 'center' }}>#</div>
               <div style={{ fontWeight: 600 }}>{invoice.invoice_number}</div>
               <div style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textAlign: 'right', alignSelf: 'center' }}>DATE</div>
-              <div>{formatDate(invoice.invoice_date)}</div>
+              <div style={{ whiteSpace: 'nowrap' }}>{formatDate(invoice.invoice_date)}</div>
               <div style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textAlign: 'right', alignSelf: 'center' }}>DUE DATE</div>
-              <div>{formatDate(invoice.due_date)}</div>
+              <div style={{ whiteSpace: 'nowrap' }}>{formatDate(invoice.due_date)}</div>
             </div>
           </div>
         </div>
@@ -510,7 +510,7 @@ export default function InvoiceView() {
           <table>
             <thead>
               <tr style={{ background: '#EAE2D8', fontSize: 10, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#555' }}>
-                <th style={{ textAlign: 'left', padding: '8px 14px', width: 130 }}>Date</th>
+                <th style={{ textAlign: 'left', padding: '8px 14px', width: 130, whiteSpace: 'nowrap' }}>Date</th>
                 <th style={{ textAlign: 'left', padding: '8px 14px' }}>Description</th>
                 {anyHourly && <th style={{ textAlign: 'center', padding: '8px 14px', width: 85 }}>Rate / Hr</th>}
                 {anyHourly && <th style={{ textAlign: 'center', padding: '8px 14px', width: 75 }}>Hours</th>}
@@ -523,7 +523,7 @@ export default function InvoiceView() {
                 return (
                   <Fragment key={j.id}>
                     <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
-                      <td style={{ padding: '8px 14px', color: '#555', verticalAlign: 'top' }}>
+                      <td style={{ padding: '8px 14px', color: '#555', verticalAlign: 'top', whiteSpace: 'nowrap' }}>
                         {j.scheduled_date ? formatDate(j.scheduled_date) : '—'}
                       </td>
                       <td style={{ padding: '8px 14px', verticalAlign: 'top' }}>

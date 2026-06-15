@@ -235,13 +235,20 @@ const TransactionRow = memo(function TransactionRow({ tx, T, privacyOn, onPress 
       : { bg: '#FEF3C7', color: '#92400E', label: 'Unpaid' }
     : null;
 
+  const Tag = tappable ? 'button' : 'div';
+  const tagProps = tappable
+    ? { type: 'button', onClick: () => onPress(tx.rawId), 'aria-label': `Open job: ${tx.label}` }
+    : {};
+
   return (
-    <div
-      onClick={tappable ? () => onPress(tx.rawId) : undefined}
+    <Tag
+      {...tagProps}
       style={{
-        background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 11,
+        background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 11,
         padding: '9px 12px', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 9,
         cursor: tappable ? 'pointer' : 'default',
+        width: '100%', textAlign: 'left',
+        WebkitTapHighlightColor: 'transparent',
       }}
     >
       <div style={{ width: 34, height: 34, borderRadius: 9, background: `${tx.color}18`, border: `1px solid ${tx.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 14 }}>
@@ -271,7 +278,7 @@ const TransactionRow = memo(function TransactionRow({ tx, T, privacyOn, onPress 
           </div>
         )}
       </div>
-    </div>
+    </Tag>
   );
 });
 
@@ -285,6 +292,7 @@ export default function Finance() {
 
   const [period, setPeriod] = useState('Month');
   const [showNewExpense, setShowNewExpense] = useState(false);
+  const [showTaxReady, setShowTaxReady] = useState(false);
 
   const now = useMemo(() => new Date(), []);
   const periodRange = useMemo(() => getPeriodRange(period), [period]);
@@ -425,7 +433,7 @@ export default function Finance() {
       <div style={{
         background: T.hero,
         borderBottom: mode === 'dark' ? '3px solid #E91E6A' : 'none',
-        padding: '13px 15px 15px',
+        padding: '13px 15px 16px',
         position: 'relative',
         overflow: 'hidden',
       }}>
@@ -437,12 +445,27 @@ export default function Finance() {
         }} />
         <div style={{
           fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '1.1px',
-          textTransform: 'uppercase', color: mode === 'dark' ? '#FF78B0' : T.pink, marginBottom: 10,
+          textTransform: 'uppercase', color: mode === 'dark' ? '#FF78B0' : T.pink, marginBottom: 8,
           position: 'relative',
         }}>✦ Financial Command</div>
-        <h2 style={{ fontFamily: T.serif, fontSize: 24, margin: 0, color: mode === 'dark' ? 'white' : T.ink, position: 'relative' }}>
-          Revenue & Expenses
-        </h2>
+        <div style={{ fontSize: 10.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: mode === 'dark' ? 'rgba(255,255,255,0.5)' : T.inkMuted, marginBottom: 4, position: 'relative' }}>
+          {periodLabel}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 3, position: 'relative' }}>
+          <span style={{ fontFamily: T.serif, fontSize: 38, fontWeight: 500, color: mode === 'dark' ? 'white' : T.ink, letterSpacing: '-1.5px', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
+            {privacyOn ? '•••' : `$${stats.revenue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
+          </span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, position: 'relative', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 10, color: mode === 'dark' ? 'rgba(255,255,255,0.45)' : T.inkMuted, fontWeight: 500 }}>
+            {completedPeriodJobs.length} job{completedPeriodJobs.length !== 1 ? 's' : ''}
+          </span>
+          {stats.profit !== stats.revenue && (
+            <span style={{ fontSize: 10, color: stats.profit >= 0 ? (mode === 'dark' ? '#86EFAC' : '#16A34A') : '#EF4444', fontWeight: 600 }}>
+              {privacyOn ? '•••' : `You cleared $${Math.abs(stats.profit).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })} after expenses`}
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '16px 14px' }}>
@@ -474,17 +497,18 @@ export default function Finance() {
         </div>
 
         {/* Trend Chart */}
-        <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 16, padding: '14px 14px 10px', marginBottom: 24 }}>
+        <div style={{ background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 16, padding: '14px 14px 10px', marginBottom: 24 }}>
           <TrendChart data={chartData} T={T} mode={mode} />
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <SectionLabel style={{ marginBottom: 0 }}>Activity · {periodLabel}{transactions.length > 0 ? ` · ${transactions.length}` : ''}</SectionLabel>
           <button
+            type="button"
             onClick={() => setShowNewExpense(true)}
-            style={{ background: 'transparent', border: `1px solid ${T.cardBorder}`, borderRadius: 8, padding: '4px 10px', fontSize: 10, fontWeight: 700, color: T.pink, cursor: 'pointer' }}
+            style={{ background: 'transparent', border: `1px solid ${T.cardBorder}`, borderRadius: 8, padding: '6px 12px', fontSize: 10, fontWeight: 700, color: T.pink, cursor: 'pointer', minHeight: 32 }}
           >
-            + ADD EXPENSE
+            + Add expense
           </button>
         </div>
 
@@ -517,7 +541,7 @@ export default function Finance() {
                   </div>
                 </div>
               ))}
-              <button disabled style={{ width: '100%', marginTop: 8, background: 'transparent', border: 'none', color: T.inkMuted, fontSize: 11, fontWeight: 700, cursor: 'default', opacity: 0.5 }}>VIEW ALL INVOICES · Coming soon</button>
+              <div style={{ marginTop: 8, fontSize: 10, color: T.inkMuted, textAlign: 'center', padding: '4px 0' }}>Showing {Math.min(invoices.length, 3)} of {invoices.length} invoice{invoices.length !== 1 ? 's' : ''}</div>
             </div>
           ) : (
             <div style={{ textAlign: 'center', padding: '20px 0' }}>
@@ -527,57 +551,67 @@ export default function Finance() {
           )}
         </div>
 
-        <SectionLabel>Tax Ready · {now.getFullYear()}</SectionLabel>
-        <div style={{
-          background: mode === 'dark' ? '#1C1C1E' : '#FDF2F8',
-          border: `1.5px solid ${mode === 'dark' ? '#8B0E3F' : '#F9A8D4'}`,
-          borderRadius: 16, padding: '16px', marginBottom: 30,
-        }}>
-          <div style={{ fontSize: 11, color: T.pink, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>✦ CSV Export</div>
-          <div style={{ fontSize: 13, color: T.ink, lineHeight: 1.4, marginBottom: 16 }}>
-            Download your financial history for the selected period, including sidekick pay and HST, categorized for tax filing.
+        <button
+          type="button"
+          onClick={() => setShowTaxReady(v => !v)}
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, marginBottom: showTaxReady ? 8 : 28 }}
+        >
+          <SectionLabel style={{ marginBottom: 0 }}>Tax Ready · {now.getFullYear()}</SectionLabel>
+          <span style={{ fontSize: 10, color: T.inkMuted, fontWeight: 600, transform: showTaxReady ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>▾</span>
+        </button>
+        {showTaxReady && (
+          <div style={{
+            background: mode === 'dark' ? '#1C1C1E' : '#FDF2F8',
+            border: `1.5px solid ${mode === 'dark' ? '#8B0E3F' : '#F9A8D4'}`,
+            borderRadius: 16, padding: '16px', marginBottom: 30,
+          }}>
+            <div style={{ fontSize: 11, color: T.pink, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>✦ CSV Export</div>
+            <div style={{ fontSize: 13, color: T.ink, lineHeight: 1.4, marginBottom: 16 }}>
+              Download your financial history for the selected period, including sidekick pay and HST, categorized for tax filing.
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const rows = [
+                  ['Date', 'Client', 'Service', 'Pricing', 'Duration (hrs)', 'Subtotal', 'HST', 'Total', 'Payment Method', 'Payment Status', 'Sidekick', 'Sidekick Pay', 'Sidekick Paid'],
+                ];
+                completedPeriodJobs.forEach(j => {
+                  const f = computeJobFinancials(j);
+                  rows.push([
+                    j.raw?.scheduled_date || '',
+                    j.client_name || '',
+                    j.raw?.service_name || '',
+                    j.raw?.pricing_type || '',
+                    j.raw?.actual_duration ?? j.raw?.estimated_hours ?? '',
+                    f.subtotal.toFixed(2),
+                    f.taxAmount.toFixed(2),
+                    f.total.toFixed(2),
+                    j.raw?.payment_method || '',
+                    j.raw?.payment_status || '',
+                    j.worker_name || '',
+                    j.raw?.worker_pay != null ? Number(j.raw.worker_pay).toFixed(2) : '',
+                    j.raw?.worker_paid ? 'Yes' : (j.raw?.worker_pay != null ? 'No' : ''),
+                  ]);
+                });
+                const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Supermom_${period === 'All' ? 'AllTime' : period}_${now.getFullYear()}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+              style={{
+                width: '100%', padding: '12px', borderRadius: 12,
+                background: T.pink, color: 'white', border: 'none',
+                fontSize: 13, fontWeight: 700, cursor: 'pointer',
+              }}
+            >
+              Download {period} CSV ({completedPeriodJobs.length} jobs)
+            </button>
           </div>
-          <button
-            onClick={() => {
-              const rows = [
-                ['Date', 'Client', 'Service', 'Pricing', 'Duration (hrs)', 'Subtotal', 'HST', 'Total', 'Payment Method', 'Payment Status', 'Sidekick', 'Sidekick Pay', 'Sidekick Paid'],
-              ];
-              completedPeriodJobs.forEach(j => {
-                const f = computeJobFinancials(j);
-                rows.push([
-                  j.raw?.scheduled_date || '',
-                  j.client_name || '',
-                  j.raw?.service_name || '',
-                  j.raw?.pricing_type || '',
-                  j.raw?.actual_duration ?? j.raw?.estimated_hours ?? '',
-                  f.subtotal.toFixed(2),
-                  f.taxAmount.toFixed(2),
-                  f.total.toFixed(2),
-                  j.raw?.payment_method || '',
-                  j.raw?.payment_status || '',
-                  j.worker_name || '',
-                  j.raw?.worker_pay != null ? Number(j.raw.worker_pay).toFixed(2) : '',
-                  j.raw?.worker_paid ? 'Yes' : (j.raw?.worker_pay != null ? 'No' : ''),
-                ]);
-              });
-              const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
-              const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = `Supermom_${period === 'All' ? 'AllTime' : period}_${now.getFullYear()}.csv`;
-              a.click();
-              URL.revokeObjectURL(url);
-            }}
-            style={{
-              width: '100%', padding: '12px', borderRadius: 12,
-              background: T.pink, color: 'white', border: 'none',
-              fontSize: 13, fontWeight: 700, cursor: 'pointer',
-            }}
-          >
-            Download {period} CSV ({completedPeriodJobs.length} jobs)
-          </button>
-        </div>
+        )}
       </div>
 
       <NewExpenseSheet isOpen={showNewExpense} onClose={() => setShowNewExpense(false)} />
@@ -612,14 +646,17 @@ function FinanceSkeleton({ T }) {
 function StatCard({ T, mode, label, value, color, privacyOn, onClick, count, workerCosts }) {
   const isNeg = value < 0;
   return (
-    <div
+    <button
+      type="button"
       onClick={onClick}
+      aria-label={`${label}: ${privacyOn ? 'hidden' : '$' + Math.abs(value).toLocaleString()}`}
       style={{
         background: T.card, border: `1.5px solid ${T.cardBorder}`,
         borderRadius: 15, padding: '14px 12px', cursor: 'pointer',
         position: 'relative', overflow: 'hidden',
         transition: 'opacity 0.1s',
         WebkitTapHighlightColor: 'transparent',
+        width: '100%', textAlign: 'left',
       }}
     >
       <div style={{ fontSize: 10, color: T.inkMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 6 }}>{label}</div>
@@ -635,13 +672,13 @@ function StatCard({ T, mode, label, value, color, privacyOn, onClick, count, wor
         </div>
       )}
       {workerCosts > 0 && (
-        <div style={{ fontSize: 9, color: '#F59E0B', marginTop: 2, fontWeight: 600 }}>
+        <div style={{ fontSize: 9, color: '#92400E', marginTop: 2, fontWeight: 600 }}>
           {privacyOn ? '•••' : `-$${workerCosts.toFixed(0)}`} worker costs
         </div>
       )}
-      <div style={{ position: 'absolute', bottom: 8, right: 10, fontSize: 9, color: color, fontWeight: 700, opacity: 0.7 }}>
+      <div style={{ position: 'absolute', bottom: 8, right: 10, fontSize: 9, color: color, fontWeight: 700, opacity: 0.8 }}>
         VIEW ›
       </div>
-    </div>
+    </button>
   );
 }

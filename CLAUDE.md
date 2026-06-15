@@ -138,13 +138,14 @@ A mobile-first CRM & operations web app for **Sandra**, a solo personal-life-ope
 
 ---
 
-## Current version: 0.12.65 — Jun 15, 2026 (package.json synced)
+## Current version: 0.12.66 — Jun 15, 2026 (package.json synced)
 
 Sandra's business is live — data wiped and re-provisioned Jun 9. App in active use.
 
 **⚠️ Multi-client git discipline**: Always push local commits before starting an online Claude Code session; always pull before the online session writes code.
 
 ### Recent changes (full history in `docs/changelog/` + `git log`)
+- **v0.12.66 (Jun 15)** — Narrow selects: `fetchActiveJobs`+`fetchJobsByClientId` drop ~10 unused columns (review fields, reschedule history, legacy rates, timestamps) via `SELECT_LIST` (33/43 cols); `fetchClients` drops `phone2`, `referral_source`, `created_at`, `deleted_at`. Detail fetches (`fetchJobById`, `fetchClientById`) keep `*`. Closed open item #29.
 - **v0.12.65 (Jun 15)** — Egress reduction: `realtime.js` debounces `notifyDataChanged` 500ms so N rapid job writes (e.g. `updateDailyRoutes` writing 3 jobs) trigger 1 refresh instead of 3; `updateDailyRoutes` in `maps.js` now accepts display jobs (already have `address`) — removes redundant `fetchClients()` call; both Home.jsx callers updated. Closed open item #3.
 - **v0.12.64 (Jun 15)** — Home.jsx drive-time: GPS timeout 5s→12s; `visibilitychange` handler (refresh clock on resume, reload on day-change or >30 min away, re-fetch drives if stale >10 min); `lastFetchTimeRef` tracks last fetch. Per-route `ErrorBoundary` in App.jsx — one-page crash now isolated, BottomNav stays usable. Haptics on confirmed destructive actions: hard-delete job (`error`), mark-unpaid (`medium`), delete client (`error`), reset all data (`error`), archive worker (`medium`), delete skill type (`error`). Closed open items #2, #27, #34.
 - **v0.12.63 (Jun 15)** — GCal sync error surfacing: `api/sync/gcal.js` detects `invalid_grant` and writes `sync_status='token_expired'` to `integrations` table; `api/auth/google/callback.js` resets `sync_status='ok'` on reconnect; `jobsRepo.triggerGCalSync` now awaits response and dispatches `gcal-token-expired` window event on failure; `GCalExpiredBanner` component added to `AuthedShell` (App.jsx) — amber banner with "Reconnect" CTA visible on all pages when token is expired; Settings GCal card shows amber warning + explanatory copy. Schema migration required: `ALTER TABLE public.integrations ADD COLUMN IF NOT EXISTS sync_status text DEFAULT 'ok';` — run in Supabase SQL Editor. Root cause fix: publish OAuth app in Google Cloud Console (Testing → Production) so refresh tokens don't expire after 7 days.
@@ -239,7 +240,7 @@ Sandra's business is live — data wiped and re-provisioned Jun 9. App in active
 
 ### 🔧 Technical quality / refactor
 
-29. **Eliminate `select *` queries** — every repo file pulls full rows. Named columns = halved egress + faster queries on jobs/clients/finance paths.
+29. ~~**Eliminate `select *` queries**~~ — fixed in v0.12.66. List fetches (jobs, clients) now use named column sets. Detail fetches still `*` intentionally.
 30. **Consolidate AI + transcribe Vercel functions** — saves a slot; both functions are same auth/error pattern.
 31. **React Query / TanStack migration** — `useData.js` does manual caching, stale-state, refetch-on-focus by hand. TanStack replaces that whole layer and gives background refresh for free.
 32. **TypeScript — start with `selectors.js`** — `computeJobFinancials`, `toDisplayJob`, `computeJobTotal` are where subtle display-vs-DB bugs hide. Type just these and the repo files they call.

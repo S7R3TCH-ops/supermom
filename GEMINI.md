@@ -55,60 +55,53 @@ After the v0.6.2 refactor, these symbols moved. The old locations no longer exis
 
 ---
 
-## Current State (v0.6.8 — May 19, 2026)
+## Current State (v0.12.62 — Jun 15, 2026)
 
 | Feature | Status |
 |---|---|
-| Auth (login / forgot password) | ✅ Live |
-| Home — always-today dashboard | ✅ Live — Command Brief hero; Today/Needs Action/Rest of Week/Done This Week sections (v0.6.5) |
-| Home hero banner text | ✅ Live — Fraunces serif; time-of-day + nickname system |
-| Home — tight-gap warning | ✅ Live — suppresses once job B has started (v0.6.7) |
-| Home — Needs Action cards | ✅ Live — full start–end time range; concise pricing label + clean amount/partial display (v0.6.8) |
-| Home — Rest of Week cards | ✅ Live — single-line fmtTimeRange, 13px prominent (v0.6.8) |
-| Home — Next Up card | ✅ Live — Est. total subtle badge; Supermom Go primary directions CTA with bolt animation (v0.6.7) |
-| End time accuracy app-wide | ✅ Live — decorateJob() uses actual_duration for completed jobs; fixes Home, Calendar, overlap checker, JobDetailSheet (v0.6.8) |
-| Calendar — Day/Week/Agenda | ✅ Live — dynamic timeline bounds, cancelled jobs shown grey (v0.6.3) |
-| Job cancellation (all users) | ✅ Live — cancel with required reason; status → Cancelled; shown in history (v0.6.3) |
-| Job delete (admin only) | ✅ Live — "Delete Job (Admin)" in JobDetailSheet; soft-delete (v0.6.3) |
-| Client archive (admin only) | ✅ Live — danger zone in ClientProfile; cascades to all jobs (v0.6.3) |
-| Financial math unification | ✅ Live — computeJobFinancials single source of truth everywhere (v0.6.3) |
-| Clients list + profile | ✅ Live — A-Z sort; interactive hero stat filters; Owes $ filter fixed (v0.6.6) |
-| Finance — period filtering + drill-down tiles | ✅ Live — Week/Month/Year/All; all 4 tiles clickable; correct hourly math (v0.6.4) |
-| Finance — trend chart | ✅ Live — SVG area/line chart, revenue vs expenses, real data (v0.6.4) |
-| Finance — mark paid, expenses, CSV export | ✅ Live |
-| New Job sheet — Start/End/Duration sync | ✅ Live (v0.6.6) |
-| Job Detail sheet — Start/End/Duration sync | ✅ Live (v0.6.6) |
-| Post-job / Wrap-up sheet | ✅ Live |
-| Financial Math Breakdown | ✅ Live |
-| Automated Invoicing | ✅ Live |
+| Auth (login / forgot password) | ✅ Live — sm-input focus rings, 44px tap targets, brand logo, sentence-case labels (v0.12.61) |
+| Home — always-today dashboard | ✅ Live — loading skeleton, revenue widget as button, notification Enable/× 44px targets, ›chevron on owing rows, thousands separator on amounts (v0.12.54) |
+| Calendar | ✅ Live — hero border always visible, nav/today typed buttons, AgendaCard div→button, filter chip div→button (v0.12.60) |
+| Clients list | ✅ Live — stat tiles as buttons w/ aria-pressed, search focus ring restored, count badges on chips, "Owes $" label, clear × on search (v0.12.56) |
+| Client profile | ✅ Live — back→/clients, 44px tap targets, focus rings on AI textareas, job rows as buttons, AI insights label (v0.12.52–53) |
+| Finance | ✅ Live — Fraunces revenue hero, dynamic period label, StatCard/TransactionRow as buttons, Tax Ready collapsible, "You cleared $X after expenses" sub-label (v0.12.57–58) |
+| Settings | ✅ Live — in-app two-tap Reset All Data, focus rings, avatar as button, save button in persistent footer, sentence-case labels, 44px password toggle (v0.12.59) |
+| New Job sheet | ✅ Live — focus rings, step progress bar (3-segment), recent-client/service as buttons, 44px close, sentence-case, step review date formatted (v0.12.55) |
+| Job Detail sheet | ✅ Live — in-app future-date confirm, EditMode 4 named sections, focus rings, 44px close, client name as button (v0.12.50, v0.12.61) |
+| New Client sheet | ✅ Live — focus rings, 44px close, sentence-case, VIP checkbox enlarged, Intel labels expanded (v0.12.61) |
+| Edit Client sheet | ✅ Live — focus rings, 44px close, sentence-case, VIP enlarged, dark-mode delete tint (v0.12.60) |
+| Post-job / Wrap-up sheet | ✅ Live — focus rings, tap targets, sentence-case, haptic feedback on submit (v0.12.60) |
+| Prep Note sheet | ✅ Live — sentence-case, type="button" on close (v0.12.60) |
+| Finance Detail sheet | ✅ Live — JobRow div→button, worker cost amber text (v0.12.60) |
+| Admin | ✅ Live — ToolRow div→button, in-app confirms for delete/restore, persona cards as buttons, sm-input on inputs (v0.12.61) |
+| Invoicing | ✅ Live — INVOICE heading pink #B01550, PDF/web synced, settlement section, receipt layout, net-7 due date (v0.12.42–49) |
+| Daily briefing email | ✅ Live — `api/briefing/daily.js`, 7am EDT via Vercel cron (`0 11 * * *`) |
 | AI Prep Notes + Duration Estimator | ✅ Live |
-| Recurrence series editor | ✅ Live |
-| GCal Sync | ✅ Live |
+| GCal Sync | ✅ Live (refresh tokens may expire after 7 days in OAuth "Testing" mode) |
 | Drive time / mileage | ✅ Live |
 | Geofence / auto-timer | ✅ Live |
-| Super Admin + Viewpoint switching | ✅ Live — sessionStorage persistence fix (v0.6.7) |
-| Dark mode toggle | ✅ Live |
-| Swipe-to-dismiss sheets | ✅ Live |
+| Super Admin + Viewpoint switching | ✅ Live |
+| Dark mode toggle | ✅ Live — warm/dark via smTokens(); toggle in logo bar |
 | Privacy toggle | ✅ Live |
 | Storage (photos + voice notes) | ✅ Live |
-| Conflict detection | ✅ Live — cancelled jobs excluded (v0.6.3) |
-| Code-split bundle | ✅ Live |
-| Home card refresh — unified anatomy | ✅ Live — left-border state colours, no monospace, UpcomingCard pink, all dynamic features intact (v0.7.0) |
-| UI/UX Polish Pass 1 | ✅ Live — Calendar, FinanceDetailSheet, EditClientSheet, PostJobSheet, PrepNoteSheet a11y & tap target improvements (June 2026). NewClientSheet pending. |
+| Conflict detection | ✅ Live |
+| Haptic feedback | ✅ Live — `src/lib/haptics.js`, triggered on book/complete/pay/submit |
+| DESIGN.md | ✅ Regenerated v2.0 — Stitch-compliant frontmatter, dual-theme documented, `.impeccable/design.json` sidecar with 9 component snippets (v0.12.62) |
 
 ---
 
 ## Next priorities
 
-1. ~~**Calendar/agenda direction buttons**~~ — ✅ Done (v0.6.9).
-2. ~~**Job card colour/branding refresh**~~ — ✅ Done (v0.7.0).
-3. **Workflow smoothness pass** — Ongoing. Calendar and several secondary sheets polished. Remaining sheets (NewExpense, ServiceCatalog, WorkerCatalog, NudgeDraft) and JobDetailSheet re-critique are next.
-4. **Past job creation block** — Jobs cannot be created in the past; block this in the UI (NewJobSheet date picker).
-5. **Delete from job/client detail** — No delete option exists when drilling into a job or client detail view. Add it for admin + appropriate user roles.
-6. **WeekView cancelled job treatment** — Should go grey for cancelled; minor oversight from v0.6.3.
-7. **Daily job briefing email** — Vercel Cron (7am Toronto), Resend; Phase 2, parked.
-8. **Client engagement tools** — AI-suggested follow-ups and re-booking reminders.
-9. **Offline mode** — crashes if Supabase unreachable on initial load.
-10. **Credential rotation** — DB password + GitHub token were in a public repo commit; check memory file.
+1. **⚠️ Device verification** — All Jun 15 polish passes (v0.12.52–62) not yet phone-tested on Joel's Pixel 10 Pro or Sandra's iPhone.
+2. **GCal sync failures silent** — `triggerGCalSync` is fire-and-forget. OAuth "Testing" mode → refresh tokens expire after 7 days. Sandra should reconnect: Settings → Google Calendar → CONNECT.
+3. **Home.jsx drive-time + background-resume bugs (diagnosed, not fixed)**:
+   - Fix 1 (wrong leave time): increase GPS timeout to 12000ms; add `locationFetchAttempted` state for "Calculating…" placeholder.
+   - Fix 2 (wonky after long absence): add `visibilitychange` handler — `setNow(new Date())` on resume; `reload()` if away >30 min or date changed; guard drive re-fetch if last fetch <10 min (protect Maps quota).
+4. **AI chat interface** — `api/ai/[action].js` + `ANTHROPIC_API_KEY` in place. Needs chat UI + conversation state. HIGH PRIORITY.
+5. **Client invoice history** — Add "Invoices" section to ClientProfile listing all invoices per client, tappable to `/i/:id`.
+6. **Offline mode** — app crashes if Supabase unreachable on first load. Better `Suspense` fallbacks needed.
 
-(Updated by Gemini CLI — June 15, 2026)
+### Vercel function count
+9 of 12 serverless functions used: `maps`, `invoice`, `auth/google/login`, `auth/google/callback`, `briefing/daily`, `sync/gcal`, `ai/[action]`, `transcribe`, `admin/provision`. 3 remaining.
+
+(Updated by Claude Code — June 15, 2026)

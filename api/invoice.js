@@ -113,6 +113,7 @@ async function handleDownload(req, res) {
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('Content-Length', pdfBuffer.length);
+    res.setHeader('Cache-Control', 'no-store');
     return res.status(200).send(pdfBuffer);
   } catch (err) {
     console.error('[invoice/download] PDF generation failed:', err);

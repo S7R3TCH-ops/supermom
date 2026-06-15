@@ -223,10 +223,10 @@ export default function InvoiceView() {
           padding: 44px;
           box-shadow: 0 10px 30px rgba(0,0,0,0.05);
           border: 1px solid #eee;
-          font-family: var(--font-ui);
+          font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
           color: #1a1a1a;
         }
-        .inv-display { font-family: var(--font-display); }
+        .inv-display { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
         .info-grid {
           display: grid;
           grid-template-columns: 1fr 1fr 1fr;
@@ -381,10 +381,10 @@ export default function InvoiceView() {
           <img
             src={logoSrc}
             alt={biz.name || 'Supermom for Hire'}
-            style={{ width: 150, height: 150, objectFit: 'contain', marginBottom: -14 }}
+            style={{ width: 140, height: 140, objectFit: 'contain', marginBottom: -8 }}
             onError={e => { e.currentTarget.style.display = 'none'; }}
           />
-          <h1 className="inv-display" style={{ fontSize: 24, fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 3px', color: '#1a1a1a' }}>
+          <h1 className="inv-display" style={{ fontSize: 22, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 3px', color: '#1a1a1a' }}>
             {biz.name || 'Supermom for Hire'}
           </h1>
           {biz.hst_number && (
@@ -414,7 +414,7 @@ export default function InvoiceView() {
           </div>
 
           <div className="info-col-right" style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 30, fontWeight: 700, color: isReceipt ? '#16A34A' : '#1a1a1a', letterSpacing: '3px', textTransform: 'uppercase', lineHeight: 1, marginBottom: 12 }}>{docLabel}</div>
+            <div style={{ fontSize: 26, fontWeight: 700, color: isReceipt ? '#16A34A' : '#1a1a1a', letterSpacing: '2px', textTransform: 'uppercase', lineHeight: 1, marginBottom: 8 }}>{docLabel}</div>
             <div className="invoice-meta" style={{ display: 'grid', gridTemplateColumns: 'auto auto', gap: '5px 14px', justifyContent: 'end' }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textAlign: 'right', alignSelf: 'center' }}>NO</div>
               <div style={{ fontWeight: 600 }}>{invoice.invoice_number}</div>
@@ -490,9 +490,9 @@ export default function InvoiceView() {
                 Payments Received
               </div>
               {invoice.payments.map(p => (
-                <div key={p.id ?? `${p.payment_date}-${p.amount}`} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '1px 0', fontSize: 12, color: '#555' }}>
-                  <div>{formatDate(p.payment_date)}</div>
-                  <div style={{ fontVariantNumeric: 'tabular-nums' }}>${Number(p.amount).toFixed(2)}</div>
+                <div key={p.id ?? `${p.payment_date}-${p.amount}`} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '1px 0', fontSize: 12 }}>
+                  <div style={{ color: '#555' }}>{formatDate(p.payment_date)}</div>
+                  <div style={{ color: '#1a1a1a', fontVariantNumeric: 'tabular-nums' }}>${Number(p.amount).toFixed(2)}</div>
                 </div>
               ))}
             </div>
@@ -514,7 +514,7 @@ export default function InvoiceView() {
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#555' }}>Invoice Total</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 {invoice.isPaidInFull && <div style={{ fontSize: 11, fontWeight: 700, color: '#16A34A' }}>✓ Paid</div>}
-                <div className="inv-display" style={{ fontSize: 17, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: invoice.isPaidInFull ? '#16A34A' : 'inherit' }}>${financials.total.toFixed(2)}</div>
+                <div className="inv-display" style={{ fontSize: 18, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: invoice.isPaidInFull ? '#16A34A' : 'inherit' }}>${financials.total.toFixed(2)}</div>
               </div>
             </div>
             {!invoice.isPaidInFull && invoice.payments?.length > 0 && (
@@ -547,7 +547,7 @@ export default function InvoiceView() {
             ))}
             <div style={{ background: '#EAE2D8', padding: '10px 14px', marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: 6 }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#555' }}>Total Owed — All Jobs</div>
-              <div className="inv-display" style={{ fontSize: 18, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#DC2626' }}>${invoice.runningTotalOwing.toFixed(2)}</div>
+              <div className="inv-display" style={{ fontSize: 20, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#DC2626' }}>${invoice.runningTotalOwing.toFixed(2)}</div>
             </div>
           </div>
         )}
@@ -580,17 +580,17 @@ export default function InvoiceView() {
         {/* Payment + Thank you — kept together, never split across pages */}
         <div className="invoice-footer">
           {!isReceipt && (
-            <div style={{ borderTop: '1px solid #eee', paddingTop: 9, marginBottom: 6 }}>
+            <div style={{ borderTop: '1px solid #eee', paddingTop: 9, marginBottom: 10 }}>
               <div style={LABEL}>Payment</div>
-              <div style={{ fontSize: 13, color: '#444', lineHeight: 1.6 }}>
-                e-Transfer to <strong>{biz.email || 'sandra@supermomforhire.com'}</strong>
-                <div style={{ color: '#888', fontSize: 12 }}>Reference: Invoice #{invoice.invoice_number}</div>
+              <div style={{ fontSize: 13, color: '#444', lineHeight: 1.4 }}>
+                e-Transfer to {biz.email || 'sandra@supermomforhire.com'}
+                <div style={{ color: '#444', fontSize: 13, marginTop: 2 }}>Reference: Invoice #{invoice.invoice_number}</div>
               </div>
             </div>
           )}
 
           <div style={{ textAlign: 'center', paddingTop: 2 }}>
-            <div className="inv-display" style={{ fontSize: 17, fontWeight: 500, color: '#777', fontStyle: 'italic' }}>
+            <div className="inv-display" style={{ fontSize: 15, fontWeight: 400, color: '#777', fontStyle: 'italic' }}>
               Thank you for letting Supermom save the day.
             </div>
           </div>

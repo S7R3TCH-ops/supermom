@@ -138,13 +138,14 @@ A mobile-first CRM & operations web app for **Sandra**, a solo personal-life-ope
 
 ---
 
-## Current version: 0.12.64 — Jun 15, 2026 (package.json synced)
+## Current version: 0.12.65 — Jun 15, 2026 (package.json synced)
 
 Sandra's business is live — data wiped and re-provisioned Jun 9. App in active use.
 
 **⚠️ Multi-client git discipline**: Always push local commits before starting an online Claude Code session; always pull before the online session writes code.
 
 ### Recent changes (full history in `docs/changelog/` + `git log`)
+- **v0.12.65 (Jun 15)** — Egress reduction: `realtime.js` debounces `notifyDataChanged` 500ms so N rapid job writes (e.g. `updateDailyRoutes` writing 3 jobs) trigger 1 refresh instead of 3; `updateDailyRoutes` in `maps.js` now accepts display jobs (already have `address`) — removes redundant `fetchClients()` call; both Home.jsx callers updated. Closed open item #3.
 - **v0.12.64 (Jun 15)** — Home.jsx drive-time: GPS timeout 5s→12s; `visibilitychange` handler (refresh clock on resume, reload on day-change or >30 min away, re-fetch drives if stale >10 min); `lastFetchTimeRef` tracks last fetch. Per-route `ErrorBoundary` in App.jsx — one-page crash now isolated, BottomNav stays usable. Haptics on confirmed destructive actions: hard-delete job (`error`), mark-unpaid (`medium`), delete client (`error`), reset all data (`error`), archive worker (`medium`), delete skill type (`error`). Closed open items #2, #27, #34.
 - **v0.12.63 (Jun 15)** — GCal sync error surfacing: `api/sync/gcal.js` detects `invalid_grant` and writes `sync_status='token_expired'` to `integrations` table; `api/auth/google/callback.js` resets `sync_status='ok'` on reconnect; `jobsRepo.triggerGCalSync` now awaits response and dispatches `gcal-token-expired` window event on failure; `GCalExpiredBanner` component added to `AuthedShell` (App.jsx) — amber banner with "Reconnect" CTA visible on all pages when token is expired; Settings GCal card shows amber warning + explanatory copy. Schema migration required: `ALTER TABLE public.integrations ADD COLUMN IF NOT EXISTS sync_status text DEFAULT 'ok';` — run in Supabase SQL Editor. Root cause fix: publish OAuth app in Google Cloud Console (Testing → Production) so refresh tokens don't expire after 7 days.
 - **v0.12.62 (Jun 15)** — DESIGN.md full regeneration from stable code (post-polish v0.12.52–61). Stitch-compliant YAML frontmatter: 28 color tokens (dual-theme light/dark), 9 typography roles, 5 radius steps, 6 spacing values, 10 component token entries. Markdown body: 6 spec sections (Overview, Colors, Typography, Elevation, Components, Do's and Don'ts) with named rules, badge table, and all current conventions (sentence-case rule, sm-input focus, two-tap confirm, 44px tap targets, no window.confirm). `.impeccable/design.json` sidecar written with 8-step tonal ramps, gradient vocabulary, shadow + motion tokens, 9 self-contained component HTML/CSS snippets, full narrative block.
@@ -197,7 +198,7 @@ Sandra's business is live — data wiped and re-provisioned Jun 9. App in active
 
 2. ~~**Home.jsx drive-time bugs**~~ — fixed in v0.12.64 (GPS timeout 12s, visibilitychange handler, lastFetchTimeRef guard).
 
-3. **Supabase egress spikes (diagnosed, not fixed)** — three causes: `updateDailyRoutes` cascade write, AI enrichment writes on every job load, `select *` everywhere. Fix in one focused pass: narrow selects + guard enrichment triggers.
+3. ~~**Supabase egress spikes**~~ — fixed in v0.12.65. Debounced Realtime (N writes → 1 refresh); removed `fetchClients()` from `updateDailyRoutes`. `select *` on jobs/clients still exists (item #29) — safe to narrow incrementally.
 
 ### ⚠️ Infrastructure / housekeeping
 

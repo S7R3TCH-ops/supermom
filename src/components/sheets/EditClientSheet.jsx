@@ -8,6 +8,7 @@ import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useKeyboardFocus } from '../../hooks/useKeyboardFocus';
 import { RECURRENCE } from '../../data/services';
 import GrabBar from '../ui/GrabBar';
+import { triggerHaptic } from '../../lib/haptics';
 
 const STATUS_OPTIONS = [
   { value: 'active',   label: 'Active' },
@@ -125,6 +126,7 @@ export default function EditClientSheet({ clientId, onClose }) {
   }
 
   async function handleDelete() {
+    triggerHaptic('error');
     setBusy(true);
     try {
       await softDeleteClient(clientId);

@@ -76,6 +76,27 @@ export default function Home() {
     return () => clearInterval(id);
   }, []);
 
+  // Resume handler: refresh clock, reload if date changed or away >30 min, re-fetch drives if stale
+  useEffect(() => {
+    let hiddenAt = null;
+    function onVisibility() {
+      if (document.hidden) { hiddenAt = Date.now(); return; }
+      const awayMs = hiddenAt ? Date.now() - hiddenAt : 0;
+      hiddenAt = null;
+      setNow(new Date());
+      if (awayMs > 30 * 60 * 1000 || !sameDay(new Date(), today)) {
+        window.location.reload();
+        return;
+      }
+      if (todayJobs.length > 0 && Date.now() - lastFetchTimeRef.current > 10 * 60 * 1000) {
+        fetchLocationDrives();
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [todayJobs, today]);
+
   const { T = {}, mode, privacyOn } = themeCtx || {};
   const { jobs: allJobs, loading } = jobsCtx || {};
   const { profile } = authCtx || {};
@@ -322,6 +343,7 @@ export default function Home() {
   const locationFetchedRef = useRef(false);
   const routesFetchedRef = useRef(false);
   const windowJobIdRef = useRef(null);
+  const lastFetchTimeRef = useRef(0);
 
   // Which job is currently in its scheduled time window (time-based, no clock-in needed)
   const currentWindowJobId = useMemo(
@@ -514,7 +536,7 @@ export default function Home() {
     setLocationLoading(true);
     try {
       const position = await new Promise((resolve, reject) =>
-        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000, maximumAge: 90000 })
+        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 12000, maximumAge: 90000 })
       );
       const origin = `${position.coords.latitude},${position.coords.longitude}`;
       setLastKnownOrigin(origin);
@@ -534,6 +556,7 @@ export default function Home() {
         }
       });
       setLocationDrives(newDrives);
+      lastFetchTimeRef.current = Date.now();
     } catch (err) {
       // silently fail — drive time is best-effort
     } finally {

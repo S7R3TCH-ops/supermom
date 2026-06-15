@@ -10,6 +10,7 @@ import { uploadAsset, getSignedUrl } from '../lib/storage';
 import { useKeyboardFocus } from '../hooks/useKeyboardFocus';
 import { SectionLabel } from '../components/ui/typography';
 import WorkerCatalogSheet from '../components/sheets/WorkerCatalogSheet';
+import { triggerHaptic } from '../lib/haptics';
 
 function ToggleBtn({ show, onToggle }) {
   return (
@@ -252,6 +253,7 @@ export default function Settings() {
   }
 
   async function handleResetData() {
+    triggerHaptic('error');
     const bid = await getCurrentBusinessId();
     if (!bid) return;
 

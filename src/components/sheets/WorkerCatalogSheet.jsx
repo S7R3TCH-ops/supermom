@@ -10,6 +10,7 @@ import {
 import { SectionLabel } from '../ui/typography';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import GrabBar from '../ui/GrabBar';
+import { triggerHaptic } from '../../lib/haptics';
 
 const BLANK = { name: '', phone: '', email: '', person_type: 'worker' };
 
@@ -132,6 +133,7 @@ export default function WorkerCatalogSheet({ isOpen, onClose }) {
 
   async function handleArchive(id, name) {
     if (!window.confirm(`Archive ${name}? They'll no longer appear in the picker, but past jobs are unchanged.`)) return;
+    triggerHaptic('medium');
     try {
       await archiveWorker(id);
       toast.success('Archived.');
@@ -167,6 +169,7 @@ export default function WorkerCatalogSheet({ isOpen, onClose }) {
 
   async function handleDeleteSkillType(id, name) {
     if (!window.confirm(`Delete skill type "${name}"? Workers currently assigned this skill will lose it.`)) return;
+    triggerHaptic('error');
     try {
       await deleteSkillType(id);
       toast.success('Skill type deleted.');

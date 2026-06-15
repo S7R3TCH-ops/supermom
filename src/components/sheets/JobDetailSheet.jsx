@@ -16,6 +16,7 @@ import { supabase } from '../../lib/supabase';
 import GrabBar from '../ui/GrabBar';
 import FinancialMathBreakdown from '../ui/FinancialMathBreakdown';
 import { useSwipeToDismiss } from '../../hooks/useSwipeToDismiss';
+import { triggerHaptic } from '../../lib/haptics';
 
 const STATUS_COLORS = {
   Scheduled: { bg: 'rgba(59,130,246,0.12)',   color: '#3B82F6', border: 'rgba(59,130,246,0.25)' },
@@ -180,6 +181,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
 
   const [hardDeleteConfirm, setHardDeleteConfirm] = useState(false);
   async function handleHardDelete() {
+    triggerHaptic('error');
     setBusy(true); setMutErr(null);
     try {
       await hardDeleteJob(job.id);
@@ -191,6 +193,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
   const [markUnpaidConfirm, setMarkUnpaidConfirm] = useState(false);
   const [futureConfirmType, setFutureConfirmType] = useState(null); // 'complete' | 'paid' | null
   async function handleMarkUnpaid() {
+    triggerHaptic('medium');
     setBusy(true); setMutErr(null);
     try {
       await markJobUnpaid(job.id);

@@ -211,14 +211,14 @@ function AuthedShell() {
         >
           <Suspense fallback={<div style={{ padding: 20, color: T.inkMuted, fontFamily: T.font, fontSize: 13 }}>Loading...</div>}>
             <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/calendar" element={<Calendar />} />
-              <Route path="/clients" element={<Clients />} />
-              <Route path="/clients/:id" element={<ClientProfile />} />
-              <Route path="/finance" element={<Finance />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/admin" element={<Admin />} />
-              <Route path="/preview" element={<PalettePreview />} />
+              <Route path="/" element={<ErrorBoundary><Home /></ErrorBoundary>} />
+              <Route path="/calendar" element={<ErrorBoundary><Calendar /></ErrorBoundary>} />
+              <Route path="/clients" element={<ErrorBoundary><Clients /></ErrorBoundary>} />
+              <Route path="/clients/:id" element={<ErrorBoundary><ClientProfile /></ErrorBoundary>} />
+              <Route path="/finance" element={<ErrorBoundary><Finance /></ErrorBoundary>} />
+              <Route path="/settings" element={<ErrorBoundary><Settings /></ErrorBoundary>} />
+              <Route path="/admin" element={<ErrorBoundary><Admin /></ErrorBoundary>} />
+              <Route path="/preview" element={<ErrorBoundary><PalettePreview /></ErrorBoundary>} />
             </Routes>
           </Suspense>
           {!hideFAB && <FAB />}

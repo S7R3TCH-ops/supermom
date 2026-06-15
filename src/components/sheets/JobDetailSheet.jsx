@@ -696,6 +696,10 @@ function EditMode({ job, form, setForm, services, workers, business, T, mode, bu
     <>
       <div style={{ padding: '8px 14px 10px', borderBottom: `1px solid ${T.cardBorder}` }}>
         <div style={{ fontSize: 9, fontWeight: 700, color: '#FF78B0', textTransform: 'uppercase' }}>Editing Job</div>
+        <div style={{ marginTop: 4 }}>
+          <span style={{ fontFamily: 'Fraunces, serif', fontSize: 17, fontWeight: 600, color: T.ink }}>{job.client_name || 'Unknown'}</span>
+          <span style={{ fontSize: 12, color: T.inkMuted, marginLeft: 8 }}>{job.service_name || '—'} · {fmtDate(job.scheduled_date)}</span>
+        </div>
       </div>
       <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '12px 14px 4px' }}>
         <SectionDivider label="Schedule & Service" T={T} />

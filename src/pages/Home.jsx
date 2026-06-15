@@ -449,6 +449,7 @@ export default function Home() {
   const [costDesc, setCostDesc] = useState('');
   const [costErr, setCostErr] = useState(null);
   const [costSaving, setCostSaving] = useState(false);
+  const [costFieldFocus, setCostFieldFocus] = useState(null);
 
   const nextDriveValue =
     locationDrives[next?.id]?.durationValue ??
@@ -629,13 +630,15 @@ export default function Home() {
           </div>
 
           <div style={{ textAlign: 'right', flexShrink: 0 }}>
-            <div
+            <button
+              type="button"
               onClick={() => openDetail(
                 'This Week',
                 allWeekJobs.map(j => ({ ...j, total: computeJobSubtotal(j) })),
                 'jobs'
               )}
-              style={{ cursor: 'pointer', padding: '4px 0 4px 12px' }}
+              aria-label="View this week's jobs"
+              style={{ cursor: 'pointer', padding: '4px 0 4px 12px', background: 'none', border: 'none', textAlign: 'right' }}
             >
               <div style={{
                 fontFamily: T.serif,
@@ -646,7 +649,7 @@ export default function Home() {
                 color: mode === 'dark' ? 'rgba(255,255,255,0.88)' : T.ink,
                 fontVariantNumeric: 'tabular-nums',
               }}>
-                {privacyOn ? '•••' : `$${displayRevenue.toFixed(0)}`}
+                {privacyOn ? '•••' : `$${Math.round(displayRevenue).toLocaleString('en-CA')}`}
               </div>
               <div style={{ fontSize: 10, fontWeight: 700, color: mode === 'dark' ? T.pinkLabel : T.pink, textTransform: 'uppercase', letterSpacing: '0.6px', marginTop: 3 }}>
                 This Week
@@ -658,18 +661,34 @@ export default function Home() {
                       {privacyOn ? '•••' : (
                         collectedThisWeek >= displayRevenue
                           ? '✓ all collected'
-                          : `$${collectedThisWeek.toFixed(0)} collected`
+                          : `$${Math.round(collectedThisWeek).toLocaleString('en-CA')} collected`
                       )}
                     </div>
                   )}
                 </>
               )}
-            </div>
+            </button>
           </div>
         </div>
       </div>
 
       <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '16px 14px' }}>
+
+        {/* Loading skeleton — shown while initial data fetch is in flight */}
+        {loading && !allJobs && (
+          <div>
+            {[0, 1, 2].map(i => (
+              <div key={i} style={{
+                background: T.card, border: `1.5px solid ${T.cardBorder}`,
+                borderRadius: 16, padding: '14px', marginBottom: 8,
+                opacity: 1 - i * 0.2,
+              }}>
+                <div style={{ height: 12, borderRadius: 6, background: T.cardBorder, width: '55%', marginBottom: 10 }} />
+                <div style={{ height: 10, borderRadius: 5, background: T.cardBorder, width: '35%' }} />
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Notification permission banner — shown once until dismissed */}
         {notifPermission === 'default' && !notifBannerDismissed && (
@@ -685,6 +704,7 @@ export default function Home() {
               <div style={{ font: `12px/1.4 ${T.font}`, color: T.inkSub, marginTop: 2 }}>Get notified 15 mins before you need to leave for each job.</div>
             </div>
             <button
+              type="button"
               onClick={async () => {
                 const result = await Notification.requestPermission();
                 setNotifPermission(result);
@@ -695,18 +715,22 @@ export default function Home() {
               }}
               style={{
                 background: T.pink, color: '#fff', border: 'none',
-                borderRadius: 8, padding: '6px 12px',
+                borderRadius: 8, padding: '10px 12px',
                 font: `600 12px/1 ${T.font}`, cursor: 'pointer', whiteSpace: 'nowrap',
+                minHeight: 44,
               }}
             >Enable</button>
             <button
+              type="button"
+              aria-label="Dismiss notification reminder"
               onClick={() => {
                 localStorage.setItem('notif-banner-dismissed', 'true');
                 setNotifBannerDismissed(true);
               }}
               style={{
                 background: 'transparent', border: 'none', color: T.inkMuted,
-                fontSize: 18, cursor: 'pointer', padding: '0 2px', lineHeight: 1,
+                fontSize: 18, cursor: 'pointer', lineHeight: 1,
+                minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}
             >×</button>
           </div>
@@ -804,9 +828,9 @@ export default function Home() {
               })()}
 
               <div style={{ display: 'flex', gap: 8, marginTop: 14, paddingTop: 14, borderTop: `1px solid ${T.cardBorder}` }}>
-                <button onClick={(e) => { e.stopPropagation(); handleAddTime(activeJob); }} style={{ flex: 1, padding: '10px', borderRadius: 10, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.ink, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>+30 MIN</button>
-                <button onClick={(e) => { e.stopPropagation(); openAddCost(activeJob); }} style={{ flex: 1, padding: '10px', borderRadius: 10, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.ink, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>+COST</button>
-                <button onClick={(e) => { e.stopPropagation(); openPostJob(activeJob.id); }} style={{ flex: 2, padding: '10px', borderRadius: 10, background: T.pink, color: 'white', border: 'none', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>WRAP UP</button>
+                <button type="button" onClick={(e) => { e.stopPropagation(); handleAddTime(activeJob); }} style={{ flex: 1, padding: '10px', borderRadius: 10, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.ink, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>+30 MIN</button>
+                <button type="button" onClick={(e) => { e.stopPropagation(); openAddCost(activeJob); }} style={{ flex: 1, padding: '10px', borderRadius: 10, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.ink, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>+COST</button>
+                <button type="button" onClick={(e) => { e.stopPropagation(); openPostJob(activeJob.id); }} style={{ flex: 2, padding: '10px', borderRadius: 10, background: T.pink, color: 'white', border: 'none', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>WRAP UP</button>
               </div>
             </div>
           </div>
@@ -856,7 +880,7 @@ export default function Home() {
                         <>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10, position: 'relative' }}>
                             <div style={{ flex: 1, minWidth: 0, paddingRight: 10 }}>
-                              <div style={{ fontFamily: T.serif, fontSize: 26, fontWeight: 600, color: T.ink, lineHeight: 1.1, letterSpacing: '-0.5px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <div style={{ fontFamily: T.serif, fontSize: 22, fontWeight: 600, color: T.ink, lineHeight: 1.2, letterSpacing: '-0.4px', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
                                 {next.client_name}
                               </div>
                               <div style={{ fontSize: 13, fontWeight: 700, color: DEEP_ROSE, textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: 3 }}>
@@ -1012,7 +1036,7 @@ export default function Home() {
         {/* TODAY — Remaining jobs */}
         {todayUpcoming.length > 0 && (
           <div style={{ marginBottom: 16 }}>
-            <SectionLabel color={T.pink} style={{ marginBottom: 8 }}>COMING UP TODAY</SectionLabel>
+            <SectionLabel color={T.pink} style={{ marginBottom: 8 }}>Coming up today</SectionLabel>
             {todayUpcoming.map(j => {
               const locDrive = locationDrives[j.id];
               const leaveBy = locDrive ? formatLeaveBy(locDrive.durationValue, j.start, now) : null;
@@ -1078,12 +1102,9 @@ export default function Home() {
                 userSelect: 'none',
               }}
             >
-              <span style={{
-                fontSize: 10, color: DEEP_ROSE,
-                display: 'inline-block',
-                transform: owingOpen ? 'rotate(90deg)' : 'none',
-                transition: 'transform 0.18s',
-              }}>▶</span>
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style={{ flexShrink: 0, transform: owingOpen ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.18s ease-out', display: 'block' }}>
+                <path d="M3 2L7 5L3 8" stroke={DEEP_ROSE} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
               <div style={{ flex: 1, fontSize: 13, fontWeight: 700, color: DEEP_ROSE }}>
                 {owingGroups.length} owing{!privacyOn && owingTotal > 0 ? ` · $${owingTotal.toFixed(0)}` : ''}
               </div>
@@ -1125,8 +1146,13 @@ export default function Home() {
                         <div style={{ fontFamily: T.serif, fontSize: 16, fontWeight: 600, color: T.ink, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.3px' }}>
                           {g.client_name}
                         </div>
-                        <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 600, color: accentColor, whiteSpace: 'nowrap', marginLeft: 8 }}>
-                          {privacyOn ? '•••' : `$${g.totalOwing.toFixed(0)} owing`}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 600, color: accentColor, whiteSpace: 'nowrap' }}>
+                            {privacyOn ? '•••' : `$${g.totalOwing.toFixed(0)} owing`}
+                          </div>
+                          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0 }}>
+                            <path d="M4 2.5L8 6L4 9.5" stroke={accentColor} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.5" />
+                          </svg>
                         </div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
@@ -1196,7 +1222,7 @@ export default function Home() {
 
       </div>
 
-      <div style={{ maxHeight: isKeyboardFocused ? 80 : 0, overflow: 'hidden', transition: 'max-height 0.2s ease-out' }} />
+      <div style={{ height: isKeyboardFocused ? 80 : 0 }} />
 
       {costModalJob && (
         <div
@@ -1220,13 +1246,14 @@ export default function Home() {
               padding: '20px 18px 28px',
             }}
           >
+            <div style={{ width: 40, height: 4, background: T.cardBorder, borderRadius: 4, margin: '0 auto 16px' }} />
             <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.9px', textTransform: 'uppercase', color: T.inkMuted, marginBottom: 4 }}>Add a cost</div>
             <div style={{ fontFamily: T.serif, fontSize: 18, fontWeight: 500, color: T.ink, marginBottom: 16 }}>
               What did you spend on {costModalJob.client_name || 'this job'}?
             </div>
 
             <label htmlFor="qc-amount" style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.7px', textTransform: 'uppercase', color: T.inkMuted, marginBottom: 8, display: 'block' }}>Amount</label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 12, padding: '10px 14px', marginBottom: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: T.card, border: `1.5px solid ${costFieldFocus === 'amount' ? T.pink : T.cardBorder}`, borderRadius: 12, padding: '10px 14px', marginBottom: 14, transition: 'border-color 0.15s' }}>
               <span style={{ fontFamily: T.serif, fontSize: 18, fontWeight: 500, color: T.inkSub }}>$</span>
               <input
                 id="qc-amount"
@@ -1234,7 +1261,8 @@ export default function Home() {
                 autoFocus
                 value={costAmount}
                 onChange={e => setCostAmount(e.target.value)}
-                onFocus={e => e.target.select()}
+                onFocus={e => { e.target.select(); setCostFieldFocus('amount'); }}
+                onBlur={() => setCostFieldFocus(null)}
                 placeholder="0"
                 min="0"
                 step="0.01"
@@ -1244,12 +1272,14 @@ export default function Home() {
             </div>
 
             <label htmlFor="qc-desc" style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.7px', textTransform: 'uppercase', color: T.inkMuted, marginBottom: 8, display: 'block' }}>What for</label>
-            <div style={{ background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 12, padding: '10px 14px', marginBottom: costErr ? 10 : 18 }}>
+            <div style={{ background: T.card, border: `1.5px solid ${costFieldFocus === 'desc' ? T.pink : T.cardBorder}`, borderRadius: 12, padding: '10px 14px', marginBottom: costErr ? 10 : 18, transition: 'border-color 0.15s' }}>
               <input
                 id="qc-desc"
                 type="text"
                 value={costDesc}
                 onChange={e => setCostDesc(e.target.value)}
+                onFocus={() => setCostFieldFocus('desc')}
+                onBlur={() => setCostFieldFocus(null)}
                 placeholder="Supplies"
                 style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', fontFamily: T.font, fontSize: 13, color: T.ink }}
               />

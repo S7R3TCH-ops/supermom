@@ -138,13 +138,14 @@ A mobile-first CRM & operations web app for **Sandra**, a solo personal-life-ope
 
 ---
 
-## Current version: 0.12.53 — Jun 15, 2026
+## Current version: 0.12.54 — Jun 15, 2026
 
 Sandra's business is live — data wiped and re-provisioned Jun 9. App in active use.
 
 **⚠️ Multi-client git discipline**: Always push local commits before starting an online Claude Code session; always pull before the online session writes code.
 
 ### Recent changes (full history in `docs/changelog/` + `git log`)
+- **v0.12.54 (Jun 15)** — Home.jsx impeccable polish pass (P1–P3): P1: focus rings restored on Add Cost modal inputs (border-color indicator on wrapper, `outline:none` preserved on input); revenue widget `div` → `<button>` with `aria-label`; notification banner Enable + × buttons expanded to 44px tap targets with `aria-label`. P2: loading skeleton (3 placeholder cards while `allJobs` is null); Add Cost modal sheet handle added; owing rows get `›` SVG chevron affordance; `MissionIntel` label updated to DESIGN.md spec (✦ prefix, 9.5px, 1.1px spacing, `#FF78B0`). P3: keyboard spacer `max-height` animation removed (no layout thrash); owing `▶` char → inline SVG chevron; revenue amounts get thousands separator (`toLocaleString`); Next Up client name 26px → 22px allowing 2 lines; `type="button"` on active job action buttons; `COMING UP TODAY` → sentence case.
 - **v0.12.53 (Jun 15)** — ClientProfile polish pass (P3 minor items): Book Job button uses `T.pink` token (was hardcoded `#E91E6A`); stat tile + date tile labels 8 → 9px; "Scheduled" badge on-system (pinkTint/pink); "See my future" → "AI insights ✦" with tooltip; AI field labels expanded ("Preferences", "Contact"); AI card collapses to friendly empty state when no context exists; view-mode hides empty field rows; null guards on contact fields (phone/email/address); `marginBottom: 14` on history section; `type="button"` on job row buttons; placeholder CSS for intel textareas.
 - **v0.12.52 (Jun 15)** — ClientProfile P1/P2 a11y + UX pass (impeccable critique): back button now navigates to `/clients` (was `/`); back + edit icon-buttons expanded to 44×44px tap targets; `outline:none` removed from AI card textareas (focus ring restored); upcoming + history job rows converted from `<div onClick>` to `<button>`; dead "View all jobs" button removed; raw `error.message` replaced with friendly copy.
 - **v0.12.51 (Jun 15)** — EditMode condensed prep brief strip: client name (Fraunces) + service · date shown in the "Editing Job" header bar for context while editing.
@@ -185,7 +186,7 @@ Sandra's business is live — data wiped and re-provisioned Jun 9. App in active
    - Fix 1 (wrong leave time): increase GPS timeout to 12000ms; add `locationFetchAttempted` state to show "Calculating…" until resolved.
    - Fix 2 (wonky after long absence): add `visibilitychange` handler — `setNow(new Date())` on resume; `reload()` if away > 30 min or date changed; guard drive re-fetch (last fetch > 10 min) to protect Maps quota.
 4. **AI chat interface** — `api/ai/[action].js` + `ANTHROPIC_API_KEY` in place. Needs chat UI + convo state. HIGH PRIORITY.
-5. **Design system critique** — Job detail + Client profile critiques done (P1s + P2s fixed). Next: `/impeccable document` to regenerate DESIGN.md from current code.
+5. **Design system critique pass in progress** — Critiqued + polished: InvoiceView ✓, JobDetailSheet ✓, ClientProfile ✓, Home ✓. Next: NewJobSheet → Clients → Finance → Settings → Calendar → secondary sheets → JobDetailSheet re-critique → Admin → Login → `/impeccable document`.
 
 ### Phase 2 features
 - [ ] **AI chat interface** — HIGH PRIORITY. API endpoint + key already set. Need chat UI + conversation state.

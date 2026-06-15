@@ -9,7 +9,7 @@ export default function MissionIntel({ prepNote, T, theme }) {
       marginBottom: 10
     }}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-        <span style={{ fontSize: 9, fontWeight: 700, color: theme.accent || T.pink, flexShrink: 0, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Good to know</span>
+        <span style={{ fontSize: 9.5, fontWeight: 700, color: '#FF78B0', flexShrink: 0, textTransform: 'uppercase', letterSpacing: '1.1px' }}>✦ Good to know</span>
         <span style={{ fontSize: 11, color: T.inkMuted, lineHeight: 1.4, fontWeight: 500 }}>{prepNote}</span>
       </div>
     </div>

@@ -138,13 +138,18 @@ A mobile-first CRM & operations web app for **Sandra**, a solo personal-life-ope
 
 ---
 
-## Current version: 0.12.54 — Jun 15, 2026
+## Current version: 0.12.59 — Jun 15, 2026
 
 Sandra's business is live — data wiped and re-provisioned Jun 9. App in active use.
 
 **⚠️ Multi-client git discipline**: Always push local commits before starting an online Claude Code session; always pull before the online session writes code.
 
 ### Recent changes (full history in `docs/changelog/` + `git log`)
+- **v0.12.59 (Jun 15)** — Settings impeccable polish pass (P1–P3 + questions): `window.confirm()` on Reset All Data → in-app two-tap confirm with danger zone styling (red-tinted card, warning header, Cancel/Yes buttons); `outline: none` removed from all inputs — global `.sm-input:focus { border-color: var(--pink) }` class added to `index.css`; avatar `<div onClick>` → `<button type="button" aria-label="Change avatar photo">`; all-caps labels throughout → sentence case (Save settings, Sign out, Manage, Connect/Reconnect, Update password, Reset all data); ToggleBtn (password visibility) padded to 44×44px tap target; `type="button"` added to GCal + Team buttons; `✦` removed from "Preferences" section label (✦ is for AI-specific labels only); keyboard spacer height transition removed (no layout thrash); Save button moved to persistent footer outside scroll (always visible, disabled when clean, "No changes" when unmodified); Sign Out moved out of Security card to standalone section; AI Signature label → "Your personality in words" with clearer helper copy; isDirty banner simplified to "● Unsaved changes" (no longer redundant with persistent footer).
+- **v0.12.58 (Jun 15)** — Finance hero + UX refinements: hero sub-label now shows "You cleared $X after expenses" (green/red) when expenses exist, alongside job count; Tax Ready section collapsed behind a toggle (▾ header) so Sandra's daily scroll ends at invoices, not the CSV block; `type="button"` added to CSV download button.
+- **v0.12.57 (Jun 15)** — Finance impeccable polish pass (P1–P2): hero section upgraded with dynamic period label + large Fraunces revenue number + job count (was static "Revenue & Expenses" heading); `StatCard` div → `<button type="button">` with `aria-label` and `width:100%`; `TransactionRow` div → `<button>` when tappable with `aria-label`; "+ ADD EXPENSE" → sentence case "+ Add expense"; "VIEW ALL INVOICES · Coming soon" disabled placeholder removed (replaced with informational count line); worker costs amber text `#F59E0B` → `#92400E` (WCAG AA on white); trend chart card border 1px → 1.5px (consistent with stat cards).
+- **v0.12.56 (Jun 15)** — Clients list impeccable polish pass (P1–P3 + design Q&A): P1: stat tiles converted from `<div onClick>` to `<button type="button">` with `aria-pressed`; search input focus ring restored (wrapper border turns pink, `outline:none` removed); `+` button removed from hero (redundant with global FAB which already prioritizes "New Client" on `/clients`). P2: dark mode stat tile label opacity 0.38 → 0.55 (WCAG AA); raw `error.message` → friendly copy; Lead "Book" button padding expanded to `6px 10px`. Design Q&A: "Outstanding" tile label → "Owes $" (normalized to match chip label); count badges added to all filter chips; clear ×  button on search input; empty state copy updated to reference FAB.
+- **v0.12.55 (Jun 15)** — NewJobSheet impeccable polish pass (P1–P3): P1: `outline:none` removed from all inputs/textarea/select (WCAG focus rings restored); recent-client bubbles + client list rows + service cards converted from `<div onClick>` to `<button type="button">`; `bookErr` moved inside footer above buttons (was off-screen below footer). P2: step progress dots added (3-segment bar: done=green, active=pink, future=cardBorder) replacing text-only "Step 2 of 3"; date in Step 3 review formatted via `Intl.DateTimeFormat` (was raw ISO "2026-06-15"); close button 32×32 → 44×44px. P3: side-tab `borderLeft` on AI reason callout → background tint + full border; `transition: padding-bottom` removed (layout thrash); "+ NEW CLIENT" / "+ ADD ANOTHER COST" → sentence case; disabled button text `T.inkMuted` (was white-on-pale); stepper buttons get `aria-label`; `type="button"` on all buttons.
 - **v0.12.54 (Jun 15)** — Home.jsx impeccable polish pass (P1–P3): P1: focus rings restored on Add Cost modal inputs (border-color indicator on wrapper, `outline:none` preserved on input); revenue widget `div` → `<button>` with `aria-label`; notification banner Enable + × buttons expanded to 44px tap targets with `aria-label`. P2: loading skeleton (3 placeholder cards while `allJobs` is null); Add Cost modal sheet handle added; owing rows get `›` SVG chevron affordance; `MissionIntel` label updated to DESIGN.md spec (✦ prefix, 9.5px, 1.1px spacing, `#FF78B0`). P3: keyboard spacer `max-height` animation removed (no layout thrash); owing `▶` char → inline SVG chevron; revenue amounts get thousands separator (`toLocaleString`); Next Up client name 26px → 22px allowing 2 lines; `type="button"` on active job action buttons; `COMING UP TODAY` → sentence case.
 - **v0.12.53 (Jun 15)** — ClientProfile polish pass (P3 minor items): Book Job button uses `T.pink` token (was hardcoded `#E91E6A`); stat tile + date tile labels 8 → 9px; "Scheduled" badge on-system (pinkTint/pink); "See my future" → "AI insights ✦" with tooltip; AI field labels expanded ("Preferences", "Contact"); AI card collapses to friendly empty state when no context exists; view-mode hides empty field rows; null guards on contact fields (phone/email/address); `marginBottom: 14` on history section; `type="button"` on job row buttons; placeholder CSS for intel textareas.
 - **v0.12.52 (Jun 15)** — ClientProfile P1/P2 a11y + UX pass (impeccable critique): back button now navigates to `/clients` (was `/`); back + edit icon-buttons expanded to 44×44px tap targets; `outline:none` removed from AI card textareas (focus ring restored); upcoming + history job rows converted from `<div onClick>` to `<button>`; dead "View all jobs" button removed; raw `error.message` replaced with friendly copy.
@@ -180,12 +185,11 @@ Sandra's business is live — data wiped and re-provisioned Jun 9. App in active
 
 > **Sync rule**: every change to `api/_lib/invoicePdf.js` must be mirrored in `InvoiceView.jsx` before commit. v0.12.49 kept them in sync.
 
-1. **🎨 Impeccable critique/polish pass — IN PROGRESS** — Run `/impeccable critique` then `/impeccable polish` on each page before moving to the next. Critique snapshot for Home already written to `.impeccable/critique/`. Remaining order:
-   - `NewJobSheet` ← **start here**
-   - `Clients` (list view)
-   - `Finance`
-   - `Settings`
-   - `Calendar`
+1. **🎨 Impeccable critique/polish pass — IN PROGRESS** — Run `/impeccable critique` then `/impeccable polish` on each page before moving to the next. Critique snapshots in `.impeccable/critique/`. Remaining order:
+   - `Clients` (list view) ✅ v0.12.56
+   - `Finance` ✅ v0.12.57
+   - `Settings` ✅ v0.12.59
+   - `Calendar` ← **start here**
    - Secondary sheets (FinanceDetailSheet, EditClientSheet, PostJobSheet, PrepNoteSheet, etc.)
    - `JobDetailSheet` re-critique (EditMode strip added v0.12.51 after original critique)
    - `Admin`
@@ -199,6 +203,7 @@ Sandra's business is live — data wiped and re-provisioned Jun 9. App in active
 5. **AI chat interface** — `api/ai/[action].js` + `ANTHROPIC_API_KEY` in place. Needs chat UI + convo state. HIGH PRIORITY.
 
 ### Phase 2 features
+- [ ] **Client invoice history** — Add "Invoices" section to ClientProfile (after job history) listing all invoices for that client, each tappable to `/i/:id`. Finance page's "Showing X of Y invoices" count line is the natural hook to wire up once this exists.
 - [ ] **AI chat interface** — HIGH PRIORITY. API endpoint + key already set. Need chat UI + conversation state.
 - [ ] **Voice scheduling** — `api/transcribe.js` exists. Flow: mic → transcribe → Claude parses intent → pre-fills booking sheet.
 - [ ] **Push notifications (iOS)** — SW setTimeout unreliable when backgrounded on iOS. Needs proper Web Push upgrade: VAPID keys + server-triggered via `web-push` npm + Vercel cron. Android works today.

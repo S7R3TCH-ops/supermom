@@ -16,11 +16,13 @@ function ToggleBtn({ show, onToggle }) {
     <button
       type="button"
       onClick={onToggle}
+      aria-label={show ? 'Hide password' : 'Show password'}
       style={{
         position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
         background: 'transparent', border: 'none', cursor: 'pointer',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: 4, color: 'var(--ink-muted)',
+        padding: '14px', color: 'var(--ink-muted)',
+        minWidth: 44, minHeight: 44,
       }}
     >
       {show ? (
@@ -81,6 +83,7 @@ export default function Settings() {
   const [gcalOn, setGcalOn] = useState(false);
   const [gcalBusinessId, setGcalBusinessId] = useState(null);
   const [showWorkers, setShowWorkers] = useState(false);
+  const [resetConfirm, setResetConfirm] = useState(false);
 
   const [pw, setPw] = useState('');
   const [showPw, setShowPw] = useState(false);
@@ -240,7 +243,6 @@ export default function Settings() {
   }
 
   async function handleResetData() {
-    if (!window.confirm('WARNING: This will delete ALL your data (clients, jobs, expenses). This cannot be undone. Are you sure?')) return;
     const bid = await getCurrentBusinessId();
     if (!bid) return;
 
@@ -257,6 +259,7 @@ export default function Settings() {
       toast.error('Data reset failed.');
     } finally {
       setBusy(false);
+      setResetConfirm(false);
     }
   }
 
@@ -284,7 +287,7 @@ export default function Settings() {
     padding: '9px 11px', borderRadius: 'var(--r-input)',
     border: `1.5px solid ${T.cardBorder}`,
     fontSize: 13, color: T.ink,
-    background: T.surface, outline: 'none',
+    background: T.surface,
     fontFamily: 'var(--font-ui)',
   };
 
@@ -334,6 +337,7 @@ export default function Settings() {
         </h2>
       </div>
 
+      {/* Scroll area */}
       <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '16px 14px' }}>
 
         {isDirty && (
@@ -343,76 +347,88 @@ export default function Settings() {
             fontSize: 12, fontWeight: 600, color: T.pink,
             display: 'flex', alignItems: 'center', gap: 6,
           }}>
-            <span style={{ fontSize: 8 }}>●</span> Unsaved changes — tap Save Settings below
+            <span style={{ fontSize: 8 }}>●</span> Unsaved changes
           </div>
         )}
 
         <SectionLabel style={{ color: T.secLabel, marginBottom: 4 }}>
-          ✦ Preferences
+          Preferences
         </SectionLabel>
         <div style={cardStyle}>
           <span style={{ fontSize: 14, fontWeight: 600, color: T.ink, display: 'block', marginBottom: 14 }}>Personal Profile</span>
 
           <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginBottom: 20 }}>
-            <div onClick={handleAvatarClick} style={{ width: 64, height: 64, borderRadius: '50%', background: T.surface, border: `2px solid ${T.cardBorder}`, cursor: 'pointer', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', flexShrink: 0 }}>
+            <button
+              type="button"
+              onClick={handleAvatarClick}
+              aria-label="Change avatar photo"
+              style={{
+                width: 64, height: 64, borderRadius: '50%',
+                background: T.surface, border: `2px solid ${T.cardBorder}`,
+                cursor: 'pointer', overflow: 'hidden',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                position: 'relative', flexShrink: 0, padding: 0,
+              }}
+            >
               {avatarUrl ? <img src={avatarUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Avatar" /> : <span style={{ fontSize: 24 }}>👤</span>}
               <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.45)', color: 'white', fontSize: 9, fontWeight: 700, textAlign: 'center', padding: '3px 0', letterSpacing: '0.5px' }}>EDIT</div>
-            </div>
-            <input type="file" ref={fileInputRef} onChange={handleFileChange} style={{ display: 'none' }} accept="image/*" />
+            </button>
+            <input type="file" ref={fileInputRef} onChange={handleFileChange} style={{ display: 'none' }} accept="image/*" aria-label="Avatar upload" />
 
             <div style={{ flex: 1 }}>
               <label style={labelStyle}>Full Name</label>
-              <input value={form.owner_name} onChange={e => setForm({...form, owner_name: e.target.value})} style={inputStyle} />
+              <input className="sm-input" value={form.owner_name} onChange={e => setForm({...form, owner_name: e.target.value})} style={inputStyle} />
             </div>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <label style={labelStyle}>Business Name</label>
-              <input value={form.name} onChange={e => setForm({...form, name: e.target.value})} style={inputStyle} />
+              <input className="sm-input" value={form.name} onChange={e => setForm({...form, name: e.target.value})} style={inputStyle} />
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
                 <label style={labelStyle}>Phone</label>
-                <input value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} style={inputStyle} />
+                <input className="sm-input" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} style={inputStyle} />
               </div>
               <div>
                 <label style={labelStyle}>Email</label>
-                <input value={form.email} onChange={e => setForm({...form, email: e.target.value})} style={inputStyle} />
+                <input className="sm-input" value={form.email} onChange={e => setForm({...form, email: e.target.value})} style={inputStyle} />
               </div>
             </div>
 
             <div>
               <label style={labelStyle}>Address</label>
-              <input value={form.address} onChange={e => setForm({...form, address: e.target.value})} placeholder="Street address" style={inputStyle} />
+              <input className="sm-input" value={form.address} onChange={e => setForm({...form, address: e.target.value})} placeholder="Street address" style={inputStyle} />
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
                 <label style={labelStyle}>City</label>
-                <input value={form.city} onChange={e => setForm({...form, city: e.target.value})} style={inputStyle} />
+                <input className="sm-input" value={form.city} onChange={e => setForm({...form, city: e.target.value})} style={inputStyle} />
               </div>
               <div>
                 <label style={labelStyle}>Postal Code</label>
-                <input value={form.postal_code} onChange={e => setForm({...form, postal_code: e.target.value})} placeholder="A1A 1A1" style={inputStyle} />
+                <input className="sm-input" value={form.postal_code} onChange={e => setForm({...form, postal_code: e.target.value})} placeholder="A1A 1A1" style={inputStyle} />
               </div>
             </div>
 
             <div>
               <label style={labelStyle}>Base Hourly Rate ($)</label>
-              <input type="number" value={form.hourly_rate} onChange={e => setForm({...form, hourly_rate: e.target.value})} onFocus={e => e.target.select()} style={inputStyle} />
+              <input className="sm-input" type="number" value={form.hourly_rate} onChange={e => setForm({...form, hourly_rate: e.target.value})} onFocus={e => e.target.select()} style={inputStyle} />
             </div>
 
             <div style={{ borderTop: `1px solid ${T.cardBorder}`, marginTop: 4, paddingTop: 14 }}>
-              <label style={labelStyle}>AI Signature</label>
+              <label style={labelStyle}>Your personality in words</label>
               <input
+                className="sm-input"
                 value={form.signature}
                 onChange={e => setForm({...form, signature: e.target.value})}
                 placeholder="e.g. Warm and organized, calm under pressure"
                 style={inputStyle}
               />
-              <div style={{ fontSize: 10, color: T.inkMuted, marginTop: 4 }}>Used to personalize AI-generated messages and briefings</div>
+              <div style={{ fontSize: 10, color: T.inkMuted, marginTop: 4 }}>How AI describes your style in messages and briefings</div>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderTop: `1px solid ${T.cardBorder}`, marginTop: 4 }}>
@@ -430,7 +446,7 @@ export default function Settings() {
             {form.tax_enabled && (
               <div>
                 <label style={labelStyle}>HST Registration #</label>
-                <input value={form.hst_number} onChange={e => setForm({...form, hst_number: e.target.value})} placeholder="123456789 RT0001" style={inputStyle} />
+                <input className="sm-input" value={form.hst_number} onChange={e => setForm({...form, hst_number: e.target.value})} placeholder="123456789 RT0001" style={inputStyle} />
               </div>
             )}
           </div>
@@ -443,14 +459,15 @@ export default function Settings() {
               <div style={{ width: 32, height: 32, borderRadius: 8, background: T.surface, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>📅</div>
               <div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: T.ink }}>Google Calendar</div>
-                <div style={{ fontSize: 10, color: gcalOn ? '#10B981' : T.inkMuted, fontWeight: 600 }}>{gcalOn ? 'CONNECTED' : 'NOT CONNECTED'}</div>
+                <div style={{ fontSize: 10, color: gcalOn ? '#10B981' : T.inkMuted, fontWeight: 600 }}>{gcalOn ? 'Connected' : 'Not connected'}</div>
               </div>
             </div>
             <button
+              type="button"
               onClick={() => window.location.href = `/api/auth/google/login?business_id=${gcalBusinessId}`}
               style={{ background: 'transparent', border: `1.5px solid ${T.cardBorder}`, borderRadius: 8, padding: '6px 12px', fontSize: 11, fontWeight: 700, color: T.pink, cursor: 'pointer' }}
             >
-              {gcalOn ? 'RECONNECT' : 'CONNECT'}
+              {gcalOn ? 'Reconnect' : 'Connect'}
             </button>
           </div>
         </div>
@@ -466,60 +483,126 @@ export default function Settings() {
               </div>
             </div>
             <button
+              type="button"
               onClick={() => setShowWorkers(true)}
               style={{ background: 'transparent', border: `1.5px solid ${T.cardBorder}`, borderRadius: 8, padding: '6px 12px', fontSize: 11, fontWeight: 700, color: T.pink, cursor: 'pointer' }}
             >
-              MANAGE
+              Manage
             </button>
           </div>
         </div>
 
         <SectionLabel>Security</SectionLabel>
         <div style={cardStyle}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: T.ink, marginBottom: 14 }}>Password & Access</div>
+          <div style={{ fontSize: 14, fontWeight: 600, color: T.ink, marginBottom: 14 }}>Password</div>
 
           <form onSubmit={handleUpdatePassword} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div style={{ position: 'relative' }}>
-              <label style={labelStyle}>New Password</label>
-              <input type={showPw ? 'text' : 'password'} value={pw} onChange={e => setPw(e.target.value)} placeholder="Min 8 characters" style={inputStyle} />
+              <label style={labelStyle}>New password</label>
+              <input className="sm-input" type={showPw ? 'text' : 'password'} value={pw} onChange={e => setPw(e.target.value)} placeholder="Min 8 characters" style={{ ...inputStyle, paddingRight: 44 }} />
               <ToggleBtn show={showPw} onToggle={() => setShowPw(!showPw)} />
             </div>
             {pwError && <div style={{ fontSize: 11, color: '#E91E6A' }}>{pwError}</div>}
             <button type="submit" disabled={pwBusy || !pw} style={{ width: '100%', padding: '10px', borderRadius: 10, background: pwBusy || !pw ? T.surface : T.pink, color: pwBusy || !pw ? T.inkMuted : 'white', border: 'none', fontWeight: 700, fontSize: 12, cursor: pwBusy || !pw ? 'default' : 'pointer' }}>
-              {pwBusy ? 'UPDATING...' : 'UPDATE PASSWORD'}
+              {pwBusy ? 'Updating...' : 'Update password'}
             </button>
           </form>
-
-          <div style={{ borderTop: `1px solid ${T.cardBorder}`, marginTop: 16, paddingTop: 16 }}>
-            <button
-              onClick={handleSignOut}
-              style={{ width: '100%', background: 'transparent', border: `1.5px solid ${T.cardBorder}`, color: T.inkMuted, padding: '10px', borderRadius: 10, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
-            >
-              SIGN OUT
-            </button>
-          </div>
         </div>
 
-        <div style={{ padding: '10px 0 16px' }}>
-          <button onClick={handleSave} disabled={busy} style={{ width: '100%', padding: '14px', borderRadius: 12, background: busy ? T.surface : T.pink, color: busy ? T.inkMuted : 'white', border: 'none', fontWeight: 700, fontSize: 14, cursor: busy ? 'default' : 'pointer', boxShadow: busy ? 'none' : '0 4px 12px rgba(233,30,106,0.3)' }}>
-            {busy ? 'SAVING CHANGES...' : 'SAVE SETTINGS'}
+        {/* Sign Out — account-level, separate from security */}
+        <div style={{ marginBottom: 20 }}>
+          <button
+            type="button"
+            onClick={handleSignOut}
+            style={{ width: '100%', background: 'transparent', border: `1.5px solid ${T.cardBorder}`, color: T.inkMuted, padding: '10px', borderRadius: 10, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+          >
+            Sign out
           </button>
-
-          {error && <div style={{ marginTop: 12, textAlign: 'center', color: '#E91E6A', fontSize: 12, fontWeight: 600 }}>{error}</div>}
         </div>
 
-        <div style={{ borderTop: `1px solid ${T.cardBorder}`, paddingTop: 16, paddingBottom: 40 }}>
-          <SectionLabel>System</SectionLabel>
-          <div style={{ ...cardStyle, marginBottom: 0 }}>
-            <button onClick={handleResetData} style={{ width: '100%', background: 'transparent', border: '1.5px solid #EF4444', color: '#EF4444', padding: '12px', borderRadius: 10, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-              RESET ALL DATA
-            </button>
-            <div style={{ marginTop: 8, fontSize: 10, color: T.inkMuted, textAlign: 'center' }}>This will permanently delete all clients, jobs, and expenses.</div>
+        {/* Danger zone */}
+        <div style={{ borderTop: `2px solid #FCA5A5`, paddingTop: 16, paddingBottom: 40 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+              <line x1="12" y1="9" x2="12" y2="13" />
+              <line x1="12" y1="17" x2="12.01" y2="17" />
+            </svg>
+            <span style={{ fontSize: 9, fontWeight: 800, color: '#EF4444', textTransform: 'uppercase', letterSpacing: '1px' }}>Danger zone</span>
+          </div>
+          <div style={{
+            background: 'rgba(239,68,68,0.04)',
+            borderRadius: 'var(--r-card)',
+            border: '1.5px solid #FCA5A5',
+            padding: 16,
+          }}>
+            {resetConfirm ? (
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#B91C1C', marginBottom: 6 }}>Delete everything?</div>
+                <div style={{ fontSize: 12, color: T.inkMid, marginBottom: 14 }}>
+                  This permanently deletes all clients, jobs, and expenses. It cannot be undone.
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => setResetConfirm(false)}
+                    style={{ flex: 1, padding: '10px', borderRadius: 10, background: T.card, border: `1.5px solid ${T.cardBorder}`, color: T.inkMuted, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleResetData}
+                    disabled={busy}
+                    style={{ flex: 1, padding: '10px', borderRadius: 10, background: '#EF4444', color: 'white', border: 'none', fontWeight: 700, fontSize: 12, cursor: busy ? 'default' : 'pointer' }}
+                  >
+                    {busy ? 'Deleting...' : 'Yes, delete everything'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setResetConfirm(true)}
+                  style={{ width: '100%', background: 'transparent', border: '1.5px solid #EF4444', color: '#EF4444', padding: '12px', borderRadius: 10, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                >
+                  Reset all data
+                </button>
+                <div style={{ marginTop: 8, fontSize: 10, color: T.inkMuted, textAlign: 'center' }}>
+                  Permanently deletes all clients, jobs, and expenses.
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      <div style={{ height: isKeyboardFocused ? 260 : 0, transition: 'height 0.2s ease-out' }} />
+      {/* Persistent save footer */}
+      <div style={{
+        padding: '10px 14px 8px',
+        borderTop: `1.5px solid ${T.cardBorder}`,
+        background: T.card,
+      }}>
+        {error && <div style={{ marginBottom: 8, textAlign: 'center', color: '#E91E6A', fontSize: 12, fontWeight: 600 }}>{error}</div>}
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={busy || !isDirty}
+          style={{
+            width: '100%', padding: '14px', borderRadius: 12,
+            background: busy || !isDirty ? T.surface : T.pink,
+            color: busy || !isDirty ? T.inkMuted : 'white',
+            border: 'none', fontWeight: 700, fontSize: 14,
+            cursor: busy || !isDirty ? 'default' : 'pointer',
+            boxShadow: !isDirty || busy ? 'none' : '0 4px 12px rgba(233,30,106,0.3)',
+          }}
+        >
+          {busy ? 'Saving...' : isDirty ? 'Save settings' : 'No changes'}
+        </button>
+      </div>
+
+      <div style={{ height: isKeyboardFocused ? 260 : 0 }} />
       <WorkerCatalogSheet isOpen={showWorkers} onClose={() => setShowWorkers(false)} />
     </div>
   );

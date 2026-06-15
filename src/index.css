@@ -129,6 +129,12 @@ button {
   font-variant-numeric: tabular-nums;
 }
 
+/* Focus ring for form inputs — border turns pink, no browser outline */
+.sm-input:focus {
+  outline: none;
+  border-color: var(--pink) !important;
+}
+
 /* Hero fly animation for Cape-Up easter egg */
 @keyframes heroFly {
   0%   { transform: translate(0,0) rotate(0deg) scale(1); opacity: 1; }

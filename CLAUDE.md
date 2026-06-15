@@ -180,13 +180,23 @@ Sandra's business is live — data wiped and re-provisioned Jun 9. App in active
 
 > **Sync rule**: every change to `api/_lib/invoicePdf.js` must be mirrored in `InvoiceView.jsx` before commit. v0.12.49 kept them in sync.
 
-1. **⚠️ Device verification** — v0.12.32 Android perf fix and all Jun 12–14 fixes not yet phone-tested.
-2. **GCal sync failures silent** — `triggerGCalSync` is fire-and-forget. Likely cause: OAuth "Testing" mode → refresh tokens expire after 7 days. Sandra should reconnect (Settings → Google Calendar → CONNECT).
-3. **Home.jsx drive-time + background-resume bugs (diagnosed, not fixed)**:
+1. **🎨 Impeccable critique/polish pass — IN PROGRESS** — Run `/impeccable critique` then `/impeccable polish` on each page before moving to the next. Critique snapshot for Home already written to `.impeccable/critique/`. Remaining order:
+   - `NewJobSheet` ← **start here**
+   - `Clients` (list view)
+   - `Finance`
+   - `Settings`
+   - `Calendar`
+   - Secondary sheets (FinanceDetailSheet, EditClientSheet, PostJobSheet, PrepNoteSheet, etc.)
+   - `JobDetailSheet` re-critique (EditMode strip added v0.12.51 after original critique)
+   - `Admin`
+   - `Login`
+   - `/impeccable document` — run last to regenerate DESIGN.md from stable code
+2. **⚠️ Device verification** — v0.12.32 Android perf fix and all Jun 12–14 + Jun 15 fixes not yet phone-tested.
+3. **GCal sync failures silent** — `triggerGCalSync` is fire-and-forget. Likely cause: OAuth "Testing" mode → refresh tokens expire after 7 days. Sandra should reconnect (Settings → Google Calendar → CONNECT).
+4. **Home.jsx drive-time + background-resume bugs (diagnosed, not fixed)**:
    - Fix 1 (wrong leave time): increase GPS timeout to 12000ms; add `locationFetchAttempted` state to show "Calculating…" until resolved.
    - Fix 2 (wonky after long absence): add `visibilitychange` handler — `setNow(new Date())` on resume; `reload()` if away > 30 min or date changed; guard drive re-fetch (last fetch > 10 min) to protect Maps quota.
-4. **AI chat interface** — `api/ai/[action].js` + `ANTHROPIC_API_KEY` in place. Needs chat UI + convo state. HIGH PRIORITY.
-5. **Design system critique pass in progress** — Critiqued + polished: InvoiceView ✓, JobDetailSheet ✓, ClientProfile ✓, Home ✓. Next: NewJobSheet → Clients → Finance → Settings → Calendar → secondary sheets → JobDetailSheet re-critique → Admin → Login → `/impeccable document`.
+5. **AI chat interface** — `api/ai/[action].js` + `ANTHROPIC_API_KEY` in place. Needs chat UI + convo state. HIGH PRIORITY.
 
 ### Phase 2 features
 - [ ] **AI chat interface** — HIGH PRIORITY. API endpoint + key already set. Need chat UI + conversation state.

@@ -138,13 +138,14 @@ A mobile-first CRM & operations web app for **Sandra**, a solo personal-life-ope
 
 ---
 
-## Current version: 0.12.60 — Jun 15, 2026
+## Current version: 0.12.61 — Jun 15, 2026
 
 Sandra's business is live — data wiped and re-provisioned Jun 9. App in active use.
 
 **⚠️ Multi-client git discipline**: Always push local commits before starting an online Claude Code session; always pull before the online session writes code.
 
 ### Recent changes (full history in `docs/changelog/` + `git log`)
+- **v0.12.61 (Jun 15)** — NewClientSheet/JobDetailSheet/Admin/Login impeccable P1–P3 pass. NewClientSheet: outline:none removed (sm-input), close button 30→44px, all-caps labels → sentence case, raw error → friendly copy, VIP checkbox enlarged, recurrence #E91E6A → T.pink, Intel labels expanded (PREFS→Preferences, ACCESS→Access notes, etc.), keyboard spacer transition removed. JobDetailSheet re-pass (EditMode): ADD COST → sentence case, Flat/Hourly type="button" + T.pink, window.confirm → in-app two-tap for invoice-edit warning, client name div→button, cancel textarea outline removed. Admin: ToolRow div→button, window.confirm for delete/restore → in-app confirms, persona cards div role=button→button, console.error/warn removed, provisioning+password inputs get sm-input, labels sentence case. Login: sm-input on all inputs, EMAIL/PASSWORD → sentence case, border 1px→1.5px, password toggle 44×44px + aria-label, forgot button spacing, brand logo added.
 - **v0.12.60 (Jun 15)** — Calendar + secondary sheets impeccable polish pass. Calendar: hero border always visible (was dark-mode-only), week range label sentence case, nav/today buttons typed, AgendaCard div → button with aria-label, filter chip + conflict banner div → button, parked week-view code removed (~130 lines). FinanceDetailSheet: JobRow div → button with aria-label; worker cost amount color. EditClientSheet: `outline:none` removed, `.sm-input` on all inputs/textareas/select, close button 44px tap target, all-caps labels → sentence case, VIP checkbox enlarged, delete zone dark-mode tint, keyboard spacer transition removed. PostJobSheet: same focus/tap/sentence-case pass + haptic feedback added on submit/success/error (`src/lib/haptics.js`). PrepNoteSheet: sentence case + `type="button"` on close. Bug fixes: removed Gemini's undefined `handleSupermomGo` reference + dead Go button code + corrupted duplicate EOF lines in Calendar.jsx; restored two critical WHY comments in PostJobSheet about `flat_rate`/`total_amount` double-HST risk.
 - **v0.12.59 (Jun 15)** — Settings impeccable polish pass (P1–P3 + questions): `window.confirm()` on Reset All Data → in-app two-tap confirm with danger zone styling (red-tinted card, warning header, Cancel/Yes buttons); `outline: none` removed from all inputs — global `.sm-input:focus { border-color: var(--pink) }` class added to `index.css`; avatar `<div onClick>` → `<button type="button" aria-label="Change avatar photo">`; all-caps labels throughout → sentence case (Save settings, Sign out, Manage, Connect/Reconnect, Update password, Reset all data); ToggleBtn (password visibility) padded to 44×44px tap target; `type="button"` added to GCal + Team buttons; `✦` removed from "Preferences" section label (✦ is for AI-specific labels only); keyboard spacer height transition removed (no layout thrash); Save button moved to persistent footer outside scroll (always visible, disabled when clean, "No changes" when unmodified); Sign Out moved out of Security card to standalone section; AI Signature label → "Your personality in words" with clearer helper copy; isDirty banner simplified to "● Unsaved changes" (no longer redundant with persistent footer).
 - **v0.12.58 (Jun 15)** — Finance hero + UX refinements: hero sub-label now shows "You cleared $X after expenses" (green/red) when expenses exist, alongside job count; Tax Ready section collapsed behind a toggle (▾ header) so Sandra's daily scroll ends at invoices, not the CSV block; `type="button"` added to CSV download button.
@@ -186,17 +187,17 @@ Sandra's business is live — data wiped and re-provisioned Jun 9. App in active
 
 > **Sync rule**: every change to `api/_lib/invoicePdf.js` must be mirrored in `InvoiceView.jsx` before commit. v0.12.49 kept them in sync.
 
-1. **🎨 Impeccable critique/polish pass — IN PROGRESS** — Run `/impeccable critique` then `/impeccable polish` on each page before moving to the next. Critique snapshots in `.impeccable/critique/`. Remaining order:
+1. **🎨 Impeccable critique/polish pass — COMPLETE** ✅ — All pages done. Run `/impeccable document` to regenerate DESIGN.md from stable code.
    - `Clients` (list view) ✅ v0.12.56
    - `Finance` ✅ v0.12.57–58
    - `Settings` ✅ v0.12.59
    - `Calendar` ✅ v0.12.60
    - Secondary sheets (FinanceDetailSheet, EditClientSheet, PostJobSheet, PrepNoteSheet) ✅ v0.12.60
-   - NewClientSheet ← **start here** (claimed by Gemini but not actually changed)
-   - `JobDetailSheet` re-critique (EditMode strip added v0.12.51 after original critique)
-   - `Admin`
-   - `Login`
-   - `/impeccable document` — run last to regenerate DESIGN.md from stable code
+   - NewClientSheet ✅ v0.12.61
+   - `JobDetailSheet` (re-pass) ✅ v0.12.61
+   - `Admin` ✅ v0.12.61
+   - `Login` ✅ v0.12.61
+   - `/impeccable document` ← **run next** to regenerate DESIGN.md from stable code
 2. **⚠️ Device verification** — v0.12.32 Android perf fix and all Jun 12–14 + Jun 15 fixes not yet phone-tested.
 3. **GCal sync failures silent** — `triggerGCalSync` is fire-and-forget. Likely cause: OAuth "Testing" mode → refresh tokens expire after 7 days. Sandra should reconnect (Settings → Google Calendar → CONNECT).
 4. **Home.jsx drive-time + background-resume bugs (diagnosed, not fixed)**:

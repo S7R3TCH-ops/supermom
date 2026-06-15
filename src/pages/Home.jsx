@@ -286,32 +286,16 @@ export default function Home() {
     return () => { alive = false; };
   }, [paymentFetchKey]);
 
-  const owingGroups = useMemo(() => {
-    const map = {};
-    attentionItems.forEach(j => {
-      if (!map[j.client_id]) {
-        map[j.client_id] = {
-          client_id: j.client_id,
-          client_name: j.client_name,
-          jobs: [],
-          totalOwing: 0,
-          maxHoursOld: 0,
-          hasCompleted: false,
-        };
-      }
-      const g = map[j.client_id];
-      g.jobs.push(j);
+  const owingJobs = useMemo(() => {
+    return attentionItems.map(j => {
       const paid = paymentMap[j.id] || 0;
       const remaining = Math.max(0, computeJobTotal(j) - paid);
-      g.totalOwing += remaining;
       const hoursOld = (now - j.end) / 3600000;
-      g.maxHoursOld = Math.max(g.maxHoursOld, hoursOld);
-      if (j.status === 'Completed') g.hasCompleted = true;
-    });
-    return Object.values(map).sort((a, b) => b.maxHoursOld - a.maxHoursOld);
+      return { ...j, remaining, hoursOld };
+    }).sort((a, b) => b.hoursOld - a.hoursOld);
   }, [attentionItems, paymentMap, now]);
 
-  const owingTotal = owingGroups.reduce((sum, g) => sum + g.totalOwing, 0);
+  const owingTotal = useMemo(() => owingJobs.reduce((sum, j) => sum + j.remaining, 0), [owingJobs]);
 
   const collectedThisWeek = useMemo(() => {
     return allWeekJobs.reduce((s, j) => {
@@ -1112,68 +1096,75 @@ export default function Home() {
           </div>
         )}
 
-        {/* OWING — collapsible, below today's schedule */}
-        {owingGroups.length > 0 && (
+        {/* OWING — flat per-job rows; collapse only when 3+ jobs */}
+        {owingJobs.length > 0 && (
           <div style={{ marginBottom: 16 }}>
-            <div
-              onClick={() => setOwingOpen(o => !o)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                padding: '9px 12px',
-                background: mode === 'dark' ? 'rgba(181,0,78,0.1)' : '#FFF0F4',
-                borderRadius: owingOpen ? '12px 12px 0 0' : 12,
-                border: `1px solid rgba(181,0,78,0.25)`,
-                cursor: 'pointer',
-                userSelect: 'none',
-              }}
-            >
-              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style={{ flexShrink: 0, transform: owingOpen ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.18s ease-out', display: 'block' }}>
-                <path d="M3 2L7 5L3 8" stroke={DEEP_ROSE} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              <div style={{ flex: 1, fontSize: 13, fontWeight: 700, color: DEEP_ROSE }}>
-                {owingGroups.length} owing{!privacyOn && owingTotal > 0 ? ` · $${owingTotal.toFixed(0)}` : ''}
-              </div>
-              <span style={{ fontSize: 11, color: DEEP_ROSE, opacity: 0.55, fontWeight: 600 }}>
-                {owingOpen ? 'hide' : 'show'}
-              </span>
-            </div>
-            {owingOpen && (
+            {owingJobs.length >= 3 && (
+              <button
+                type="button"
+                onClick={() => setOwingOpen(o => !o)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  width: '100%', textAlign: 'left',
+                  padding: '9px 12px',
+                  background: mode === 'dark' ? 'rgba(181,0,78,0.1)' : '#FFF0F4',
+                  borderRadius: owingOpen ? '12px 12px 0 0' : 12,
+                  border: `1px solid rgba(181,0,78,0.25)`,
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                }}
+              >
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style={{ flexShrink: 0, transform: owingOpen ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.18s ease-out', display: 'block' }}>
+                  <path d="M3 2L7 5L3 8" stroke={DEEP_ROSE} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <div style={{ flex: 1, fontSize: 13, fontWeight: 700, color: DEEP_ROSE }}>
+                  {owingJobs.length} jobs owing{!privacyOn && owingTotal > 0 ? ` · $${owingTotal.toFixed(0)}` : ''}
+                </div>
+                <span style={{ fontSize: 11, color: DEEP_ROSE, opacity: 0.55, fontWeight: 600 }}>
+                  {owingOpen ? 'hide' : 'show'}
+                </span>
+              </button>
+            )}
+            {(owingJobs.length < 3 || owingOpen) && (
               <div style={{
-                borderRadius: '0 0 12px 12px',
-                border: `1px solid rgba(181,0,78,0.25)`,
-                borderTop: 'none',
                 overflow: 'hidden',
+                border: `1px solid rgba(181,0,78,0.25)`,
+                ...(owingJobs.length >= 3
+                  ? { borderTop: 'none', borderRadius: '0 0 12px 12px' }
+                  : { borderRadius: 12 }),
               }}>
-                {owingGroups.map((g, i) => {
-                  const isStale = g.maxHoursOld >= 48 && g.hasCompleted;
-                  const isFresh = !isStale && g.hasCompleted;
+                {owingJobs.map((j, i) => {
+                  const isStale = j.hoursOld >= 48 && j.status === 'Completed';
+                  const isFresh = !isStale && j.status === 'Completed';
                   const bgColor = isStale
                     ? (mode === 'dark' ? 'rgba(220,38,38,0.15)' : 'rgba(220,38,38,0.07)')
                     : isFresh
                       ? (mode === 'dark' ? 'rgba(181,0,78,0.1)' : 'rgba(181,0,78,0.05)')
                       : (mode === 'dark' ? 'rgba(181,0,78,0.06)' : 'rgba(181,0,78,0.03)');
                   const accentColor = isStale ? '#DC2626' : DEEP_ROSE;
-                  const mostRecentJob = g.jobs[g.jobs.length - 1];
-                  const allWrapUp = g.jobs.every(j => j.status !== 'Completed');
-                  const dateLabel = mostRecentJob.start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                  const dateLabel = j.start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
                   return (
-                    <div
-                      key={g.client_id}
-                      onClick={() => openJob(mostRecentJob.id)}
+                    <button
+                      key={j.id}
+                      type="button"
+                      onClick={() => openJob(j.id)}
                       style={{
+                        display: 'block', width: '100%', textAlign: 'left',
                         background: bgColor,
+                        border: 'none',
                         borderTop: i > 0 ? `1px solid rgba(181,0,78,0.12)` : 'none',
                         padding: '10px 14px 10px 12px',
                         cursor: 'pointer',
+                        borderRadius: 0,
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
                         <div style={{ fontFamily: T.serif, fontSize: 16, fontWeight: 600, color: T.ink, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.3px' }}>
-                          {g.client_name}
+                          {j.client_name}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 600, color: accentColor, whiteSpace: 'nowrap' }}>
-                            {privacyOn ? '•••' : `$${g.totalOwing.toFixed(0)} owing`}
+                            {privacyOn ? '•••' : `$${j.remaining.toFixed(0)} owing`}
                           </div>
                           <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0 }}>
                             <path d="M4 2.5L8 6L4 9.5" stroke={accentColor} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.5" />
@@ -1183,14 +1174,9 @@ export default function Home() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                         <span style={{ fontSize: 11, color: T.inkMuted }}>{dateLabel}</span>
                         <span style={{ fontSize: 11, color: T.inkMuted, opacity: 0.4 }}>·</span>
-                        <span style={{ fontSize: 11, color: T.inkMuted }}>{mostRecentJob.service_name}</span>
-                        {g.jobs.length > 1 && (
-                          <span style={{ fontSize: 10, fontWeight: 700, color: accentColor, background: `${accentColor}18`, padding: '1px 5px', borderRadius: 4 }}>
-                            +{g.jobs.length - 1} more
-                          </span>
-                        )}
+                        <span style={{ fontSize: 11, color: T.inkMuted }}>{j.service_name}</span>
                       </div>
-                    </div>
+                    </button>
                   );
                 })}
               </div>

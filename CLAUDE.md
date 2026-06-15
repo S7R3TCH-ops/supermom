@@ -138,13 +138,14 @@ A mobile-first CRM & operations web app for **Sandra**, a solo personal-life-ope
 
 ---
 
-## Current version: 0.12.63 — Jun 15, 2026 (package.json synced)
+## Current version: 0.12.64 — Jun 15, 2026 (package.json synced)
 
 Sandra's business is live — data wiped and re-provisioned Jun 9. App in active use.
 
 **⚠️ Multi-client git discipline**: Always push local commits before starting an online Claude Code session; always pull before the online session writes code.
 
 ### Recent changes (full history in `docs/changelog/` + `git log`)
+- **v0.12.64 (Jun 15)** — Home.jsx drive-time: GPS timeout 5s→12s; `visibilitychange` handler (refresh clock on resume, reload on day-change or >30 min away, re-fetch drives if stale >10 min); `lastFetchTimeRef` tracks last fetch. Per-route `ErrorBoundary` in App.jsx — one-page crash now isolated, BottomNav stays usable. Haptics on confirmed destructive actions: hard-delete job (`error`), mark-unpaid (`medium`), delete client (`error`), reset all data (`error`), archive worker (`medium`), delete skill type (`error`). Closed open items #2, #27, #34.
 - **v0.12.63 (Jun 15)** — GCal sync error surfacing: `api/sync/gcal.js` detects `invalid_grant` and writes `sync_status='token_expired'` to `integrations` table; `api/auth/google/callback.js` resets `sync_status='ok'` on reconnect; `jobsRepo.triggerGCalSync` now awaits response and dispatches `gcal-token-expired` window event on failure; `GCalExpiredBanner` component added to `AuthedShell` (App.jsx) — amber banner with "Reconnect" CTA visible on all pages when token is expired; Settings GCal card shows amber warning + explanatory copy. Schema migration required: `ALTER TABLE public.integrations ADD COLUMN IF NOT EXISTS sync_status text DEFAULT 'ok';` — run in Supabase SQL Editor. Root cause fix: publish OAuth app in Google Cloud Console (Testing → Production) so refresh tokens don't expire after 7 days.
 - **v0.12.62 (Jun 15)** — DESIGN.md full regeneration from stable code (post-polish v0.12.52–61). Stitch-compliant YAML frontmatter: 28 color tokens (dual-theme light/dark), 9 typography roles, 5 radius steps, 6 spacing values, 10 component token entries. Markdown body: 6 spec sections (Overview, Colors, Typography, Elevation, Components, Do's and Don'ts) with named rules, badge table, and all current conventions (sentence-case rule, sm-input focus, two-tap confirm, 44px tap targets, no window.confirm). `.impeccable/design.json` sidecar written with 8-step tonal ramps, gradient vocabulary, shadow + motion tokens, 9 self-contained component HTML/CSS snippets, full narrative block.
 - **v0.12.61 (Jun 15)** — NewClientSheet/JobDetailSheet/Admin/Login impeccable P1–P3 pass. NewClientSheet: outline:none removed (sm-input), close button 30→44px, all-caps labels → sentence case, raw error → friendly copy, VIP checkbox enlarged, recurrence #E91E6A → T.pink, Intel labels expanded (PREFS→Preferences, ACCESS→Access notes, etc.), keyboard spacer transition removed. JobDetailSheet re-pass (EditMode): ADD COST → sentence case, Flat/Hourly type="button" + T.pink, window.confirm → in-app two-tap for invoice-edit warning, client name div→button, cancel textarea outline removed. Admin: ToolRow div→button, window.confirm for delete/restore → in-app confirms, persona cards div role=button→button, console.error/warn removed, provisioning+password inputs get sm-input, labels sentence case. Login: sm-input on all inputs, EMAIL/PASSWORD → sentence case, border 1px→1.5px, password toggle 44×44px + aria-label, forgot button spacing, brand logo added.
@@ -194,9 +195,7 @@ Sandra's business is live — data wiped and re-provisioned Jun 9. App in active
    - Code fix (v0.12.63): added `sync_status` column to `integrations` table; API detects `invalid_grant` and writes `token_expired`; `AuthedShell` shows amber banner on Home; Settings shows warning card. Token failures are no longer silent.
    - **Schema migration required**: `ALTER TABLE public.integrations ADD COLUMN IF NOT EXISTS sync_status text DEFAULT 'ok';` — run in Supabase SQL Editor.
 
-2. **Home.jsx drive-time bugs (diagnosed, not fixed)**
-   - Fix A (wrong leave time): GPS timeout → 12000ms; add `locationFetchAttempted` state → show "Calculating…" until resolved.
-   - Fix B (background-resume): add `visibilitychange` handler — `setNow(new Date())` on resume; `location.reload()` if away > 30 min or date changed; guard drive re-fetch if last fetch < 10 min (protect Maps quota).
+2. ~~**Home.jsx drive-time bugs**~~ — fixed in v0.12.64 (GPS timeout 12s, visibilitychange handler, lastFetchTimeRef guard).
 
 3. **Supabase egress spikes (diagnosed, not fixed)** — three causes: `updateDailyRoutes` cascade write, AI enrichment writes on every job load, `select *` everywhere. Fix in one focused pass: narrow selects + guard enrichment triggers.
 
@@ -234,7 +233,7 @@ Sandra's business is live — data wiped and re-provisioned Jun 9. App in active
 24. **Year-over-year comparison** — Finance page: toggle "vs last year" for tax planning context.
 25. **Automated post-job follow-up email** — 24h after complete, send "Thanks!" with invoice link. Toggle in Settings. Daily briefing cron infrastructure already exists.
 26. **Calendar week view** — proper rebuild (130 lines of parked code removed in v0.12.60; worth doing properly).
-27. **Haptics on destructive actions** — `haptics.js` exists, currently only wired to PostJobSheet. Add to delete/complete/record-payment.
+27. ~~**Haptics on destructive actions**~~ — fixed in v0.12.64. Wired to: hard-delete job, mark-unpaid, delete client, reset data, archive worker, delete skill type.
 28. **Dark mode audit pass** — some hardcoded colors survive from pre-impeccable code. One QA pass to catch stragglers.
 
 ### 🔧 Technical quality / refactor
@@ -244,7 +243,7 @@ Sandra's business is live — data wiped and re-provisioned Jun 9. App in active
 31. **React Query / TanStack migration** — `useData.js` does manual caching, stale-state, refetch-on-focus by hand. TanStack replaces that whole layer and gives background refresh for free.
 32. **TypeScript — start with `selectors.js`** — `computeJobFinancials`, `toDisplayJob`, `computeJobTotal` are where subtle display-vs-DB bugs hide. Type just these and the repo files they call.
 33. **Bundle audit** — `react-pdf` is the biggest dep. Verify it isn't bundled into frontend (it should only run in `api/`).
-34. **Per-page `ErrorBoundary`** wrappers — any thrown error = white screen. Wrapping each route with a friendly "Something went wrong — tap to reload" prevents Sandra from ever seeing blank app.
+34. ~~**Per-page `ErrorBoundary`** wrappers~~ — fixed in v0.12.64. Each Route element now wrapped; crash isolates to one page, BottomNav stays usable.
 
 ### 🏢 Multi-tenant / future
 

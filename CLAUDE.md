@@ -172,15 +172,15 @@ Sandra's business is live — data wiped and re-provisioned Jun 9. App in active
 
 ### Next session priorities
 
-> `InvoiceView.jsx` and `api/_lib/invoicePdf.js` must always stay in sync on every invoice change.
+> **Sync rule**: every change to `api/_lib/invoicePdf.js` must be mirrored in `InvoiceView.jsx` before commit. v0.12.48 brought them back into alignment.
 
-1. **⚠️ Device verification** — v0.12.32 Android perf fix and all Jun 12 fixes not yet phone-tested.
+1. **⚠️ Device verification** — v0.12.32 Android perf fix and all Jun 12–14 fixes not yet phone-tested.
 2. **GCal sync failures silent** — `triggerGCalSync` is fire-and-forget. Likely cause: OAuth "Testing" mode → refresh tokens expire after 7 days. Sandra should reconnect (Settings → Google Calendar → CONNECT).
 3. **Home.jsx drive-time + background-resume bugs (diagnosed, not fixed)**:
    - Fix 1 (wrong leave time): increase GPS timeout to 12000ms; add `locationFetchAttempted` state to show "Calculating…" until resolved.
    - Fix 2 (wonky after long absence): add `visibilitychange` handler — `setNow(new Date())` on resume; `reload()` if away > 30 min or date changed; guard drive re-fetch (last fetch > 10 min) to protect Maps quota.
-4. **Design system critique** — Next target: Client profile → Job detail → `$impeccable document`.
-5. **AI chat interface** — `api/ai/[action].js` + `ANTHROPIC_API_KEY` in place. Needs chat UI + convo state. HIGH PRIORITY.
+4. **AI chat interface** — `api/ai/[action].js` + `ANTHROPIC_API_KEY` in place. Needs chat UI + convo state. HIGH PRIORITY.
+5. **Design system critique** — Next target: Client profile → Job detail → `/impeccable`.
 
 ### Phase 2 features
 - [ ] **AI chat interface** — HIGH PRIORITY. API endpoint + key already set. Need chat UI + conversation state.

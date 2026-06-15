@@ -1,5 +1,5 @@
-import { Component, lazy, Suspense, useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { Component, lazy, Suspense, useState, useEffect, useRef } from 'react';
+import { BrowserRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { supabase } from './lib/supabase';
 import { AppThemeProvider } from './context/AppTheme';
@@ -20,6 +20,7 @@ import BottomNav from './components/layout/BottomNav';
 import OnboardingWalkthrough from './components/layout/OnboardingWalkthrough';
 import FAB from './components/ui/FAB';
 import { useRealtimeSync } from './data/useData';
+import { getCurrentBusinessId } from './data/currentBusiness';
 
 function PWAUpdatePrompt() {
   const { needRefresh: [needRefresh], updateServiceWorker } = useRegisterSW();
@@ -123,6 +124,65 @@ function ViewpointBanner() {
 
 const NAV_ROUTES = ['/', '/calendar', '/clients', '/finance'];
 
+function GCalExpiredBanner() {
+  const { T } = useAppTheme();
+  const navigate = useNavigate();
+  const [show, setShow] = useState(false);
+  const checked = useRef(false);
+
+  useEffect(() => {
+    async function checkStatus() {
+      if (checked.current) return;
+      checked.current = true;
+      const businessId = await getCurrentBusinessId();
+      if (!businessId) return;
+      const { data } = await supabase
+        .from('integrations')
+        .select('sync_status')
+        .eq('business_id', businessId)
+        .eq('service_name', 'google_calendar')
+        .maybeSingle();
+      if (data?.sync_status === 'token_expired') setShow(true);
+    }
+    checkStatus();
+
+    const handler = () => setShow(true);
+    window.addEventListener('gcal-token-expired', handler);
+    return () => window.removeEventListener('gcal-token-expired', handler);
+  }, []);
+
+  if (!show) return null;
+
+  return (
+    <div style={{
+      background: '#FFFBEB', borderBottom: '1.5px solid #F59E0B',
+      padding: '8px 14px', display: 'flex', alignItems: 'center',
+      justifyContent: 'space-between', gap: 10, flexShrink: 0,
+    }}>
+      <div style={{ fontSize: 11, color: '#92400E', fontWeight: 600, lineHeight: 1.4 }}>
+        ⚠ Google Calendar sync paused — token expired
+      </div>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+        <button
+          type="button"
+          onClick={() => navigate('/settings')}
+          style={{ fontSize: 11, fontWeight: 700, color: '#92400E', background: '#FDE68A', border: 'none', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}
+        >
+          Reconnect
+        </button>
+        <button
+          type="button"
+          onClick={() => setShow(false)}
+          aria-label="Dismiss"
+          style={{ fontSize: 14, color: '#92400E', background: 'transparent', border: 'none', cursor: 'pointer', lineHeight: 1, padding: '2px 4px' }}
+        >
+          ×
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function AuthedShell() {
   const { T } = useAppTheme();
   const { viewingAsId } = useViewpoint();
@@ -143,6 +203,7 @@ function AuthedShell() {
         background: T.bg, color: T.ink, overflow: 'hidden',
       }}>
         <ViewpointBanner />
+        <GCalExpiredBanner />
         <OnboardingWalkthrough />
         <LogoBar />
         <div

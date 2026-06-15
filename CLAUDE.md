@@ -138,13 +138,14 @@ A mobile-first CRM & operations web app for **Sandra**, a solo personal-life-ope
 
 ---
 
-## Current version: 0.12.62 — Jun 15, 2026 (package.json synced)
+## Current version: 0.12.63 — Jun 15, 2026 (package.json synced)
 
 Sandra's business is live — data wiped and re-provisioned Jun 9. App in active use.
 
 **⚠️ Multi-client git discipline**: Always push local commits before starting an online Claude Code session; always pull before the online session writes code.
 
 ### Recent changes (full history in `docs/changelog/` + `git log`)
+- **v0.12.63 (Jun 15)** — GCal sync error surfacing: `api/sync/gcal.js` detects `invalid_grant` and writes `sync_status='token_expired'` to `integrations` table; `api/auth/google/callback.js` resets `sync_status='ok'` on reconnect; `jobsRepo.triggerGCalSync` now awaits response and dispatches `gcal-token-expired` window event on failure; `GCalExpiredBanner` component added to `AuthedShell` (App.jsx) — amber banner with "Reconnect" CTA visible on all pages when token is expired; Settings GCal card shows amber warning + explanatory copy. Schema migration required: `ALTER TABLE public.integrations ADD COLUMN IF NOT EXISTS sync_status text DEFAULT 'ok';` — run in Supabase SQL Editor. Root cause fix: publish OAuth app in Google Cloud Console (Testing → Production) so refresh tokens don't expire after 7 days.
 - **v0.12.62 (Jun 15)** — DESIGN.md full regeneration from stable code (post-polish v0.12.52–61). Stitch-compliant YAML frontmatter: 28 color tokens (dual-theme light/dark), 9 typography roles, 5 radius steps, 6 spacing values, 10 component token entries. Markdown body: 6 spec sections (Overview, Colors, Typography, Elevation, Components, Do's and Don'ts) with named rules, badge table, and all current conventions (sentence-case rule, sm-input focus, two-tap confirm, 44px tap targets, no window.confirm). `.impeccable/design.json` sidecar written with 8-step tonal ramps, gradient vocabulary, shadow + motion tokens, 9 self-contained component HTML/CSS snippets, full narrative block.
 - **v0.12.61 (Jun 15)** — NewClientSheet/JobDetailSheet/Admin/Login impeccable P1–P3 pass. NewClientSheet: outline:none removed (sm-input), close button 30→44px, all-caps labels → sentence case, raw error → friendly copy, VIP checkbox enlarged, recurrence #E91E6A → T.pink, Intel labels expanded (PREFS→Preferences, ACCESS→Access notes, etc.), keyboard spacer transition removed. JobDetailSheet re-pass (EditMode): ADD COST → sentence case, Flat/Hourly type="button" + T.pink, window.confirm → in-app two-tap for invoice-edit warning, client name div→button, cancel textarea outline removed. Admin: ToolRow div→button, window.confirm for delete/restore → in-app confirms, persona cards div role=button→button, console.error/warn removed, provisioning+password inputs get sm-input, labels sentence case. Login: sm-input on all inputs, EMAIL/PASSWORD → sentence case, border 1px→1.5px, password toggle 44×44px + aria-label, forgot button spacing, brand logo added.
 - **v0.12.60 (Jun 15)** — Calendar + secondary sheets impeccable polish pass. Calendar: hero border always visible (was dark-mode-only), week range label sentence case, nav/today buttons typed, AgendaCard div → button with aria-label, filter chip + conflict banner div → button, parked week-view code removed (~130 lines). FinanceDetailSheet: JobRow div → button with aria-label; worker cost amount color. EditClientSheet: `outline:none` removed, `.sm-input` on all inputs/textareas/select, close button 44px tap target, all-caps labels → sentence case, VIP checkbox enlarged, delete zone dark-mode tint, keyboard spacer transition removed. PostJobSheet: same focus/tap/sentence-case pass + haptic feedback added on submit/success/error (`src/lib/haptics.js`). PrepNoteSheet: sentence case + `type="button"` on close. Bug fixes: removed Gemini's undefined `handleSupermomGo` reference + dead Go button code + corrupted duplicate EOF lines in Calendar.jsx; restored two critical WHY comments in PostJobSheet about `flat_rate`/`total_amount` double-HST risk.
@@ -181,28 +182,72 @@ Sandra's business is live — data wiped and re-provisioned Jun 9. App in active
 
 ## Open items
 
+> **Sync rule**: every change to `api/_lib/invoicePdf.js` must be mirrored in `InvoiceView.jsx` before commit.
 > Vercel Hobby: **9 of 12** serverless functions. Functions: `maps`, `invoice`, `auth/google/login`, `auth/google/callback`, `briefing/daily`, `sync/gcal`, `ai/[action]`, `transcribe`, `admin/provision`.
 > Maps quota: Distance Matrix hard-capped at 500 elements/day. Sandra's real usage ~15–30/day. **Don't rapid-redeploy** (resets cron clock).
 
-### Next session priorities
+### 🔴 Bugs / Active issues
 
-> **Sync rule**: every change to `api/_lib/invoicePdf.js` must be mirrored in `InvoiceView.jsx` before commit. v0.12.49 kept them in sync.
+1. **GCal sync — root cause: OAuth app in Testing mode** ⬅ DO THIS FIRST (Joel, not code)
+   - Go to Google Cloud Console → APIs & Services → OAuth consent screen → Publishing status → **PUBLISH APP** (move Testing → Production). This stops the 7-day refresh-token expiry.
+   - After publishing: Sandra reconnects once (Settings → Google Calendar → Reconnect) for a permanent token.
+   - Code fix (v0.12.63): added `sync_status` column to `integrations` table; API detects `invalid_grant` and writes `token_expired`; `AuthedShell` shows amber banner on Home; Settings shows warning card. Token failures are no longer silent.
+   - **Schema migration required**: `ALTER TABLE public.integrations ADD COLUMN IF NOT EXISTS sync_status text DEFAULT 'ok';` — run in Supabase SQL Editor.
 
-1. **🎨 Impeccable critique/polish pass + DESIGN.md regeneration — COMPLETE** ✅ v0.12.62
-   - All pages polished ✅ v0.12.52–v0.12.61
-   - DESIGN.md regenerated from stable code ✅ v0.12.62 — Stitch-compliant frontmatter (YAML tokens), dual-theme documented, `.impeccable/design.json` sidecar written with 9 component snippets
-2. **⚠️ Device verification** — v0.12.32 Android perf fix and all Jun 12–14 + Jun 15 fixes not yet phone-tested.
-3. **GCal sync failures silent** — `triggerGCalSync` is fire-and-forget. Likely cause: OAuth "Testing" mode → refresh tokens expire after 7 days. Sandra should reconnect (Settings → Google Calendar → CONNECT).
-4. **Home.jsx drive-time + background-resume bugs (diagnosed, not fixed)**:
-   - Fix 1 (wrong leave time): increase GPS timeout to 12000ms; add `locationFetchAttempted` state to show "Calculating…" until resolved.
-   - Fix 2 (wonky after long absence): add `visibilitychange` handler — `setNow(new Date())` on resume; `reload()` if away > 30 min or date changed; guard drive re-fetch (last fetch > 10 min) to protect Maps quota.
-5. **AI chat interface** — `api/ai/[action].js` + `ANTHROPIC_API_KEY` in place. Needs chat UI + convo state. HIGH PRIORITY.
+2. **Home.jsx drive-time bugs (diagnosed, not fixed)**
+   - Fix A (wrong leave time): GPS timeout → 12000ms; add `locationFetchAttempted` state → show "Calculating…" until resolved.
+   - Fix B (background-resume): add `visibilitychange` handler — `setNow(new Date())` on resume; `location.reload()` if away > 30 min or date changed; guard drive re-fetch if last fetch < 10 min (protect Maps quota).
 
-### Phase 2 features
-- [ ] **Client invoice history** — Add "Invoices" section to ClientProfile (after job history) listing all invoices for that client, each tappable to `/i/:id`. Finance page's "Showing X of Y invoices" count line is the natural hook to wire up once this exists.
-- [ ] **AI chat interface** — HIGH PRIORITY. API endpoint + key already set. Need chat UI + conversation state.
-- [ ] **Voice scheduling** — `api/transcribe.js` exists. Flow: mic → transcribe → Claude parses intent → pre-fills booking sheet.
-- [ ] **Push notifications (iOS)** — SW setTimeout unreliable when backgrounded on iOS. Needs proper Web Push upgrade: VAPID keys + server-triggered via `web-push` npm + Vercel cron. Android works today.
-- [ ] **Custom domain email** — swap `nodemailer` for `resend`, from `invoices@supermomforhire.com`.
-- [ ] **Offline mode** — app crashes if Supabase unreachable on first load. Better `Suspense` fallbacks needed.
-- [ ] **Staff app access** — `person_type = 'staff'` tracked in DB. No app login yet.
+3. **Supabase egress spikes (diagnosed, not fixed)** — three causes: `updateDailyRoutes` cascade write, AI enrichment writes on every job load, `select *` everywhere. Fix in one focused pass: narrow selects + guard enrichment triggers.
+
+### ⚠️ Infrastructure / housekeeping
+
+4. **Device verification** — v0.12.32 Android perf fix and all Jun 12–15 polish not phone-tested. Test on Pixel 10 Pro + Sandra's iPhone before next feature push.
+5. **Vercel function slot** — 9/12 used. One feature away from the limit. Options: consolidate `transcribe` into `ai/[action]`, or upgrade to Pro.
+
+### 🤖 AI features (HIGH PRIORITY)
+
+6. **AI chat interface** — `api/ai/[action].js` + `ANTHROPIC_API_KEY` in place. Needs chat UI + conversation state.
+7. **Voice scheduling** — `api/transcribe.js` exists. Flow: mic → transcribe → Claude parses intent → pre-fills NewJobSheet.
+8. **Smart scheduling suggestions** — given Sandra's calendar + drive times, Claude suggests optimal day/time for new bookings. All data is already available.
+9. **Weekly AI debrief** — Sunday evening summary: revenue, hours, top clients, one pattern observation. Extend the daily briefing cron.
+10. **Auto-generate prep notes** — based on `ai_context`, pre-draft PrepNoteSheet content before Sandra opens it.
+11. **Invoice draft from voice** — 30-second post-job recording → Claude extracts service/duration/extras → pre-fills PostJobSheet.
+
+### 📱 Phase 2 features
+
+12. **Client invoice history** — "Invoices" tab in ClientProfile listing all invoices per client, each tappable to `/i/:id`.
+13. **Push notifications (iOS proper)** — SW setTimeout unreliable on iOS when backgrounded. Needs VAPID keys + `web-push` npm + server-triggered via Vercel cron. Android works today.
+14. **Custom domain email** — swap `nodemailer` → `resend`, from `invoices@supermomforhire.com`.
+15. **Offline mode** — app crashes if Supabase unreachable on first load. Per-page `ErrorBoundary` + "tap to reload" fallbacks needed.
+16. **Staff app access** — `person_type = 'staff'` tracked in DB. No app login yet.
+
+### ✨ UX / product nice-to-haves
+
+17. **Job templates** — Sandra books the same configs repeatedly. Save a job as a template; pre-fill NewJobSheet from it. Schema already supports it.
+18. **Cross-job search** — find "all jobs containing 'basement'" or "all October jobs". One search endpoint serves this.
+19. **Swipe-to-complete on Home cards** — `Swipeable.jsx` already exists but isn't wired. Right-swipe → complete/pay shortcut.
+20. **"Last job" quick-rebook** — from ClientProfile, 1-tap to duplicate the last job (same service/rate). Saves the 3-step booking flow.
+21. **Mileage tracking** — drive time already calculated. Optional: log as CRA-rate deductible entry. One toggle in Settings.
+22. **Revenue goal progress bar** — Sandra sets a monthly target in Settings; Home hero shows progress ring.
+23. **Client lifetime value** — ClientProfile shows total paid. Add "avg per visit" + "top 5 by revenue" card to Finance.
+24. **Year-over-year comparison** — Finance page: toggle "vs last year" for tax planning context.
+25. **Automated post-job follow-up email** — 24h after complete, send "Thanks!" with invoice link. Toggle in Settings. Daily briefing cron infrastructure already exists.
+26. **Calendar week view** — proper rebuild (130 lines of parked code removed in v0.12.60; worth doing properly).
+27. **Haptics on destructive actions** — `haptics.js` exists, currently only wired to PostJobSheet. Add to delete/complete/record-payment.
+28. **Dark mode audit pass** — some hardcoded colors survive from pre-impeccable code. One QA pass to catch stragglers.
+
+### 🔧 Technical quality / refactor
+
+29. **Eliminate `select *` queries** — every repo file pulls full rows. Named columns = halved egress + faster queries on jobs/clients/finance paths.
+30. **Consolidate AI + transcribe Vercel functions** — saves a slot; both functions are same auth/error pattern.
+31. **React Query / TanStack migration** — `useData.js` does manual caching, stale-state, refetch-on-focus by hand. TanStack replaces that whole layer and gives background refresh for free.
+32. **TypeScript — start with `selectors.js`** — `computeJobFinancials`, `toDisplayJob`, `computeJobTotal` are where subtle display-vs-DB bugs hide. Type just these and the repo files they call.
+33. **Bundle audit** — `react-pdf` is the biggest dep. Verify it isn't bundled into frontend (it should only run in `api/`).
+34. **Per-page `ErrorBoundary`** wrappers — any thrown error = white screen. Wrapping each route with a friendly "Something went wrong — tap to reload" prevents Sandra from ever seeing blank app.
+
+### 🏢 Multi-tenant / future
+
+35. **Per-business label config** — "Sidekick/Wingmom" are hardcoded in UI. Must be configurable before tenant #2 onboards.
+36. **Super Admin viewpoint quick-switch** — dropdown to switch businesses without manual ID entry.
+37. **Tenant onboarding wizard** — `scripts/provision-sandra.mjs` is the only path. Need self-serve "Set up your business" flow for growth.

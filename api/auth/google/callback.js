@@ -56,6 +56,7 @@ export default async function handler(req, res) {
       service_name: 'google_calendar',
       refresh_token,
       calendar_id: 'primary',
+      sync_status: 'ok',
     }, { onConflict: 'business_id, service_name' });
 
     if (error) throw error;

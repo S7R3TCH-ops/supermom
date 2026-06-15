@@ -81,6 +81,7 @@ export default function Settings() {
   const [error, setError] = useState(null);
   const [form, setForm] = useState(null);
   const [gcalOn, setGcalOn] = useState(false);
+  const [gcalExpired, setGcalExpired] = useState(false);
   const [gcalBusinessId, setGcalBusinessId] = useState(null);
   const [showWorkers, setShowWorkers] = useState(false);
   const [resetConfirm, setResetConfirm] = useState(false);
@@ -122,10 +123,17 @@ export default function Settings() {
       const businessId = await getCurrentBusinessId();
       if (!businessId) return;
       setGcalBusinessId(businessId);
-      const { data } = await supabase.from('integrations').select('*').eq('business_id', businessId).eq('service_name', 'google_calendar').maybeSingle();
-      if (data) setGcalOn(true);
+      const { data } = await supabase.from('integrations').select('sync_status').eq('business_id', businessId).eq('service_name', 'google_calendar').maybeSingle();
+      if (data) {
+        setGcalOn(true);
+        if (data.sync_status === 'token_expired') setGcalExpired(true);
+      }
     }
     checkIntegration();
+
+    const handleExpired = () => setGcalExpired(true);
+    window.addEventListener('gcal-token-expired', handleExpired);
+    return () => window.removeEventListener('gcal-token-expired', handleExpired);
   }, [user]);
 
   // Handle OAuth callback params (?sync=success or ?error=...)
@@ -146,6 +154,7 @@ export default function Settings() {
     if (sync === 'success') {
       toast.success('Google Calendar connected!');
       setGcalOn(true);
+      setGcalExpired(false);
       // Trigger sync for upcoming jobs so they appear in GCal immediately
       async function syncUpcomingJobs() {
         const businessId = await getCurrentBusinessId();
@@ -453,23 +462,37 @@ export default function Settings() {
         </div>
 
         <SectionLabel>Integrations</SectionLabel>
-        <div style={cardStyle}>
+        <div style={{ ...cardStyle, borderColor: gcalExpired ? '#F59E0B' : T.cardBorder }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <div style={{ width: 32, height: 32, borderRadius: 8, background: T.surface, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>📅</div>
               <div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: T.ink }}>Google Calendar</div>
-                <div style={{ fontSize: 10, color: gcalOn ? '#10B981' : T.inkMuted, fontWeight: 600 }}>{gcalOn ? 'Connected' : 'Not connected'}</div>
+                <div style={{ fontSize: 10, fontWeight: 600, color: gcalExpired ? '#B45309' : gcalOn ? '#10B981' : T.inkMuted }}>
+                  {gcalExpired ? '⚠ Token expired — reconnect below' : gcalOn ? 'Connected' : 'Not connected'}
+                </div>
               </div>
             </div>
             <button
               type="button"
               onClick={() => window.location.href = `/api/auth/google/login?business_id=${gcalBusinessId}`}
-              style={{ background: 'transparent', border: `1.5px solid ${T.cardBorder}`, borderRadius: 8, padding: '6px 12px', fontSize: 11, fontWeight: 700, color: T.pink, cursor: 'pointer' }}
+              style={{
+                background: gcalExpired ? '#F59E0B' : 'transparent',
+                border: `1.5px solid ${gcalExpired ? '#F59E0B' : T.cardBorder}`,
+                borderRadius: 8, padding: '6px 12px',
+                fontSize: 11, fontWeight: 700,
+                color: gcalExpired ? 'white' : T.pink,
+                cursor: 'pointer',
+              }}
             >
               {gcalOn ? 'Reconnect' : 'Connect'}
             </button>
           </div>
+          {gcalExpired && (
+            <div style={{ marginTop: 10, padding: '8px 10px', background: 'rgba(245,158,11,0.08)', borderRadius: 8, fontSize: 11, color: '#92400E', lineHeight: 1.5 }}>
+              Calendar sync has stopped working. Tap Reconnect to restore it — your jobs won't sync until then.
+            </div>
+          )}
         </div>
 
         <SectionLabel>Team</SectionLabel>

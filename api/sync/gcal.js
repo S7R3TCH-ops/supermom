@@ -122,6 +122,23 @@ export default async function handler(req, res) {
 
     res.status(200).json({ status: 'synced', eventId: gcalEventId });
   } catch (err) {
+    // Detect expired/revoked refresh token (Google returns invalid_grant)
+    const isTokenExpired =
+      err.response?.data?.error === 'invalid_grant' ||
+      err.message?.includes('invalid_grant');
+
+    if (isTokenExpired) {
+      try {
+        await supabase.from('integrations')
+          .update({ sync_status: 'token_expired' })
+          .eq('business_id', job?.business_id)
+          .eq('service_name', 'google_calendar');
+      } catch (dbErr) {
+        console.error('GCal: failed to write token_expired status:', dbErr);
+      }
+      return res.status(200).json({ status: 'token_expired' });
+    }
+
     console.error('GCal Sync Error:', err);
     res.status(500).json({ error: err.message });
   }

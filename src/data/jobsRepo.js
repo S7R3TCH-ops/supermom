@@ -569,12 +569,15 @@ function triggerLearningEnrichment(clientId) {
 
 async function triggerGCalSync(jobId, action = 'upsert') {
   try {
-    // We fire and forget, but log errors
-    fetch('/api/sync/gcal', {
+    const res = await fetch('/api/sync/gcal', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ jobId, action })
-    }).catch(err => console.error('GCal Sync Trigger Error:', err));
+      body: JSON.stringify({ jobId, action }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (data.status === 'token_expired') {
+      window.dispatchEvent(new CustomEvent('gcal-token-expired'));
+    }
   } catch (e) {
     console.error('GCal Sync Trigger Error:', e);
   }

@@ -10,7 +10,9 @@ function assertWrote(data, op) {
   if (rows.length === 0) throw new Error(`${op} failed — no rows changed (RLS or filter mismatch)`);
 }
 
-const SELECT_FULL = '*';
+// Narrow select for list queries — drops phone2, referral_source, created_at (not accessed by UI).
+// fetchClientById keeps * for full profile/edit views.
+const SELECT_LIST = 'id, first_name, last_name, email, phone, street, city, province, postal_code, status, notes, access_info, tags, ai_context';
 
 export async function fetchClients() {
   const businessId = await getCurrentBusinessId();
@@ -18,7 +20,7 @@ export async function fetchClients() {
 
   const { data, error } = await supabase
     .from('clients')
-    .select(SELECT_FULL)
+    .select(SELECT_LIST)
     .eq('business_id', businessId)
     .is('deleted_at', null)
     .order('first_name', { ascending: true });
@@ -32,7 +34,7 @@ export async function fetchClientById(id) {
 
   const { data, error } = await supabase
     .from('clients')
-    .select(SELECT_FULL)
+    .select('*')
     .eq('id', id)
     .eq('business_id', businessId)
     .maybeSingle();

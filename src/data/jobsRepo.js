@@ -15,7 +15,18 @@ function assertWrote(data, op) {
   if (rows.length === 0) throw new Error(`${op} failed — no rows changed (RLS or filter mismatch)`);
 }
 
-const SELECT_FULL = '*';
+// Narrow select for list queries — drops ~10 unused columns (review fields, reschedule history,
+// completion_notes, legacy rates, cron timestamps). fetchJobById keeps * for full detail view.
+const SELECT_LIST = [
+  'id', 'business_id', 'client_id', 'service_id', 'template_id', 'service_name',
+  'scheduled_date', 'scheduled_time', 'pricing_type', 'estimated_hours',
+  'actual_duration', 'flat_rate', 'tax_enabled', 'hst_rate', 'subtotal', 'hst_amount',
+  'additional_cost', 'additional_cost_notes', 'additional_costs_json', 'total_amount',
+  'job_status', 'payment_status', 'payment_method', 'job_notes', 'photo_links',
+  'calendar_event_id', 'ai_context', 'deleted_at',
+  'worker_id', 'worker_pay', 'worker_paid',
+  'distance_to_km', 'distance_home_km',
+].join(', ');
 
 export async function fetchActiveJobs() {
   const businessId = await getCurrentBusinessId();
@@ -23,7 +34,7 @@ export async function fetchActiveJobs() {
 
   const { data, error } = await supabase
     .from('jobs')
-    .select(SELECT_FULL)
+    .select(SELECT_LIST)
     .eq('business_id', businessId)
     .is('deleted_at', null)
     .order('scheduled_date', { ascending: true })
@@ -38,7 +49,7 @@ export async function fetchJobsByClientId(clientId) {
 
   const { data, error } = await supabase
     .from('jobs')
-    .select(SELECT_FULL)
+    .select(SELECT_LIST)
     .eq('business_id', businessId)
     .eq('client_id', clientId)
     .is('deleted_at', null)
@@ -54,7 +65,7 @@ export async function fetchJobById(id) {
 
   const { data, error } = await supabase
     .from('jobs')
-    .select(`${SELECT_FULL}, clients(first_name, last_name, notes, ai_context, tags), workers(name, person_type)`)
+    .select(`*, clients(first_name, last_name, notes, ai_context, tags), workers(name, person_type)`)
     .eq('id', id)
     .eq('business_id', businessId)
     .maybeSingle();

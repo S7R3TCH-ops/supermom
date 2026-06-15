@@ -1,646 +1,419 @@
-# Supermom for Hire · Design System
+---
+name: Supermom for Hire
+description: Mobile-first CRM & operations tool for solo personal-services operators
+colors:
+  # Primary brand
+  pink: "#E91E6A"
+  pink-light: "#FF94BC"
+  pink-dark: "#B01550"
+  deep-rose: "#B5004E"
+  pink-tint: "#FFF0F7"
+  pink-border: "#FCE8EF"
+  pink-label: "#FF78B0"
+  # Dark panel (shared across both themes)
+  plum-dark: "#1C1C1E"
+  plum-mid: "#2C2C2E"
+  # Light theme surfaces
+  bg: "#FFF0F3"
+  surface: "#FCF5EF"
+  card: "#FFFFFF"
+  # Dark theme surfaces
+  dark-bg: "#0A0A0A"
+  dark-surface: "#1C1C1E"
+  dark-card: "#2C2C2E"
+  dark-pink: "#FF70A6"
+  # Ink / text
+  ink: "#4E342E"
+  ink-sub: "#795548"
+  ink-muted: "#836459"
+  # Status
+  green: "#16A34A"
+  green-light: "#DCFCE7"
+  green-border: "#86EFAC"
+  green-text: "#14532D"
+  amber: "#F59E0B"
+  amber-light: "#FEF3C7"
+  amber-text: "#78350F"
+typography:
+  display:
+    fontFamily: "Fraunces, Georgia, serif"
+    fontSize: "28px"
+    fontWeight: 500
+    letterSpacing: "-0.6px"
+  headline:
+    fontFamily: "Fraunces, Georgia, serif"
+    fontSize: "21px"
+    fontWeight: 500
+    letterSpacing: "-0.3px"
+  title:
+    fontFamily: "Fraunces, Georgia, serif"
+    fontSize: "14px"
+    fontWeight: 500
+    letterSpacing: "-0.2px"
+  amount-large:
+    fontFamily: "Fraunces, Georgia, serif"
+    fontSize: "44px"
+    fontWeight: 500
+    letterSpacing: "-2px"
+  amount-card:
+    fontFamily: "Fraunces, Georgia, serif"
+    fontSize: "22px"
+    fontWeight: 500
+    letterSpacing: "-0.5px"
+  body:
+    fontFamily: "Inter, system-ui, sans-serif"
+    fontSize: "13px"
+    fontWeight: 500
+    lineHeight: 1.4
+  label:
+    fontFamily: "Inter, system-ui, sans-serif"
+    fontSize: "10px"
+    fontWeight: 700
+    letterSpacing: "0.7px"
+  badge:
+    fontFamily: "Inter, system-ui, sans-serif"
+    fontSize: "9px"
+    fontWeight: 700
+    letterSpacing: "0.4px"
+  ai-label:
+    fontFamily: "Inter, system-ui, sans-serif"
+    fontSize: "9.5px"
+    fontWeight: 700
+    letterSpacing: "1.1px"
+rounded:
+  badge: "5px"
+  input: "12px"
+  card: "16px"
+  sheet: "24px"
+  pill: "100px"
+spacing:
+  screen-h: "14px"
+  card-pad: "12px 14px"
+  hero-pad: "16px 18px"
+  sheet-body: "6px 18px 14px"
+  tap-target: "44px"
+  section-gap: "14px"
+components:
+  button-primary:
+    backgroundColor: "{colors.pink}"
+    textColor: "#FFFFFF"
+    rounded: "{rounded.input}"
+    padding: "13px 20px"
+  button-primary-hover:
+    backgroundColor: "{colors.pink-dark}"
+    textColor: "#FFFFFF"
+    rounded: "{rounded.input}"
+    padding: "13px 20px"
+  button-secondary:
+    backgroundColor: "{colors.card}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.input}"
+    padding: "11px 16px"
+  button-destructive:
+    backgroundColor: "{colors.pink-dark}"
+    textColor: "#FFFFFF"
+    rounded: "{rounded.input}"
+    padding: "13px 20px"
+  input-default:
+    backgroundColor: "{colors.bg}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.input}"
+    padding: "12px 14px"
+  card-standard:
+    backgroundColor: "{colors.card}"
+    rounded: "{rounded.card}"
+    padding: "{spacing.card-pad}"
+  card-hero:
+    backgroundColor: "{colors.plum-dark}"
+    textColor: "#FFFFFF"
+    rounded: "0px"
+    padding: "{spacing.hero-pad}"
+  fab:
+    backgroundColor: "{colors.plum-dark}"
+    textColor: "#FFFFFF"
+    rounded: "{rounded.pill}"
+    size: "50px"
+  chip-filter:
+    backgroundColor: "{colors.card}"
+    textColor: "{colors.ink-sub}"
+    rounded: "{rounded.pill}"
+    padding: "5px 12px"
+  chip-filter-active:
+    backgroundColor: "{colors.pink}"
+    textColor: "#FFFFFF"
+    rounded: "{rounded.pill}"
+    padding: "5px 12px"
+---
 
-> This file is the single source of truth for all visual decisions.
-> Read this before writing any component, styling any element, or making any layout choice.
+# Design System: Supermom for Hire
+
+## 1. Overview
+
+**Creative North Star: "The Solo Superhero Ops Center"**
+
+This is not a SaaS dashboard. It's a mission-control interface designed to make one person feel like they have ten people behind them. Every screen is built for one-handed use between client calls — dark charcoal hero panels that feel premium and purposeful, warm cream surfaces for working content, and a shocking pink heart at every interaction point. The interface carries confidence not through visual noise, but through craft: precision spacing, disciplined weight hierarchy, and zero unnecessary decisions left to the operator.
+
+The app runs in two modes: **warm** (default, daytime) and **dark** (premium night atmosphere). Both share the same charcoal mission panels (`#1C1C1E`/`#2C2C2E`) — the dark hero sections never adapt between themes. In warm mode, the brand pink is the deeper, punchier `#E91E6A`; in dark mode it softens to `#FF70A6`. The mode toggle lives in the logo bar as a premium utility. The dual-theme system is a first-class design choice, not an afterthought.
+
+This design explicitly rejects: the "vibe-coded in 24 hours" AI-app look (inconsistent spacing, generic component defaults, mismatched type scales); toy-like cartoon superhero treatments (cape badges, exclamation-heavy copy, literal superhero iconography); and cold corporate SaaS (gray hero-metric dashboards, enterprise chrome, B2B blue palettes). Every screen should feel like it was built by someone who knows exactly what Sandra needs — and delivered it finished.
+
+**Key Characteristics:**
+- Dark charcoal hero panels anchor every screen; warm cream surfaces float below
+- One brand color (pink) used with discipline: CTAs, focus rings, 3px hero bottom border, active nav
+- Two typefaces with a clear job division: Fraunces owns all names and numbers; Inter owns all UI text
+- Dollar amounts always Fraunces with tabular-nums — money looks like money
+- AI-facing elements get a distinct label treatment: `✦` prefix, `#FF78B0` pink, uppercase — visually distinct from all other labels
+- 44×44px minimum tap targets and pink focus rings (`.sm-input` class) enforced everywhere
 
 ---
 
-## Brand direction
+## 2. Colors: The Papaya Palette
 
-**Zen but powerful. Superhuman-adjacent.** Warm, confident, clean. The app should make the operator feel like they have a team of 10 behind them. Tasteful superhero energy — not cartoon, not toy-like. Premium solo-operator tooling.
+A disciplined dual-theme system anchored by one brand color. The warm palette is built around soft rose cream and warm cocoa ink for comfortable daylight use. The dark palette inverts to near-black with softened pinks for night. Both palettes share the charcoal mission panels, which never change.
 
-**The one thing someone will remember:** A glowing dark interface that feels like a mission control for a solo superhero operation — with a bright pink heart.
+### Primary
+- **Punchy Pink** (`#E91E6A` warm / `#FF70A6` dark): The only action color in the system. CTAs, active nav indicator dot, focus borders (`.sm-input`), the 3px hero bottom border, active filter chips, step progress bar. Never used decoratively.
+- **Rose Glow** (`#FF94BC`): Gradient start, avatar backgrounds, soft tints. Supports Punchy Pink without competing.
+- **Mission Spotlight** (`#B01550` / `#B5004E`): Button hover state, invoice heading color, destructive confirmation states. Next Up card spotlight on Home hero uses `#B5004E` (the `DEEP_ROSE` constant).
+- **Pink Label** (`#FF78B0`): Reserved exclusively for AI card labels and hero-section uppercase callout text. Always on dark charcoal backgrounds.
 
----
+### Secondary
+- **Charcoal Dark** (`#1C1C1E`): All dark hero sections, FAB background, AI card background, view toggle container. Never changes between themes.
+- **Charcoal Mid** (`#2C2C2E`): View toggle bg, hero gradient end, dark card bg in dark mode.
 
-## CSS Custom Properties (copy into `:root`)
+### Neutral
+- **Soft Rose Cream** (`#FFF0F3` warm / `#0A0A0A` dark): App body background.
+- **Soft Sand** (`#FCF5EF` warm / `#1C1C1E` dark): Secondary surface.
+- **Card White** (`#FFFFFF` warm / `#2C2C2E` dark): Card backgrounds.
+- **Soft Pink Border** (`#FCE8EF` warm / `rgba(255,112,166,0.2)` dark): ALL card and input borders throughout the app.
+- **Warm Cocoa** (`#4E342E` warm / `#FFFFFF` dark): Primary text.
+- **Soft Brown** (`#795548` warm / `rgba(255,255,255,0.65)` dark): Secondary text, meta labels.
+- **Muted Clay** (`#836459` warm / `rgba(255,255,255,0.55)` dark): Placeholders, tertiary text. Achieves ~4.9:1 on `#FFF0F3` (WCAG AA pass).
+- **Pink Tint** (`#FFF0F7`): Selected state backgrounds, Next Up card fill, active chip state in warm mode.
 
-```css
-:root {
-  /* Brand */
-  --pink:          #FF70A6;   /* primary action, CTAs, active nav (Vibrant Papaya) */
-  --pink-light:    #FF94BC;   /* gradient start, avatar backgrounds (Softer glow) */
-  --pink-mid:      #B01550;   /* hover states, destructive actions */
-  --pink-pale:     #FFF9F5;   /* app background, screen base (Warm Cream) */
-  --pink-tint:     #FFF0F7;   /* selected state backgrounds */
-  --pink-border:   #FFD6E8;   /* ALL card borders, input borders */
-  --pink-label:    #FF78B0;   /* labels/text on dark backgrounds */
-  --deep-rose:     #B5004E;   /* mission spotlight, Next Up cards (v1.5) */
+### Status
+- **Paid Green** (`#16A34A`): Paid status, GCal synced, positive values. Background `#DCFCE7`, border `#86EFAC`, text `#14532D`.
+- **Conflict Amber** (`#F59E0B`): Schedule conflicts, overdue. Background `#FEF3C7`, text `#78350F`.
 
-  /* Charcoal (dark sections) */
-  --plum-dark:     #1C1C1E;   /* hero sections, dark headers, FAB bg */
-  --plum-mid:      #2C2C2E;   /* toggle backgrounds, hero gradient end */
+### Named Rules
+**The One Pink Rule.** Pink is a single-color system: `#E91E6A` in warm mode, `#FF70A6` in dark mode. No competing accents. Pink means action, active, or AI. Everything else is neutral.
 
-  /* Ink (text on light backgrounds) */
-  --ink:           #1C1C1E;   /* primary text */
-  --ink-mid:       #4A4A4A;   /* secondary text, meta */
-  --ink-muted:     #8A8A8E;   /* placeholders, tertiary */
-
-  /* Status */
-  --green:         #16A34A;   /* paid, GCal synced, positive */
-  --green-light:   #DCFCE7;   /* paid card background */
-  --green-border:  #86EFAC;   /* paid card border */
-  --green-text:    #14532D;   /* paid text */
-  --amber:         #F59E0B;   /* conflict warnings, overdue */
-  --amber-light:   #FEF3C7;   /* conflict card background */
-  --amber-text:    #78350F;   /* conflict text */
-
-  /* Gradients — use ONLY these three */
-  --grad-pink:   linear-gradient(110deg, #FF70A6 0%, #E91E6A 45%, #B01550 100%);
-  --grad-hero:   linear-gradient(145deg, #1C1C1E 0%, #2C2C2E 100%);
-  --grad-action: linear-gradient(135deg, #FF94BC, #FF70A6);
-
-  /* Border radius */
-  --r-card:    16px;   /* cards, job rows, client rows */
-  --r-input:   12px;   /* inputs, date pickers, small buttons */
-  --r-badge:   5px;    /* all status badges and tags */
-  --r-sheet:   24px;   /* bottom sheet top corners */
-  --r-pill:    100px;  /* chips, filter pills */
-
-  /* Borders */
-  --border-card: 1.5px solid #FFD6E8;   /* use this, not raw value */
-  --border-hero: 3px solid #E91E6A;     /* bottom border on ALL dark hero sections */
-
-  /* Typography */
-  --font-display: 'Fraunces', Georgia, serif;
-  --font-ui:      'Inter', system-ui, sans-serif;
-
-  /* Shadows */
-  --shadow-card: 0 2px 12px rgba(233,30,106,.08);
-  --shadow-fab:  0 8px 22px rgba(233,30,106,.4);
-}
-```
+**The Hero Seal Rule.** Every dark hero section ends with `border-bottom: 3px solid #E91E6A`. This is the visual brand signature — the pink line that seals the mission panel from the content below. Never skip it. Never render a pink logo banner directly touching a pink or pink-adjacent section.
 
 ---
 
-## Typography
+## 3. Typography
 
-### Fonts
-- **Fraunces** (serif) — display, names, amounts, hero text, all money values
-- **Inter** — all UI text, labels, meta, buttons, body
+**Display Font:** Fraunces (variable optical-size 9–144, weights 400–600, with italic axis) — Google Fonts.
+**Body Font:** Inter (weights 400–700) — Google Fonts.
 
 ```
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600;700&display=swap');
 ```
 
-### Type scale
+**Character:** Fraunces is an optical-size variable serif with editorial confidence — it commands attention on names and amounts without feeling antiquated. Inter is a geometric humanist sans that does invisible work: legible at 9px, clean at 13px, never precious. The pairing creates a clear register division: Fraunces signals value and identity; Inter signals function and information.
 
-| Role | Font | Size | Weight | Letter-spacing | Color |
+### Hierarchy
+
+| Role | Font | Size | Weight | Tracking | Usage |
 |---|---|---|---|---|---|
-| App greeting name | Fraunces | 28px | 500 | -0.6px | `--ink` |
-| Hero job title | Fraunces | 21px | 500 | -0.3px | white |
-| Client name (profile) | Fraunces | 22px | 500 | -0.4px | white (on dark) |
-| Client name (card) | Fraunces | 14px | 500 | -0.2px | `--ink` |
-| Dollar amount (large hero) | Fraunces | 44px | 500 | -2px | white |
-| Dollar amount (card) | Fraunces | 22px | 500 | -0.5px | contextual |
-| Dollar amount (inline) | Fraunces | 13px | 500 | 0 | contextual |
-| Section title | Fraunces | 14px | 500 | -0.2px | `--ink` |
-| Section label | Fraunces | 10px | 600 | 0.7px | `--ink-mid`, UPPERCASE |
-| AI card label | Inter | 9.5px | 700 | 1.1px | `--pink-label`, UPPERCASE |
-| Badge / tag | Inter | 9px | 700 | 0.4px | contextual |
-| Body text | Inter | 12–13px | 500 | 0 | `--ink-mid` |
-| Meta / sub-label | Inter | 10.5–11.5px | 500 | 0 | `--ink-mid` |
-| Button (primary) | Inter | 13px | 700 | 0 | white |
-| Button (secondary) | Inter | 12px | 600 | 0 | `--ink` |
+| Display / greeting | Fraunces | 28px | 500 | -0.6px | Morning greeting, operator name |
+| Hero job title | Fraunces | 21px | 500 | -0.3px | Next job headline in dark hero |
+| Client name (profile) | Fraunces | 22px | 500 | -0.4px | Profile hero, white on dark |
+| Amount (large) | Fraunces | 44px | 500 | -2px | Finance hero weekly/monthly total |
+| Amount (card) | Fraunces | 22px | 500 | -0.5px | Job card totals, payment amounts |
+| Amount (inline) | Fraunces | 13px | 500 | 0 | Inline monetary references |
+| Section title | Fraunces | 14px | 500 | -0.2px | Card section headings |
+| Section label | Fraunces | 10px | 600 | 0.7px | List group headers — sentence case |
+| AI card label | Inter | 9.5px | 700 | 1.1px | `✦ PREFERENCES` on dark AI cards |
+| Badge / tag | Inter | 9px | 700 | 0.4px | Status badges — uppercase only |
+| Body text | Inter | 12–13px | 500 | 0 | Card content, meta, body copy |
+| Meta / sub-label | Inter | 10.5–11.5px | 500 | 0 | Timestamps, secondary info |
+| Button (primary) | Inter | 13px | 700 | 0 | White on pink CTAs |
+| Button (secondary) | Inter | 12px | 600 | 0 | Outline/ghost actions |
 
-**Rule:** All dollar amounts use `font-variant-numeric: tabular-nums`.
+**Rule:** Every dollar amount uses `font-variant-numeric: tabular-nums` (`.tabular` class or inline `fontVariantNumeric: 'tabular-nums'`).
 
----
+**Mobile input floor:** `font-size: 16px` on all `<input>`, `<select>`, `<textarea>` on ≤768px screens (enforced globally in `index.css`) to prevent iOS auto-zoom on focus.
 
-## Spacing
+### Named Rules
+**The Fraunces / Inter Split.** Names, amounts, and hero display text: Fraunces only. Labels, buttons, body copy, meta: Inter only. Never mix within a single semantic unit.
 
-| Location | Value |
-|---|---|
-| Screen horizontal padding | `0 14px` |
-| Card content padding | `12px 14px` |
-| Dark hero section padding | `16px 18px` |
-| Logo banner padding | `10px 16px 12px` |
-| Bottom sheet body padding | `6px 18px 14px` |
-| Section header padding | `12px 18px 0` |
-| FAB position | `bottom: 56px; right: 14px` |
-| Minimum tap target | `44×44px` |
+**The Sentence-Case Rule.** All UI labels, buttons, section headers, and form labels use sentence case. ALL CAPS is reserved for exactly two contexts: (a) badge/tag text (UNPAID, VIP, PAID ✓), and (b) AI card label prefixes (`✦ PREFERENCES`). Every other label that was previously ALL CAPS was corrected in polish passes v0.12.52–v0.12.61.
 
 ---
 
-## Components
+## 4. Elevation
 
-### 1. Logo Banner (every screen — route aware)
+This system uses **tonal elevation** as its primary depth signal. The dark charcoal hero panels (`#1C1C1E`) sitting above the warm cream content is the most significant depth moment on every screen — no shadow required. Cards use a single soft pink-tinted shadow and 1.5px pink border to read as lifted tiles against the warm background.
 
-```jsx
-// Sits below status bar, above all content on every screen.
-// Top-level tabs show the Logo. Deep routes (Profile, Settings) show a Back button.
-<div className="logo-bar" style={{
-  background: 'var(--grad-pink)',
-  padding: '6px 14px 7px',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  flexShrink: 0
-}}>
-  {isTopLevel ? (
-    <img src="/branding/logo-final.png" alt="Supermom for Hire" height="30" />
-  ) : (
-    <button className="back-btn">‹ Back</button>
-  )}
-  <div className="right-actions">
-    <PrivacyToggle />
-    <Avatar initial="S" />
-  </div>
-</div>
-```
+Shadows appear in exactly two places: cards (ambient diffusion) and the FAB (purposeful "above everything" emphasis).
 
-**Rule:** The Logo Banner is route-aware. Top-level tabs (`/`, `/calendar`, `/clients`, `/finance`, `/admin`) show the brand logo. Any sub-route (e.g., `/clients/:id`, `/settings`) replaces the logo with a contextual **‹ Back** button that triggers `navigate(-1)`.
+### Shadow Vocabulary
+- **Card ambient** (`0 2px 12px rgba(233,30,106,.08)`): Standard cards at rest. Soft pink-tinted diffusion. Also expressed as `.card-shadow` class (`0 4px 12px rgba(255,112,166,.08)`).
+- **FAB emphasis** (`0 8px 22px rgba(233,30,106,.4)`): The floating action button only. Much stronger — communicates elevated status above all content.
+- **Bottom sheet lift** (`0 -10px 40px rgba(0,0,0,.38)`): Applied above the bottom sheet overlay.
+
+### Named Rules
+**The Two-Shadow Rule.** Cards and the FAB. That's the entire shadow vocabulary. No shadow on inputs, banners, the logo bar, badges, navigation, or any other surface.
+
+**The Flat Hero Rule.** The dark hero panel's depth is conveyed by tonal contrast alone — the 3px pink `border-bottom` is the divider. No shadow on hero sections.
 
 ---
 
-### 1a. Theme Toggle (Logo Bar)
+## 5. Components
 
-**Rule:** The light/dark mode toggle lives in the top Logo Bar as a premium utility for quick atmosphere changes. It uses a sleek sliding switch UI. In Settings > Appearance, a secondary toggle or preview can also be provided.
+### Buttons
+Confident, rounded, no decoration. Primary pink fills communicate "do the thing." Secondary outlines communicate "I have a choice." All buttons carry `type="button"` unless they submit a form.
 
----
+- **Shape:** 12px radius. Full-pill only for chips and FAB.
+- **Primary** (`T.pink` bg, white text, 700 weight, 13px, `13px 20px` padding): Book, submit, confirm, log payment.
+- **Primary hover:** `#B01550` bg.
+- **Secondary** (`T.card` bg, `T.ink` text, `1.5px solid T.cardBorder`): Cancel, back, "not now."
+- **Destructive** (`#B01550` bg, white text): Delete, void, reset. Requires in-app two-tap confirm before firing.
+- **Ghost** (transparent, `T.inkSub` text): Tertiary actions in dense contexts.
+- **Disabled** (`T.pinkTint` bg, `T.inkMuted` text): Tinted, not grayed.
+- **Rule:** `type="button"` on every non-submit button. No exceptions.
 
-### 2. Dark Hero Section
-
-Used on: Client profile, Finance, New Job review, Home Today card (morning state)
-
+### Focus Rings (`.sm-input`)
 ```css
-.hero-section {
-  background: var(--grad-hero);        /* ALWAYS this gradient */
-  border-bottom: var(--border-hero);   /* ALWAYS 3px pink bottom border */
-  padding: 16px 18px;
-  position: relative;
-  overflow: hidden;
-}
-/* Radial glow — always present */
-.hero-section::before {
-  content: '';
-  position: absolute;
-  top: -60px; right: -40px;
-  width: 180px; height: 180px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(233,30,106,.22) 0%, transparent 65%);
-  pointer-events: none;
+.sm-input:focus {
+  outline: none;
+  border-color: var(--pink) !important;
 }
 ```
+Applied to all `<input>`, `<textarea>`, and `<select>`. Focus rings are never suppressed — the border turns pink instead of showing the default browser outline. WCAG AA required.
 
-**Rule:** The 3px pink `border-bottom` is what visually separates the dark hero from the pink logo banner above. Never skip it. Never show a pink section directly touching the pink banner.
+### Cards / Containers
+Standard card: `background: T.card`, `border: 1.5px solid T.cardBorder`, `border-radius: 16px`, `padding: 12px 14px`, `margin-bottom: 7px`, `box-shadow: 0 2px 12px rgba(233,30,106,.08)`.
 
-Hero label (the small uppercase text above the main content):
-```css
-.hero-label {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 1.2px;
-  text-transform: uppercase;
-  color: var(--pink-label);   /* #FF78B0 — always this, no exceptions */
-}
-```
+Semantic variants:
 
----
+| Variant | Border | Background |
+|---|---|---|
+| Standard | `1.5px solid #FCE8EF` | `#FFFFFF` |
+| VIP | `1.5px solid #FCD34D` | `linear-gradient(135deg, #FFFBEB, white)` |
+| Paid | `1.5px solid #86EFAC` | `#F0FFF5` |
+| Conflict | `1.5px solid #F59E0B` | `#FFFBEB` |
+| Next Up | `1.5px solid T.pink` | `T.pinkTint` |
+| Owing | `1.5px solid #F472B6` | white |
 
-### 3. Standard Card
+Dark hero section: `background: linear-gradient(145deg, #1C1C1E, #2C2C2E)`, `border-bottom: 3px solid #E91E6A`, radial pink glow `::before` pseudo-element.
 
-```css
-.card {
-  background: white;
-  border: var(--border-card);    /* 1.5px solid #FFD6E8 */
-  border-radius: var(--r-card);  /* 16px */
-  padding: 12px 14px;
-  margin-bottom: 7px;
-}
-```
+AI card: always dark plum, same gradient + glow as dark hero. Never white, never adapts to theme.
 
-Variants:
-- **VIP card:** `border-color: #FCD34D; background: linear-gradient(135deg, #FFFBEB 0%, white 100%)`
-- **Owing card:** `border-color: #F472B6`
-- **Paid card:** `border-color: #86EFAC; background: #F0FFF5`
-- **Next up card:** `border-color: var(--pink); background: var(--pink-tint)`
-- **Conflict card:** `border-color: var(--amber); background: #FFFBEB`
+### Inputs / Fields
+- **Default:** `T.bg` background, `1.5px solid T.cardBorder` border, 12px radius, `12px 14px` padding, `font-size: 16px` (iOS zoom guard), `T.ink` color.
+- **Focus:** border-color becomes `T.pink` via `.sm-input` class.
+- **Placeholder:** `T.inkMuted` (WCAG AA verified on both theme backgrounds).
+- **Error:** amber border + amber-tint background.
 
----
+### Chips / Filter Pills
+- **Shape:** `border-radius: 100px`
+- **Default:** `T.card` bg, `T.inkSub` text, `1.5px solid T.cardBorder`
+- **Active:** `T.pink` bg, white text
+- **Count badge:** appended to chip label, `font-size: 9px`, weight 700, gray tint circle
+- **Padding:** `5px 12px` (filter chips), `6px 10px` (action chips)
 
-### 4. AI Assistant Card
-
-Used contextually on every screen. Always dark plum, never white.
-
-```css
-.ai-card {
-  background: var(--grad-hero);
-  border-radius: var(--r-card);
-  padding: 13px;
-  display: flex;
-  gap: 11px;
-  position: relative;
-  overflow: hidden;
-}
-.ai-card::before {
-  content: '';
-  position: absolute;
-  top: -30px; right: -20px;
-  width: 90px; height: 90px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(233,30,106,.22) 0%, transparent 70%);
-}
-```
-
-AI icon: `28×28px`, `border-radius: 9px`, `background: var(--grad-action)`
-
-AI label anatomy (always):
-```
-✦ [LABEL TEXT]     ← font-size: 9.5px, weight: 700, letter-spacing: 1.1px, UPPERCASE, color: #FF78B0
-```
-
-Button anatomy inside AI card:
-- Primary CTA: `background: var(--pink)`, white text
-- Secondary: `background: rgba(255,255,255,.1)`, `border: 1px solid rgba(255,255,255,.15)`, white text
-
----
-### 5. Section Label
-
-```css
-.section-label {
-  font-family: var(--font-display);   /* Fraunces */
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.7px;
-  text-transform: uppercase;
-  color: var(--ink-mid);    /* #4A4A4A */
-  margin: 14px 0 7px;
-}
-.section-label:first-child { margin-top: 6px; }
-```
-
----
-
-### 6. Badges & Tags
-
+### Badges & Tags
 ```css
 .badge {
-  font-size: 9px;
-  font-weight: 700;
-  padding: 2px 7px;
-  border-radius: 5px;     /* var(--r-badge) */
-  letter-spacing: 0.4px;
-  text-transform: uppercase;
+  font-size: 9px; font-weight: 700;
+  padding: 2px 7px; border-radius: 5px;
+  letter-spacing: 0.4px; text-transform: uppercase;
 }
 ```
 
-| Badge | Background | Text color |
+| Badge | Background | Text |
 |---|---|---|
 | UNPAID | `#FFE0EC` | `#9B0D3A` |
 | PAID ✓ | `#DCFCE7` | `#14532D` |
 | ↻ BIWEEKLY | `#EEF2FF` | `#3730A3` |
 | ↻ WEEKLY | `#F5F3FF` | `#5B21B6` |
-| NEW | `#F0FDF4` | `#14532D` |
 | ⚠ OVERDUE | `#FEF3C7` | `#78350F` |
 | ⚠ <1HR GAP | `#FECDD3` | `#881337` |
 | 📅 GOOGLE CAL | `#DCFCE7` | `#14532D` |
 | VIP ★ | `#FCD34D` | `#78350F` |
-| NEXT UP (light bg) | `var(--pink)` | white |
-| NEXT UP (dark bg) | `rgba(255,255,255,.2)` | white |
+| NEXT UP | `T.pink` | `#FFFFFF` |
 
----
+### View Toggle
+Used on Calendar (Day/Week/Agenda) and Finance (Week/Month/Year/All).
+- **Container:** `background: #2C2C2E` (always charcoal, never adapts to theme), `border-radius: 12px`, `padding: 3px`
+- **Active button:** `background: T.pink`, white text, `border-radius: 9px`
+- **Inactive button:** transparent bg, `rgba(255,255,255,.55)` text — never lower opacity
 
-### 7. View Toggle (Calendar / Finance)
-
+### Bottom Sheet
 ```css
-.view-toggle {
-  display: flex;
-  background: var(--plum-mid);   /* #2C2C2E — always dark charcoal */
-  border-radius: 12px;
-  padding: 3px;
-  margin: 10px 14px 0;
-}
-.vtog-btn {
-  flex: 1;
-  padding: 8px 0;
-  font-size: 11.5px;
-  font-weight: 600;
-  border-radius: 9px;
-  border: none;
-  font-family: var(--font-ui);
-  color: rgba(255,255,255,.55);   /* inactive — always readable */
-  background: transparent;
-}
-.vtog-btn.active {
-  background: var(--pink);
-  color: white;
-}
+.bottom-sheet { background: T.bg; border-radius: 24px 24px 0 0; box-shadow: 0 -10px 40px rgba(0,0,0,.38); }
+.sheet-handle  { width: 40px; height: 4px; background: T.cardBorder; border-radius: 4px; margin: 8px auto 0; }
 ```
+Body padding: `6px 18px 14px`. Keyboard spacer: simple `<div style={{ height: isKeyboardFocused ? 260 : 0 }} />` — no CSS transition.
 
-**Rule:** NEVER use gradients on toggle buttons. Active = solid pink. Inactive = rgba white at 55% opacity minimum. This ensures readability on the dark plum background.
+### Step Progress (NewJobSheet)
+3-segment flex bar. Each: `flex: 1`, `height: 3px`, `border-radius: 2px`. Colors: done = `var(--green)`, active = `T.pink`, future = `T.cardBorder`.
 
----
-
-### 8. FAB (Floating Action Button)
-
+### FAB
 ```css
 .fab {
-  position: absolute;
-  bottom: 56px;
-  right: 14px;
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
+  position: absolute; bottom: 56px; right: 14px;
+  width: 50px; height: 50px; border-radius: 50%;
   background: linear-gradient(135deg, #1C1C1E, #E91E6A);
   border: 2px solid white;
-  box-shadow: var(--shadow-fab);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  box-shadow: 0 8px 22px rgba(233,30,106,.4);
   z-index: 10;
-  cursor: pointer;
 }
 ```
 
-Icon inside FAB: `+` (20×20px, white, stroke-width 2.5)
+### AI Assistant Card
+Always `background: linear-gradient(145deg, #1C1C1E, #2C2C2E)`. Never white, never adapts to theme. Radial glow `::before`. Icon square: 28×28px, radius 9px, `background: linear-gradient(135deg, #FF94BC, #FF70A6)`.
+
+AI label mandatory format: `✦ LABEL TEXT` — Inter, 9.5px, 700, 1.1px tracking, uppercase, color `#FF78B0`.
+
+### Logo Banner
+Route-aware. Background: `linear-gradient(110deg, #FF70A6, #E91E6A, #B01550)` (static, never adapts). Top-level routes: brand logo at 30px height. Sub-routes: `‹ Back` button. Right side: privacy toggle + 44×44px avatar button.
+
+### Bottom Navigation
+4 items only: Home · Calendar · Clients · Finance. `border-top: 1.5px solid T.navBorder`. Active: `T.pink` color + 4px dot. Inactive: `T.inkMuted`. Padding: `8px 8px 16px`.
+
+### In-App Confirmation (Two-Tap Pattern)
+No `window.confirm()` anywhere. Destructive actions: first tap reveals inline confirm UI (red-tinted card, Cancel + Confirm), second tap fires. Auto-resets after ~3s.
 
 ---
 
-### 9. Supermom GO! Button
+## 6. Do's and Don'ts
 
-Appears on: Home (morning card), Calendar day view (next job), Agenda view (next job)
+### Do:
+- **Do** apply `border-bottom: 3px solid #E91E6A` to every dark hero section — this is the brand's visual signature.
+- **Do** use Fraunces for all names, amounts, and hero display text; Inter for all labels, buttons, and body copy.
+- **Do** apply `font-variant-numeric: tabular-nums` to every dollar amount.
+- **Do** use `.sm-input` class (or equivalent pink focus border) on every form field. Focus rings are never suppressed.
+- **Do** enforce 44×44px minimum tap targets on every interactive element.
+- **Do** convert any `<div onClick>` to `<button type="button">` with a descriptive `aria-label`.
+- **Do** use sentence case for all UI labels, section headers, and button text.
+- **Do** use `America/Toronto` timezone in all date and time formatting — never system timezone.
+- **Do** soft-delete only: `deleted_at = now()`. Never hard-delete jobs, clients, or workers.
+- **Do** replace `window.confirm()` with the in-app two-tap confirm pattern for all destructive actions.
+- **Do** trigger `hapticFeedback()` (from `src/lib/haptics.js`) on significant actions: book, complete, pay, submit.
+- **Do** include the radial pink glow `::before` on every dark hero section and AI card.
+- **Do** keep ALL CAPS exclusively for badge/tag text and AI card `✦ LABEL` prefixes.
+- **Do** use the dual-theme system via `T = smTokens(mode)` — never hardcode colors that differ between themes.
 
-```css
-.go-btn {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: white;
-  border: var(--border-card);
-  border-radius: var(--r-input);
-  padding: 11px 14px;
-  width: 100%;
-  cursor: pointer;
-}
-.go-btn .icon-square {
-  width: 38px;
-  height: 38px;
-  border-radius: 9px;
-  background: var(--pink-tint);
-  border: var(--border-card);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  /* In production: contains <img src="/supermom_go.png" /> */
-}
-.go-btn .label {
-  font-family: var(--font-display);
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--pink-mid);
-}
-.go-btn .sublabel {
-  font-size: 10.5px;
-  color: var(--ink-muted);
-  margin-top: 1px;
-}
-```
+### Don't:
+- **Don't** ship a "vibe-coded" look: inconsistent spacing, mismatched type scales, generic default component styles. Every element should look considered.
+- **Don't** use toy-like or cartoon superhero treatments — cape badges, exclamation-heavy copy, literal comic-book iconography.
+- **Don't** build cold corporate SaaS: gray metric-hero tiles, B2B blue palette, enterprise chrome.
+- **Don't** suppress focus rings. `outline: none` is only acceptable when paired with `.sm-input` pink border on focus.
+- **Don't** use gradients on view toggle buttons. Active toggle = solid `T.pink` only.
+- **Don't** render the pink logo banner directly touching a pink or pink-tinted section — dark hero goes in between.
+- **Don't** add a 5th bottom navigation item. The AI assistant is a FAB, not a tab.
+- **Don't** use `window.confirm()`. Two-tap in-app confirm only.
+- **Don't** hard-delete records. Soft-delete only.
+- **Don't** use purple gradients, purple-tinted blacks, glassmorphism, or neon accents. Dark panels are warm charcoal (`#1C1C1E`), never purple.
+- **Don't** use `border-left` greater than 1px as a colored stripe accent. Use full borders, background tints, or leading icons.
+- **Don't** use gradient text (`background-clip: text`). Pink is solid or gradient on a surface — never the text itself.
+- **Don't** add a CSS `transition` to the keyboard spacer `<div>`. Instant height change only — transitions cause layout thrash on iOS.
+- **Don't** use system timezone anywhere. `America/Toronto` everywhere, always.
 
 ---
 
-### 10. Bottom Navigation
-
-4 items: Home · Calendar · Clients · Finance
-
-```css
-.bottom-nav {
-  margin-top: auto;
-  background: white;
-  border-top: 1.5px solid var(--pink-border);
-  padding: 8px 8px 16px;   /* 16px bottom = safe area */
-  display: flex;
-  justify-content: space-around;
-  flex-shrink: 0;
-}
-.nav-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  color: var(--ink-muted);
-  font-size: 9px;
-  font-weight: 600;
-  flex: 1;
-  padding: 4px 6px;
-}
-.nav-item.active { color: var(--pink); }
-.nav-item .dot {
-  width: 4px; height: 4px;
-  border-radius: 50%;
-  background: var(--pink);
-  opacity: 0;
-  margin-top: 1px;
-}
-.nav-item.active .dot { opacity: 1; }
-```
-
-**Rule:** Always exactly 4 nav items. The AI assistant is a floating FAB — NOT a nav item. Never add a 5th item.
-
----
-
-### 11. Client Profile Hero
-
-```css
-.profile-hero {
-  background: var(--grad-hero);
-  border-bottom: var(--border-hero);
-  padding: 14px 18px 18px;
-  color: white;
-}
-/* Avatar tile */
-.profile-avatar {
-  width: 56px; height: 56px;
-  border-radius: 16px;
-  background: var(--grad-action);
-  box-shadow: 0 6px 16px rgba(233,30,106,.4);
-  border: 2px solid rgba(255,255,255,.15);
-}
-/* Stats row (3 columns) */
-.profile-stat {
-  background: rgba(255,255,255,.07);
-  border: 1px solid rgba(255,255,255,.1);
-  border-radius: 11px;
-  padding: 9px 6px;
-  text-align: center;
-}
-```
-
-**AI "What I know" context card** on profile: use WHITE background (not dark hero), `var(--border-card)`. This deliberately differentiates from the dark hero above it.
-
----
-
-### 12. Bottom Sheet (New Job Flow)
-
-```css
-.bottom-sheet {
-  background: var(--pink-pale);
-  border-radius: 24px 24px 0 0;
-  margin-top: auto;
-  box-shadow: 0 -10px 40px rgba(0,0,0,.38);
-}
-.sheet-handle {
-  width: 40px; height: 4px;
-  background: var(--pink-border);
-  border-radius: 4px;
-  margin: 8px auto 0;
-}
-/* Step progress dots */
-.step-dot {
-  flex: 1; height: 3px;
-  border-radius: 2px;
-  background: var(--pink-border);
-}
-.step-dot.active { background: var(--pink); }
-.step-dot.done   { background: var(--green); }
-```
-
-Review card in Step 3 uses `--grad-hero` + `--border-hero` — same treatment as all dark hero sections.
-
----
-
-## Screen Inventory
-
-### Home — 3 states of the Today Card
-
-**Morning state** (before job start):
-- Next job title, time range, drive time, address
-- Prep notes from AI context
-- Supermom GO! button (triggers navigation + geofence watch + mileage tracking)
-- Geofence hint: "📍 Auto-timer ON · Starts when you arrive"
-
-**Active job state** (geofence triggered):
-- Dark card treatment
-- Large running timer display
-- "Auto-started on arrival" label
-- Voice note + Photo + Done buttons
-
-**Post-job state**:
-- Job name, duration, amount with UNPAID badge
-- Cash / e-Transfer pill toggle
-- Log Payment button
-- AI card: offer to draft thank-you + receipt text
-
-Below Today Card (all states):
-- 7-day week strip (today highlighted dark, job dots)
-- AI suggestion card
-
-### Calendar
-
-- Header: month/year + Google Cal "Synced" green pill
-- Toggle: Day / Week / Agenda
-- Conflict banner (amber) if any jobs within 1hr of each other
-- **Day view:** timeline, coloured job blocks, empty slots tap to book, GO button on next job
-- **Week view:** 7-column grid, colour-coded cells (pink=unpaid, green=paid, amber=conflict)
-- **Agenda view:** date headers, job cards with full badge set, GO button on next job
-
-Job card colours:
-- `var(--grad-action)` → active/next/unpaid
-- `#F0FFF5` + green border → paid
-- `#FFFBEB` + amber border → conflict warning
-
-### Clients
-
-List view:
-- Search + filter chips (All / Owes $ / VIP / Overdue / Leads)
-- Client rows: coloured avatar, name, VIP star, amount, last job info, tags
-
-Profile view (dark plum hero — differentiates from pink banner):
-- Hero: avatar + name + VIP/recurrence tags + 3-stat row
-- Action buttons: Book Job (pink) + Message (white)
-- AI "What I know" card (white bg — intentionally light to contrast hero)
-- Contact: tap-to-call, tap-to-navigate, email
-- Upcoming jobs, recent history, activity timeline
-
-### Finance
-
-- Dark hero: "This Week" + large $ amount + sub-label + trend pill + 5-week mini bar chart
-- Period toggle: Week / Month / Year / All
-- 2×2 grid: Collected (green), Outstanding (pink + nudge CTA), Expenses, Hours/avg rate
-- AI insight: outstanding invoices, draft nudge texts
-- Tax ready: YTD income, deductibles, mileage (auto-tracked), est. taxable, CSV export
-- Recent activity: income (green), expenses (amber), pending (pink)
-
-### New Job Flow (3-step bottom sheet)
-
-**Step 1 — Who:**
-- Recent client horizontal scroll
-- Selected client dark plum banner
-- Pre-fill toggle: ON by default for existing clients, shows what will be copied
-
-**Step 2 — What & When:**
-- Service grid (★ USUAL badge on last-used service)
-- Date + time pickers
-- Duration stepper + AI estimate card: "X hrs based on last N visits"
-- Recurrence toggle (pre-set from client history)
-
-**Step 3 — Review:**
-- Dark hero summary: name, time range, price, duration, recurrence, drive time
-- Conflict warning if <1hr gap (amber, non-blocking)
-- Pre-flight checklist: GCal sync ✓, auto-timer ✓, mileage ✓, confirmation text toggle
-- 🦸‍♀️ Book it! (Fraunces font, dark plum + pink border)
-
----
-
-## UX Logic
-
-### Auto-timer
-- Triggered by tapping Supermom GO!
-- Start: The operator arrives within ~150m of job address
-- Stop: The operator moves 250m+ away for 3+ consecutive minutes
-- NO manual start button — geofence handles everything
-
-### Auto-mileage
-- Starts automatically when GO! is tapped
-- Tracks drive to job + drive away from job
-- Logged against the job for tax tracking
-- Displayed in Finance > Tax Ready as total km
-
-### Conflict warning
-- Fires when any two jobs are within 1 hour of each other
-- Amber banner in Day/Week/Agenda views
-- Amber border + `⚠ <1HR GAP` badge on conflicting job cards
-- Also appears in New Job Step 3 review
-- Non-blocking — the operator can proceed anyway
-
-### Google Calendar sync
-- Every job created → GCal event (title: service + client, location: address, description: notes + link)
-- Every job edited → GCal event updated
-- Every job cancelled → GCal event deleted
-- Green "Synced" pill in Calendar header
-- `📅 Google Cal` badge on all synced job cards
-
-### Pre-fill on rebook
-- When booking for an existing client: service, duration, price, recurrence, prep notes all pre-loaded
-- Toggle shown ON by default with summary of what's being copied
-- The operator can flip it off
-- New clients: blank form
-
----
-
-## Rules — DO
-
-- Every dark hero section has `border-bottom: var(--border-hero)` (3px pink)
-- All section labels: 9px, 800, uppercase, `--ink-mid`, 1px letter-spacing, 85% opacity
-- All AI card labels: `#FF78B0`, 9.5px, 700, 1.1px spacing, uppercase, `✦` prefix
-- All cards: `1.5px solid #FFD6E8` border, `16px` border-radius
-- FAB always: `bottom: 56px`, `right: 14px`
-- View toggles always on dark plum background
-- Dollar amounts always: Fraunces, tabular-nums
-- Logo banner: Shows brand logo on top-level tabs, `< Back` on sub-routes.
-
-## Rules — DON'T
-
-- Never use gradients on toggle buttons (kills readability)
-- Never add a 5th bottom nav item
-- Never use Inter/system fonts for names, amounts, or hero display text
-- Never show a pink section directly touching the pink banner (use dark hero in between)
-- Never show a Start Timer button
-- Never hard-delete records (soft delete only, `is_deleted = true`)
-- Never use system timezone (`America/Toronto` always)
-- Never use purple gradients, purple-tinted blacks, Space Grotesk, or generic AI aesthetics
-
----
-
-*Design System v1.5 (Updated by Gemini CLI) · May 2026 · Supermom for Hire*
+*Design System v2.0 · Full regenerate from code, Jun 2026 · Supermom for Hire*

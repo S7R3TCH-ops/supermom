@@ -260,7 +260,7 @@ export default function ClientProfile() {
               borderRadius: 11, padding: '9px 6px', textAlign: 'center',
             }}>
               <Subheading style={{ fontSize: 16, fontWeight: 500, color: mode === 'dark' ? 'white' : T.ink, letterSpacing: '-0.3px', fontVariantNumeric: 'tabular-nums', margin: 0 }}>{s.n}</Subheading>
-              <Caption style={{ fontSize: 8, fontWeight: 600, color: mode === 'dark' ? 'rgba(255,255,255,0.4)' : T.inkMuted, letterSpacing: '0.4px', textTransform: 'uppercase', marginTop: 2 }}>{s.l}</Caption>
+              <Caption style={{ fontSize: 9, fontWeight: 600, color: mode === 'dark' ? 'rgba(255,255,255,0.4)' : T.inkMuted, letterSpacing: '0.4px', textTransform: 'uppercase', marginTop: 2 }}>{s.l}</Caption>
             </div>
           ))}
         </div>
@@ -270,7 +270,7 @@ export default function ClientProfile() {
           <button
             onClick={() => openFor(client.id)}
             style={{
-              flex: 2, background: '#E91E6A', border: 'none', borderRadius: 12,
+              flex: 2, background: T.pink, border: 'none', borderRadius: 12,
               padding: '11px 0', fontFamily: T.font, fontSize: 13, fontWeight: 700, color: 'white',
               cursor: 'pointer', letterSpacing: '0.2px',
             }}>Book Job</button>
@@ -313,8 +313,9 @@ export default function ClientProfile() {
                     fontFamily: T.font, fontSize: 9, fontWeight: 700, color: 'white', cursor: 'pointer',
                     boxShadow: '0 4px 10px rgba(233,30,106,0.2)'
                   }}
+                  title="Generate AI insights from past jobs"
                 >
-                  See my future ✦
+                  AI insights ✦
                 </button>
               )}
               {!isEditingIntel ? (
@@ -338,39 +339,53 @@ export default function ClientProfile() {
               )}
             </div>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, position: 'relative' }}>
-            {[
-              { k: 'Notes',    f: 'notes',    v: client.note },
-              { k: 'Prefs',    f: 'prefs',    v: client.aiContext.prefs },
-              { k: 'Access',   f: 'access',   v: client.aiContext.access },
-              { k: 'Comms',    f: 'comms',    v: client.aiContext.comms },
-              { k: 'Personal', f: 'personal', v: client.aiContext.personal },
-            ].map(row => (
-              <div key={row.k} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                <Caption style={{
-                  fontSize: 9, fontWeight: 700, letterSpacing: '0.5px',
-                  textTransform: 'uppercase', color: T.inkMuted,
-                  flexShrink: 0, width: 58, marginTop: isEditingIntel ? 6 : 2,
-                }}>{row.k}</Caption>
-                {isEditingIntel ? (
-                  <textarea
-                    value={intelDraft[row.f]}
-                    onChange={e => setIntelDraft(d => ({ ...d, [row.f]: e.target.value }))}
-                    placeholder={`Enter ${row.k.toLowerCase()}…`}
-                    style={{
-                      flex: 1, background: T.pinkTint, border: `1px solid ${T.pinkBorder}`,
-                      borderRadius: 8, padding: '4px 8px', fontFamily: T.font, fontSize: 11.5,
-                      color: T.ink, minHeight: 44, resize: 'none',
-                    }}
-                  />
-                ) : (
-                  <Text style={{ fontSize: 11.5, color: T.inkSub, lineHeight: 1.45, flex: 1, minHeight: row.v ? 0 : 16 }}>
-                    {row.v || <span style={{ color: T.inkMuted, fontStyle: 'italic', fontSize: 10 }}>None</span>}
-                  </Text>
-                )}
+          {(() => {
+            const fields = [
+              { k: 'Notes',       f: 'notes',    v: client.note },
+              { k: 'Preferences', f: 'prefs',    v: client.aiContext.prefs },
+              { k: 'Access',      f: 'access',   v: client.aiContext.access },
+              { k: 'Contact',     f: 'comms',    v: client.aiContext.comms },
+              { k: 'Personal',    f: 'personal', v: client.aiContext.personal },
+            ];
+            const hasAnyContext = fields.some(r => r.v) || !!client.aiContext.learned;
+            if (!hasAnyContext && !isEditingIntel) {
+              return (
+                <Text style={{ fontSize: 11.5, color: T.inkMuted, fontStyle: 'italic', lineHeight: 1.5 }}>
+                  No notes yet. Tap Edit to add context about this client.
+                </Text>
+              );
+            }
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, position: 'relative' }}>
+                {fields.map(row => (isEditingIntel || row.v) && (
+                  <div key={row.k} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                    <Caption style={{
+                      fontSize: 9, fontWeight: 700, letterSpacing: '0.5px',
+                      textTransform: 'uppercase', color: T.inkMuted,
+                      flexShrink: 0, width: 72, marginTop: isEditingIntel ? 6 : 2,
+                    }}>{row.k}</Caption>
+                    {isEditingIntel ? (
+                      <textarea
+                        value={intelDraft[row.f]}
+                        onChange={e => setIntelDraft(d => ({ ...d, [row.f]: e.target.value }))}
+                        placeholder={`Enter ${row.k.toLowerCase()}…`}
+                        className="ai-intel-field"
+                        style={{
+                          flex: 1, background: T.pinkTint, border: `1px solid ${T.pinkBorder}`,
+                          borderRadius: 8, padding: '4px 8px', fontFamily: T.font, fontSize: 11.5,
+                          color: T.ink, minHeight: 44, resize: 'none',
+                        }}
+                      />
+                    ) : (
+                      <Text style={{ fontSize: 11.5, color: T.inkSub, lineHeight: 1.45, flex: 1 }}>
+                        {row.v}
+                      </Text>
+                    )}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            );
+          })()}
 
           {client.aiContext.learned && (
             <div style={{ 
@@ -411,27 +426,33 @@ export default function ClientProfile() {
         {/* Contact */}
         <SectionLabel>Contact</SectionLabel>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
-          <ContactRow
-            T={T}
-            href={`tel:${client.phone}`}
-            icon={<PhoneIcon />}
-            label={formatPhone(client.phone)}
-            sub="Tap to call"
-          />
-          <ContactRow
-            T={T}
-            href={`https://maps.google.com/?q=${encodeURIComponent(client.address)}`}
-            icon={<PinIcon />}
-            label={client.address}
-            sub="Tap for directions"
-          />
-          <ContactRow
-            T={T}
-            href={`mailto:${client.email}`}
-            icon={<MailIcon />}
-            label={client.email}
-            sub="Tap to email"
-          />
+          {client.phone && (
+            <ContactRow
+              T={T}
+              href={`tel:${client.phone}`}
+              icon={<PhoneIcon />}
+              label={formatPhone(client.phone)}
+              sub="Tap to call"
+            />
+          )}
+          {client.address && (
+            <ContactRow
+              T={T}
+              href={`https://maps.google.com/?q=${encodeURIComponent(client.address)}`}
+              icon={<PinIcon />}
+              label={client.address}
+              sub="Tap for directions"
+            />
+          )}
+          {client.email && (
+            <ContactRow
+              T={T}
+              href={`mailto:${client.email}`}
+              icon={<MailIcon />}
+              label={client.email}
+              sub="Tap to email"
+            />
+          )}
         </div>
 
         {/* Upcoming */}
@@ -456,7 +477,7 @@ export default function ClientProfile() {
             </div>
           ) : (
             client.upcoming.map((j, i) => (
-              <button key={i} onClick={() => openJob(j.id)} style={{
+              <button type="button" key={i} onClick={() => openJob(j.id)} style={{
                 background: T.card, border: `1.5px solid ${T.cardBorder}`,
                 borderRadius: 13, padding: '10px 12px',
                 display: 'flex', alignItems: 'center', gap: 12,
@@ -466,7 +487,7 @@ export default function ClientProfile() {
                   width: 50, flexShrink: 0, textAlign: 'center',
                   background: T.pinkTint, borderRadius: 10, padding: '6px 0', border: `1px solid ${T.pinkBorder}`,
                 }}>
-                  <div style={{ fontFamily: T.font, fontSize: 8, fontWeight: 900, color: T.pink, textTransform: 'uppercase', lineHeight: 1 }}>{j.date.split(' ')[0]}</div>
+                  <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 900, color: T.pink, textTransform: 'uppercase', lineHeight: 1 }}>{j.date.split(' ')[0]}</div>
                   <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 700, color: T.pink, marginTop: 1 }}>{j.date.split(' ')[1]}</div>
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -479,7 +500,7 @@ export default function ClientProfile() {
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5 }}>
                   <AmtCell amount={j.amt} size={14} />
                   <span style={{
-                    background: '#EFF6FF', color: '#1D4ED8',
+                    background: T.pinkTint, color: T.pink,
                     borderRadius: 5, padding: '1px 6px',
                     fontFamily: T.font, fontSize: 8.5, fontWeight: 700, letterSpacing: '0.4px', textTransform: 'uppercase',
                   }}>Scheduled</span>
@@ -491,7 +512,7 @@ export default function ClientProfile() {
 
         {/* Recent history */}
         <SectionLabel>Recent history</SectionLabel>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
           {client.history.length === 0 ? (
             <div style={{
               background: T.card, border: `1.5px solid ${T.cardBorder}`,
@@ -505,7 +526,7 @@ export default function ClientProfile() {
             </div>
           ) : (
             client.history.slice(0, 5).map((h, i) => (
-              <button key={i} onClick={() => openJob(h.id)} style={{
+              <button type="button" key={i} onClick={() => openJob(h.id)} style={{
                 background: T.card, border: `1.5px solid ${T.cardBorder}`,
                 borderRadius: 13, padding: '10px 12px',
                 display: 'flex', alignItems: 'center', gap: 12,
@@ -515,7 +536,7 @@ export default function ClientProfile() {
                   width: 50, flexShrink: 0, textAlign: 'center',
                   background: T.cardBorder, borderRadius: 10, padding: '6px 0',
                 }}>
-                  <div style={{ fontFamily: T.font, fontSize: 8, fontWeight: 900, color: T.inkSub, textTransform: 'uppercase', lineHeight: 1 }}>{h.date.split(' ')[0]}</div>
+                  <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 900, color: T.inkSub, textTransform: 'uppercase', lineHeight: 1 }}>{h.date.split(' ')[0]}</div>
                   <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 700, color: T.inkSub, marginTop: 1 }}>{h.date.split(' ')[1]}</div>
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>

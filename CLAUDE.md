@@ -138,13 +138,14 @@ A mobile-first CRM & operations web app for **Sandra**, a solo personal-life-ope
 
 ---
 
-## Current version: 0.12.52 — Jun 15, 2026
+## Current version: 0.12.53 — Jun 15, 2026
 
 Sandra's business is live — data wiped and re-provisioned Jun 9. App in active use.
 
 **⚠️ Multi-client git discipline**: Always push local commits before starting an online Claude Code session; always pull before the online session writes code.
 
 ### Recent changes (full history in `docs/changelog/` + `git log`)
+- **v0.12.53 (Jun 15)** — ClientProfile polish pass (P3 minor items): Book Job button uses `T.pink` token (was hardcoded `#E91E6A`); stat tile + date tile labels 8 → 9px; "Scheduled" badge on-system (pinkTint/pink); "See my future" → "AI insights ✦" with tooltip; AI field labels expanded ("Preferences", "Contact"); AI card collapses to friendly empty state when no context exists; view-mode hides empty field rows; null guards on contact fields (phone/email/address); `marginBottom: 14` on history section; `type="button"` on job row buttons; placeholder CSS for intel textareas.
 - **v0.12.52 (Jun 15)** — ClientProfile P1/P2 a11y + UX pass (impeccable critique): back button now navigates to `/clients` (was `/`); back + edit icon-buttons expanded to 44×44px tap targets; `outline:none` removed from AI card textareas (focus ring restored); upcoming + history job rows converted from `<div onClick>` to `<button>`; dead "View all jobs" button removed; raw `error.message` replaced with friendly copy.
 - **v0.12.51 (Jun 15)** — EditMode condensed prep brief strip: client name (Fraunces) + service · date shown in the "Editing Job" header bar for context while editing.
 - **v0.12.50 (Jun 15)** — JobDetailSheet P1 fixes from impeccable critique: replaced `window.confirm()` for future-date Complete/Paid with in-app confirm UI (plain English, "Not yet"/"Yes, continue"); EditMode grouped into 4 named sections (Schedule & Service, Financials, Details, Team); `outline: none` removed from all form inputs (WCAG focus ring); close button tap target expanded to 44px via padding; `transition: padding-bottom` jank removed, replaced with conditional spacer; `aria-label` on close button and hidden file input.

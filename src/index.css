@@ -195,6 +195,12 @@ button:active,
   }
 }
 
+.ai-intel-field::placeholder {
+  color: #836459;
+  opacity: 0.6;
+  font-style: italic;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .sm-pulse, .go-btn-urgent, .sm-hero-icon.flying, .sm-hero-icon.launching {
     animation: none !important;

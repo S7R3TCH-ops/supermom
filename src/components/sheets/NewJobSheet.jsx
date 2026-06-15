@@ -313,14 +313,22 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
         <GrabBar onDismiss={onClose} />
 
         {/* Header */}
-        <div style={{ padding: '16px 20px', borderBottom: `1px solid ${T.cardBorder}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <SectionLabel serif={false} style={{ marginBottom: 4 }}>Booking: Step {step} of 3</SectionLabel>
+        <div style={{ padding: '16px 20px', borderBottom: `1px solid ${T.cardBorder}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
+              {[1, 2, 3].map(n => (
+                <div key={n} style={{
+                  flex: 1, height: 3, borderRadius: 2,
+                  background: n < step ? T.green : n === step ? T.pink : T.cardBorder,
+                  transition: 'background 0.2s',
+                }} />
+              ))}
+            </div>
             <div style={{ fontFamily: T.serif, fontSize: 20, fontWeight: 500, color: T.ink }}>
               {step === 1 ? 'Who is it for?' : step === 2 ? 'Mission Details' : 'Review & Confirm'}
             </div>
           </div>
-          <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(0,0,0,0.07)', border: `1.5px solid rgba(0,0,0,0.08)`, color: T.ink, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <button type="button" onClick={onClose} aria-label="Close" style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(0,0,0,0.07)', border: `1.5px solid rgba(0,0,0,0.08)`, color: T.ink, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
           </button>
         </div>
@@ -329,7 +337,6 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
           flex: 1, 
           overflowY: 'auto', 
           padding: `20px 20px ${isKeyboardFocused ? '140px' : '20px'}`,
-          transition: 'padding-bottom 0.2s ease-out'
         }}>
           {step === 1 ? (
             <Step1Who 
@@ -403,25 +410,30 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
         </div>
 
         {/* Footer */}
-        <div style={{ padding: '10px 18px 18px', borderTop: `1px solid ${T.cardBorder}`, display: 'flex', gap: 10, background: T.bg }}>
-          {step > 1 && (
-            <button onClick={() => setStep(step - 1)} style={{ flex: 1, background: 'transparent', border: `1.5px solid ${T.cardBorder}`, color: T.inkMuted, borderRadius: 12, padding: '12px 0', fontFamily: T.font, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Back</button>
+        <div style={{ padding: '10px 18px 18px', borderTop: `1px solid ${T.cardBorder}`, background: T.bg }}>
+          {bookErr && (
+            <div style={{ paddingBottom: 8, color: '#EF4444', fontSize: 12, fontWeight: 500, textAlign: 'center' }}>{bookErr}</div>
           )}
-          <button 
-            onClick={step === 1 ? (clientId ? () => setStep(2) : () => {}) : step === 2 ? () => setStep(3) : handleBook}
-            disabled={busy || (step === 1 && !clientId) || (step === 2 && (!serviceId || !duration || !time))}
-            style={{
-              flex: 2, background: (busy || (step === 1 && !clientId) || (step === 2 && (!serviceId || !duration || !time))) ? T.pinkTint : '#E91E6A', 
-              color: 'white', border: 'none', borderRadius: 12, padding: '12px 0', 
-              fontFamily: T.font, fontSize: 13, fontWeight: 700, cursor: 'pointer', 
-              boxShadow: '0 4px 12px rgba(233,30,106,0.3)' 
-            }}
-          >
-            {busy ? 'Booking...' : step < 3 ? 'Next' : 'Confirm Booking'}
-          </button>
+          <div style={{ display: 'flex', gap: 10 }}>
+            {step > 1 && (
+              <button type="button" onClick={() => setStep(step - 1)} style={{ flex: 1, background: 'transparent', border: `1.5px solid ${T.cardBorder}`, color: T.inkMuted, borderRadius: 12, padding: '12px 0', fontFamily: T.font, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Back</button>
+            )}
+            <button
+              type="button"
+              onClick={step === 1 ? (clientId ? () => setStep(2) : () => {}) : step === 2 ? () => setStep(3) : handleBook}
+              disabled={busy || (step === 1 && !clientId) || (step === 2 && (!serviceId || !duration || !time))}
+              style={{
+                flex: 2, borderRadius: 12, padding: '12px 0', border: 'none',
+                fontFamily: T.font, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                background: (busy || (step === 1 && !clientId) || (step === 2 && (!serviceId || !duration || !time))) ? T.pinkTint : T.pink,
+                color: (busy || (step === 1 && !clientId) || (step === 2 && (!serviceId || !duration || !time))) ? T.inkMuted : 'white',
+                boxShadow: '0 4px 12px rgba(233,30,106,0.3)',
+              }}
+            >
+              {busy ? 'Booking...' : step < 3 ? 'Next' : 'Confirm Booking'}
+            </button>
+          </div>
         </div>
-        
-        {bookErr && <div style={{ padding: '0 20px 10px', color: '#EF4444', fontSize: 11, textAlign: 'center' }}>{bookErr}</div>}
       </div>
 
       {showNewClient && (
@@ -451,16 +463,17 @@ function Step1Who({ clients, onPick, onNew, T }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <button onClick={onNew} style={{ width: '100%', padding: '14px', borderRadius: 12, background: T.pinkTint, border: `1.5px dashed ${T.pink}`, color: T.pink, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
-        + NEW CLIENT
+      <button type="button" onClick={onNew} style={{ width: '100%', padding: '14px', borderRadius: 12, background: T.pinkTint, border: `1.5px dashed ${T.pink}`, color: T.pink, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+        + New client
       </button>
 
       <div style={{ position: 'relative' }}>
-        <input 
-          placeholder="Search clients..." 
-          value={search} 
+        <input
+          aria-label="Search clients"
+          placeholder="Search clients..."
+          value={search}
           onChange={e => setSearch(e.target.value)}
-          style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: `1px solid ${T.cardBorder}`, background: T.card, color: T.ink, fontSize: 14, outline: 'none' }} 
+          style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: `1px solid ${T.cardBorder}`, background: T.card, color: T.ink, fontSize: 14 }}
         />
       </div>
 
@@ -470,21 +483,21 @@ function Step1Who({ clients, onPick, onNew, T }) {
           paddingBottom: 4, marginBottom: 14, marginLeft: -4, marginRight: -4, paddingLeft: 4, paddingRight: 4,
         }}>
           {clients.slice(0, 5).map(c => (
-            <div key={c.id} onClick={() => onPick(c.id)} style={{ minWidth: 80, textAlign: 'center', cursor: 'pointer' }}>
+            <button key={c.id} type="button" onClick={() => onPick(c.id)} style={{ minWidth: 80, textAlign: 'center', cursor: 'pointer', background: 'none', border: 'none', padding: 0, fontFamily: T.font }}>
               <div style={{ width: 48, height: 48, borderRadius: '50%', background: T.pinkTint, border: `1.5px solid ${T.pink}`, margin: '0 auto 6px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>
                 {(c.first_name || c.last_name || '?')[0].toUpperCase()}
               </div>
               <div style={{ fontSize: 11, fontWeight: 600, color: T.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.first_name}</div>
-            </div>
+            </button>
           ))}
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {filtered.map(c => (
-          <div key={c.id} onClick={() => onPick(c.id)} style={{ padding: '12px', borderRadius: 12, background: T.card, border: `1px solid ${T.cardBorder}`, cursor: 'pointer' }}>
+          <button key={c.id} type="button" onClick={() => onPick(c.id)} style={{ width: '100%', textAlign: 'left', padding: '12px', borderRadius: 12, background: T.card, border: `1px solid ${T.cardBorder}`, cursor: 'pointer', fontFamily: T.font }}>
             <div style={{ fontWeight: 700, color: T.ink, fontSize: 14 }}>{c.first_name} {c.last_name}</div>
             <div style={{ fontSize: 11, color: T.inkMuted }}>{[c.street, c.city, c.province, c.postal_code].filter(Boolean).join(', ') || 'No address'}</div>
-          </div>
+          </button>
         ))}
       </div>
     </div>
@@ -571,19 +584,21 @@ function Step2What({
               : (Number(s.default_price) || 0);
             const rateLabel = s.pricing_type === 'Hourly' ? `$${svcRate}/hr` : `$${svcRate} flat`;
             return (
-              <div
+              <button
                 key={s.id}
+                type="button"
                 onClick={() => onPickService(s.id)}
                 style={{
                   padding: '10px 10px 8px', borderRadius: 12,
                   background: serviceId === s.id ? T.pinkTint : T.card,
                   border: `1.5px solid ${serviceId === s.id ? T.pink : T.cardBorder}`,
-                  cursor: 'pointer', textAlign: 'center'
+                  cursor: 'pointer', textAlign: 'center',
+                  width: '100%', fontFamily: T.font,
                 }}
               >
                 <div style={{ fontSize: 13, fontWeight: 700, color: serviceId === s.id ? T.pink : T.ink }}>{s.name}</div>
                 <div style={{ fontSize: 11, fontWeight: 600, color: serviceId === s.id ? T.pink : T.inkMuted, marginTop: 2 }}>{rateLabel}</div>
-              </div>
+              </button>
             );
           })}
         </div>
@@ -598,7 +613,7 @@ function Step2What({
                 value={customPrice ?? ''}
                 onChange={e => setCustomPrice(e.target.value === '' ? null : e.target.value)}
                 placeholder={`Custom price (default: $${defaultRate})`}
-                style={{ width: '100%', padding: '10px 12px 10px 26px', borderRadius: 10, background: T.card, border: `1px solid ${customPrice !== null ? T.pink : T.cardBorder}`, color: T.ink, fontSize: 13, outline: 'none' }}
+                style={{ width: '100%', padding: '10px 12px 10px 26px', borderRadius: 10, background: T.card, border: `1px solid ${customPrice !== null ? T.pink : T.cardBorder}`, color: T.ink, fontSize: 13 }}
               />
             </div>
             {customPrice !== null && (
@@ -614,7 +629,7 @@ function Step2What({
       {/* Date */}
       <div>
         <SectionLabel>When</SectionLabel>
-        <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: 12, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.ink, fontSize: 14, outline: 'none' }} />
+        <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: 12, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.ink, fontSize: 14 }} />
       </div>
 
       {/* Start & End Time */}
@@ -623,7 +638,7 @@ function Step2What({
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 18px 1fr', alignItems: 'end', gap: 4 }}>
           <div>
             <div style={{ fontSize: 10, fontWeight: 600, color: T.inkMuted, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.4px' }}>Start</div>
-            <input type="time" value={time} onChange={e => setTime(e.target.value)} style={{ width: '100%', padding: '10px 8px', borderRadius: 12, background: T.card, border: `1.5px solid ${time ? T.cardBorder : T.pink}`, color: T.ink, fontSize: 14, outline: 'none' }} />
+            <input type="time" value={time} onChange={e => setTime(e.target.value)} style={{ width: '100%', padding: '10px 8px', borderRadius: 12, background: T.card, border: `1.5px solid ${time ? T.cardBorder : T.pink}`, color: T.ink, fontSize: 14 }} />
           </div>
           <div style={{ textAlign: 'center', color: T.inkMuted, fontSize: 13, paddingBottom: 10 }}>→</div>
           <div>
@@ -636,7 +651,7 @@ function Step2What({
                 const mins = diffMinutes(time, e.target.value);
                 if (mins != null) setDuration(mins);
               }}
-              style={{ width: '100%', padding: '10px 8px', borderRadius: 12, background: T.card, border: `1.5px solid ${T.cardBorder}`, color: T.ink, fontSize: 14, outline: 'none', opacity: time ? 1 : 0.4 }}
+              style={{ width: '100%', padding: '10px 8px', borderRadius: 12, background: T.card, border: `1.5px solid ${T.cardBorder}`, color: T.ink, fontSize: 14, opacity: time ? 1 : 0.4 }}
             />
           </div>
         </div>
@@ -663,6 +678,8 @@ function Step2What({
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <button
+            type="button"
+            aria-label="Decrease duration"
             onClick={() => setDuration(d => Math.max(30, (d || 30) - 30))}
             style={{ width: 44, height: 44, borderRadius: 12, border: `1.5px solid ${T.cardBorder}`, background: T.card, color: T.ink, fontSize: 20, fontWeight: 600, cursor: 'pointer' }}
           >–</button>
@@ -673,12 +690,14 @@ function Step2What({
             }
           </div>
           <button
+            type="button"
+            aria-label="Increase duration"
             onClick={() => setDuration(d => (d || 0) + 30)}
             style={{ width: 44, height: 44, borderRadius: 12, border: `1.5px solid ${T.cardBorder}`, background: T.card, color: T.ink, fontSize: 20, fontWeight: 600, cursor: 'pointer' }}
           >+</button>
         </div>
         {aiReason && (
-          <div style={{ marginTop: 8, padding: '8px 10px', background: 'rgba(233,30,106,0.05)', borderLeft: `3px solid ${T.pink}`, fontSize: 11, color: T.inkMuted, fontStyle: 'italic' }}>
+          <div style={{ marginTop: 8, padding: '8px 10px', background: 'rgba(233,30,106,0.07)', border: `1px solid ${T.pinkBorder}`, borderRadius: 8, fontSize: 11, color: T.inkMuted, fontStyle: 'italic' }}>
             "{aiReason}"
           </div>
         )}
@@ -701,7 +720,7 @@ function Step2What({
                     setAdditionalCosts(next);
                   }}
                   placeholder="0"
-                  style={{ width: '100%', padding: '10px 10px 10px 22px', borderRadius: 10, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.ink, fontSize: 13, outline: 'none' }}
+                  style={{ width: '100%', padding: '10px 10px 10px 22px', borderRadius: 10, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.ink, fontSize: 13 }}
                 />
               </div>
               <input
@@ -712,7 +731,7 @@ function Step2What({
                   setAdditionalCosts(next);
                 }}
                 placeholder="e.g. Supplies, Parking"
-                style={{ flex: 1, padding: '10px 12px', borderRadius: 10, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.ink, fontSize: 13, outline: 'none' }}
+                style={{ flex: 1, padding: '10px 12px', borderRadius: 10, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.ink, fontSize: 13 }}
               />
               {additionalCosts.length > 1 && (
                 <button onClick={() => setAdditionalCosts(additionalCosts.filter((_, idx) => idx !== i))} style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 18, cursor: 'pointer' }}>×</button>
@@ -720,10 +739,11 @@ function Step2What({
             </div>
           ))}
           <button
+            type="button"
             onClick={() => setAdditionalCosts([...additionalCosts, { amount: '', description: '' }])}
             style={{ background: 'none', border: 'none', color: T.pink, fontSize: 11, fontWeight: 700, cursor: 'pointer', alignSelf: 'flex-start', padding: '4px 0' }}
           >
-            + ADD ANOTHER COST
+            + Add another cost
           </button>
         </div>
       </div>
@@ -784,7 +804,7 @@ function Step2What({
           placeholder="Specific instructions for this visit..."
           value={notes}
           onChange={e => setNotes(e.target.value)}
-          style={{ width: '100%', height: 80, padding: '12px', borderRadius: 12, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.ink, fontSize: 13, outline: 'none', resize: 'none', fontFamily: T.font }}
+          style={{ width: '100%', height: 80, padding: '12px', borderRadius: 12, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.ink, fontSize: 13, resize: 'none', fontFamily: T.font }}
         />
       </div>
 
@@ -809,7 +829,7 @@ function Step2What({
                 setWorkerPay('');
               }
             }}
-            style={{ width: '100%', padding: '10px 12px', borderRadius: 12, background: T.card, border: `1px solid ${workerId ? T.pink : T.cardBorder}`, color: T.ink, fontSize: 13, outline: 'none', fontFamily: T.font }}
+            style={{ width: '100%', padding: '10px 12px', borderRadius: 12, background: T.card, border: `1px solid ${workerId ? T.pink : T.cardBorder}`, color: T.ink, fontSize: 13, fontFamily: T.font }}
           >
             <option value="">— Unassigned —</option>
             {workers.filter(w => (w.person_type || 'worker') === 'worker').length > 0 && (
@@ -835,7 +855,7 @@ function Step2What({
                 value={workerPay}
                 onChange={e => setWorkerPay(e.target.value)}
                 placeholder="Pay for this job"
-                style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px 10px 26px', borderRadius: 10, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.ink, fontSize: 13, outline: 'none', fontFamily: T.font }}
+                style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px 10px 26px', borderRadius: 10, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.ink, fontSize: 13, fontFamily: T.font }}
               />
             </div>
           )}
@@ -908,7 +928,9 @@ function Step3Review({
         {/* Date + time range on one row */}
         <div style={{ position: 'relative' }}>
           <div style={{ fontSize: 10, color: 'var(--pink-label)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '1.2px', marginBottom: 4 }}>When</div>
-          <div style={{ fontFamily: T.serif, fontSize: 16, fontWeight: 500, color: 'white' }}>{date}</div>
+          <div style={{ fontFamily: T.serif, fontSize: 16, fontWeight: 500, color: 'white' }}>
+            {date ? new Intl.DateTimeFormat('en-CA', { weekday: 'short', month: 'long', day: 'numeric', timeZone: 'America/Toronto' }).format(new Date(date + 'T12:00:00')) : '—'}
+          </div>
           <div style={{ fontSize: 15, fontWeight: 700, color: 'white', marginTop: 3, letterSpacing: '0.2px' }}>
             {startFmt}{endFmt ? <span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 400 }}> – </span> : ''}{endFmt}
           </div>

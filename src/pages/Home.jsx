@@ -399,7 +399,7 @@ export default function Home() {
       const needsUpdate = todayJobs.some(j => j.ai_context?.drive_to === undefined);
       if (needsUpdate) {
         routesFetchedRef.current = true;
-        updateDailyRoutes(todayJobs.map(j => j.raw));
+        updateDailyRoutes(todayJobs);
       }
     }
   }, [todayJobs, loading]);
@@ -521,7 +521,7 @@ export default function Home() {
     e.stopPropagation();
     setIsRefreshingTraffic(true);
     try {
-      await updateDailyRoutes(todayJobs.map(j => j.raw));
+      await updateDailyRoutes(todayJobs);
       notifyDataChanged();
     } catch {
       /* ignore */

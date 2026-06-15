@@ -2,34 +2,21 @@
 // Logic for calculating drive times and mileage using the Google Distance Matrix API (via Vercel proxy).
 
 import { patchJobAiContext } from '../data/jobsRepo';
-import { fetchClients } from '../data/clientsRepo';
 
 const HOME_ADDRESS = "Georgetown, ON, Canada"; // Default base for Sandra
 
 /**
  * Calculates and stores drive estimates for a day's worth of jobs.
  * Follows "Option C" logic: Home -> Job 1 -> Job 2 -> ... -> Home.
- * @param {Array} jobsForDay - Sorted list of jobs for a single day.
+ * @param {Array} jobsForDay - Display jobs (toDisplayJob shape) — must have `id` and `address`.
  */
 export async function updateDailyRoutes(jobsForDay) {
   if (!jobsForDay || jobsForDay.length === 0) return;
 
-  // 1. Fetch client info to get addresses
-  let clientLookup = {};
-  try {
-    const clients = await fetchClients();
-    clientLookup = Object.fromEntries(clients.map(c => [c.id, c]));
-  } catch (e) {
-    console.error('[maps] Failed to fetch clients for routing:', e);
-    return;
-  }
-
-  // 2. Gather all stop addresses
+  // Gather stop addresses from display jobs (address is already joined from clients via toDisplayJob)
   const stops = [HOME_ADDRESS];
   for (const j of jobsForDay) {
-    const c = clientLookup[j.client_id];
-    const addr = (c?.street && c?.city) ? `${c.street}, ${c.city}, ${c.province || 'ON'}` : null;
-    stops.push(addr || HOME_ADDRESS);
+    stops.push(j.address || HOME_ADDRESS);
   }
 
   const origins = stops.join('|');

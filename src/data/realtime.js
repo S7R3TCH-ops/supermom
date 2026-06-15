@@ -6,6 +6,13 @@ let channel = null;
 let subscribing = false;
 const CHANNEL_NAME = 'schema-db-changes';
 
+// Debounce so rapid-fire writes (e.g. updateDailyRoutes writing N jobs) only trigger one refresh
+let debounceTimer = null;
+function debouncedNotify() {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => notifyDataChanged(), 500);
+}
+
 export async function initRealtime() {
   if (channel || subscribing) return;
   subscribing = true;
@@ -29,22 +36,22 @@ export async function initRealtime() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'jobs', filter: `business_id=eq.${businessId}` },
-        () => notifyDataChanged()
+        () => debouncedNotify()
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'clients', filter: `business_id=eq.${businessId}` },
-        () => notifyDataChanged()
+        () => debouncedNotify()
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'payments', filter: `business_id=eq.${businessId}` },
-        () => notifyDataChanged()
+        () => debouncedNotify()
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'expense_log', filter: `business_id=eq.${businessId}` },
-        () => notifyDataChanged()
+        () => debouncedNotify()
       )
       .subscribe((status) => {
         console.log(`[realtime] Subscription status: ${status}`);

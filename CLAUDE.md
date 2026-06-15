@@ -138,13 +138,14 @@ A mobile-first CRM & operations web app for **Sandra**, a solo personal-life-ope
 
 ---
 
-## Current version: 0.12.51 — Jun 15, 2026
+## Current version: 0.12.52 — Jun 15, 2026
 
 Sandra's business is live — data wiped and re-provisioned Jun 9. App in active use.
 
 **⚠️ Multi-client git discipline**: Always push local commits before starting an online Claude Code session; always pull before the online session writes code.
 
 ### Recent changes (full history in `docs/changelog/` + `git log`)
+- **v0.12.52 (Jun 15)** — ClientProfile P1/P2 a11y + UX pass (impeccable critique): back button now navigates to `/clients` (was `/`); back + edit icon-buttons expanded to 44×44px tap targets; `outline:none` removed from AI card textareas (focus ring restored); upcoming + history job rows converted from `<div onClick>` to `<button>`; dead "View all jobs" button removed; raw `error.message` replaced with friendly copy.
 - **v0.12.51 (Jun 15)** — EditMode condensed prep brief strip: client name (Fraunces) + service · date shown in the "Editing Job" header bar for context while editing.
 - **v0.12.50 (Jun 15)** — JobDetailSheet P1 fixes from impeccable critique: replaced `window.confirm()` for future-date Complete/Paid with in-app confirm UI (plain English, "Not yet"/"Yes, continue"); EditMode grouped into 4 named sections (Schedule & Service, Financials, Details, Team); `outline: none` removed from all form inputs (WCAG focus ring); close button tap target expanded to 44px via padding; `transition: padding-bottom` jank removed, replaced with conditional spacer; `aria-label` on close button and hidden file input.
 - **v0.12.49 (Jun 14)** — Invoice polish (remaining impeccable items): INVOICE heading pink (`#B01550`) — first brand touch clients see; invoice number label `NO` → `#`; thank-you line `#777` → `#666` (WCAG AA); email button emoji removed; email failure state persists (no auto-reset); `← Back` button in toolbar; due date net-7 (was same-day as service).
@@ -183,7 +184,7 @@ Sandra's business is live — data wiped and re-provisioned Jun 9. App in active
    - Fix 1 (wrong leave time): increase GPS timeout to 12000ms; add `locationFetchAttempted` state to show "Calculating…" until resolved.
    - Fix 2 (wonky after long absence): add `visibilitychange` handler — `setNow(new Date())` on resume; `reload()` if away > 30 min or date changed; guard drive re-fetch (last fetch > 10 min) to protect Maps quota.
 4. **AI chat interface** — `api/ai/[action].js` + `ANTHROPIC_API_KEY` in place. Needs chat UI + convo state. HIGH PRIORITY.
-5. **Design system critique** — Job detail critique fully resolved (P1s + P2s + Q2 in v0.12.51). Next: Client profile → `/impeccable critique src/pages/ClientProfile.jsx`, then `/impeccable document`.
+5. **Design system critique** — Job detail + Client profile critiques done (P1s + P2s fixed). Next: `/impeccable document` to regenerate DESIGN.md from current code.
 
 ### Phase 2 features
 - [ ] **AI chat interface** — HIGH PRIORITY. API endpoint + key already set. Need chat UI + conversation state.

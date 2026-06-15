@@ -126,10 +126,11 @@ export default function ClientProfile() {
     );
   }
   if (error) {
+    console.error('ClientProfile load error:', error);
     return (
       <div style={{ padding: 18, background: T.bg, color: T.ink }}>
         <div style={{ background: T.redBg, border: `1px solid ${T.redBorder}`, borderRadius: 10, padding: 12, fontFamily: T.font, fontSize: 13 }}>
-          {error.message}
+          Couldn't load this client. Check your connection and try again.
         </div>
       </div>
     );
@@ -158,11 +159,11 @@ export default function ClientProfile() {
         {/* Top row: back + label */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, position: 'relative' }}>
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/clients')}
             style={{
-              background: mode === 'dark' ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.4)', 
+              background: mode === 'dark' ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.4)',
               border: `1px solid ${mode === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.05)'}`,
-              borderRadius: 9, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              borderRadius: 9, width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
               cursor: 'pointer', padding: 0,
             }}
             aria-label="Back"
@@ -180,7 +181,7 @@ export default function ClientProfile() {
             style={{
               background: mode === 'dark' ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.4)',
               border: `1px solid ${mode === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.05)'}`,
-              borderRadius: 9, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              borderRadius: 9, width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
               cursor: 'pointer', padding: 0,
             }}
             aria-label="Edit client"
@@ -359,7 +360,7 @@ export default function ClientProfile() {
                     style={{
                       flex: 1, background: T.pinkTint, border: `1px solid ${T.pinkBorder}`,
                       borderRadius: 8, padding: '4px 8px', fontFamily: T.font, fontSize: 11.5,
-                      color: T.ink, minHeight: 44, resize: 'none', outline: 'none',
+                      color: T.ink, minHeight: 44, resize: 'none',
                     }}
                   />
                 ) : (
@@ -455,11 +456,11 @@ export default function ClientProfile() {
             </div>
           ) : (
             client.upcoming.map((j, i) => (
-              <div key={i} onClick={() => openJob(j.id)} style={{
+              <button key={i} onClick={() => openJob(j.id)} style={{
                 background: T.card, border: `1.5px solid ${T.cardBorder}`,
                 borderRadius: 13, padding: '10px 12px',
                 display: 'flex', alignItems: 'center', gap: 12,
-                cursor: 'pointer',
+                cursor: 'pointer', width: '100%', textAlign: 'left',
               }}>
                 <div style={{
                   width: 50, flexShrink: 0, textAlign: 'center',
@@ -483,7 +484,7 @@ export default function ClientProfile() {
                     fontFamily: T.font, fontSize: 8.5, fontWeight: 700, letterSpacing: '0.4px', textTransform: 'uppercase',
                   }}>Scheduled</span>
                 </div>
-              </div>
+              </button>
             ))
           )}
         </div>
@@ -504,11 +505,11 @@ export default function ClientProfile() {
             </div>
           ) : (
             client.history.slice(0, 5).map((h, i) => (
-              <div key={i} onClick={() => openJob(h.id)} style={{
+              <button key={i} onClick={() => openJob(h.id)} style={{
                 background: T.card, border: `1.5px solid ${T.cardBorder}`,
                 borderRadius: 13, padding: '10px 12px',
                 display: 'flex', alignItems: 'center', gap: 12,
-                cursor: 'pointer'
+                cursor: 'pointer', width: '100%', textAlign: 'left',
               }}>
                 <div style={{
                   width: 50, flexShrink: 0, textAlign: 'center',
@@ -530,15 +531,8 @@ export default function ClientProfile() {
                     fontFamily: T.font, fontSize: 8.5, fontWeight: 700, letterSpacing: '0.4px', textTransform: 'uppercase',
                   }}>{h.status === 'paid' ? 'Paid ✓' : h.status === 'partial' ? 'Partial' : 'Unpaid'}</span>
                 </div>
-              </div>
+              </button>
             ))
-          )}
-          {client.history.length > 5 && (
-            <button style={{
-              background: 'none', border: 'none', padding: '8px 0',
-              fontFamily: T.font, fontSize: 11, fontWeight: 600, color: T.pink, cursor: 'pointer',
-              textAlign: 'center',
-            }}>View all {client.history.length} jobs →</button>
           )}
         </div>
 

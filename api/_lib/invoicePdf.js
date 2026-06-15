@@ -108,7 +108,7 @@ const s = StyleSheet.create({
   footerBorder: { borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 9, marginBottom: 10 },
   footerLabel:  { fontSize: 7, fontFamily: 'Helvetica-Bold', color: LABEL_C, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 5 },
   footerText:   { fontSize: 10, color: '#444', lineHeight: 1.1 },
-  thankYou:     { fontSize: 11, color: '#777', fontFamily: 'Helvetica-Oblique', textAlign: 'center', marginTop: 4 },
+  thankYou:     { fontSize: 11, color: '#666', fontFamily: 'Helvetica-Oblique', textAlign: 'center', marginTop: 4 },
 });
 
 function el(type, props, ...children) {
@@ -196,8 +196,8 @@ function InvoiceDocument({ invoice }) {
         ),
         // Invoice / Receipt meta
         V({ style: [s.infoCol, { alignItems: 'flex-end' }] },
-          T({ style: { fontSize: 20, fontFamily: 'Helvetica-Bold', color: isReceipt ? PAID : INK, letterSpacing: 2, textTransform: 'uppercase', textAlign: 'right', marginBottom: 8 } }, isReceipt ? 'Receipt' : 'Invoice'),
-          V({ style: s.metaRow }, T({ style: s.metaKey }, 'NO'),   T({ style: s.metaVal }, invoice.invoice_number || '—')),
+          T({ style: { fontSize: 20, fontFamily: 'Helvetica-Bold', color: isReceipt ? PAID : PINK, letterSpacing: 2, textTransform: 'uppercase', textAlign: 'right', marginBottom: 8 } }, isReceipt ? 'Receipt' : 'Invoice'),
+          V({ style: s.metaRow }, T({ style: s.metaKey }, '#'),   T({ style: s.metaVal }, invoice.invoice_number || '—')),
           V({ style: s.metaRow }, T({ style: s.metaKey }, 'DATE'), T({ style: s.metaVal }, formatDate(invoice.invoice_date))),
           V({ style: s.metaRow }, T({ style: s.metaKey }, 'DUE DATE'), T({ style: s.metaVal }, formatDate(invoice.due_date))),
         ),

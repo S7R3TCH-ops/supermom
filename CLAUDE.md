@@ -138,13 +138,14 @@ A mobile-first CRM & operations web app for **Sandra**, a solo personal-life-ope
 
 ---
 
-## Current version: 0.12.48 — Jun 14, 2026
+## Current version: 0.12.49 — Jun 14, 2026
 
 Sandra's business is live — data wiped and re-provisioned Jun 9. App in active use.
 
 **⚠️ Multi-client git discipline**: Always push local commits before starting an online Claude Code session; always pull before the online session writes code.
 
 ### Recent changes (full history in `docs/changelog/` + `git log`)
+- **v0.12.49 (Jun 14)** — Invoice polish (remaining impeccable items): INVOICE heading pink (`#B01550`) — first brand touch clients see; invoice number label `NO` → `#`; thank-you line `#777` → `#666` (WCAG AA); email button emoji removed; email failure state persists (no auto-reset); `← Back` button in toolbar; due date net-7 (was same-day as service).
 - **v0.12.48 (Jun 14)** — Web preview synced to PDF: font switched from Inter+Fraunces → Helvetica Neue/Arial throughout; logo 150→140px; biz name 24→22px; INVOICE/RECEIPT heading 30→26px; payment amounts dark ink not grey; footer email plain text (no bold); thank-you 17→15px italic. PDF download: `Cache-Control: no-store` to prevent stale cached PDF.
 - **v0.12.47 (Jun 14)** — Settlement section header: "Also Paid for This Client / ✓ Paid $X" → plain sentence "Remaining **$X** from this payment was also applied to:" (amount bold, no green check). Footer: "Payment Received / Paid in Full" block removed for receipts — was redundant with the ✓ Paid mark on Invoice Total row; payment instructions only show on unpaid invoices now.
 - **v0.12.46 (Jun 14)** — Invoice WCAG/polish pass: `#aaa` label color → `#6b7280` (web + PDF, WCAG AA); "Additional Cost" pink → `#B01550`; flat-rate invoices no longer show dead Rate/Hr + Hours columns (hidden in both web table and PDF); raw Supabase error no longer exposed to clients — friendly message instead; INVOICE/RECEIPT heading `fontWeight 800` → `700`.
@@ -172,7 +173,7 @@ Sandra's business is live — data wiped and re-provisioned Jun 9. App in active
 
 ### Next session priorities
 
-> **Sync rule**: every change to `api/_lib/invoicePdf.js` must be mirrored in `InvoiceView.jsx` before commit. v0.12.48 brought them back into alignment.
+> **Sync rule**: every change to `api/_lib/invoicePdf.js` must be mirrored in `InvoiceView.jsx` before commit. v0.12.49 kept them in sync.
 
 1. **⚠️ Device verification** — v0.12.32 Android perf fix and all Jun 12–14 fixes not yet phone-tested.
 2. **GCal sync failures silent** — `triggerGCalSync` is fire-and-forget. Likely cause: OAuth "Testing" mode → refresh tokens expire after 7 days. Sandra should reconnect (Settings → Google Calendar → CONNECT).

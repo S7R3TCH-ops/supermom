@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { fetchInvoiceById, settleInvoiceOutstanding, voidInvoiceSettlement } from '../data/invoicesRepo';
 import { computeJobFinancials } from '../lib/financialMath';
 import { useAuth } from '../context/AuthContext';
@@ -17,6 +17,7 @@ const LABEL = { fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 
 
 export default function InvoiceView() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { session } = useAuth();
   const [invoice, setInvoice]       = useState(null);
   const [loading, setLoading]       = useState(true);
@@ -186,7 +187,6 @@ export default function InvoiceView() {
     } catch (e) {
       console.error('Email error:', e);
       setEmailState('error');
-      setTimeout(() => setEmailState('idle'), 4000);
     }
   }
 
@@ -194,8 +194,8 @@ export default function InvoiceView() {
   const emailLabel = emailState === 'sending' ? 'Sending…'
     : emailState === 'sent'    ? '✓ Sent!'
     : emailState === 'error'   ? '✗ Failed — retry'
-    : client.email             ? `✉ Email ${docLabel}`
-    : '✉ No Email on File';
+    : client.email             ? `Email ${docLabel}`
+    : 'No Email on File';
 
   return (
     <div className="print-page" style={{ minHeight: '100svh', background: '#f9f9f9', padding: '20px 10px', fontFamily: 'var(--font-ui)' }}>
@@ -274,6 +274,16 @@ export default function InvoiceView() {
           )}
         </div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <button
+            onClick={() => navigate(-1)}
+            style={{
+              background: 'white', color: 'var(--ink-muted)', border: '1.5px solid #ddd',
+              padding: '8px 14px', borderRadius: 8, fontSize: 13, fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            ← Back
+          </button>
           <button
             onClick={handleEmail}
             disabled={!client.email || emailState === 'sending'}
@@ -414,9 +424,9 @@ export default function InvoiceView() {
           </div>
 
           <div className="info-col-right" style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 26, fontWeight: 700, color: isReceipt ? '#16A34A' : '#1a1a1a', letterSpacing: '2px', textTransform: 'uppercase', lineHeight: 1, marginBottom: 8 }}>{docLabel}</div>
+            <div style={{ fontSize: 26, fontWeight: 700, color: isReceipt ? '#16A34A' : '#B01550', letterSpacing: '2px', textTransform: 'uppercase', lineHeight: 1, marginBottom: 8 }}>{docLabel}</div>
             <div className="invoice-meta" style={{ display: 'grid', gridTemplateColumns: 'auto auto', gap: '5px 14px', justifyContent: 'end' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textAlign: 'right', alignSelf: 'center' }}>NO</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textAlign: 'right', alignSelf: 'center' }}>#</div>
               <div style={{ fontWeight: 600 }}>{invoice.invoice_number}</div>
               <div style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textAlign: 'right', alignSelf: 'center' }}>DATE</div>
               <div>{formatDate(invoice.invoice_date)}</div>
@@ -590,7 +600,7 @@ export default function InvoiceView() {
           )}
 
           <div style={{ textAlign: 'center', paddingTop: 2 }}>
-            <div className="inv-display" style={{ fontSize: 15, fontWeight: 400, color: '#777', fontStyle: 'italic' }}>
+            <div className="inv-display" style={{ fontSize: 15, fontWeight: 400, color: '#666', fontStyle: 'italic' }}>
               Thank you for letting Supermom save the day.
             </div>
           </div>

@@ -31,10 +31,15 @@ export async function generateInvoiceForJob(jobId) {
   // Compute actual total using the central source of truth
   const actualTotal = Math.round(computeJobTotal(job) * 100) / 100;
 
+  // Net-7 terms — due 7 days after the service date
+  const _d = new Date(job.scheduled_date);
+  _d.setDate(_d.getDate() + 7);
+  const dueDate = _d.toISOString().slice(0, 10);
+
   if (existingLink) {
     const statusPatch = job.payment_status === 'Paid' ? { status: 'Paid' } : {};
     const { error: updateErr } = await supabase.from('invoices')
-      .update({ total_amount: actualTotal, due_date: job.scheduled_date, ...statusPatch })
+      .update({ total_amount: actualTotal, due_date: dueDate, ...statusPatch })
       .eq('id', existingLink.invoice_id)
       .eq('business_id', businessId);
     if (updateErr) throw updateErr;
@@ -61,9 +66,6 @@ export async function generateInvoiceForJob(jobId) {
   const invoiceNumber = `${year}-${String(nextNum).padStart(3, '0')}`;
 
   // 4. Create invoice
-  // Due date matches the invoice date — same-day terms
-  const dueDate = job.scheduled_date;
-
   const { data: invoice, error: invErr } = await supabase
     .from('invoices')
     .insert({

@@ -138,13 +138,14 @@ A mobile-first CRM & operations web app for **Sandra**, a solo personal-life-ope
 
 ---
 
-## Current version: 0.12.70 — Jun 15, 2026 (package.json synced)
+## Current version: 0.12.71 — Jun 15, 2026 (package.json synced)
 
 Sandra's business is live — data wiped and re-provisioned Jun 9. App in active use.
 
 **⚠️ Multi-client git discipline**: Always push local commits before starting an online Claude Code session; always pull before the online session writes code.
 
 ### Recent changes (full history in `docs/changelog/` + `git log`)
+- **v0.12.71 (Jun 15)** — PostJobSheet send nudge: after saving, sheet replaces form with centered success screen instead of auto-closing. Paid → "Receipt ready! Want to send the receipt to [client]?"; Partial → "Payment saved! Want to send the updated invoice?"; Unpaid/complete → "Invoice ready! Want to send the invoice?". "Send Receipt/Invoice" opens `/i/:id` in new tab then closes sheet. "Not now" closes. No invoiceId → "Done" button only. Removed redundant inline invoice-ready card from scroll body.
 - **v0.12.70 (Jun 15)** — Invoice preview fixes: date fields get `white-space: nowrap` (meta grid + table td) to prevent 2-line wrap; PDF `cDate` width 72→88pt. Record Payment panel now gated on `invoiceSentAt || receiptSentAt` — no longer appears on fresh job-completion preview. Back button uses `window.close()` when page opened in new tab (always `_blank`), `navigate(-1)` otherwise. Admin page: removed redundant "← Reset to My Real View" pink button when viewing as another business (ribbon header already handles this).
 - **v0.12.69 (Jun 15)** — Home owing section rewrite: flat per-job rows (was grouped by client). Collapse only fires at 3+ jobs. Collapsed header shows job count ("X jobs owing · $Y", not client count). Each row is a real button opening that specific job. Dead "+N more" badge removed. 1–2 owing jobs render flat with no accordion header.
 - **v0.12.68 (Jun 15)** — Brand pink alignment: INVOICE heading on web preview (`InvoiceView.jsx`) + PDF builder (`api/_lib/invoicePdf.js`) changed from `#B01550` (dark crimson) → `#FC4693` (Sandra's actual brand pink). Finance.jsx invoice status badge upgraded from plain amber text → proper pill (`#FC4693`/`#FFEFF4` for non-Paid, green for Paid). Cancelled job pill darkened from medium gray `#6B7280` → charcoal `#374151` in JobDetailSheet + Finance STATUS_PILL (more contrast vs. Scheduled blue).

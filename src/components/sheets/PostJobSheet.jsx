@@ -28,6 +28,7 @@ export default function PostJobSheet({ jobId, onClose }) {
   const [payStatus, setPayStatus] = useState('paid');
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+  const [savedPs, setSavedPs] = useState(null); // final payment status after save
   const [invoiceId, setInvoiceId] = useState(null);
   const [jobPayments, setJobPayments] = useState([]);
   const [costs, setCosts] = useState([{ amount: '', description: '' }]);
@@ -175,10 +176,9 @@ export default function PostJobSheet({ jobId, onClose }) {
       if (data) setInvoiceId(data.invoice_id);
 
       notifyDataChanged();
-      toast.success(ps === 'Paid' ? 'Job complete!' : ps === 'Partial' ? 'Payment saved — balance owing.' : 'Job updated.');
+      setSavedPs(ps);
       setDone(true);
       triggerHaptic('success');
-      setTimeout(onClose, 2500);
     } catch (e) {
       const msg = e.message || String(e);
       toast.error(msg);
@@ -289,6 +289,49 @@ export default function PostJobSheet({ jobId, onClose }) {
           <div style={{ padding: 40, textAlign: 'center', color: T.inkMuted }}>Initializing...</div>
         ) : fetchErr ? (
           <div style={{ padding: 40, textAlign: 'center', color: '#EF4444' }}>{fetchErr}</div>
+        ) : done ? (
+          /* ── Success + send nudge ── */
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '32px 24px', gap: 24, textAlign: 'center' }}>
+            <div style={{ fontSize: 48 }}>✓</div>
+            <div>
+              <div style={{ fontFamily: T.serif, fontSize: 22, fontWeight: 500, color: T.ink, marginBottom: 6 }}>
+                {savedPs === 'Paid' ? 'Receipt ready!' : savedPs === 'Partial' ? 'Payment saved!' : 'Invoice ready!'}
+              </div>
+              {invoiceId && (
+                <div style={{ fontSize: 14, color: T.inkMuted, lineHeight: 1.4 }}>
+                  {savedPs === 'Paid'
+                    ? `Want to send the receipt to ${job?.client_name || 'the client'}?`
+                    : `Want to send ${savedPs === 'Partial' ? 'the updated invoice' : 'the invoice'} to ${job?.client_name || 'the client'}?`}
+                </div>
+              )}
+            </div>
+            {invoiceId ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
+                <button
+                  type="button"
+                  onClick={() => { window.open(`/i/${invoiceId}`, '_blank'); onClose(); }}
+                  style={{ width: '100%', padding: '14px', borderRadius: 12, background: T.pink, color: 'white', border: 'none', fontFamily: T.font, fontSize: 14, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 12px rgba(233,30,106,0.3)' }}
+                >
+                  {savedPs === 'Paid' ? 'Send Receipt' : 'Send Invoice'}
+                </button>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  style={{ width: '100%', padding: '13px', borderRadius: 12, background: 'transparent', border: `1.5px solid ${T.cardBorder}`, color: T.inkMuted, fontFamily: T.font, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Not now
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={onClose}
+                style={{ width: '100%', padding: '14px', borderRadius: 12, background: T.pink, color: 'white', border: 'none', fontFamily: T.font, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
+              >
+                Done
+              </button>
+            )}
+          </div>
         ) : (
           <>
           <div ref={swipeScrollRef} className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
@@ -522,16 +565,6 @@ export default function PostJobSheet({ jobId, onClose }) {
             mode={mode}
           />
 
-          {/* Invoice Link if exists */}
-          {invoiceId && (
-            <div style={{ background: T.pinkTint, padding: '12px 16px', borderRadius: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: T.pink }}>{payStatus === 'paid' ? 'Receipt ready' : 'Invoice ready'}</div>
-                <div style={{ fontSize: 10, color: T.pink }}>Job will be added to invoice automatically.</div>
-              </div>
-              <button type="button" onClick={() => window.open(`/i/${invoiceId}`, '_blank')} style={{ background: T.pink, color: 'white', border: 'none', padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: 'pointer', minHeight: 32 }}>View</button>
-            </div>
-          )}
 
           <div style={{ height: 40 }} />
         </div>
@@ -540,8 +573,8 @@ export default function PostJobSheet({ jobId, onClose }) {
         {/* Footer */}
         <div style={{ padding: '10px 18px 18px', borderTop: `1px solid ${T.cardBorder}`, display: 'flex', gap: 10, background: T.bg }}>
           <button type="button" onClick={onClose} style={{ flex: 1, background: 'transparent', border: `1.5px solid ${T.cardBorder}`, color: T.inkMuted, borderRadius: 12, padding: '12px 0', fontFamily: T.font, fontSize: 13, fontWeight: 600, cursor: 'pointer', minHeight: 44 }}>Later</button>
-          <button type="button" onClick={() => handleLogPayment()} disabled={busy || done} style={{ flex: 2, background: busy || done ? T.pinkTint : T.pink, color: 'white', border: 'none', borderRadius: 12, padding: '12px 0', fontFamily: T.font, fontSize: 13, fontWeight: 700, cursor: busy || done ? 'default' : 'pointer', boxShadow: '0 4px 12px rgba(233,30,106,0.3)', minHeight: 44 }}>
-            {busy ? 'Saving…' : done ? 'Success ✓' : payStatus === 'paid' ? 'Save & log paid' : payStatus === 'partial' ? 'Save & log partial' : 'Save & close'}
+          <button type="button" onClick={() => handleLogPayment()} disabled={busy} style={{ flex: 2, background: busy ? T.pinkTint : T.pink, color: 'white', border: 'none', borderRadius: 12, padding: '12px 0', fontFamily: T.font, fontSize: 13, fontWeight: 700, cursor: busy ? 'default' : 'pointer', boxShadow: '0 4px 12px rgba(233,30,106,0.3)', minHeight: 44 }}>
+            {busy ? 'Saving…' : payStatus === 'paid' ? 'Save & log paid' : payStatus === 'partial' ? 'Save & log partial' : 'Save & close'}
           </button>
         </div>
         </>

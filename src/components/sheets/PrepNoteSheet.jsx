@@ -75,14 +75,14 @@ export default function PrepNoteSheet({ isOpen, onClose, clientId, businessProfi
             letterSpacing: '1.2px', textTransform: 'uppercase', 
             color: '#FF78B0', marginBottom: 4 
           }}>
-            ✦ AI Prep Note
+            ✦ AI Prep note
           </div>
           
           <div style={{ 
             fontFamily: T.serif, fontSize: 22, fontWeight: 500, 
             color: 'white', letterSpacing: '-0.3px'
           }}>
-            Client Briefing
+            Client briefing
           </div>
         </div>
 
@@ -118,6 +118,7 @@ export default function PrepNoteSheet({ isOpen, onClose, clientId, businessProfi
           )}
 
           <button
+            type="button"
             onClick={onClose}
             style={{ 
               marginTop: 32, width: '100%', padding: '14px 0', 

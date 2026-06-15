@@ -9,6 +9,7 @@ import { supabase } from '../../lib/supabase';
 import GrabBar from '../ui/GrabBar';
 import FinancialMathBreakdown from '../ui/FinancialMathBreakdown';
 import { useSwipeToDismiss } from '../../hooks/useSwipeToDismiss';
+import { triggerHaptic } from '../../lib/haptics';
 
 export default function PostJobSheet({ jobId, onClose }) {
   const { T, mode } = useAppTheme();
@@ -129,7 +130,7 @@ export default function PostJobSheet({ jobId, onClose }) {
       .catch(e => { if (alive) setFetchErr(e.message || String(e)); })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, [jobId]);
+  }, [jobId, business?.tax_enabled]);
 
   // Keep the payment amount field in sync with the live total (HST-inclusive).
   // Whenever liveTotal, alreadyPaid, or payStatus changes, re-derive the default.
@@ -153,6 +154,7 @@ export default function PostJobSheet({ jobId, onClose }) {
     const totalDuration = actualMinutes / 60;
 
     setBusy(true);
+    triggerHaptic('light');
     try {
       const paidAmt = payStatus === 'paid' ? (parseFloat(amount) || 0) : payStatus === 'partial' ? (parseFloat(amount) || 0) : 0;
       let ps = payStatus === 'paid' ? 'Paid' : payStatus === 'partial' ? 'Partial' : '';
@@ -175,11 +177,13 @@ export default function PostJobSheet({ jobId, onClose }) {
       notifyDataChanged();
       toast.success(ps === 'Paid' ? 'Job complete!' : ps === 'Partial' ? 'Payment saved — balance owing.' : 'Job updated.');
       setDone(true);
+      triggerHaptic('success');
       setTimeout(onClose, 2500);
     } catch (e) {
       const msg = e.message || String(e);
       toast.error(msg);
       setBusy(false);
+      triggerHaptic('error');
     }
   }
 
@@ -218,7 +222,7 @@ export default function PostJobSheet({ jobId, onClose }) {
         {/* Header with Live Total */}
         <div style={{ padding: '16px 20px', borderBottom: `1px solid ${T.cardBorder}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: T.bg }}>
           <div>
-            <SectionLabel serif={false} style={{ marginBottom: 4 }}>Job Wrap-Up</SectionLabel>
+            <SectionLabel serif={false} style={{ marginBottom: 4 }}>Job wrap-up</SectionLabel>
             <div style={{ fontFamily: T.serif, fontSize: 20, fontWeight: 500, color: T.ink }}>
               {loading ? 'Loading...' : job?.client_name || 'Done!'}
             </div>
@@ -235,7 +239,7 @@ export default function PostJobSheet({ jobId, onClose }) {
                   <div style={{ fontSize: 22, fontWeight: 900, color: T.pink, fontFamily: T.font }}>
                     ${(liveTotal - alreadyPaid).toFixed(2)}
                   </div>
-                  <div style={{ fontSize: 9, fontWeight: 700, color: T.inkMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Balance Due</div>
+                  <div style={{ fontSize: 9, fontWeight: 700, color: T.inkMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Balance due</div>
                   <div style={{ fontSize: 9, color: T.inkMuted, marginTop: 1 }}>
                     ${liveTotal.toFixed(2)} total · ${alreadyPaid.toFixed(2)} paid
                   </div>
@@ -245,7 +249,7 @@ export default function PostJobSheet({ jobId, onClose }) {
                   <div style={{ fontSize: 22, fontWeight: 900, color: T.pink, fontFamily: T.font }}>
                     ${liveTotal.toFixed(2)}
                   </div>
-                  <div style={{ fontSize: 9, fontWeight: 700, color: T.inkMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Total to Collect</div>
+                  <div style={{ fontSize: 9, fontWeight: 700, color: T.inkMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Total to collect</div>
                   <div style={{ fontSize: 9, color: T.inkMuted, marginTop: 1 }}>
                     ${liveSubtotal.toFixed(2)} + ${liveHst.toFixed(2)} HST
                   </div>
@@ -255,12 +259,28 @@ export default function PostJobSheet({ jobId, onClose }) {
                   <div style={{ fontSize: 22, fontWeight: 900, color: T.pink, fontFamily: T.font }}>
                     ${liveTotal.toFixed(2)}
                   </div>
-                  <div style={{ fontSize: 9, fontWeight: 700, color: T.inkMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Live Total</div>
+                  <div style={{ fontSize: 9, fontWeight: 700, color: T.inkMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>Live total</div>
                 </>
               )}
             </div>
-            <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(0,0,0,0.07)', border: '1.5px solid rgba(0,0,0,0.08)', color: T.ink, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+              style={{
+                width: 44, height: 44, borderRadius: '50%',
+                background: 'transparent', border: 'none', color: T.ink, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                marginRight: -10, marginTop: -4,
+              }}
+            >
+              <div style={{
+                width: 32, height: 32, borderRadius: '50%',
+                background: 'rgba(0,0,0,0.07)', border: '1.5px solid rgba(0,0,0,0.08)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+              </div>
             </button>
           </div>
         </div>
@@ -277,31 +297,32 @@ export default function PostJobSheet({ jobId, onClose }) {
           
           {/* Section 1: Duration Adjustment */}
           <div>
-          <SectionLabel>Actual Duration</SectionLabel>
+          <SectionLabel>Actual duration</SectionLabel>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <button onClick={() => setActualMinutes(m => Math.max(30, m - 30))} style={{ width: 44, height: 44, borderRadius: 12, border: `1.5px solid ${T.cardBorder}`, background: T.card, color: T.ink, fontSize: 20, fontWeight: 600, cursor: 'pointer' }}>–</button>
+            <button type="button" onClick={() => setActualMinutes(m => Math.max(30, m - 30))} aria-label="Decrease duration" style={{ width: 44, height: 44, borderRadius: 12, border: `1.5px solid ${T.cardBorder}`, background: T.card, color: T.ink, fontSize: 20, fontWeight: 600, cursor: 'pointer' }}>–</button>
             <div style={{ flex: 1, textAlign: 'center', background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 12, padding: '10px 0' }}>
               <div style={{ fontSize: 16, fontWeight: 700, color: T.pink }}>{fmtMins(actualMinutes)}</div>
             </div>
-            <button onClick={() => setActualMinutes(m => m + 30)} style={{ width: 44, height: 44, borderRadius: 12, border: `1.5px solid ${T.cardBorder}`, background: T.card, color: T.ink, fontSize: 20, fontWeight: 600, cursor: 'pointer' }}>+</button>
+            <button type="button" onClick={() => setActualMinutes(m => m + 30)} aria-label="Increase duration" style={{ width: 44, height: 44, borderRadius: 12, border: `1.5px solid ${T.cardBorder}`, background: T.card, color: T.ink, fontSize: 20, fontWeight: 600, cursor: 'pointer' }}>+</button>
           </div>
           </div>
 
           {/* Section 2: Payment Toggle */}
           {!isPaidRecord && (
           <div>
-          <SectionLabel>Payment Status</SectionLabel>
+          <SectionLabel>Payment status</SectionLabel>
           <div style={{ display: 'flex', background: T.card, borderRadius: 12, padding: 4, border: `1px solid ${T.cardBorder}` }}>
             {['paid', 'partial', 'unpaid'].map(s => (
               <button
                 key={s}
+                type="button"
                 onClick={() => setPayStatus(s)}
                 style={{
                   flex: 1, padding: '10px 0', borderRadius: 8, border: 'none',
                   background: payStatus === s ? T.pink : 'transparent',
                   color: payStatus === s ? 'white' : T.inkMuted,
                   fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s',
-                  textTransform: 'uppercase'
+                  textTransform: 'capitalize'
                 }}
               >
                 {s}
@@ -314,11 +335,12 @@ export default function PostJobSheet({ jobId, onClose }) {
           {/* Section 3: Amount & Method */}
           {payStatus !== 'unpaid' && !isPaidRecord && (
             <div style={{ background: T.card, padding: 16, borderRadius: 16, border: `1px solid ${T.cardBorder}` }}>
-              <SectionLabel>{alreadyPaid > 0 ? 'Remaining Balance' : 'Payment Method & Amount'}</SectionLabel>
+              <SectionLabel>{alreadyPaid > 0 ? 'Remaining balance' : 'Payment method & amount'}</SectionLabel>
               <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
                 {['Cash', 'e-Transfer'].map(m => (
                   <button
                     key={m}
+                    type="button"
                     onClick={() => setMethod(m)}
                     style={{
                       flex: 1, padding: '10px 0', borderRadius: 10,
@@ -328,7 +350,7 @@ export default function PostJobSheet({ jobId, onClose }) {
                       fontSize: 12, fontWeight: 700, cursor: 'pointer'
                     }}
                   >
-                    {m.toUpperCase()}
+                    {m}
                   </button>
                 ))}
               </div>
@@ -356,6 +378,7 @@ export default function PostJobSheet({ jobId, onClose }) {
                 <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: T.inkMuted, fontSize: 16, fontWeight: 600 }}>$</span>
                 <input
                   type="number"
+                  className="sm-input"
                   value={amount}
                   onChange={e => setAmount(e.target.value)}
                   onFocus={e => e.target.select()}
@@ -363,7 +386,7 @@ export default function PostJobSheet({ jobId, onClose }) {
                   style={{
                     width: '100%', padding: '12px 14px 12px 30px', borderRadius: 12,
                     background: T.bg, border: `1px solid ${T.cardBorder}`,
-                    color: T.ink, fontSize: 16, fontWeight: 600, outline: 'none'
+                    color: T.ink, fontSize: 16, fontWeight: 600
                   }}
                 />
               </div>
@@ -379,7 +402,7 @@ export default function PostJobSheet({ jobId, onClose }) {
 
           {/* Section 4: Additional Costs */}
           <div>
-          <SectionLabel>Additional Costs</SectionLabel>
+          <SectionLabel>Additional costs</SectionLabel>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {costs.map((c, i) => (
               <div key={i} style={{ display: 'flex', gap: 8 }}>
@@ -387,6 +410,7 @@ export default function PostJobSheet({ jobId, onClose }) {
                   <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: T.inkMuted, fontSize: 12 }}>$</span>
                   <input
                     type="number"
+                    className="sm-input"
                     value={c.amount}
                     onChange={e => {
                       const newCosts = [...costs];
@@ -395,10 +419,11 @@ export default function PostJobSheet({ jobId, onClose }) {
                     }}
                     onFocus={e => e.target.select()}
                     placeholder="0"
-                    style={{ width: '100%', padding: '10px 10px 10px 22px', borderRadius: 10, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.ink, fontSize: 13, outline: 'none' }}
+                    style={{ width: '100%', padding: '10px 10px 10px 22px', borderRadius: 10, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.ink, fontSize: 13 }}
                   />
                 </div>
                 <input
+                  className="sm-input"
                   value={c.description}
                   onChange={e => {
                     const newCosts = [...costs];
@@ -406,18 +431,19 @@ export default function PostJobSheet({ jobId, onClose }) {
                     setCosts(newCosts);
                   }}
                   placeholder="e.g. Supplies, Parking"
-                  style={{ flex: 1, padding: '10px 12px', borderRadius: 10, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.ink, fontSize: 13, outline: 'none' }}
+                  style={{ flex: 1, padding: '10px 12px', borderRadius: 10, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.ink, fontSize: 13 }}
                 />
                 {costs.length > 1 && (
-                  <button onClick={() => setCosts(costs.filter((_, idx) => idx !== i))} style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 18, cursor: 'pointer' }}>×</button>
+                  <button type="button" onClick={() => setCosts(costs.filter((_, idx) => idx !== i))} aria-label="Remove cost" style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 24, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>×</button>
                 )}
               </div>
             ))}
             <button
+              type="button"
               onClick={() => setCosts([...costs, { amount: '', description: '' }])}
-              style={{ background: 'none', border: 'none', color: T.pink, fontSize: 11, fontWeight: 700, cursor: 'pointer', alignSelf: 'flex-start', padding: '4px 0' }}
+              style={{ background: 'none', border: 'none', color: T.pink, fontSize: 11, fontWeight: 700, cursor: 'pointer', alignSelf: 'flex-start', padding: '8px 0' }}
             >
-              + ADD ANOTHER COST
+              + Add another cost
             </button>
           </div>
           </div>
@@ -425,13 +451,14 @@ export default function PostJobSheet({ jobId, onClose }) {
           {/* Section 5: Worker Pay confirmation */}
           {job?.worker_name && job?.worker_pay != null && (
           <div style={{ background: T.card, padding: 14, borderRadius: 14, border: `1px solid ${T.cardBorder}` }}>
-            <SectionLabel style={{ marginBottom: 8 }}>Worker Pay</SectionLabel>
+            <SectionLabel style={{ marginBottom: 8 }}>Worker pay</SectionLabel>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ fontFamily: T.font, fontSize: 13, color: T.ink }}>
                 {job.assignee_type === 'staff' ? '🌟' : '🦸'} {job.worker_name}
                 <span style={{ color: T.inkMuted, marginLeft: 6 }}>· ${Number(job.worker_pay).toFixed(0)}</span>
               </div>
               <button
+                type="button"
                 onClick={() => setWorkerPaid(p => !p)}
                 style={{
                   background: workerPaid ? 'rgba(34,197,94,0.15)' : 'rgba(245,158,11,0.12)',
@@ -439,9 +466,10 @@ export default function PostJobSheet({ jobId, onClose }) {
                   borderRadius: 8, padding: '5px 12px', cursor: 'pointer',
                   fontFamily: T.font, fontSize: 11, fontWeight: 700,
                   color: workerPaid ? '#16A34A' : '#B45309',
+                  minHeight: 32,
                 }}
               >
-                {workerPaid ? 'Paid ✓' : 'Mark Paid'}
+                {workerPaid ? 'Paid ✓' : 'Mark paid'}
               </button>
             </div>
           </div>
@@ -470,15 +498,16 @@ export default function PostJobSheet({ jobId, onClose }) {
 
           {/* Section 7: Completion Notes */}
           <div>
-          <SectionLabel>Post-Job Notes</SectionLabel>
+          <SectionLabel>Post-job notes</SectionLabel>
           <textarea
+            className="sm-input"
             value={jobNotes}
             onChange={e => setJobNotes(e.target.value)}
             placeholder="Anything special happen? Client wasn't home, dog was extra cute..."
             style={{
               width: '100%', height: 80, padding: '12px', borderRadius: 12,
               background: T.card, border: `1px solid ${T.cardBorder}`,
-              color: T.ink, fontSize: 13, outline: 'none', resize: 'none', fontFamily: T.font
+              color: T.ink, fontSize: 13, resize: 'none', fontFamily: T.font
             }}
           />
           </div>
@@ -497,10 +526,10 @@ export default function PostJobSheet({ jobId, onClose }) {
           {invoiceId && (
             <div style={{ background: T.pinkTint, padding: '12px 16px', borderRadius: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: T.pink }}>{payStatus === 'paid' ? 'Receipt Ready' : 'Invoice Ready'}</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: T.pink }}>{payStatus === 'paid' ? 'Receipt ready' : 'Invoice ready'}</div>
                 <div style={{ fontSize: 10, color: T.pink }}>Job will be added to invoice automatically.</div>
               </div>
-              <button onClick={() => window.open(`/i/${invoiceId}`, '_blank')} style={{ background: T.pink, color: 'white', border: 'none', padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>VIEW</button>
+              <button type="button" onClick={() => window.open(`/i/${invoiceId}`, '_blank')} style={{ background: T.pink, color: 'white', border: 'none', padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: 'pointer', minHeight: 32 }}>View</button>
             </div>
           )}
 
@@ -510,9 +539,9 @@ export default function PostJobSheet({ jobId, onClose }) {
 
         {/* Footer */}
         <div style={{ padding: '10px 18px 18px', borderTop: `1px solid ${T.cardBorder}`, display: 'flex', gap: 10, background: T.bg }}>
-          <button onClick={onClose} style={{ flex: 1, background: 'transparent', border: `1.5px solid ${T.cardBorder}`, color: T.inkMuted, borderRadius: 12, padding: '12px 0', fontFamily: T.font, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Later</button>
-          <button onClick={() => handleLogPayment()} disabled={busy || done} style={{ flex: 2, background: busy || done ? T.pinkTint : '#E91E6A', color: 'white', border: 'none', borderRadius: 12, padding: '12px 0', fontFamily: T.font, fontSize: 13, fontWeight: 700, cursor: busy || done ? 'default' : 'pointer', boxShadow: '0 4px 12px rgba(233,30,106,0.3)' }}>
-            {busy ? 'Saving…' : done ? 'Success ✓' : payStatus === 'paid' ? 'Save & Log Paid' : payStatus === 'partial' ? 'Save & Log Partial' : 'Save & Close'}
+          <button type="button" onClick={onClose} style={{ flex: 1, background: 'transparent', border: `1.5px solid ${T.cardBorder}`, color: T.inkMuted, borderRadius: 12, padding: '12px 0', fontFamily: T.font, fontSize: 13, fontWeight: 600, cursor: 'pointer', minHeight: 44 }}>Later</button>
+          <button type="button" onClick={() => handleLogPayment()} disabled={busy || done} style={{ flex: 2, background: busy || done ? T.pinkTint : T.pink, color: 'white', border: 'none', borderRadius: 12, padding: '12px 0', fontFamily: T.font, fontSize: 13, fontWeight: 700, cursor: busy || done ? 'default' : 'pointer', boxShadow: '0 4px 12px rgba(233,30,106,0.3)', minHeight: 44 }}>
+            {busy ? 'Saving…' : done ? 'Success ✓' : payStatus === 'paid' ? 'Save & log paid' : payStatus === 'partial' ? 'Save & log partial' : 'Save & close'}
           </button>
         </div>
         </>

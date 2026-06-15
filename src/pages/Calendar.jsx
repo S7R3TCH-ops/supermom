@@ -5,6 +5,7 @@ import { useJobDetailSheet } from '../context/JobDetailSheetContext';
 import { EmptySchedule } from '../components/ui/Illustrations';
 import WeekStrip from '../components/ui/WeekStrip';
 import { getNavigationUrl } from '../lib/maps';
+import { triggerHaptic } from '../lib/haptics';
 
 // Real "now" — was previously a hard-coded prototype anchor.
 const NOW = () => new Date();
@@ -25,7 +26,7 @@ function useNow() {
 function torontoDateKey(d) {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Toronto' }).format(d);
 }
-// Extract Toronto decimal hour (h + min/60) for block layout calculations.
+// extract Toronto decimal hour (h + min/60) for block layout calculations.
 function torontoDecimalHour(d) {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'America/Toronto', hourCycle: 'h23', hour: '2-digit', minute: '2-digit',
@@ -80,11 +81,11 @@ function fmtDateHead(d) {
   return d.toLocaleDateString('en-US', opts);
 }
 
-// Returns "JUN 8 – 14" or "JUN 29 – JUL 5" for the week range label.
+// Returns "Jun 8 – 14" or "Jun 29 – Jul 5" for the week range label.
 function weekRangeLabel(weekStart) {
   const endDay = addDays(weekStart, 6);
-  const startMon = weekStart.toLocaleDateString('en-US', { month: 'short', timeZone: 'America/Toronto' }).toUpperCase();
-  const endMon   = endDay.toLocaleDateString('en-US', { month: 'short', timeZone: 'America/Toronto' }).toUpperCase();
+  const startMon = weekStart.toLocaleDateString('en-US', { month: 'short', timeZone: 'America/Toronto' });
+  const endMon   = endDay.toLocaleDateString('en-US', { month: 'short', timeZone: 'America/Toronto' });
   const startD   = parseInt(new Intl.DateTimeFormat('en-CA', { day: 'numeric', timeZone: 'America/Toronto' }).format(weekStart), 10);
   const endD     = parseInt(new Intl.DateTimeFormat('en-CA', { day: 'numeric', timeZone: 'America/Toronto' }).format(endDay), 10);
   if (startMon === endMon) return `${startMon} ${startD} – ${endD}`;
@@ -175,11 +176,6 @@ export default function Calendar() {
     setSelectedDay(today);
   };
 
-  // PARKED: swipe-to-change-view removed (week view hidden) — restore with VIEWS + toggle to re-enable
-  // const swipeRef = useRef({ x: 0, y: 0 });
-  // const handleSwipeStart = useCallback((e) => { ... }, []);
-  // const handleSwipeEnd = useCallback((e) => { ... }, []);
-
   // Shared nav button style — 44×44px hit area, 22×22px visual
   const navBtnStyle = {
     background: 'transparent',
@@ -213,7 +209,7 @@ export default function Calendar() {
       {/* Dark hero */}
       <div style={{
         background: T.hero,
-        borderBottom: mode === 'dark' ? '3px solid #E91E6A' : 'none',
+        borderBottom: '3px solid #E91E6A',
         padding: '11px 13px 13px',
         position: 'relative',
         overflow: 'hidden',
@@ -223,6 +219,7 @@ export default function Calendar() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <button
+              type="button"
               onClick={handlePrevWeek}
               aria-label="Previous week"
               style={navBtnStyle}
@@ -231,11 +228,12 @@ export default function Calendar() {
             </button>
             <div>
               <div style={{ fontFamily: T.serif, fontSize: 17, fontWeight: 500, letterSpacing: '-0.4px', color: mode === 'dark' ? 'white' : T.ink }}>{monthYear}</div>
-              <div style={{ fontFamily: T.font, fontSize: 10, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', color: mode === 'dark' ? 'rgba(255,255,255,0.55)' : T.inkMuted, marginTop: 1 }}>
+              <div style={{ fontFamily: T.font, fontSize: 10, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', color: mode === 'dark' ? 'rgba(255,255,255,0.75)' : T.inkMuted, marginTop: 1 }}>
                 {weekRangeLabel(weekStart)}
               </div>
             </div>
             <button
+              type="button"
               onClick={handleNextWeek}
               aria-label="Next week"
               style={navBtnStyle}
@@ -245,6 +243,7 @@ export default function Calendar() {
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <button
+              type="button"
               onClick={handleToday}
               style={{
                 background: mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.4)',
@@ -260,7 +259,7 @@ export default function Calendar() {
                 fontWeight: 700,
                 cursor: 'pointer',
               }}
-            >TODAY</button>
+            >Today</button>
             <div style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.28)', borderRadius: 20, padding: '3px 9px', display: 'flex', alignItems: 'center', gap: 4 }}>
               <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#22C55E' }} />
               <span style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, color: '#4ADE80', letterSpacing: '0.4px' }}>GCAL</span>
@@ -280,8 +279,6 @@ export default function Calendar() {
           mode={mode}
           variant="calendar"
         />
-
-        {/* PARKED: view toggle (Week/Agenda) — restore VIEWS + swipe handler + WeekView render to re-enable */}
       </div>
 
 
@@ -291,7 +288,6 @@ export default function Calendar() {
         </div>
       )}
 
-      {/* PARKED WeekView render — restore: view === 'Week' && WeekView with weekDays/allJobs/onPickDay/onJobPress/now */}
       {view === 'Agenda' && (
         <AgendaView
           T={T}
@@ -307,138 +303,6 @@ export default function Calendar() {
           loading={loading}
         />
       )}
-    </div>
-  );
-}
-
-/* ------------------------------ WEEK VIEW (PARKED) ------------------------------ */
-// Restore: rename _WeekView_PARKED → WeekView + re-add VIEWS const + swipe handlers + view toggle UI + WeekView render line
-// eslint-disable-next-line no-unused-vars
-function _WeekView_PARKED({ T, mode, weekDays, allJobs, onJobPress, now }) {
-  const slotH = 46, startH = 6, endH = 22;
-  const hours = Array.from({ length: endH - startH + 1 }, (_, i) => startH + i);
-
-  const jobsByDay = useMemo(() => {
-    return weekDays.map(d => allJobs.filter(j => sameDay(j.start, d)));
-  }, [weekDays, allJobs]);
-
-  const nowDec = torontoDecimalHour(now);
-  const weekContainsToday = weekDays.some(d => sameDay(d, now));
-  const nowLineTop = weekContainsToday && nowDec >= startH && nowDec <= endH
-    ? (nowDec - startH) * slotH
-    : null;
-
-  return (
-    <div className="sm-scroll" style={{ flex: 1, overflow: 'auto', padding: '0 10px 80px', contain: 'strict' }}>
-
-      {/* Day column headers — Mon 30, Tue 31, etc. */}
-      <div style={{ display: 'grid', gridTemplateColumns: '28px repeat(7,1fr)', gap: 2, marginBottom: 4, position: 'sticky', top: 0, background: T.bg, zIndex: 5, paddingTop: 4 }}>
-        <div />
-        {weekDays.map((d, i) => {
-          const isToday = sameDay(d, NOW());
-          return (
-            <div key={i} style={{ textAlign: 'center', paddingBottom: 4 }}>
-              <div style={{ fontFamily: T.font, fontSize: 8, fontWeight: 700, color: isToday ? T.pink : T.inkMuted, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
-                {d.toLocaleDateString('en-US', { weekday: 'short' }).charAt(0)}
-              </div>
-              <div style={{
-                fontFamily: T.font, fontSize: 13, fontWeight: 600,
-                color: isToday ? 'white' : T.ink,
-                background: isToday ? T.pink : 'transparent',
-                borderRadius: '50%', width: 22, height: 22,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                margin: '2px auto 0',
-              }}>{d.getDate()}</div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Time grid */}
-      <div style={{ position: 'relative' }}>
-        {hours.map(h => (
-          <div key={h} style={{ display: 'grid', gridTemplateColumns: '28px repeat(7,1fr)', gap: 2, height: slotH, alignItems: 'stretch', position: 'relative' }}>
-            <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 600, color: T.inkMuted, textAlign: 'right', paddingTop: 1 }}>
-              {h === 12 ? '12P' : h < 12 ? `${h}A` : `${h - 12}P`}
-            </div>
-            {weekDays.map((_, i) => (
-              <div key={i} style={{ borderTop: mode === 'dark' ? '1px solid rgba(255,255,255,0.07)' : '1px solid #EDD5E4', borderLeft: i === 0 ? 'none' : mode === 'dark' ? '1px solid rgba(255,255,255,0.03)' : '1px solid #F9EDF5', position: 'relative' }}>
-                {/* Half-hour dashed subdivision */}
-                <div style={{ position: 'absolute', top: slotH / 2, left: 0, right: 0, borderTop: `1px dashed ${mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)'}`, pointerEvents: 'none' }} />
-              </div>
-            ))}
-          </div>
-        ))}
-
-        {/* Job cells overlay */}
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'grid', gridTemplateColumns: '28px repeat(7,1fr)', gap: 2, pointerEvents: 'none' }}>
-          <div />
-          {weekDays.map((d, i) => {
-            const dayJobs = jobsByDay[i];
-            return (
-              <div key={i} style={{ position: 'relative' }}>
-                {dayJobs.map(j => {
-                  const startDec = torontoDecimalHour(j.start);
-                  const endDec   = torontoDecimalHour(j.end);
-                  const top = (startDec - startH) * slotH + 1;
-                  const h   = Math.max((endDec - startDec) * slotH - 2, 18);
-                  // Full 4-state color matching DayView
-                  const bg = j.isCancelled
-                    ? (mode === 'dark' ? 'rgba(156,163,175,0.12)' : '#F3F4F6')
-                    : j.isUnpaidCompleted
-                      ? (mode === 'dark' ? 'rgba(245,158,11,0.18)' : '#FEF3C7')
-                      : j.paid
-                        ? (mode === 'dark' ? 'rgba(34,197,94,0.18)' : '#DCFCE7')
-                        : (mode === 'dark' ? 'rgba(233,30,106,0.2)' : '#FFE0EC');
-                  const bd = j.color;
-                  return (
-                    <div key={j.id} onClick={() => onJobPress(j.id)} style={{
-                      position: 'absolute', top, left: 1, right: 1, height: h,
-                      background: bg, borderLeft: `2px solid ${bd}`, borderRadius: 4,
-                      padding: '2px 3px', overflow: 'hidden',
-                      pointerEvents: 'auto', cursor: 'pointer',
-                    }}>
-                      <div style={{ fontFamily: T.font, fontSize: 10, fontWeight: 700, color: bd, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {j.client?.name?.split(' ')[0] ?? '?'}
-                      </div>
-                      {h > 28 && (
-                        <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 500, color: T.inkMuted, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {j.service?.label.split(' ')[0]}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Current-time indicator */}
-        {nowLineTop !== null && (
-          <div style={{ position: 'absolute', top: nowLineTop, left: 28, right: 0, height: 2, background: '#E91E6A', zIndex: 10, pointerEvents: 'none' }}>
-            <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#E91E6A', position: 'absolute', left: -5, top: -4 }} />
-          </div>
-        )}
-      </div>
-
-      {/* Legend */}
-      <div style={{ display: 'flex', gap: 10, marginTop: 12, padding: '6px 10px', background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 10 }}>
-        <_LegendDot_PARKED T={T} color="#E91E6A" label="Scheduled" />
-        <_LegendDot_PARKED T={T} color="#22C55E" label="Paid" />
-        <_LegendDot_PARKED T={T} color="#F59E0B" label="Unpaid" />
-        <_LegendDot_PARKED T={T} color="#9CA3AF" label="Cancelled" />
-      </div>
-    </div>
-  );
-}
-
-// eslint-disable-next-line no-unused-vars
-function _LegendDot_PARKED({ T, color, label }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-      <div style={{ width: 8, height: 8, borderRadius: 2, background: color }} />
-      <span style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 600, color: T.inkSub }}>{label}</span>
     </div>
   );
 }
@@ -510,31 +374,37 @@ function AgendaView({ T, mode, privacyOn, allJobs, nextUpcoming, onJobPress, day
   return (
     <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '8px 13px 80px', contain: 'layout style paint' }}>
       <div style={{ marginBottom: 10 }}>
-        <div
+        <button
+          type="button"
           onClick={dayFilter ? onClearFilter : undefined}
           style={{
             display: 'inline-flex', alignItems: 'center', gap: 5,
             background: dayFilter ? T.pink : (mode === 'dark' ? '#2C2C2E' : T.cardBorder),
             color: dayFilter ? 'white' : (mode === 'dark' ? 'rgba(255,255,255,0.55)' : T.inkMuted),
+            border: 'none',
             borderRadius: 100,
             padding: '4px 10px',
             fontFamily: T.font, fontSize: 10.5, fontWeight: 600,
             cursor: dayFilter ? 'pointer' : 'default',
             userSelect: 'none',
+            minHeight: 32,
           }}
         >
           {chipLabel}
           {dayFilter && (
-            <span style={{ fontSize: 12, lineHeight: 1, opacity: 0.85 }}>×</span>
+            <span style={{ fontSize: 14, lineHeight: 1, opacity: 0.85, marginLeft: 2 }}>×</span>
           )}
-        </div>
+        </button>
       </div>
 
       {/* Conflict banner — only show when viewing the whole week */}
       {allWeekConflicts.length > 0 && !dayFilter && (
-        <div
+        <button
+          type="button"
           onClick={() => onSetFilter(allWeekConflicts[0].a.start)}
           style={{
+            width: '100%',
+            textAlign: 'left',
             marginBottom: 10,
             padding: '9px 12px',
             borderRadius: 10,
@@ -553,7 +423,7 @@ function AgendaView({ T, mode, privacyOn, allJobs, nextUpcoming, onJobPress, day
             </span>
           </div>
           <span style={{ fontFamily: T.font, fontSize: 11, fontWeight: 700, color: '#F59E0B' }}>›</span>
-        </div>
+        </button>
       )}
 
       {(summary.collected > 0 || summary.owed > 0 || summary.booked > 0) && (
@@ -653,68 +523,77 @@ const AgendaCard = memo(function AgendaCard({ T, mode, privacyOn, job, isNext, c
 
   const badges = [];
   if (isCancelled) {
-    badges.push({ text: 'CANCELLED', bg: '#F3F4F6', fg: '#6B7280' });
+    badges.push({ text: 'Cancelled', bg: '#F3F4F6', fg: '#6B7280' });
   } else if (isNext) {
-    badges.push({ text: 'NEXT UP', bg: '#E91E6A', fg: 'white' });
+    badges.push({ text: 'Next up', bg: '#E91E6A', fg: 'white' });
   }
   if (!isCancelled) {
-    if (paid)   badges.push({ text: 'PAID ✓', bg: '#DCFCE7', fg: '#14532D' });
-    else if (isUnpaidCompleted) badges.push({ text: 'UNPAID', bg: '#F59E0B', fg: 'white' });
+    if (paid)   badges.push({ text: 'Paid ✓', bg: '#DCFCE7', fg: '#14532D' });
+    else if (isUnpaidCompleted) badges.push({ text: 'Unpaid', bg: '#F59E0B', fg: 'white' });
   }
 
   if (job.status === 'Completed' && !job.actual_duration) {
-    badges.push({ text: 'LOG HOURS', bg: '#FEF3C7', fg: '#B45309' });
+    badges.push({ text: 'Log hours', bg: '#FEF3C7', fg: '#B45309' });
   }
 
   if (job.recurrence_rule) {
     const rMap = {
-      weekly:   { text: '↻ WEEKLY',   bg: '#F5F3FF', fg: '#5B21B6' },
-      biweekly: { text: '↻ BIWEEKLY', bg: '#EEF2FF', fg: '#3730A3' },
-      monthly:  { text: '↻ MONTHLY',  bg: '#FEF3C7', fg: '#78350F' },
+      weekly:   { text: '↻ Weekly',   bg: '#F5F3FF', fg: '#5B21B6' },
+      biweekly: { text: '↻ Biweekly', bg: '#EEF2FF', fg: '#3730A3' },
+      monthly:  { text: '↻ Monthly',  bg: '#FEF3C7', fg: '#78350F' },
     };
     if (rMap[job.recurrence_rule]) badges.push(rMap[job.recurrence_rule]);
   }
-  if (conflict) badges.push({ text: '⚠ <1HR GAP', bg: '#FECDD3', fg: '#881337' });
+  if (conflict) badges.push({ text: '⚠ <1hr gap', bg: '#FECDD3', fg: '#881337' });
 
   return (
-    <div onClick={() => onPress(job.id)} style={{
-      background: bg,
-      border: `1.5px solid ${border}`,
-      borderRadius: 14,
-      padding: '10px 12px',
-      marginBottom: 6,
-      cursor: 'pointer',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+    <button
+      type="button"
+      onClick={() => onPress(job.id)}
+      aria-label={`View details for ${job.service?.label} with ${job.client?.name}`}
+      style={{
+        width: '100%',
+        textAlign: 'left',
+        background: bg,
+        border: `1.5px solid ${border}`,
+        borderRadius: 14,
+        padding: '12px 14px',
+        marginBottom: 8,
+        cursor: 'pointer',
+        display: 'block',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
         <div style={{
-          width: 36, height: 36, borderRadius: 10,
+          width: 40, height: 40, borderRadius: 10,
           background: job.client?.color ?? '#E91E6A',
           color: 'white',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontFamily: T.serif, fontSize: 15, fontWeight: 500, flexShrink: 0,
+          fontFamily: T.serif, fontSize: 16, fontWeight: 500, flexShrink: 0,
         }}>
           {job.client?.init ?? '?'}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: T.serif, fontSize: 14, fontWeight: 500, letterSpacing: '-0.2px', color: T.ink }}>
+          <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 600, letterSpacing: '-0.3px', color: T.ink, lineHeight: 1.2 }}>
             {job.service?.label} · {job.client?.name}
           </div>
-          <div style={{ fontFamily: T.font, fontSize: 11.5, fontWeight: 600, color: T.ink, marginTop: 3, display: 'flex', alignItems: 'center', gap: 4 }}>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          <div style={{ fontFamily: T.font, fontSize: 12, fontWeight: 600, color: T.ink, marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
             {fmtTimeRange(job.start, job.end)}
           </div>
           {job.client?.address && (
-            <div style={{ fontFamily: T.font, fontSize: 10, fontWeight: 500, color: T.inkMuted, marginTop: 1, paddingLeft: 14 }}>
+            <div style={{ fontFamily: T.font, fontSize: 11, fontWeight: 500, color: T.inkMuted, marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
               {job.client.address.split(',')[0]}
             </div>
           )}
         </div>
-        <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 500, color: T.ink, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+        <div style={{ fontFamily: T.serif, fontSize: 16, fontWeight: 600, color: T.ink, fontVariantNumeric: 'tabular-nums', flexShrink: 0, textAlign: 'right' }}>
           {privacyOn ? '•••' : fmtMoney(job.total)}
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 8, alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 10, alignItems: 'center' }}>
         {badges.map((b, i) => (
           <span key={i} style={{
             fontFamily: T.font, fontSize: 9, fontWeight: 700,
@@ -725,22 +604,26 @@ const AgendaCard = memo(function AgendaCard({ T, mode, privacyOn, job, isNext, c
         ))}
         {job.client?.address && (
           <button
+            type="button"
             onClick={(e) => { e.stopPropagation(); window.open(getNavigationUrl(job.client.address), '_blank'); }}
             aria-label={`Get directions to ${job.client.address}`}
             style={{
-              marginLeft: 'auto', fontFamily: T.font, fontSize: 9, fontWeight: 700,
+              marginLeft: badges.length > 0 ? 4 : 0, fontFamily: T.font, fontSize: 9, fontWeight: 700,
               letterSpacing: '0.4px', textTransform: 'uppercase',
               padding: '2px 9px', borderRadius: 5, cursor: 'pointer',
               background: 'transparent', border: `1px solid ${border}`, color: job.color,
+              minHeight: 24, display: 'flex', alignItems: 'center'
             }}
-          >↗ DIRECTIONS</button>
+          >↗ Directions</button>
         )}
       </div>
+
       {isCancelled && job.ai_context?.cancellation_reason && (
-        <div style={{ fontFamily: T.font, fontSize: 10.5, color: T.inkMuted, marginTop: 4, fontStyle: 'italic' }}>
+        <div style={{ fontFamily: T.font, fontSize: 11, color: T.inkMuted, marginTop: 6, fontStyle: 'italic', paddingLeft: 4, borderLeft: `2px solid ${T.cardBorder}` }}>
           Reason: {job.ai_context.cancellation_reason}
         </div>
       )}
-    </div>
+    </button>
   );
 });
+

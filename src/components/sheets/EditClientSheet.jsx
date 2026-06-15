@@ -144,7 +144,6 @@ export default function EditClientSheet({ clientId, onClose }) {
     width: '100%', background: inputBg, color: T.ink,
     border: `1.5px solid ${T.cardBorder}`, borderRadius: 12,
     padding: '10px 11px', fontFamily: T.font, fontSize: 13, fontWeight: 500,
-    outline: 'none',
   };
   const labelStyle = {
     fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.5px',
@@ -177,26 +176,35 @@ export default function EditClientSheet({ clientId, onClose }) {
           <GrabBar onDismiss={onClose} />
 
           {/* Header */}
-          <div style={{ padding: '10px 18px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <div style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '1.1px', textTransform: 'uppercase', color: '#FF78B0' }}>✦ Edit Client</div>
+          <div style={{ padding: '6px 18px 14px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '1.1px', textTransform: 'uppercase', color: '#FF78B0' }}>✦ Edit client</div>
             <div style={{ fontFamily: T.serif, fontSize: 20, fontWeight: 500, letterSpacing: '-0.4px', color: T.ink, marginTop: 2 }}>
               {first || '…'}
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
             aria-label="Close"
             style={{
-              width: 30, height: 30, borderRadius: 9,
-              background: mode === 'dark' ? 'rgba(255,255,255,0.07)' : T.pinkTint,
-              border: `1px solid ${T.cardBorder}`, color: T.inkSub, cursor: 'pointer', padding: 0,
+              width: 44, height: 44, borderRadius: 12,
+              background: 'transparent',
+              color: T.inkSub, cursor: 'pointer', padding: 0,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
+              marginRight: -12, marginTop: -6,
             }}
           >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-            </svg>
+            <div style={{
+              width: 30, height: 30, borderRadius: 9,
+              background: mode === 'dark' ? 'rgba(255,255,255,0.07)' : T.pinkTint,
+              border: `1px solid ${T.cardBorder}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+              </svg>
+            </div>
           </button>
         </div>
 
@@ -214,40 +222,41 @@ export default function EditClientSheet({ clientId, onClose }) {
             {/* Name */}
             <div style={{ display: 'flex', gap: 8 }}>
               <div style={{ flex: 1 }}>
-                <label style={labelStyle}>FIRST NAME *</label>
-                <input style={inputStyle} value={first} onChange={e => setFirst(e.target.value)} />
+                <label style={labelStyle}>First name *</label>
+                <input className="sm-input" style={inputStyle} value={first} onChange={e => setFirst(e.target.value)} />
               </div>
               <div style={{ flex: 1 }}>
-                <label style={labelStyle}>LAST NAME</label>
-                <input style={inputStyle} value={last} onChange={e => setLast(e.target.value)} />
+                <label style={labelStyle}>Last name</label>
+                <input className="sm-input" style={inputStyle} value={last} onChange={e => setLast(e.target.value)} />
               </div>
             </div>
 
             <div>
-              <label style={labelStyle}>PHONE</label>
-              <input style={inputStyle} type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="6475550100" />
+              <label style={labelStyle}>Phone</label>
+              <input className="sm-input" style={inputStyle} type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="6475550100" />
             </div>
             <div>
-              <label style={labelStyle}>EMAIL</label>
-              <input style={inputStyle} type="email" value={email} onChange={e => setEmail(e.target.value)} />
+              <label style={labelStyle}>Email</label>
+              <input className="sm-input" style={inputStyle} type="email" value={email} onChange={e => setEmail(e.target.value)} />
             </div>
             <div>
-              <label style={labelStyle}>STREET</label>
-              <input style={inputStyle} value={street} onChange={e => setStreet(e.target.value)} placeholder="12 Main St" />
+              <label style={labelStyle}>Street</label>
+              <input className="sm-input" style={inputStyle} value={street} onChange={e => setStreet(e.target.value)} placeholder="12 Main St" />
             </div>
             <div>
-              <label style={labelStyle}>CITY</label>
-              <input style={inputStyle} value={city} onChange={e => setCity(e.target.value)} />
+              <label style={labelStyle}>City</label>
+              <input className="sm-input" style={inputStyle} value={city} onChange={e => setCity(e.target.value)} />
             </div>
             <div>
-              <label style={labelStyle}>POSTAL CODE</label>
-              <input style={inputStyle} value={postalCode} onChange={e => setPostalCode(e.target.value)} placeholder="L7G 4S5" />
+              <label style={labelStyle}>Postal code</label>
+              <input className="sm-input" style={inputStyle} value={postalCode} onChange={e => setPostalCode(e.target.value)} placeholder="L7G 4S5" />
             </div>
 
             {/* Status */}
             <div>
-              <label style={labelStyle}>STATUS</label>
+              <label style={labelStyle}>Status</label>
               <select
+                className="sm-input"
                 value={status}
                 onChange={e => setStatus(e.target.value)}
                 style={{ ...inputStyle, width: '100%' }}
@@ -260,7 +269,7 @@ export default function EditClientSheet({ clientId, onClose }) {
 
             {/* Recurrence */}
             <div>
-              <div style={labelStyle}>RECURRENCE</div>
+              <div style={labelStyle}>Recurrence</div>
               <div style={{ display: 'flex', background: mode === 'dark' ? 'rgba(255,255,255,0.04)' : T.pinkTint, borderRadius: 10, padding: 3 }}>
                 {RECURRENCE.map(r => {
                   const on = r.key === recurrence;
@@ -274,6 +283,7 @@ export default function EditClientSheet({ clientId, onClose }) {
                         background: on ? '#E91E6A' : 'transparent',
                         fontFamily: T.font, fontSize: 11, fontWeight: 600,
                         color: on ? 'white' : T.inkSub, cursor: 'pointer',
+                        minHeight: 36,
                       }}
                     >{r.label}</button>
                   );
@@ -282,14 +292,14 @@ export default function EditClientSheet({ clientId, onClose }) {
             </div>
 
             {/* VIP */}
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontFamily: T.font, fontSize: 12, color: T.ink }}>
-              <input type="checkbox" checked={vip} onChange={e => setVip(e.target.checked)} />
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontFamily: T.font, fontSize: 13, color: T.ink, padding: '4px 0' }}>
+              <input type="checkbox" checked={vip} onChange={e => setVip(e.target.checked)} style={{ width: 20, height: 20 }} />
               Mark as VIP ★
             </label>
 
             {/* Tags */}
             <div>
-              <div style={labelStyle}>TAGS</div>
+              <div style={labelStyle}>Tags</div>
               {tags.length > 0 && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
                   {tags.map(t => (
@@ -299,7 +309,7 @@ export default function EditClientSheet({ clientId, onClose }) {
                         display: 'inline-flex', alignItems: 'center', gap: 5,
                         background: mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(233,30,106,0.08)',
                         border: `1px solid ${T.cardBorder}`,
-                        borderRadius: 20, padding: '3px 10px 3px 10px',
+                        borderRadius: 20, padding: '3px 10px',
                         fontFamily: T.font, fontSize: 11, color: T.ink,
                       }}
                     >
@@ -307,7 +317,8 @@ export default function EditClientSheet({ clientId, onClose }) {
                       <button
                         type="button"
                         onClick={() => removeTag(t)}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: T.inkMuted, lineHeight: 1, fontSize: 13 }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: T.inkMuted, lineHeight: 1, fontSize: 14, marginRight: -4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        aria-label={`Remove tag ${t}`}
                       >×</button>
                     </span>
                   ))}
@@ -315,6 +326,7 @@ export default function EditClientSheet({ clientId, onClose }) {
               )}
               <div style={{ display: 'flex', gap: 8 }}>
                 <input
+                  className="sm-input"
                   style={{ ...inputStyle, flex: 1 }}
                   value={tagInput}
                   onChange={e => setTagInput(e.target.value)}
@@ -325,9 +337,10 @@ export default function EditClientSheet({ clientId, onClose }) {
                   type="button"
                   onClick={addTag}
                   style={{
-                    padding: '0 14px', borderRadius: 12, border: 'none',
+                    padding: '0 16px', borderRadius: 12, border: 'none',
                     background: T.pink, color: 'white',
                     fontFamily: T.font, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                    minWidth: 60,
                   }}
                 >Add</button>
               </div>
@@ -337,15 +350,16 @@ export default function EditClientSheet({ clientId, onClose }) {
             <div style={{ borderTop: `1px solid ${T.cardBorder}`, paddingTop: 10, marginTop: 4 }}>
               <div style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#FF78B0', marginBottom: 10 }}>✦ Intel</div>
               {[
-                { label: 'NOTES', value: notes, set: setNotes },
-                { label: 'PREFS', value: prefs, set: setPrefs },
-                { label: 'ACCESS', value: access, set: setAccess },
-                { label: 'COMMS', value: comms, set: setComms },
-                { label: 'PERSONAL', value: personal, set: setPersonal },
+                { label: 'Notes', value: notes, set: setNotes },
+                { label: 'Preferences', value: prefs, set: setPrefs },
+                { label: 'Access', value: access, set: setAccess },
+                { label: 'Communication', value: comms, set: setComms },
+                { label: 'Personal', value: personal, set: setPersonal },
               ].map(f => (
                 <div key={f.label} style={{ marginBottom: 10 }}>
                   <label style={labelStyle}>{f.label}</label>
                   <textarea
+                    className="sm-input"
                     value={f.value}
                     onChange={e => f.set(e.target.value)}
                     placeholder={`Enter ${f.label.toLowerCase()}…`}
@@ -361,17 +375,19 @@ export default function EditClientSheet({ clientId, onClose }) {
             )}
 
             <button
+              type="button"
               onClick={handleSave}
               disabled={busy}
               style={{
                 marginTop: 4, padding: '14px 16px', borderRadius: 12, border: 'none',
                 background: T.pink, color: '#fff', fontFamily: T.font, fontSize: 14, fontWeight: 600,
                 opacity: busy ? 0.5 : 1, cursor: busy ? 'not-allowed' : 'pointer',
+                minHeight: 48,
               }}
             >{busy ? 'Saving…' : 'Save changes'}</button>
 
             {/* Delete zone */}
-            <div style={{ borderTop: `1px solid ${T.cardBorder}`, paddingTop: 16, marginTop: 6 }}>
+            <div style={{ borderTop: `1px solid ${T.cardBorder}`, paddingTop: 16, marginTop: 6, marginBottom: 14 }}>
               {!confirmDelete ? (
                 <button
                   type="button"
@@ -380,29 +396,32 @@ export default function EditClientSheet({ clientId, onClose }) {
                     width: '100%', padding: '11px 0', borderRadius: 12,
                     background: 'transparent', border: `1.5px solid rgba(233,30,106,0.3)`,
                     color: '#E91E6A', fontFamily: T.font, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                    minHeight: 44,
                   }}
-                >Delete Client</button>
+                >Delete client</button>
               ) : (
-                <div style={{ background: 'rgba(233,30,106,0.07)', borderRadius: 12, padding: '12px 14px', border: '1px solid rgba(233,30,106,0.25)' }}>
+                <div style={{ background: mode === 'dark' ? 'rgba(233,30,106,0.12)' : 'rgba(233,30,106,0.07)', borderRadius: 12, padding: '12px 14px', border: '1px solid rgba(233,30,106,0.25)' }}>
                   <div style={{ fontFamily: T.font, fontSize: 13, fontWeight: 600, color: T.ink, marginBottom: 10 }}>
                     Delete {first}? This can't be undone. Jobs will be preserved.
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button
+                      type="button"
                       onClick={() => setConfirmDelete(false)}
-                      style={{ flex: 1, padding: '10px 0', borderRadius: 10, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.inkSub, fontFamily: T.font, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                      style={{ flex: 1, minHeight: 44, borderRadius: 10, background: T.card, border: `1.5px solid ${T.cardBorder}`, color: T.inkSub, fontFamily: T.font, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
                     >Keep</button>
                     <button
+                      type="button"
                       onClick={handleDelete}
                       disabled={busy}
-                      style={{ flex: 1, padding: '10px 0', borderRadius: 10, background: '#E91E6A', border: 'none', color: 'white', fontFamily: T.font, fontSize: 13, fontWeight: 700, cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.6 : 1 }}
+                      style={{ flex: 1, minHeight: 44, borderRadius: 10, background: '#E91E6A', border: 'none', color: 'white', fontFamily: T.font, fontSize: 13, fontWeight: 700, cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.6 : 1 }}
                     >{busy ? 'Deleting…' : 'Yes, delete'}</button>
                   </div>
                 </div>
               )}
             </div>
 
-            <div style={{ height: isKeyboardFocused ? 260 : 14, transition: 'height 0.2s ease-out' }} />
+            <div style={{ height: isKeyboardFocused ? 260 : 8 }} />
           </div>
         )}
       </div>

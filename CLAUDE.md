@@ -138,13 +138,14 @@ A mobile-first CRM & operations web app for **Sandra**, a solo personal-life-ope
 
 ---
 
-## Current version: 0.12.59 — Jun 15, 2026
+## Current version: 0.12.60 — Jun 15, 2026
 
 Sandra's business is live — data wiped and re-provisioned Jun 9. App in active use.
 
 **⚠️ Multi-client git discipline**: Always push local commits before starting an online Claude Code session; always pull before the online session writes code.
 
 ### Recent changes (full history in `docs/changelog/` + `git log`)
+- **v0.12.60 (Jun 15)** — Calendar + secondary sheets impeccable polish pass. Calendar: hero border always visible (was dark-mode-only), week range label sentence case, nav/today buttons typed, AgendaCard div → button with aria-label, filter chip + conflict banner div → button, parked week-view code removed (~130 lines). FinanceDetailSheet: JobRow div → button with aria-label; worker cost amount color. EditClientSheet: `outline:none` removed, `.sm-input` on all inputs/textareas/select, close button 44px tap target, all-caps labels → sentence case, VIP checkbox enlarged, delete zone dark-mode tint, keyboard spacer transition removed. PostJobSheet: same focus/tap/sentence-case pass + haptic feedback added on submit/success/error (`src/lib/haptics.js`). PrepNoteSheet: sentence case + `type="button"` on close. Bug fixes: removed Gemini's undefined `handleSupermomGo` reference + dead Go button code + corrupted duplicate EOF lines in Calendar.jsx; restored two critical WHY comments in PostJobSheet about `flat_rate`/`total_amount` double-HST risk.
 - **v0.12.59 (Jun 15)** — Settings impeccable polish pass (P1–P3 + questions): `window.confirm()` on Reset All Data → in-app two-tap confirm with danger zone styling (red-tinted card, warning header, Cancel/Yes buttons); `outline: none` removed from all inputs — global `.sm-input:focus { border-color: var(--pink) }` class added to `index.css`; avatar `<div onClick>` → `<button type="button" aria-label="Change avatar photo">`; all-caps labels throughout → sentence case (Save settings, Sign out, Manage, Connect/Reconnect, Update password, Reset all data); ToggleBtn (password visibility) padded to 44×44px tap target; `type="button"` added to GCal + Team buttons; `✦` removed from "Preferences" section label (✦ is for AI-specific labels only); keyboard spacer height transition removed (no layout thrash); Save button moved to persistent footer outside scroll (always visible, disabled when clean, "No changes" when unmodified); Sign Out moved out of Security card to standalone section; AI Signature label → "Your personality in words" with clearer helper copy; isDirty banner simplified to "● Unsaved changes" (no longer redundant with persistent footer).
 - **v0.12.58 (Jun 15)** — Finance hero + UX refinements: hero sub-label now shows "You cleared $X after expenses" (green/red) when expenses exist, alongside job count; Tax Ready section collapsed behind a toggle (▾ header) so Sandra's daily scroll ends at invoices, not the CSV block; `type="button"` added to CSV download button.
 - **v0.12.57 (Jun 15)** — Finance impeccable polish pass (P1–P2): hero section upgraded with dynamic period label + large Fraunces revenue number + job count (was static "Revenue & Expenses" heading); `StatCard` div → `<button type="button">` with `aria-label` and `width:100%`; `TransactionRow` div → `<button>` when tappable with `aria-label`; "+ ADD EXPENSE" → sentence case "+ Add expense"; "VIEW ALL INVOICES · Coming soon" disabled placeholder removed (replaced with informational count line); worker costs amber text `#F59E0B` → `#92400E` (WCAG AA on white); trend chart card border 1px → 1.5px (consistent with stat cards).
@@ -189,8 +190,9 @@ Sandra's business is live — data wiped and re-provisioned Jun 9. App in active
    - `Clients` (list view) ✅ v0.12.56
    - `Finance` ✅ v0.12.57–58
    - `Settings` ✅ v0.12.59
-   - `Calendar` ← **start here**
-   - Secondary sheets (FinanceDetailSheet, EditClientSheet, PostJobSheet, PrepNoteSheet, etc.)
+   - `Calendar` ✅ v0.12.60
+   - Secondary sheets (FinanceDetailSheet, EditClientSheet, PostJobSheet, PrepNoteSheet) ✅ v0.12.60
+   - NewClientSheet ← **start here** (claimed by Gemini but not actually changed)
    - `JobDetailSheet` re-critique (EditMode strip added v0.12.51 after original critique)
    - `Admin`
    - `Login`

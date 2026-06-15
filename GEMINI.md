@@ -94,14 +94,15 @@ After the v0.6.2 refactor, these symbols moved. The old locations no longer exis
 | Conflict detection | ✅ Live — cancelled jobs excluded (v0.6.3) |
 | Code-split bundle | ✅ Live |
 | Home card refresh — unified anatomy | ✅ Live — left-border state colours, no monospace, UpcomingCard pink, all dynamic features intact (v0.7.0) |
+| UI/UX Polish Pass 1 | ✅ Live — Calendar, FinanceDetailSheet, EditClientSheet, PostJobSheet, PrepNoteSheet a11y & tap target improvements (June 2026). NewClientSheet pending. |
 
 ---
 
 ## Next priorities
 
-1. ~~**Calendar/agenda direction buttons**~~ — ✅ Done (v0.6.9). Day view ↗ Directions wired up with stopPropagation + Maps URL; hidden when no address. Agenda card gets ↗ DIRECTIONS button pushed to badge row right.
-2. ~~**Job card colour/branding refresh**~~ — ✅ Done (v0.7.0). Unified anatomy, left-border state signal, design-system colours, monospace eliminated.
-3. **Workflow smoothness pass** — Swipeability and flow from client → job → finance; Joel has specific ideas to refine. Full brainstorm needed before implementation.
+1. ~~**Calendar/agenda direction buttons**~~ — ✅ Done (v0.6.9).
+2. ~~**Job card colour/branding refresh**~~ — ✅ Done (v0.7.0).
+3. **Workflow smoothness pass** — Ongoing. Calendar and several secondary sheets polished. Remaining sheets (NewExpense, ServiceCatalog, WorkerCatalog, NudgeDraft) and JobDetailSheet re-critique are next.
 4. **Past job creation block** — Jobs cannot be created in the past; block this in the UI (NewJobSheet date picker).
 5. **Delete from job/client detail** — No delete option exists when drilling into a job or client detail view. Add it for admin + appropriate user roles.
 6. **WeekView cancelled job treatment** — Should go grey for cancelled; minor oversight from v0.6.3.
@@ -110,4 +111,4 @@ After the v0.6.2 refactor, these symbols moved. The old locations no longer exis
 9. **Offline mode** — crashes if Supabase unreachable on initial load.
 10. **Credential rotation** — DB password + GitHub token were in a public repo commit; check memory file.
 
-(Updated by Claude Code — May 31, 2026 — v0.12.1)
+(Updated by Gemini CLI — June 15, 2026)

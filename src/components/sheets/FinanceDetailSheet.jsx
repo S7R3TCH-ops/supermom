@@ -25,9 +25,12 @@ function JobRow({ item, T, privacyOn, onTap }) {
   const rate = item.flat_rate || 0;
 
   return (
-    <div
+    <button
+      type="button"
       onClick={() => onTap(item.id)}
+      aria-label={`View details for ${item.service_name} job for ${item.client_name}`}
       style={{
+        width: '100%', textAlign: 'left',
         background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 12,
         padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10,
         cursor: 'pointer',
@@ -52,10 +55,10 @@ function JobRow({ item, T, privacyOn, onTap }) {
           {privacyOn ? '•••' : `$${Number(total).toFixed(0)}`}
         </div>
         <div style={{ fontSize: 9, fontWeight: 700, color: item.payment_status === 'Paid' ? '#22C55E' : item.payment_status === 'Partial' ? '#F59E0B' : '#E91E6A', textTransform: 'uppercase', marginTop: 2 }}>
-          {item.payment_status || 'Unpaid'}
+          {item.payment_status === 'Paid' ? 'Paid ✓' : item.payment_status === 'Partial' ? 'Partial' : 'Unpaid'}
         </div>
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -75,7 +78,7 @@ function WorkerCostRow({ item, T, privacyOn }) {
         </div>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3, flexShrink: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: '#EF4444', fontVariantNumeric: 'tabular-nums' }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: '#B5004E', fontVariantNumeric: 'tabular-nums' }}>
           {privacyOn ? '•••' : `-$${Number(item.amount || 0).toFixed(0)}`}
         </div>
         <span style={{ fontSize: 8.5, fontWeight: 700, padding: '1px 5px', borderRadius: 4, textTransform: 'uppercase',

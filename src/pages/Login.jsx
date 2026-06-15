@@ -42,11 +42,10 @@ export default function Login() {
     width: '100%',
     padding: '12px 14px',
     borderRadius: 12,
-    border: `1px solid ${T.cardBorder}`,
+    border: `1.5px solid ${T.cardBorder}`,
     background: T.card,
     color: T.ink,
     font: `15px/1.3 ${T.font}`,
-    outline: 'none',
   };
 
   return (
@@ -56,6 +55,9 @@ export default function Login() {
       background: T.bg,
     }}>
       <div style={{ maxWidth: 360, width: '100%', margin: '0 auto' }}>
+        <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'center' }}>
+          <img src="/branding/logo-banner.png" alt="Supermom for Hire" style={{ height: 48, objectFit: 'contain' }} />
+        </div>
         <h1 style={{
           font: `600 28px/1.1 ${T.serif}`,
           color: T.ink, margin: '0 0 6px',
@@ -78,29 +80,32 @@ export default function Login() {
 
         <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <label style={{ font: `12px/1 ${T.font}`, color: T.secLabel, letterSpacing: 0.5 }}>
-            EMAIL
+            Email
             <input
               type="email" required autoComplete="email"
               value={email} onChange={e => setEmail(e.target.value)}
+              className="sm-input"
               style={{ ...inputStyle, marginTop: 6 }}
             />
           </label>
           <label style={{ font: `12px/1 ${T.font}`, color: T.secLabel, letterSpacing: 0.5 }}>
-            PASSWORD
+            Password
             <div style={{ position: 'relative', marginTop: 6 }}>
               <input
                 type={showPassword ? "text" : "password"} required autoComplete="current-password"
                 value={password} onChange={e => setPassword(e.target.value)}
-                style={{ ...inputStyle, paddingRight: 40 }}
+                className="sm-input"
+                style={{ ...inputStyle, paddingRight: 44 }}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
                 style={{
-                  position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                  position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)',
                   background: 'transparent', border: 'none', cursor: 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  padding: 4, color: T.inkMuted,
+                  width: 44, height: 44, color: T.inkMuted,
                 }}
               >
                 {showPassword ? (
@@ -149,7 +154,7 @@ export default function Login() {
           <button
             type="button" onClick={onForgot} disabled={busy || !configured}
             style={{
-              marginTop: 4, padding: '8px 4px', background: 'transparent',
+              marginTop: 8, padding: '10px 4px', background: 'transparent',
               border: 'none', color: T.inkSub,
               font: `13px/1.2 ${T.font}`,
               cursor: busy || !configured ? 'not-allowed' : 'pointer',

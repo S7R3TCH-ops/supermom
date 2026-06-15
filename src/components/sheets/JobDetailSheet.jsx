@@ -415,6 +415,7 @@ function ReadMode({
   futureConfirmType, onFutureConfirmProceed, onFutureConfirmCancel,
 }) {
   const navigate = useNavigate();
+  const [showInvoiceWarn, setShowInvoiceWarn] = useState(false);
   const statusC = STATUS_COLORS[job.job_status] || STATUS_COLORS.Scheduled;
   const payKey  = job.payment_status || '';
   const payC    = PAY_COLORS[payKey] || PAY_COLORS[''];
@@ -448,10 +449,16 @@ function ReadMode({
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
           </button>
         </div>
-        <div
-          onClick={() => { if (job.client_id) { onClose(); navigate('/clients/' + job.client_id); } }}
-          style={{ fontFamily: T.serif, fontSize: 22, fontWeight: 500, color: mode === 'dark' ? 'white' : T.ink, marginBottom: 6, position: 'relative', cursor: job.client_id ? 'pointer' : 'default', textDecoration: job.client_id ? 'underline' : 'none', textDecorationStyle: 'dotted', textUnderlineOffset: 3 }}
-        >{job.client_name || 'Unknown'}</div>
+        {job.client_id ? (
+          <button
+            type="button"
+            onClick={() => { onClose(); navigate('/clients/' + job.client_id); }}
+            aria-label={`View ${job.client_name || 'client'} profile`}
+            style={{ fontFamily: T.serif, fontSize: 22, fontWeight: 500, color: mode === 'dark' ? 'white' : T.ink, marginBottom: 6, position: 'relative', cursor: 'pointer', textDecoration: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: 3, background: 'none', border: 'none', padding: 0, textAlign: 'left' }}
+          >{job.client_name || 'Unknown'}</button>
+        ) : (
+          <div style={{ fontFamily: T.serif, fontSize: 22, fontWeight: 500, color: mode === 'dark' ? 'white' : T.ink, marginBottom: 6, position: 'relative' }}>{job.client_name || 'Unknown'}</div>
+        )}
         
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, opacity: 0.9, position: 'relative' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -532,12 +539,22 @@ function ReadMode({
             </Btn>
           )}
           {!futureConfirmType && !isCancelled && (
-            <Btn
-              onClick={invoiceId ? () => { if (window.confirm('This job has an invoice. Editing may cause the invoice total to diverge. Continue?')) onEdit(); } : onEdit}
-              bg={T.card} border={`1.5px solid ${T.cardBorder}`} color={T.ink} T={T}
-            >
-              Edit Job{invoiceId ? ' ⚠️' : ''}
-            </Btn>
+            showInvoiceWarn ? (
+              <div style={{ padding: '12px', borderRadius: 12, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)' }}>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: T.ink, marginBottom: 10 }}>This job has an invoice. Editing the job may cause the invoice total to diverge.</div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <Btn onClick={() => setShowInvoiceWarn(false)} bg={T.card} border={`1px solid ${T.cardBorder}`} color={T.inkSub} T={T} style={{ flex: 1 }}>Cancel</Btn>
+                  <Btn onClick={onEdit} bg="#B45309" color="white" T={T} style={{ flex: 1 }}>Edit anyway</Btn>
+                </div>
+              </div>
+            ) : (
+              <Btn
+                onClick={invoiceId ? () => setShowInvoiceWarn(true) : onEdit}
+                bg={T.card} border={`1.5px solid ${T.cardBorder}`} color={T.ink} T={T}
+              >
+                Edit Job{invoiceId ? ' ⚠️' : ''}
+              </Btn>
+            )
           )}
 
           {!futureConfirmType && isScheduled && !showCancelForm && (
@@ -556,7 +573,8 @@ function ReadMode({
                 onChange={e => onSetCancelReason(e.target.value)}
                 placeholder="e.g. Client called to reschedule"
                 rows={2}
-                style={{ width: '100%', background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 8, padding: '8px 10px', fontFamily: T.font, fontSize: 12.5, color: T.ink, resize: 'none', outline: 'none', boxSizing: 'border-box' }}
+                className="sm-input"
+                style={{ width: '100%', background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 8, padding: '8px 10px', fontFamily: T.font, fontSize: 12.5, color: T.ink, resize: 'none', boxSizing: 'border-box' }}
               />
               <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                 <Btn onClick={() => { onSetShowCancelForm(false); onSetCancelReason(''); }} bg={T.card} border={`1px solid ${T.cardBorder}`} color={T.inkSub} T={T} style={{ flex: 1 }}>Never mind</Btn>
@@ -735,10 +753,10 @@ function EditMode({ job, form, setForm, services, workers, business, T, mode, bu
         <SectionDivider label="Financials" T={T} />
         <Field T={T} label="Pricing">
           <div style={{ display: 'flex', gap: 6 }}>
-            {['Flat', 'Hourly'].map(p => <button key={p} onClick={() => {
+            {['Flat', 'Hourly'].map(p => <button key={p} type="button" onClick={() => {
               set('pricing_type', p);
               if (p === 'Hourly' && liveHourlyRate > 0 && liveHrs > 0) set('total_amount', liveMathTotal.toFixed(0));
-            }} style={{ flex: 1, padding: '9px 0', borderRadius: 8, background: form.pricing_type === p ? '#E91E6A' : T.card, border: `1.5px solid ${form.pricing_type === p ? '#E91E6A' : T.cardBorder}`, color: form.pricing_type === p ? 'white' : T.inkSub, cursor: 'pointer' }}>{p}</button>)}
+            }} style={{ flex: 1, padding: '9px 0', borderRadius: 8, background: form.pricing_type === p ? T.pink : T.card, border: `1.5px solid ${form.pricing_type === p ? T.pink : T.cardBorder}`, color: form.pricing_type === p ? 'white' : T.inkSub, cursor: 'pointer' }}>{p}</button>)}
           </div>
         </Field>
         <Field T={T} label="Amount ($)"><input type="number" value={form.total_amount} onChange={e => set('total_amount', e.target.value)} onFocus={e => e.target.select()} style={{ ...iStyle(T), width: '100%' }} /></Field>
@@ -777,9 +795,10 @@ function EditMode({ job, form, setForm, services, workers, business, T, mode, bu
               </div>
             ))}
             <button
+              type="button"
               onClick={() => set('additional_costs_json', [...form.additional_costs_json, { amount: '', description: '' }])}
               style={{ background: 'none', border: 'none', color: T.pink, fontSize: 11, fontWeight: 700, cursor: 'pointer', alignSelf: 'flex-start', padding: '4px 0' }}
-            >+ ADD COST</button>
+            >+ Add cost</button>
           </div>
         </Field>
 
@@ -880,7 +899,7 @@ function InfoCard({ T, children }) { return <div style={{ background: T.card, bo
 function Row({ T, label, value, last, serif, tabular, highlight }) { return <><div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', padding: '6px 0' }}><span style={{ fontSize: 11, color: T.inkMuted }}>{label}</span><span style={{ fontFamily: serif ? T.serif : T.font, fontSize: 13, color: highlight ? '#22C55E' : T.ink, fontWeight: highlight ? 700 : undefined, fontVariantNumeric: tabular ? 'tabular-nums' : undefined }}>{value}</span></div>{!last && <div style={{ height: 1, background: T.cardBorder }} />}</>; }
 function Pill({ bg, border, color, children }) { return <span style={{ padding: '3px 8px', borderRadius: 20, background: bg, border: `1px solid ${border}`, fontSize: 10.5, fontWeight: 600, color }}>{children}</span>; }
 function Btn({ onClick, disabled, bg, border, color, children, T, style: extra }) { return <button onClick={onClick} disabled={disabled} style={{ padding: '11px 14px', borderRadius: 12, background: bg, border: border || 'none', color, fontFamily: T.font, fontSize: 13, fontWeight: 600, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.6 : 1, width: '100%', ...extra }}>{children}</button>; }
-function Field({ T, label, children, last }) { return <div style={{ marginBottom: last ? 0 : 14 }}><div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: T.inkMuted, marginBottom: 5 }}>{label}</div>{children}</div>; }
+function Field({ T, label, children, last }) { return <div style={{ marginBottom: last ? 0 : 14 }}><div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.4px', textTransform: 'uppercase', color: T.inkMuted, marginBottom: 5 }}>{label}</div>{children}</div>; }
 function iStyle(T) { return { background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 8, padding: '9px 11px', color: T.ink, fontSize: 13, width: '100%', boxSizing: 'border-box' }; }
 function SectionDivider({ label, T }) {
   return <div style={{ fontFamily: T.serif, fontSize: 10, fontWeight: 600, letterSpacing: '0.7px', textTransform: 'uppercase', color: T.inkMuted, margin: '20px 0 8px', paddingBottom: 6, borderBottom: `1px solid ${T.cardBorder}` }}>{label}</div>;

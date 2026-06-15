@@ -49,7 +49,6 @@ export default function NewClientSheet({ onClose, onCreated }) {
     width: '100%', background: inputBg, color: T.ink,
     border: `1.5px solid ${T.cardBorder}`, borderRadius: 12,
     padding: '10px 11px', fontFamily: T.font, fontSize: 13, fontWeight: 500,
-    outline: 'none',
   };
   const label = { fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', color: T.inkMuted, marginBottom: 4 };
 
@@ -95,8 +94,8 @@ export default function NewClientSheet({ onClose, onCreated }) {
       toast.success(`${first.trim()} added!`);
       if (onCreated) onCreated(created);
       onClose();
-    } catch (e2) {
-      const msg = e2.message || String(e2);
+    } catch {
+      const msg = 'Something went wrong — please try again.';
       setErr(msg);
       toast.error(msg);
       submittingRef.current = false;
@@ -125,7 +124,7 @@ export default function NewClientSheet({ onClose, onCreated }) {
             <div style={{ fontFamily: T.serif, fontSize: 20, fontWeight: 500, letterSpacing: '-0.4px', color: T.ink, marginTop: 2 }}>Add to roster</div>
           </div>
           <button onClick={onClose} aria-label="Close" style={{
-            width: 30, height: 30, borderRadius: 9,
+            width: 44, height: 44, borderRadius: 9,
             background: mode === 'dark' ? 'rgba(255,255,255,0.07)' : T.pinkTint,
             border: `1px solid ${T.cardBorder}`, color: T.inkSub, cursor: 'pointer', padding: 0,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -136,50 +135,52 @@ export default function NewClientSheet({ onClose, onCreated }) {
           </button>
         </div>
 
-        <form onSubmit={submit} className="sm-scroll" style={{ 
-          flex: 1, 
-          overflowY: 'auto', 
-          padding: '0 18px 14px', 
-          display: 'flex', 
-          flexDirection: 'column', 
-          gap: 10,
+        <form onSubmit={submit} className="sm-scroll" style={{
+          flex: 1,
+          overflowY: 'auto',
+          padding: '0 18px 14px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 12,
         }}>
           <div style={{ display: 'flex', gap: 8 }}>
             <div style={{ flex: 1 }}>
-              <label htmlFor="nc-first" style={label}>FIRST NAME *</label>
-              <input id="nc-first" required style={input} value={first} onChange={e => setFirst(e.target.value)} />
+              <label htmlFor="nc-first" style={label}>First name *</label>
+              <input id="nc-first" required className="sm-input" style={input} value={first} onChange={e => setFirst(e.target.value)} />
             </div>
             <div style={{ flex: 1 }}>
-              <label htmlFor="nc-last" style={label}>LAST NAME</label>
-              <input id="nc-last" style={input} value={last} onChange={e => setLast(e.target.value)} />
+              <label htmlFor="nc-last" style={label}>Last name</label>
+              <input id="nc-last" className="sm-input" style={input} value={last} onChange={e => setLast(e.target.value)} />
             </div>
           </div>
           <div>
-            <label htmlFor="nc-phone" style={label}>PHONE</label>
-            <input id="nc-phone" style={input} type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="6475550100" />
+            <label htmlFor="nc-phone" style={label}>Phone</label>
+            <input id="nc-phone" className="sm-input" style={input} type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="6475550100" />
           </div>
           <div>
-            <label htmlFor="nc-email" style={label}>EMAIL</label>
-            <input id="nc-email" style={input} type="email" value={email} onChange={e => setEmail(e.target.value)} />
+            <label htmlFor="nc-email" style={label}>Email</label>
+            <input id="nc-email" className="sm-input" style={input} type="email" value={email} onChange={e => setEmail(e.target.value)} />
           </div>
           <div>
-            <label htmlFor="nc-street" style={label}>STREET</label>
-            <input id="nc-street" style={input} value={street} onChange={e => setStreet(e.target.value)} placeholder="12 Main St" />
+            <label htmlFor="nc-street" style={label}>Street</label>
+            <input id="nc-street" className="sm-input" style={input} value={street} onChange={e => setStreet(e.target.value)} placeholder="12 Main St" />
           </div>
           <div>
-            <label htmlFor="nc-city" style={label}>CITY</label>
-            <input id="nc-city" style={input} value={city} onChange={e => setCity(e.target.value)} />
+            <label htmlFor="nc-city" style={label}>City</label>
+            <input id="nc-city" className="sm-input" style={input} value={city} onChange={e => setCity(e.target.value)} />
           </div>
           <div>
-            <label htmlFor="nc-postal" style={label}>POSTAL CODE</label>
-            <input id="nc-postal" style={input} value={postalCode} onChange={e => setPostalCode(e.target.value)} placeholder="L7G 4S5" />
+            <label htmlFor="nc-postal" style={label}>Postal code</label>
+            <input id="nc-postal" className="sm-input" style={input} value={postalCode} onChange={e => setPostalCode(e.target.value)} placeholder="L7G 4S5" />
           </div>
 
           <div>
-            <div style={label}>STATUS</div>
+            <label htmlFor="nc-status" style={label}>Status</label>
             <select
+              id="nc-status"
               value={status}
               onChange={e => setStatus(e.target.value)}
+              className="sm-input"
               style={{ ...input, width: '100%' }}
             >
               {STATUS_OPTIONS.map(s => (
@@ -189,14 +190,14 @@ export default function NewClientSheet({ onClose, onCreated }) {
           </div>
 
           <div>
-            <div id="nc-recurrence-label" style={label}>RECURRENCE</div>
+            <div id="nc-recurrence-label" style={label}>Recurrence</div>
             <div role="group" aria-labelledby="nc-recurrence-label" style={{ display: 'flex', background: mode === 'dark' ? 'rgba(255,255,255,0.04)' : T.pinkTint, borderRadius: 10, padding: 3 }}>
               {RECURRENCE.map(r => {
                 const on = r.key === recurrence;
                 return (
                   <button type="button" key={r.label} role="radio" aria-checked={on} onClick={() => setRecurrence(r.key)} style={{
                     flex: 1, padding: '8px 0', borderRadius: 8, border: 'none',
-                    background: on ? '#E91E6A' : 'transparent',
+                    background: on ? T.pink : 'transparent',
                     fontFamily: T.font, fontSize: 11, fontWeight: 600,
                     color: on ? 'white' : T.inkSub, cursor: 'pointer',
                   }}>{r.label}</button>
@@ -205,13 +206,13 @@ export default function NewClientSheet({ onClose, onCreated }) {
             </div>
           </div>
 
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontFamily: T.font, fontSize: 12, color: T.ink }}>
-            <input type="checkbox" checked={vip} onChange={e => setVip(e.target.checked)} />
+          <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontFamily: T.font, fontSize: 12, color: T.ink }}>
+            <input type="checkbox" checked={vip} onChange={e => setVip(e.target.checked)} style={{ width: 18, height: 18, cursor: 'pointer', accentColor: T.pink }} />
             Mark as VIP ★
           </label>
 
           <div>
-            <div style={label}>TAGS</div>
+            <div style={label}>Tags</div>
             {tags.length > 0 && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
                 {tags.map(t => (
@@ -237,6 +238,7 @@ export default function NewClientSheet({ onClose, onCreated }) {
             )}
             <div style={{ display: 'flex', gap: 8 }}>
               <input
+                className="sm-input"
                 style={{ ...input, flex: 1 }}
                 value={tagInput}
                 onChange={e => setTagInput(e.target.value)}
@@ -256,21 +258,22 @@ export default function NewClientSheet({ onClose, onCreated }) {
           </div>
 
           <div style={{ borderTop: `1px solid ${T.cardBorder}`, paddingTop: 10, marginTop: 4 }}>
-            <div style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#FF78B0', marginBottom: 10 }}>✦ Intel</div>
+            <div style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '1.1px', textTransform: 'uppercase', color: '#FF78B0', marginBottom: 10 }}>✦ Intel</div>
             {[
-              { label: 'NOTES', value: notes, set: setNotes },
-              { label: 'PREFS', value: prefs, set: setPrefs },
-              { label: 'ACCESS', value: access, set: setAccess },
-              { label: 'COMMS', value: comms, set: setComms },
-              { label: 'PERSONAL', value: personal, set: setPersonal },
+              { label: 'Notes', key: 'notes', value: notes, set: setNotes, placeholder: 'General notes about this client…' },
+              { label: 'Preferences', key: 'prefs', value: prefs, set: setPrefs, placeholder: 'Likes, dislikes, special requests…' },
+              { label: 'Access notes', key: 'access', value: access, set: setAccess, placeholder: 'How to enter, where to park, alarm code…' },
+              { label: 'Communication style', key: 'comms', value: comms, set: setComms, placeholder: 'How they like to be contacted…' },
+              { label: 'Personal details', key: 'personal', value: personal, set: setPersonal, placeholder: 'Family, pets, anything useful to remember…' },
             ].map(f => (
-              <div key={f.label} style={{ marginBottom: 10 }}>
+              <div key={f.key} style={{ marginBottom: 10 }}>
                 <div style={label}>{f.label}</div>
                 <textarea
                   value={f.value}
                   onChange={e => f.set(e.target.value)}
-                  placeholder={`Enter ${f.label.toLowerCase()}…`}
+                  placeholder={f.placeholder}
                   rows={2}
+                  className="sm-input"
                   style={{ ...input, minHeight: 44, resize: 'none' }}
                 />
               </div>
@@ -287,7 +290,7 @@ export default function NewClientSheet({ onClose, onCreated }) {
             opacity: busy ? 0.5 : 1, cursor: busy ? 'not-allowed' : 'pointer',
           }}>{busy ? 'Saving…' : 'Save client'}</button>
 
-          <div style={{ height: isKeyboardFocused ? 260 : 14, transition: 'height 0.2s ease-out' }} />
+          {isKeyboardFocused && <div style={{ height: 260 }} aria-hidden="true" />}
         </form>
       </div>
     </div>

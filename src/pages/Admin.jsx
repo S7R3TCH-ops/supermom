@@ -62,6 +62,8 @@ export default function Admin() {
   const [selectedBizId, setSelectedBizId] = useState('');
   const [showServices, setShowServices] = useState(false);
   const [showWorkers, setShowWorkers] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(null); // { id, name }
+  const [restoreConfirm, setRestoreConfirm] = useState(null); // { id, name }
 
   // Clear pending style when business data actually updates to match - adjusting state during render
   if (pendingStyle && business?.ai_profile?.style === pendingStyle) {
@@ -75,8 +77,7 @@ export default function Admin() {
     try {
       const newProfile = { ...(business?.ai_profile || {}), style };
       await updateBiz({ ai_profile: newProfile });
-    } catch (err) {
-      console.error('Failed to update AI style:', err);
+    } catch {
       setPendingStyle(null);
     } finally {
       setIsSaving(false);
@@ -127,8 +128,7 @@ export default function Admin() {
       } else {
         throw new Error('No message in response');
       }
-    } catch (e) {
-      console.warn('API Test Persona failed, using local fallback:', e);
+    } catch {
       setTestResult(fallbacks[aiStyle] || fallbacks.professional);
     } finally {
       setIsTesting(false);
@@ -175,24 +175,24 @@ export default function Admin() {
     }
   };
 
-  const handleSoftDeleteBiz = async (id, name) => {
-    if (!window.confirm(`Are you sure you want to soft delete business "${name}"?`)) return;
+  const handleSoftDeleteBiz = async (id) => {
     try {
       const { error } = await supabase.from('businesses').update({ deleted_at: new Date().toISOString() }).eq('id', id);
       if (error) throw error;
-      toast.success(`"${name}" removed.`);
+      toast.success('Business removed.');
+      setDeleteConfirm(null);
       refresh();
     } catch(e) {
       toast.error(e.message);
     }
   };
 
-  const handleRestoreBiz = async (id, name) => {
-    if (!window.confirm(`Restore "${name}"? This will make it visible and accessible again.`)) return;
+  const handleRestoreBiz = async (id) => {
     try {
       const { error } = await supabase.from('businesses').update({ deleted_at: null }).eq('id', id);
       if (error) throw error;
-      toast.success(`"${name}" restored.`);
+      toast.success('Business restored.');
+      setRestoreConfirm(null);
       refresh();
     } catch(e) {
       toast.error(e.message);
@@ -288,9 +288,10 @@ export default function Admin() {
                 <select
                   value={selectedBizId}
                   onChange={e => setSelectedBizId(e.target.value)}
+                  className="sm-input"
                   style={{
                     flex: 1, padding: '10px', borderRadius: 12, background: 'var(--plum-mid)',
-                    border: '1px solid var(--pink-mid)', color: 'white', fontSize: 13, outline: 'none'
+                    border: '1px solid var(--pink-mid)', color: 'white', fontSize: 13,
                   }}
                 >
                   <option value="">Select a business...</option>
@@ -316,11 +317,11 @@ export default function Admin() {
             <div style={{ background: 'var(--plum-dark)', border: '1.5px solid var(--pink-mid)', borderRadius: 16, padding: '14px', marginBottom: 20 }}>
               <div style={{ fontSize: 11, color: 'var(--pink-label)', marginBottom: 12, fontWeight: 600 }}>Create a new business and owner account.</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <input placeholder="Business Name" value={provForm.biz} onChange={e => setProvForm(p => ({...p, biz: e.target.value}))} style={{ padding: '10px', borderRadius: 12, background: 'var(--plum-mid)', border: '1px solid var(--pink-mid)', color: 'white', fontSize: 13, outline: 'none' }} />
-                <input placeholder="Owner Full Name" value={provForm.owner} onChange={e => setProvForm(p => ({...p, owner: e.target.value}))} style={{ padding: '10px', borderRadius: 12, background: 'var(--plum-mid)', border: '1px solid var(--pink-mid)', color: 'white', fontSize: 13, outline: 'none' }} />
-                <input placeholder="Owner Email" value={provForm.email} onChange={e => setProvForm(p => ({...p, email: e.target.value}))} style={{ padding: '10px', borderRadius: 12, background: 'var(--plum-mid)', border: '1px solid var(--pink-mid)', color: 'white', fontSize: 13, outline: 'none' }} />
+                <input placeholder="Business Name" value={provForm.biz} onChange={e => setProvForm(p => ({...p, biz: e.target.value}))} className="sm-input" style={{ padding: '10px', borderRadius: 12, background: 'var(--plum-mid)', border: '1px solid var(--pink-mid)', color: 'white', fontSize: 13 }} />
+                <input placeholder="Owner Full Name" value={provForm.owner} onChange={e => setProvForm(p => ({...p, owner: e.target.value}))} className="sm-input" style={{ padding: '10px', borderRadius: 12, background: 'var(--plum-mid)', border: '1px solid var(--pink-mid)', color: 'white', fontSize: 13 }} />
+                <input placeholder="Owner Email" value={provForm.email} onChange={e => setProvForm(p => ({...p, email: e.target.value}))} className="sm-input" style={{ padding: '10px', borderRadius: 12, background: 'var(--plum-mid)', border: '1px solid var(--pink-mid)', color: 'white', fontSize: 13 }} />
                 <div style={{ position: 'relative' }}>
-                  <input type={showPw ? "text" : "password"} placeholder="Temp Password" value={provForm.pw} onChange={e => setProvForm(p => ({...p, pw: e.target.value}))} style={{ width: '100%', padding: '10px', paddingRight: 36, borderRadius: 12, background: 'var(--plum-mid)', border: '1px solid var(--pink-mid)', color: 'white', fontSize: 13, outline: 'none' }} />
+                  <input type={showPw ? "text" : "password"} placeholder="Temp Password" value={provForm.pw} onChange={e => setProvForm(p => ({...p, pw: e.target.value}))} className="sm-input" style={{ width: '100%', padding: '10px', paddingRight: 36, borderRadius: 12, background: 'var(--plum-mid)', border: '1px solid var(--pink-mid)', color: 'white', fontSize: 13 }} />
                   <ToggleBtn show={showPw} onToggle={() => setShowPw(!showPw)} color="var(--pink-label)" />
                 </div>
                 <button onClick={handleProvision} disabled={isProv || !provForm.biz || !provForm.email} style={{ padding: '12px', borderRadius: 12, background: 'var(--pink)', color: 'white', border: 'none', fontWeight: 700, fontSize: 13, cursor: isProv ? 'default' : 'pointer', opacity: (isProv || !provForm.biz || !provForm.email) ? 0.5 : 1 }}>
@@ -335,12 +336,24 @@ export default function Admin() {
               <div style={{ fontSize: 11, color: 'var(--pink-label)', marginBottom: 12, fontWeight: 600 }}>Soft-delete businesses (immediately hides them from UI).</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {(allBusinesses || []).filter(b => !b.deleted_at).map(b => (
-                  <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '10px 12px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)' }}>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ color: 'white', fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.name}</div>
-                      <div style={{ color: 'var(--pink-label)', fontSize: 10 }}>{b.owner_name || 'No Owner'}</div>
-                    </div>
-                    <button onClick={() => handleSoftDeleteBiz(b.id, b.name)} style={{ background: 'transparent', border: '1px solid var(--pink)', color: 'var(--pink)', padding: '5px 10px', borderRadius: 8, fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>DELETE</button>
+                  <div key={b.id}>
+                    {deleteConfirm?.id === b.id ? (
+                      <div style={{ background: 'rgba(176,21,80,0.12)', border: '1px solid rgba(176,21,80,0.4)', borderRadius: 12, padding: '10px 12px' }}>
+                        <div style={{ color: 'white', fontSize: 12, fontWeight: 600, marginBottom: 8 }}>Remove "{b.name}"?</div>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button type="button" onClick={() => setDeleteConfirm(null)} style={{ flex: 1, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '7px 0', color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+                          <button type="button" onClick={() => handleSoftDeleteBiz(b.id)} style={{ flex: 1, background: 'var(--pink-mid)', border: 'none', borderRadius: 8, padding: '7px 0', color: 'white', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Yes, remove</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '10px 12px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)' }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ color: 'white', fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.name}</div>
+                          <div style={{ color: 'var(--pink-label)', fontSize: 10 }}>{b.owner_name || 'No Owner'}</div>
+                        </div>
+                        <button type="button" onClick={() => setDeleteConfirm({ id: b.id, name: b.name })} style={{ background: 'transparent', border: '1px solid var(--pink)', color: 'var(--pink)', padding: '5px 10px', borderRadius: 8, fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>Remove</button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -351,12 +364,24 @@ export default function Admin() {
                 <div style={{ fontSize: 11, color: 'var(--pink-label)', marginBottom: 12, fontWeight: 600 }}>Deleted businesses — restore to make them active again.</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {(allBusinesses || []).filter(b => b.deleted_at).map(b => (
-                    <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '10px 12px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)', opacity: 0.8 }}>
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.name}</div>
-                        <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: 10 }}>{b.owner_name || 'No Owner'} · deleted {new Date(b.deleted_at).toLocaleDateString()}</div>
-                      </div>
-                      <button onClick={() => handleRestoreBiz(b.id, b.name)} style={{ background: 'transparent', border: '1px solid var(--green)', color: 'var(--green)', padding: '5px 10px', borderRadius: 8, fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>RESTORE</button>
+                    <div key={b.id}>
+                      {restoreConfirm?.id === b.id ? (
+                        <div style={{ background: 'rgba(22,163,74,0.1)', border: '1px solid rgba(22,163,74,0.4)', borderRadius: 12, padding: '10px 12px' }}>
+                          <div style={{ color: 'white', fontSize: 12, fontWeight: 600, marginBottom: 8 }}>Restore "{b.name}"?</div>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <button type="button" onClick={() => setRestoreConfirm(null)} style={{ flex: 1, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '7px 0', color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+                            <button type="button" onClick={() => handleRestoreBiz(b.id)} style={{ flex: 1, background: 'var(--green)', border: 'none', borderRadius: 8, padding: '7px 0', color: 'white', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Yes, restore</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '10px 12px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)', opacity: 0.8 }}>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.name}</div>
+                            <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: 10 }}>{b.owner_name || 'No Owner'} · deleted {new Date(b.deleted_at).toLocaleDateString()}</div>
+                          </div>
+                          <button type="button" onClick={() => setRestoreConfirm({ id: b.id, name: b.name })} style={{ background: 'transparent', border: '1px solid var(--green)', color: 'var(--green)', padding: '5px 10px', borderRadius: 8, fontSize: 10, fontWeight: 700, cursor: 'pointer' }}>Restore</button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -396,15 +421,15 @@ export default function Admin() {
                   { id: 'coach', label: 'Encouraging Coach', desc: 'Warm, supportive, and motivating.' },
                   { id: 'casual', label: 'Casual Pal', desc: 'Relaxed, friendly, and low-key.' },
                 ].map(s => (
-                  <div
+                  <button
                     key={s.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => !isSaving && handleStyleChange(s.id)}
-                    onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && !isSaving && handleStyleChange(s.id)}
+                    type="button"
+                    disabled={isSaving}
+                    onClick={() => handleStyleChange(s.id)}
                     aria-pressed={aiStyle === s.id}
                     style={{
-                      padding: '10px 12px', borderRadius: 12, cursor: isSaving ? 'default' : 'pointer',
+                      width: '100%', textAlign: 'left', padding: '10px 12px', borderRadius: 12,
+                      cursor: isSaving ? 'default' : 'pointer',
                       background: aiStyle === s.id ? T.pinkTint : 'rgba(255,255,255,0.03)',
                       border: `1.5px solid ${aiStyle === s.id ? T.pink : T.cardBorder}`,
                       transition: 'all 0.2s',
@@ -419,7 +444,7 @@ export default function Admin() {
                       {aiStyle === s.id && !isSaving && <span style={{ color: T.pink, fontSize: 12 }}>✓</span>}
                     </div>
                     <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, marginTop: 2 }}>{s.desc}</div>
-                  </div>
+                  </button>
                 ))}
 
                 <div style={{ marginTop: 16 }}>
@@ -473,7 +498,7 @@ export default function Admin() {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div>
-              <label htmlFor="admin-pw" style={{ fontSize: 10, fontWeight: 700, color: T.inkMuted, textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>New Password</label>
+              <label htmlFor="admin-pw" style={{ fontSize: 10, fontWeight: 700, color: T.inkMuted, textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>New password</label>
               <div style={{ position: 'relative' }}>
                 <input
                   id="admin-pw"
@@ -481,10 +506,11 @@ export default function Admin() {
                   value={pwForm.pw}
                   onChange={e => setPwForm(p => ({ ...p, pw: e.target.value }))}
                   placeholder="Min 8 chars"
+                  className="sm-input"
                   style={{
                     width: '100%', padding: '10px 12px', paddingRight: 36, borderRadius: 12,
                     background: 'rgba(255,255,255,0.03)', border: `1px solid ${T.cardBorder}`,
-                    color: T.ink, fontSize: 13, outline: 'none'
+                    color: T.ink, fontSize: 13,
                   }}
                 />
                 <ToggleBtn show={showPw} onToggle={() => setShowPw(!showPw)} />
@@ -492,17 +518,18 @@ export default function Admin() {
             </div>
 
             <div>
-              <label htmlFor="admin-pw2" style={{ fontSize: 10, fontWeight: 700, color: T.inkMuted, textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Confirm</label>
+              <label htmlFor="admin-pw2" style={{ fontSize: 10, fontWeight: 700, color: T.inkMuted, textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Confirm password</label>
               <div style={{ position: 'relative' }}>
                 <input
                   id="admin-pw2"
                   type={showPw2 ? "text" : "password"}
                   value={pwForm.pw2}
                   onChange={e => setPwForm(p => ({ ...p, pw2: e.target.value }))}
+                  className="sm-input"
                   style={{
                     width: '100%', padding: '10px 12px', paddingRight: 36, borderRadius: 12,
                     background: 'rgba(255,255,255,0.03)', border: `1px solid ${T.cardBorder}`,
-                    color: T.ink, fontSize: 13, outline: 'none'
+                    color: T.ink, fontSize: 13,
                   }}
                 />
                 <ToggleBtn show={showPw2} onToggle={() => setShowPw2(!showPw2)} />
@@ -571,12 +598,14 @@ function StatCard({ T, label, value }) {
 
 function ToolRow({ T, icon, label, sub, onClick }) {
   return (
-    <div
+    <button
+      type="button"
       onClick={onClick}
       style={{
+        width: '100%', textAlign: 'left',
         background: T.card, border: `1.5px solid ${T.cardBorder}`,
         borderRadius: 13, padding: 12, display: 'flex', alignItems: 'center', gap: 12,
-        cursor: onClick ? 'pointer' : 'default',
+        cursor: 'pointer',
       }}
     >
       <div style={{ fontSize: 20 }}>{icon}</div>
@@ -584,7 +613,7 @@ function ToolRow({ T, icon, label, sub, onClick }) {
         <div style={{ fontFamily: T.font, fontSize: 13, fontWeight: 600, color: T.ink }}>{label}</div>
         <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted }}>{sub}</div>
       </div>
-      {onClick && <div style={{ color: T.inkMuted, fontSize: 14 }}>›</div>}
-    </div>
+      <div style={{ color: T.inkMuted, fontSize: 14 }}>›</div>
+    </button>
   );
 }

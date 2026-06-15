@@ -1,21 +1,27 @@
 import { computeJobFinancials } from './financialMath.js';
 
 /**
- * Decorates a fetched invoice (with `clients`, `invoice_jobs.jobs` populated) with
- * real payment numbers computed from the `payments` table — the source of truth —
- * rather than trusting the denormalized `job.payment_status` cache.
+ * Decorates a fetched invoice (with `clients`, `businesses`, `invoice_jobs.jobs` populated)
+ * with real payment numbers computed from the `payments` table — the source of truth.
  *
- * Accepts any Supabase client (browser RLS-scoped client or a server-side
- * service-role client) so it can run from both `invoicesRepo.fetchInvoiceById`
- * and `api/invoice.js`.
+ * Handles multi-job invoices: aggregates amountPaid/balanceOwing/isPaidInFull across
+ * all jobs linked via invoice_jobs, not just the first one.
+ *
+ * Accepts any Supabase client (browser RLS-scoped or server-side service-role) so it
+ * can run from both `invoicesRepo.fetchInvoiceById` and `api/invoice.js`.
  */
 export async function decorateInvoiceWithBalances(supabase, invoice) {
-  const job = invoice.invoice_jobs?.[0]?.jobs || null;
-  const clientId = invoice.client_id;
-  const business = invoice.businesses || null;
+  const invoiceJobIds = new Set((invoice.invoice_jobs || []).map(ij => ij.job_id));
+  const clientId  = invoice.client_id;
+  const business  = invoice.businesses || null;
 
-  const empty = { amountPaid: 0, balanceOwing: 0, isPaidInFull: false, payments: [], otherOutstanding: [], alsoPaid: [], runningTotalOwing: 0, totalPaidAllJobs: 0, settlementCount: 0 };
-  if (!job || !clientId) return { ...invoice, ...empty };
+  const empty = {
+    amountPaid: 0, balanceOwing: 0, isPaidInFull: false,
+    payments: [], otherOutstanding: [], alsoPaid: [],
+    runningTotalOwing: 0, totalPaidAllJobs: 0, settlementCount: 0,
+    invoiceJobBalances: [],
+  };
+  if (!invoiceJobIds.size || !clientId) return { ...invoice, ...empty };
 
   const [{ data: clientJobs, error: jobsErr }, { data: clientPayments, error: paymentsErr }] = await Promise.all([
     supabase.from('jobs').select('*')
@@ -36,50 +42,58 @@ export async function decorateInvoiceWithBalances(supabase, invoice) {
   (clientPayments ?? []).forEach(p => {
     paidByJobId[p.job_id] = (paidByJobId[p.job_id] || 0) + Number(p.amount);
   });
-  const payments = (clientPayments ?? []).filter(p => p.job_id === job.id);
 
-  // Jobs settled together via THIS invoice's "Record Payment" action are tagged with
-  // payment.invoice_id = invoice.id. Surface the *other* such jobs so the receipt can show
-  // an "Also Paid for This Client" section (the mirror of "Also Outstanding").
+  // All payments for invoice-linked jobs — shown in "Payments Received" column
+  const payments = (clientPayments ?? []).filter(p => invoiceJobIds.has(p.job_id));
+
+  // Jobs settled together via THIS invoice that are NOT themselves on the invoice
   const alsoPaidJobIds = new Set(
     (clientPayments ?? [])
-      .filter(p => p.invoice_id === invoice.id && p.job_id !== job.id)
+      .filter(p => p.invoice_id === invoice.id && !invoiceJobIds.has(p.job_id))
       .map(p => p.job_id)
   );
   const settlementCount = (clientPayments ?? []).filter(p => p.invoice_id === invoice.id).length;
 
   const balances = (clientJobs ?? []).map(j => {
-    // Pass `business` so this matches the same total shown elsewhere on the invoice as
-    // "Invoice Total" (computeJobFinancials(job, biz)) — without it, jobs completed before
-    // tax was enabled fall back to their stored (untaxed) hst_amount and paid+owing won't
-    // reconcile with the displayed total.
+    // Use business param so tax inheritance (NULL → business.tax_enabled) is correct
     const total = computeJobFinancials(j, business).total;
-    const paid = paidByJobId[j.id] || 0;
+    const paid  = paidByJobId[j.id] || 0;
     return { job: j, total, paid, owing: Math.max(0, Math.round((total - paid) * 100) / 100) };
   });
 
-  const current = balances.find(b => b.job.id === job.id) || null;
-  const otherOutstanding = balances.filter(b => b.job.id !== job.id && b.owing > 0.01);
+  // Per-job balances for every job on this invoice
+  const invoiceJobBalances = balances.filter(b => invoiceJobIds.has(b.job.id));
+
+  // Aggregate across all linked jobs
+  const amountPaid   = Math.round(invoiceJobBalances.reduce((s, b) => s + b.paid,  0) * 100) / 100;
+  const balanceOwing = Math.round(invoiceJobBalances.reduce((s, b) => s + b.owing, 0) * 100) / 100;
+  const isPaidInFull = invoiceJobBalances.length > 0 &&
+    invoiceJobBalances.every(b => b.owing <= 0.01 && b.paid > 0);
+
+  const otherOutstanding = balances.filter(b => !invoiceJobIds.has(b.job.id) && b.owing > 0.01);
   const alsoPaid = balances
     .filter(b => alsoPaidJobIds.has(b.job.id))
     .map(b => ({ job: b.job, total: b.total, paid: b.paid }));
+
   const runningTotalOwing = Math.round(
-    ((current?.owing || 0) + otherOutstanding.reduce((sum, b) => sum + b.owing, 0)) * 100
+    (balanceOwing + otherOutstanding.reduce((sum, b) => sum + b.owing, 0)) * 100
   ) / 100;
   const totalPaidAllJobs = Math.round(
-    ((current?.total || 0) + alsoPaid.reduce((sum, b) => sum + b.total, 0)) * 100
+    (invoiceJobBalances.reduce((s, b) => s + b.total, 0) +
+     alsoPaid.reduce((sum, b) => sum + b.total, 0)) * 100
   ) / 100;
 
   return {
     ...invoice,
-    amountPaid: current?.paid || 0,
-    balanceOwing: current?.owing ?? 0,
-    isPaidInFull: !!current && current.owing <= 0.01 && current.paid > 0,
+    amountPaid,
+    balanceOwing,
+    isPaidInFull,
     payments,
     otherOutstanding,
     alsoPaid,
     runningTotalOwing,
     totalPaidAllJobs,
     settlementCount,
+    invoiceJobBalances,
   };
 }

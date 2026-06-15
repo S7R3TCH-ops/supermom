@@ -120,15 +120,21 @@ const T = (props, ...children) => el(Text, props, ...children);
 function InvoiceDocument({ invoice }) {
   const biz      = invoice.businesses || {};
   const client   = invoice.clients    || {};
-  const job      = invoice.invoice_jobs?.[0]?.jobs || {};
-  const f        = computeJobFinancials(job, biz);
+  const allJobs  = (invoice.invoice_jobs || []).map(ij => ij.jobs).filter(Boolean);
   const isReceipt = !!invoice.isPaidInFull;
+  const anyHourly = allJobs.some(j => j.pricing_type === 'Hourly');
+  const allF      = allJobs.map(j => computeJobFinancials(j, biz));
+  const aggSubtotal   = allF.reduce((s, f) => s + f.subtotal, 0);
+  const aggAdditional = allF.reduce((s, f) => s + f.additionalTotal, 0);
+  const aggTax        = allF.reduce((s, f) => s + f.taxAmount, 0);
+  const aggTotal      = allF.reduce((s, f) => s + f.total, 0);
+  const aggTaxRate    = allF[0]?.taxRate || 0;
 
   const totalRow = V({ style: s.tDueRow, key: 'total' },
     T({ style: s.tDueLabel }, 'Invoice Total'),
     V({ style: { flexDirection: 'row', alignItems: 'center' } },
       isReceipt ? T({ style: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: PAID, marginRight: 4 } }, '✓ Paid') : null,
-      T({ style: [s.tDueVal, isReceipt ? { color: PAID } : {}] }, `$${f.total.toFixed(2)}`),
+      T({ style: [s.tDueVal, isReceipt ? { color: PAID } : {}] }, `$${aggTotal.toFixed(2)}`),
     ),
   );
 
@@ -207,37 +213,38 @@ function InvoiceDocument({ invoice }) {
       V({ style: s.tableHeaderRow },
         V({ style: s.cDate  }, T({ style: s.thText   }, 'Date')),
         V({ style: s.cDesc  }, T({ style: s.thText   }, 'Description')),
-        f.isHourly ? V({ style: s.cRate  }, T({ style: s.thCenter }, 'Rate / Hr')) : null,
-        f.isHourly ? V({ style: s.cHours }, T({ style: s.thCenter }, 'Hours')) : null,
+        anyHourly ? V({ style: s.cRate  }, T({ style: s.thCenter }, 'Rate / Hr')) : null,
+        anyHourly ? V({ style: s.cHours }, T({ style: s.thCenter }, 'Hours')) : null,
         V({ style: s.cAmt   }, T({ style: s.thRight  }, 'Amount')),
       ),
 
-      // ── Service row ──
-      V({ style: s.tableRow },
-        V({ style: s.cDate  }, T({ style: s.tdMuted  }, job.scheduled_date ? formatDate(job.scheduled_date) : '—')),
-        V({ style: s.cDesc  },
-          T({ style: s.tdBold }, job.service_name || 'Professional Services'),
-        ),
-        f.isHourly ? V({ style: s.cRate  }, T({ style: s.tdCenter }, `$${f.rate.toFixed(2)}`)) : null,
-        f.isHourly ? V({ style: s.cHours }, T({ style: s.tdCenter }, f.hours.toFixed(1))) : null,
-        V({ style: s.cAmt   }, T({ style: s.tdRight  }, `$${f.subtotal.toFixed(2)}`)),
-      ),
-
-      // ── Additional cost rows ──
-      ...f.activeCosts.map((item, idx) =>
-        V({ key: idx, style: s.tableRowAlt },
-          V({ style: s.cDate  }),
-          V({ style: s.cDesc  },
-            T({ style: s.tdMuted },
-              T({ style: s.tdPink }, 'Additional Cost  '),
-              item.description || 'Miscellaneous',
-            ),
+      // ── Line items — one service row + additional costs per job ──
+      ...allJobs.flatMap((job, idx) => {
+        const f = allF[idx];
+        return [
+          V({ key: `job-${job.id}`, style: s.tableRow },
+            V({ style: s.cDate  }, T({ style: s.tdMuted  }, job.scheduled_date ? formatDate(job.scheduled_date) : '—')),
+            V({ style: s.cDesc  }, T({ style: s.tdBold }, job.service_name || 'Professional Services')),
+            anyHourly ? V({ style: s.cRate  }, f.isHourly ? T({ style: s.tdCenter }, `$${f.rate.toFixed(2)}`) : T({ style: s.tdCenter }, '')) : null,
+            anyHourly ? V({ style: s.cHours }, f.isHourly ? T({ style: s.tdCenter }, f.hours.toFixed(1))     : T({ style: s.tdCenter }, '')) : null,
+            V({ style: s.cAmt   }, T({ style: s.tdRight  }, `$${f.subtotal.toFixed(2)}`)),
           ),
-          f.isHourly ? V({ style: s.cRate  }) : null,
-          f.isHourly ? V({ style: s.cHours }) : null,
-          V({ style: s.cAmt   }, T({ style: s.tdRightM }, `$${Number(item.amount).toFixed(2)}`)),
-        )
-      ),
+          ...f.activeCosts.map((item, i) =>
+            V({ key: `cost-${job.id}-${i}`, style: s.tableRowAlt },
+              V({ style: s.cDate  }),
+              V({ style: s.cDesc  },
+                T({ style: s.tdMuted },
+                  T({ style: s.tdPink }, 'Additional Cost  '),
+                  item.description || 'Miscellaneous',
+                ),
+              ),
+              anyHourly ? V({ style: s.cRate  }) : null,
+              anyHourly ? V({ style: s.cHours }) : null,
+              V({ style: s.cAmt   }, T({ style: s.tdRightM }, `$${Number(item.amount).toFixed(2)}`)),
+            )
+          ),
+        ];
+      }),
 
       // ── Totals (two-column: payments left, subtotal/total right) ──
       V({ style: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 4, marginBottom: 10 } },
@@ -257,11 +264,11 @@ function InvoiceDocument({ invoice }) {
         V({ style: { width: 200 } },
           V({ style: s.tRow },
             T({ style: s.tLabel }, 'Subtotal'),
-            T({ style: s.tVal   }, `$${(f.subtotal + f.additionalTotal).toFixed(2)}`),
+            T({ style: s.tVal   }, `$${(aggSubtotal + aggAdditional).toFixed(2)}`),
           ),
-          f.taxAmount > 0 ? V({ style: s.tRow },
-            T({ style: s.tLabel }, `HST (${(f.taxRate * 100).toFixed(0)}%)`),
-            T({ style: s.tVal   }, `$${f.taxAmount.toFixed(2)}`),
+          aggTax > 0 ? V({ style: s.tRow },
+            T({ style: s.tLabel }, `HST (${(aggTaxRate * 100).toFixed(0)}%)`),
+            T({ style: s.tVal   }, `$${aggTax.toFixed(2)}`),
           ) : null,
           totalRow,
           balanceRow,

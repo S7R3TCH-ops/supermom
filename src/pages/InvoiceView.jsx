@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { fetchInvoiceById, settleInvoiceOutstanding, voidInvoiceSettlement } from '../data/invoicesRepo';
+import { fetchInvoiceById, settleInvoiceOutstanding, voidInvoiceSettlement, addJobsToInvoice } from '../data/invoicesRepo';
 import { computeJobFinancials } from '../lib/financialMath';
 import { useAuth } from '../context/AuthContext';
 import { getCurrentBusinessId } from '../data/currentBusiness';
@@ -30,7 +30,10 @@ export default function InvoiceView() {
   const [method, setMethod]         = useState('e-Transfer');
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [confirmUndo, setConfirmUndo] = useState(false);
+  const [addJobIds, setAddJobIds]   = useState(() => new Set());
+  const [addState, setAddState]     = useState('idle'); // idle | saving | error
   const settlingRef = useRef(false);
+  const addingRef   = useRef(false);
   const wrapRef = useRef(null);
   const boxRef = useRef(null);
   const [scale, setScale] = useState(1);
@@ -56,14 +59,16 @@ export default function InvoiceView() {
     return fetchInvoiceById(id)
       .then(inv => {
         setInvoice(inv);
-        const j = inv.invoice_jobs?.[0]?.jobs || {};
-        setInvoiceSentAt(j.invoice_sent_at || null);
-        setReceiptSentAt(j.receipt_sent_at || null);
-        // Default every outstanding job to selected on (re)load.
-        const ids = [];
-        if (j?.id && inv.balanceOwing > 0.01) ids.push(j.id);
-        (inv.otherOutstanding ?? []).forEach(b => ids.push(b.job.id));
-        setSelectedIds(new Set(ids));
+        const jobs = (inv.invoice_jobs || []).map(ij => ij.jobs).filter(Boolean);
+        setInvoiceSentAt(jobs.find(j => j.invoice_sent_at)?.invoice_sent_at || null);
+        setReceiptSentAt(jobs.find(j => j.receipt_sent_at)?.receipt_sent_at || null);
+        // Default all outstanding to selected for settle panel
+        const settleIds = (inv.invoiceJobBalances ?? [])
+          .filter(b => b.owing > 0.01).map(b => b.job.id);
+        (inv.otherOutstanding ?? []).forEach(b => settleIds.push(b.job.id));
+        setSelectedIds(new Set(settleIds));
+        // Default all other outstanding to checked for add-to-invoice panel
+        setAddJobIds(new Set((inv.otherOutstanding ?? []).map(b => b.job.id)));
         return inv;
       });
   }
@@ -93,21 +98,26 @@ export default function InvoiceView() {
   if (error)   return <div style={{ padding: 40, textAlign: 'center', fontFamily: 'var(--font-ui)', color: 'var(--ink-muted)' }}>This invoice couldn't be loaded. Please contact Sandra at (416) 738-0309.</div>;
   if (!invoice) return <div style={{ padding: 40, textAlign: 'center', fontFamily: 'var(--font-ui)', color: 'var(--ink-muted)' }}>Invoice not found.</div>;
 
-  const biz       = invoice.businesses || {};
-  const client    = invoice.clients    || {};
-  const job       = invoice.invoice_jobs?.[0]?.jobs || {};
-  const isReceipt = !!invoice.isPaidInFull;
-
-  const financials = computeJobFinancials(job, biz);
+  const biz            = invoice.businesses || {};
+  const client         = invoice.clients    || {};
+  const allInvoiceJobs = (invoice.invoice_jobs || []).map(ij => ij.jobs).filter(Boolean);
+  const isReceipt      = !!invoice.isPaidInFull;
+  const anyHourly      = allInvoiceJobs.some(j => j.pricing_type === 'Hourly');
+  const allFinancials  = allInvoiceJobs.map(j => computeJobFinancials(j, biz));
+  const aggSubtotal    = allFinancials.reduce((s, f) => s + f.subtotal, 0);
+  const aggAdditional  = allFinancials.reduce((s, f) => s + f.additionalTotal, 0);
+  const aggTax         = allFinancials.reduce((s, f) => s + f.taxAmount, 0);
+  const aggTotal       = allFinancials.reduce((s, f) => s + f.total, 0);
+  const aggTaxRate     = allFinancials[0]?.taxRate || 0;
   const logoSrc    = biz.logo_url || '/branding/logo-final.png';
   const bizCity    = [biz.city, biz.province].filter(Boolean).join(', ');
   const clientCity = [[client.city, client.province].filter(Boolean).join(', '), client.postal_code].filter(Boolean).join(' ');
 
-  // Outstanding jobs that the owner can settle from this invoice (current job + others).
+  // Jobs the owner can mark paid from this page: all invoice-linked jobs + other outstanding
   const outstandingJobs = [];
-  if (job?.id && invoice.balanceOwing > 0.01) {
-    outstandingJobs.push({ id: job.id, label: job.service_name || 'Professional Services', date: job.scheduled_date, owing: invoice.balanceOwing, isCurrent: true });
-  }
+  (invoice.invoiceJobBalances ?? []).forEach(b => {
+    if (b.owing > 0.01) outstandingJobs.push({ id: b.job.id, label: b.job.service_name || 'Professional Services', date: b.job.scheduled_date, owing: b.owing, isCurrent: true });
+  });
   (invoice.otherOutstanding ?? []).forEach(b => {
     outstandingJobs.push({ id: b.job.id, label: b.job.service_name || 'Professional Services', date: b.job.scheduled_date, owing: b.owing, isCurrent: false });
   });
@@ -123,6 +133,31 @@ export default function InvoiceView() {
       if (next.has(jobId)) next.delete(jobId); else next.add(jobId);
       return next;
     });
+  }
+
+  function toggleAddJob(jobId) {
+    setAddJobIds(prev => {
+      const next = new Set(prev);
+      if (next.has(jobId)) next.delete(jobId); else next.add(jobId);
+      return next;
+    });
+  }
+
+  async function handleAddJobs() {
+    if (addingRef.current || addJobIds.size === 0) return;
+    addingRef.current = true;
+    setAddState('saving');
+    try {
+      await addJobsToInvoice(id, [...addJobIds]);
+      await reload();
+      setAddState('idle');
+    } catch (e) {
+      console.error('Add jobs error:', e);
+      setAddState('error');
+      setTimeout(() => setAddState('idle'), 4000);
+    } finally {
+      addingRef.current = false;
+    }
   }
 
   async function handleSettle() {
@@ -328,6 +363,40 @@ export default function InvoiceView() {
         </div>
       </div>
 
+      {/* Owner-only: add other outstanding jobs to this invoice as line items */}
+      {isOwner && !invoice.isPaidInFull && (invoice.otherOutstanding?.length ?? 0) > 0 && (
+        <div className="no-print" style={{ maxWidth: 800, margin: '0 auto 15px', background: 'white', border: '1.5px solid #EAE2D8', borderRadius: 12, padding: '14px 16px' }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 4 }}>Add to this invoice</div>
+          <div style={{ fontSize: 12, color: '#888', marginBottom: 10 }}>Include outstanding jobs as line items before sending</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+            {(invoice.otherOutstanding ?? []).map(b => (
+              <label key={b.job.id} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, color: '#333' }}>
+                <input type="checkbox" checked={addJobIds.has(b.job.id)} onChange={() => toggleAddJob(b.job.id)} style={{ width: 18, height: 18, accentColor: '#E91E6A' }} />
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  {b.job.service_name || 'Professional Services'}
+                  <span style={{ color: '#999' }}>{b.job.scheduled_date ? ` · ${formatDate(b.job.scheduled_date)}` : ''}</span>
+                </span>
+                <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>${b.owing.toFixed(2)}</span>
+              </label>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={handleAddJobs}
+            disabled={addJobIds.size === 0 || addState === 'saving'}
+            style={{
+              width: '100%',
+              background: addState === 'saving' ? '#ccc' : addJobIds.size === 0 ? '#eee' : 'var(--pink)',
+              color: addJobIds.size === 0 ? '#aaa' : 'white', border: 'none',
+              padding: '10px 14px', borderRadius: 8, fontSize: 14, fontWeight: 700,
+              cursor: addJobIds.size === 0 || addState === 'saving' ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {addState === 'saving' ? 'Updating…' : addState === 'error' ? '✗ Failed — retry' : `Add ${addJobIds.size} job${addJobIds.size !== 1 ? 's' : ''} to invoice`}
+          </button>
+        </div>
+      )}
+
       {/* Owner-only payment panel — never printed / not on PDF */}
       {showSettlePanel && (
         <div className="no-print" style={{ maxWidth: 800, margin: '0 auto 15px', background: 'white', border: '1.5px solid #FFD6E8', borderRadius: 12, padding: '14px 16px' }}>
@@ -443,50 +512,48 @@ export default function InvoiceView() {
               <tr style={{ background: '#EAE2D8', fontSize: 10, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#555' }}>
                 <th style={{ textAlign: 'left', padding: '8px 14px', width: 130 }}>Date</th>
                 <th style={{ textAlign: 'left', padding: '8px 14px' }}>Description</th>
-                {financials.isHourly && <th style={{ textAlign: 'center', padding: '8px 14px', width: 85 }}>Rate / Hr</th>}
-                {financials.isHourly && <th style={{ textAlign: 'center', padding: '8px 14px', width: 75 }}>Hours</th>}
+                {anyHourly && <th style={{ textAlign: 'center', padding: '8px 14px', width: 85 }}>Rate / Hr</th>}
+                {anyHourly && <th style={{ textAlign: 'center', padding: '8px 14px', width: 75 }}>Hours</th>}
                 <th style={{ textAlign: 'right', padding: '8px 14px', width: 100 }}>Amount</th>
               </tr>
             </thead>
             <tbody style={{ fontSize: 13, lineHeight: 1.4 }}>
-
-              {/* Service row */}
-              <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
-                <td style={{ padding: '8px 14px', color: '#555', verticalAlign: 'top' }}>
-                  {job.scheduled_date ? formatDate(job.scheduled_date) : '—'}
-                </td>
-                <td style={{ padding: '8px 14px', verticalAlign: 'top' }}>
-                  <div style={{ fontWeight: 600 }}>{job.service_name || 'Professional Services'}</div>
-                </td>
-                {financials.isHourly && <td style={{ textAlign: 'center', padding: '8px 14px', color: '#555', verticalAlign: 'top' }}>${financials.rate.toFixed(2)}</td>}
-                {financials.isHourly && <td style={{ textAlign: 'center', padding: '8px 14px', color: '#555', verticalAlign: 'top' }}>{financials.hours.toFixed(1)}</td>}
-                <td style={{ textAlign: 'right', padding: '8px 14px', fontWeight: 600, verticalAlign: 'top' }}>
-                  ${financials.subtotal.toFixed(2)}
-                </td>
-              </tr>
-
-              {/* Additional cost rows */}
-              {financials.activeCosts.map((item, idx) => (
-                <tr key={idx} style={{ borderBottom: '1px solid #f0f0f0', background: '#fafafa' }}>
-                  <td style={{ padding: '6px 14px', verticalAlign: 'top' }}></td>
-                  <td style={{ padding: '6px 14px', verticalAlign: 'top' }}>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 9, fontWeight: 700, color: '#B01550', letterSpacing: '1px', textTransform: 'uppercase' }}>
-                        Additional Cost
-                      </span>
-                      <span style={{ fontWeight: 500, color: '#333' }}>
-                        {item.description || 'Miscellaneous'}
-                      </span>
-                    </div>
-                  </td>
-                  {financials.isHourly && <td style={{ textAlign: 'center', padding: '6px 14px', verticalAlign: 'top' }}></td>}
-                  {financials.isHourly && <td style={{ textAlign: 'center', padding: '6px 14px', verticalAlign: 'top' }}></td>}
-                  <td style={{ textAlign: 'right', padding: '6px 14px', fontWeight: 500, verticalAlign: 'top' }}>
-                    ${Number(item.amount).toFixed(2)}
-                  </td>
-                </tr>
-              ))}
-
+              {allInvoiceJobs.map((j, idx) => {
+                const f = allFinancials[idx];
+                return (
+                  <Fragment key={j.id}>
+                    <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
+                      <td style={{ padding: '8px 14px', color: '#555', verticalAlign: 'top' }}>
+                        {j.scheduled_date ? formatDate(j.scheduled_date) : '—'}
+                      </td>
+                      <td style={{ padding: '8px 14px', verticalAlign: 'top' }}>
+                        <div style={{ fontWeight: 600 }}>{j.service_name || 'Professional Services'}</div>
+                      </td>
+                      {anyHourly && <td style={{ textAlign: 'center', padding: '8px 14px', color: '#555', verticalAlign: 'top' }}>{f.isHourly ? `$${f.rate.toFixed(2)}` : ''}</td>}
+                      {anyHourly && <td style={{ textAlign: 'center', padding: '8px 14px', color: '#555', verticalAlign: 'top' }}>{f.isHourly ? f.hours.toFixed(1) : ''}</td>}
+                      <td style={{ textAlign: 'right', padding: '8px 14px', fontWeight: 600, verticalAlign: 'top' }}>
+                        ${f.subtotal.toFixed(2)}
+                      </td>
+                    </tr>
+                    {f.activeCosts.map((item, i) => (
+                      <tr key={i} style={{ borderBottom: '1px solid #f0f0f0', background: '#fafafa' }}>
+                        <td style={{ padding: '6px 14px', verticalAlign: 'top' }}></td>
+                        <td style={{ padding: '6px 14px', verticalAlign: 'top' }}>
+                          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: 9, fontWeight: 700, color: '#B01550', letterSpacing: '1px', textTransform: 'uppercase' }}>Additional Cost</span>
+                            <span style={{ fontWeight: 500, color: '#333' }}>{item.description || 'Miscellaneous'}</span>
+                          </div>
+                        </td>
+                        {anyHourly && <td style={{ textAlign: 'center', padding: '6px 14px', verticalAlign: 'top' }}></td>}
+                        {anyHourly && <td style={{ textAlign: 'center', padding: '6px 14px', verticalAlign: 'top' }}></td>}
+                        <td style={{ textAlign: 'right', padding: '6px 14px', fontWeight: 500, verticalAlign: 'top' }}>
+                          ${Number(item.amount).toFixed(2)}
+                        </td>
+                      </tr>
+                    ))}
+                  </Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -512,19 +579,19 @@ export default function InvoiceView() {
           <div style={{ width: 280, flexShrink: 0 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 14px', fontSize: 13, color: '#555' }}>
               <div>Subtotal</div>
-              <div>${(financials.subtotal + financials.additionalTotal).toFixed(2)}</div>
+              <div>${(aggSubtotal + aggAdditional).toFixed(2)}</div>
             </div>
-            {financials.taxAmount > 0 && (
+            {aggTax > 0 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 14px', fontSize: 13, color: '#555' }}>
-                <div>HST ({(financials.taxRate * 100).toFixed(0)}%)</div>
-                <div>${financials.taxAmount.toFixed(2)}</div>
+                <div>HST ({(aggTaxRate * 100).toFixed(0)}%)</div>
+                <div>${aggTax.toFixed(2)}</div>
               </div>
             )}
             <div style={{ background: '#EAE2D8', padding: '9px 14px', marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: 6 }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#555' }}>Invoice Total</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 {invoice.isPaidInFull && <div style={{ fontSize: 11, fontWeight: 700, color: '#16A34A' }}>✓ Paid</div>}
-                <div className="inv-display" style={{ fontSize: 18, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: invoice.isPaidInFull ? '#16A34A' : 'inherit' }}>${financials.total.toFixed(2)}</div>
+                <div className="inv-display" style={{ fontSize: 18, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: invoice.isPaidInFull ? '#16A34A' : 'inherit' }}>${aggTotal.toFixed(2)}</div>
               </div>
             </div>
             {!invoice.isPaidInFull && invoice.payments?.length > 0 && (

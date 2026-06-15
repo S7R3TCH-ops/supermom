@@ -145,12 +145,12 @@ async function handleEmail(req, res) {
 
   let pdfBuffer = null;
   let isReceipt = false;
-  let jobId = null;
+  let jobIds    = [];
   if (invoiceData) {
     try {
       const decorated = await decorateInvoiceWithBalances(sb, invoiceData);
       isReceipt = !!decorated.isPaidInFull;
-      jobId = invoiceData.invoice_jobs?.[0]?.job_id || null;
+      jobIds    = (invoiceData.invoice_jobs ?? []).map(ij => ij.job_id).filter(Boolean);
       pdfBuffer = await buildInvoicePdfBuffer(decorated);
     } catch (err) {
       console.error('[invoice/email] PDF generation failed:', err);
@@ -179,9 +179,9 @@ async function handleEmail(req, res) {
       }] : [],
     });
 
-    if (jobId) {
+    if (jobIds.length) {
       const sentField = isReceipt ? 'receipt_sent_at' : 'invoice_sent_at';
-      await sb.from('jobs').update({ [sentField]: new Date().toISOString() }).eq('id', jobId);
+      await sb.from('jobs').update({ [sentField]: new Date().toISOString() }).in('id', jobIds);
     }
 
     return res.status(200).json({ ok: true, isReceipt });

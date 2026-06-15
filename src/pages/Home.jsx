@@ -76,27 +76,6 @@ export default function Home() {
     return () => clearInterval(id);
   }, []);
 
-  // Resume handler: refresh clock, reload if date changed or away >30 min, re-fetch drives if stale
-  useEffect(() => {
-    let hiddenAt = null;
-    function onVisibility() {
-      if (document.hidden) { hiddenAt = Date.now(); return; }
-      const awayMs = hiddenAt ? Date.now() - hiddenAt : 0;
-      hiddenAt = null;
-      setNow(new Date());
-      if (awayMs > 30 * 60 * 1000 || !sameDay(new Date(), today)) {
-        window.location.reload();
-        return;
-      }
-      if (todayJobs.length > 0 && Date.now() - lastFetchTimeRef.current > 10 * 60 * 1000) {
-        fetchLocationDrives();
-      }
-    }
-    document.addEventListener('visibilitychange', onVisibility);
-    return () => document.removeEventListener('visibilitychange', onVisibility);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [todayJobs, today]);
-
   const { T = {}, mode, privacyOn } = themeCtx || {};
   const { jobs: allJobs, loading } = jobsCtx || {};
   const { profile } = authCtx || {};
@@ -144,6 +123,29 @@ export default function Home() {
       .filter(j => j && sameDay(j.start, today) && j.status !== 'Cancelled')
       .sort((a, b) => a.start - b.start);
   }, [allJobs, today]);
+
+  // Resume handler: refresh clock, reload if date changed or away >30 min, re-fetch drives if stale.
+  // Placed here (after todayJobs) to avoid TDZ — todayJobs is const, accessing it in the dep array
+  // before its declaration crashes the production bundle.
+  useEffect(() => {
+    let hiddenAt = null;
+    function onVisibility() {
+      if (document.hidden) { hiddenAt = Date.now(); return; }
+      const awayMs = hiddenAt ? Date.now() - hiddenAt : 0;
+      hiddenAt = null;
+      setNow(new Date());
+      if (awayMs > 30 * 60 * 1000 || !sameDay(new Date(), today)) {
+        window.location.reload();
+        return;
+      }
+      if (todayJobs.length > 0 && Date.now() - lastFetchTimeRef.current > 10 * 60 * 1000) {
+        fetchLocationDrives();
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [todayJobs, today]);
 
   const allDone = todayJobs.length > 0 && !todayJobs.some(j => j.status === 'Scheduled' || j.payment_status !== 'Paid');
 

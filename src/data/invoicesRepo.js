@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { getCurrentBusinessId } from './currentBusiness';
-import { computeJobTotal } from '../lib/financialMath';
+import { computeJobTotal, computeJobFinancials } from '../lib/financialMath';
 import { decorateInvoiceWithBalances } from '../lib/invoiceBalances';
 
 /**
@@ -139,12 +139,12 @@ const torontoToday = () =>
 export async function settleInvoiceOutstanding(invoiceId, method = 'Cash', jobIds = null) {
   const businessId = await getCurrentBusinessId();
   const invoice = await fetchInvoiceById(invoiceId); // fresh balances — recompute at call time
-  const currentJob = invoice.invoice_jobs?.[0]?.jobs || null;
 
+  // Include all invoice-linked jobs (not just first) plus other outstanding
   const candidates = [];
-  if (currentJob && invoice.balanceOwing > 0.01) {
-    candidates.push({ jobId: currentJob.id, owing: invoice.balanceOwing });
-  }
+  (invoice.invoiceJobBalances ?? []).forEach(b => {
+    if (b.owing > 0.01) candidates.push({ jobId: b.job.id, owing: b.owing });
+  });
   (invoice.otherOutstanding ?? []).forEach(b => {
     if (b.owing > 0.01) candidates.push({ jobId: b.job.id, owing: b.owing });
   });
@@ -252,6 +252,80 @@ export async function voidInvoiceSettlement(invoiceId, jobId = null) {
   }
 
   return { voided: ids.length };
+}
+
+/**
+ * Links additional jobs to an existing invoice as extra line items.
+ *
+ * For each job: if it belongs to a different invoice, that link is removed and the
+ * old invoice is voided if it becomes empty. The invoice total_amount is recalculated
+ * from all linked jobs after the operation.
+ *
+ * @param {string} invoiceId
+ * @param {string[]} extraJobIds - job IDs to add to this invoice
+ */
+export async function addJobsToInvoice(invoiceId, extraJobIds) {
+  if (!extraJobIds?.length) return invoiceId;
+  const businessId = await getCurrentBusinessId();
+
+  // Need business data for accurate tax-aware total computation
+  const { data: bizData } = await supabase
+    .from('businesses').select('*').eq('id', businessId).single();
+
+  for (const jobId of extraJobIds) {
+    const { data: existing } = await supabase
+      .from('invoice_jobs')
+      .select('invoice_id')
+      .eq('job_id', jobId)
+      .eq('business_id', businessId)
+      .maybeSingle();
+
+    if (existing?.invoice_id === invoiceId) continue; // already on this invoice
+
+    if (existing) {
+      await supabase.from('invoice_jobs')
+        .delete()
+        .eq('job_id', jobId)
+        .eq('business_id', businessId);
+
+      // Void old invoice if it now has no jobs
+      const { count } = await supabase
+        .from('invoice_jobs')
+        .select('id', { count: 'exact', head: true })
+        .eq('invoice_id', existing.invoice_id)
+        .eq('business_id', businessId);
+
+      if ((count ?? 0) === 0) {
+        await supabase.from('invoices')
+          .update({ status: 'Void' })
+          .eq('id', existing.invoice_id)
+          .eq('business_id', businessId);
+      }
+    }
+
+    const { error: linkErr } = await supabase
+      .from('invoice_jobs')
+      .insert({ business_id: businessId, invoice_id: invoiceId, job_id: jobId });
+    if (linkErr) throw linkErr;
+  }
+
+  // Recalculate combined total_amount across all linked jobs
+  const { data: allLinks } = await supabase
+    .from('invoice_jobs')
+    .select('jobs(*)')
+    .eq('invoice_id', invoiceId)
+    .eq('business_id', businessId);
+
+  const newTotal = Math.round(
+    (allLinks ?? []).reduce((s, link) => s + computeJobFinancials(link.jobs, bizData).total, 0) * 100
+  ) / 100;
+
+  await supabase.from('invoices')
+    .update({ total_amount: newTotal })
+    .eq('id', invoiceId)
+    .eq('business_id', businessId);
+
+  return invoiceId;
 }
 
 /**

@@ -53,12 +53,23 @@ class ErrorBoundary extends Component {
     this.state = { hasError: false, error: null };
   }
   static getDerivedStateFromError(error) {
-    return { hasError: true, error };
+    const isChunkError = error?.message?.includes('Failed to fetch dynamically imported module') ||
+      error?.message?.includes('Importing a module script failed');
+    return { hasError: true, error, isChunkError };
   }
   componentDidCatch(error, errorInfo) {
+    const isChunkError = error?.message?.includes('Failed to fetch dynamically imported module') ||
+      error?.message?.includes('Importing a module script failed');
+    if (isChunkError) {
+      window.location.reload();
+      return;
+    }
     console.error("ErrorBoundary caught an error", error, errorInfo);
   }
   render() {
+    if (this.state.hasError && this.state.isChunkError) {
+      return null; // reloading after stale chunk
+    }
     if (this.state.hasError) {
       return (
         <div style={{

@@ -143,9 +143,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
     const jobDate = new Date(job.scheduled_date + 'T00:00:00');
     const today = new Date();
     today.setHours(0,0,0,0);
-    if (jobDate > today) {
-      if (!window.confirm("Great Scott! This job is scheduled for the future. Are you sure?")) return;
-    }
+    if (jobDate > today) { setFutureConfirmType('complete'); return; }
     onClose();
     openPostJob(job.id);
   }
@@ -154,9 +152,13 @@ export default function JobDetailSheet({ jobId, onClose }) {
     const jobDate = new Date(job.scheduled_date + 'T00:00:00');
     const today = new Date();
     today.setHours(0,0,0,0);
-    if (jobDate > today) {
-      if (!window.confirm("1.21 Gigawatts! You're marking a future job as paid. Sure?")) return;
-    }
+    if (jobDate > today) { setFutureConfirmType('paid'); return; }
+    onClose();
+    openPostJob(job.id);
+  }
+
+  function proceedFutureAction() {
+    setFutureConfirmType(null);
     onClose();
     openPostJob(job.id);
   }
@@ -187,6 +189,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
   }
 
   const [markUnpaidConfirm, setMarkUnpaidConfirm] = useState(false);
+  const [futureConfirmType, setFutureConfirmType] = useState(null); // 'complete' | 'paid' | null
   async function handleMarkUnpaid() {
     setBusy(true); setMutErr(null);
     try {
@@ -375,6 +378,9 @@ export default function JobDetailSheet({ jobId, onClose }) {
             onEdit={openEditMode}
             onUpdate={(patch) => updateJob(job.id, patch).then(() => notifyDataChanged())}
             onDeepPrep={() => setShowDeepPrep(true)}
+            futureConfirmType={futureConfirmType}
+            onFutureConfirmProceed={proceedFutureAction}
+            onFutureConfirmCancel={() => setFutureConfirmType(null)}
           />
         )}
 
@@ -406,6 +412,7 @@ function ReadMode({
   onClose, onMarkComplete, onMarkPaid, onMarkWorkerPaid, onCancelConfirm, onConfirmDelete, onDismissConfirm, onEdit, onUpdate, onDeepPrep,
   hardDeleteConfirm, onHardDeleteConfirm, onHardDeleteCancel, onHardDelete,
   markUnpaidConfirm, onMarkUnpaidConfirm, onMarkUnpaidCancel, onMarkUnpaid,
+  futureConfirmType, onFutureConfirmProceed, onFutureConfirmCancel,
 }) {
   const navigate = useNavigate();
   const statusC = STATUS_COLORS[job.job_status] || STATUS_COLORS.Scheduled;
@@ -430,8 +437,8 @@ function ReadMode({
         <div style={{ position: 'absolute', top: -40, right: -20, width: 140, height: 140, borderRadius: '50%', background: `radial-gradient(circle,${T.pinkGlow} 0%,transparent 70%)`, pointerEvents: 'none' }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4, position: 'relative' }}>
           <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', color: mode === 'dark' ? '#FF78B0' : T.pink }}>{job.service_name || 'Job'}</div>
-          <button onClick={onClose} style={{
-            width: 32, height: 32, borderRadius: '50%',
+          <button onClick={onClose} aria-label="Close" style={{
+            width: 32, height: 32, borderRadius: '50%', padding: 6, boxSizing: 'content-box',
             background: mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.07)',
             border: `1.5px solid ${mode === 'dark' ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.08)'}`,
             color: mode === 'dark' ? 'rgba(255,255,255,0.85)' : T.ink,
@@ -506,14 +513,25 @@ function ReadMode({
 
       {!confirm && (
         <div style={{ padding: '10px 14px 28px', borderTop: `1px solid ${T.cardBorder}`, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {!isCancelled && isScheduled && <Btn onClick={onMarkComplete} disabled={busy} bg="#22C55E" color="white" T={T}>Mark Complete</Btn>}
-          {!isCancelled && !isPaid && <Btn onClick={onMarkPaid} disabled={busy} bg="#E91E6A" color="white" T={T}>Mark Paid</Btn>}
-          {!isCancelled && isPaid && Number(job.raw?.worker_pay) > 0 && !job.raw?.worker_paid && (
+          {futureConfirmType && (
+            <div style={{ padding: '12px', borderRadius: 12, background: 'rgba(233,30,106,0.08)', border: '1px solid rgba(233,30,106,0.3)' }}>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: T.ink, marginBottom: 10 }}>
+                This job is on {fmtDate(job.scheduled_date)} — mark it {futureConfirmType === 'complete' ? 'complete' : 'paid'} anyway?
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <Btn onClick={onFutureConfirmCancel} bg={T.card} border={`1px solid ${T.cardBorder}`} color={T.inkSub} T={T} style={{ flex: 1 }}>Not yet</Btn>
+                <Btn onClick={onFutureConfirmProceed} bg="#E91E6A" color="white" T={T} style={{ flex: 1 }}>Yes, continue</Btn>
+              </div>
+            </div>
+          )}
+          {!futureConfirmType && !isCancelled && isScheduled && <Btn onClick={onMarkComplete} disabled={busy} bg="#22C55E" color="white" T={T}>Mark Complete</Btn>}
+          {!futureConfirmType && !isCancelled && !isPaid && <Btn onClick={onMarkPaid} disabled={busy} bg="#E91E6A" color="white" T={T}>Mark Paid</Btn>}
+          {!futureConfirmType && !isCancelled && isPaid && Number(job.raw?.worker_pay) > 0 && !job.raw?.worker_paid && (
             <Btn onClick={onMarkWorkerPaid} disabled={busy} bg="#F59E0B" color="white" T={T}>
               🦸 Mark {job.raw?.worker_name || 'Team Member'} Paid — ${Number(job.raw.worker_pay).toFixed(0)}
             </Btn>
           )}
-          {!isCancelled && (
+          {!futureConfirmType && !isCancelled && (
             <Btn
               onClick={invoiceId ? () => { if (window.confirm('This job has an invoice. Editing may cause the invoice total to diverge. Continue?')) onEdit(); } : onEdit}
               bg={T.card} border={`1.5px solid ${T.cardBorder}`} color={T.ink} T={T}
@@ -522,7 +540,7 @@ function ReadMode({
             </Btn>
           )}
 
-          {isScheduled && !showCancelForm && (
+          {!futureConfirmType && isScheduled && !showCancelForm && (
             <button
               onClick={() => onSetShowCancelForm(true)}
               style={{ background: 'transparent', border: 'none', fontSize: 12.5, color: '#F59E0B', padding: '4px 0', cursor: 'pointer', fontFamily: T.font, fontWeight: 600 }}
@@ -530,7 +548,7 @@ function ReadMode({
               Cancel Booking
             </button>
           )}
-          {showCancelForm && (
+          {!futureConfirmType && showCancelForm && (
             <div style={{ background: mode === 'dark' ? 'rgba(245,158,11,0.08)' : '#FFFBEB', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 12, padding: 12 }}>
               <div style={{ fontFamily: T.font, fontSize: 11, fontWeight: 700, color: '#B45309', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.4px' }}>Reason for cancellation</div>
               <textarea
@@ -553,7 +571,7 @@ function ReadMode({
             </div>
           )}
 
-          {isAdmin && (
+          {!futureConfirmType && isAdmin && (
             <>
               <div style={{ height: 1, background: T.cardBorder, margin: '4px 0' }} />
               {(job.payment_status === 'Paid' || job.payment_status === 'Partial') && (
@@ -679,12 +697,8 @@ function EditMode({ job, form, setForm, services, workers, business, T, mode, bu
       <div style={{ padding: '8px 14px 10px', borderBottom: `1px solid ${T.cardBorder}` }}>
         <div style={{ fontSize: 9, fontWeight: 700, color: '#FF78B0', textTransform: 'uppercase' }}>Editing Job</div>
       </div>
-      <div className="sm-scroll" style={{
-        flex: 1,
-        overflowY: 'auto',
-        padding: `12px 14px ${isKeyboardFocused ? '260px' : '4px'}`,
-        transition: 'padding-bottom 0.2s ease-out'
-      }}>
+      <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '12px 14px 4px' }}>
+        <SectionDivider label="Schedule & Service" T={T} />
         <Field T={T} label="Date"><input type="date" value={form.scheduled_date} onChange={e => set('scheduled_date', e.target.value)} style={iStyle(T)} /></Field>
         <Field T={T} label="Time">
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 18px 1fr', alignItems: 'end', gap: 4 }}>
@@ -714,6 +728,7 @@ function EditMode({ job, form, setForm, services, workers, business, T, mode, bu
             {services.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </Field>
+        <SectionDivider label="Financials" T={T} />
         <Field T={T} label="Pricing">
           <div style={{ display: 'flex', gap: 6 }}>
             {['Flat', 'Hourly'].map(p => <button key={p} onClick={() => {
@@ -764,6 +779,7 @@ function EditMode({ job, form, setForm, services, workers, business, T, mode, bu
           </div>
         </Field>
 
+        <SectionDivider label="Details" T={T} />
         <Field T={T} label="Recurrence">
           <select value={form.recurrence || ''} onChange={e => set('recurrence', e.target.value || null)} style={{ ...iStyle(T), width: '100%' }}>
             {RECURRENCE.map(r => <option key={r.label} value={r.key || ''}>{r.label}</option>)}
@@ -771,6 +787,8 @@ function EditMode({ job, form, setForm, services, workers, business, T, mode, bu
         </Field>
         <Field T={T} label="Notes"><textarea rows={3} value={form.job_notes} onChange={e => set('job_notes', e.target.value)} style={{ ...iStyle(T), width: '100%', resize: 'vertical' }} /></Field>
         {workers && workers.length > 0 && (
+          <>
+          <SectionDivider label="Team" T={T} />
           <Field T={T} label="Team Member">
             <select
               value={form.worker_id || ''}
@@ -806,6 +824,7 @@ function EditMode({ job, form, setForm, services, workers, business, T, mode, bu
               )}
             </select>
           </Field>
+          </>
         )}
         {form.worker_id && (
           <Field T={T} label="Pay for this job ($)"><input type="number" value={form.worker_pay} onChange={e => set('worker_pay', e.target.value)} style={{ ...iStyle(T), width: '100%' }} /></Field>
@@ -843,6 +862,7 @@ function EditMode({ job, form, setForm, services, workers, business, T, mode, bu
           </Field>
         )}
         <SeriesPicker show={showSeriesPicker} onChoice={onSeriesChoice} onCancel={() => onSeriesChoice(null)} busy={busy} T={T} mode={mode} />
+        {isKeyboardFocused && <div style={{ height: 260 }} aria-hidden="true" />}
       </div>
       <div style={{ padding: '10px 14px 28px', borderTop: `1px solid ${T.cardBorder}`, display: 'flex', gap: 8 }}>
         <Btn onClick={onCancelEdit} bg={T.card} border={`1.5px solid ${T.cardBorder}`} color={T.inkSub} T={T} style={{ flex: 1 }}>Cancel</Btn>
@@ -857,7 +877,10 @@ function Row({ T, label, value, last, serif, tabular, highlight }) { return <><d
 function Pill({ bg, border, color, children }) { return <span style={{ padding: '3px 8px', borderRadius: 20, background: bg, border: `1px solid ${border}`, fontSize: 10.5, fontWeight: 600, color }}>{children}</span>; }
 function Btn({ onClick, disabled, bg, border, color, children, T, style: extra }) { return <button onClick={onClick} disabled={disabled} style={{ padding: '11px 14px', borderRadius: 12, background: bg, border: border || 'none', color, fontFamily: T.font, fontSize: 13, fontWeight: 600, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.6 : 1, width: '100%', ...extra }}>{children}</button>; }
 function Field({ T, label, children, last }) { return <div style={{ marginBottom: last ? 0 : 14 }}><div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: T.inkMuted, marginBottom: 5 }}>{label}</div>{children}</div>; }
-function iStyle(T) { return { background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 8, padding: '9px 11px', color: T.ink, fontSize: 13, outline: 'none', width: '100%', boxSizing: 'border-box' }; }
+function iStyle(T) { return { background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 8, padding: '9px 11px', color: T.ink, fontSize: 13, width: '100%', boxSizing: 'border-box' }; }
+function SectionDivider({ label, T }) {
+  return <div style={{ fontFamily: T.serif, fontSize: 10, fontWeight: 600, letterSpacing: '0.7px', textTransform: 'uppercase', color: T.inkMuted, margin: '20px 0 8px', paddingBottom: 6, borderBottom: `1px solid ${T.cardBorder}` }}>{label}</div>;
+}
 function SeriesPicker({ show, onChoice, busy, T, mode }) { 
   if (!show) return null; 
   return (
@@ -993,5 +1016,5 @@ function MediaCard({ job, T, mode, onUpdate }) {
     if (job.voice_note) getSignedUrl(job.voice_note).then(setVoiceUrl); 
   }, [job.photo_links, job.voice_note]);
   async function handlePhotoUpload(e) { const file = e.target.files?.[0]; if (!file) return; try { const path = await uploadFile(job.id, file, 'photo'); await onUpdate({ photo_links: [...photoPaths, path].join(',') }); } catch (err) { alert(err.message); } }
-  return <InfoCard T={T}><div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: T.inkMuted, marginBottom: 6 }}>Media</div>{photoUrls.length > 0 && <div className="sm-scroll" style={{ display: 'flex', gap: 8, overflowX: 'auto', marginBottom: 8 }}>{photoUrls.map((url, i) => <img key={i} src={url} alt="" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8 }} />)}</div>}{voiceUrl && <div style={{ marginBottom: 12 }}><audio controls src={voiceUrl} style={{ width: '100%', height: 32 }} /></div>}<div style={{ display: 'flex', gap: 8 }}><input type="file" accept="image/*" ref={fileInputRef} onChange={handlePhotoUpload} style={{ display: 'none' }} /><Btn onClick={() => fileInputRef.current?.click()} bg={mode === 'dark' ? 'rgba(255,255,255,0.05)' : T.pinkTint} color={T.pink} T={T} style={{ flex: 1, padding: '8px 0', fontSize: 11.5 }}>📸 Add Photo</Btn></div></InfoCard>;
+  return <InfoCard T={T}><div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: T.inkMuted, marginBottom: 6 }}>Media</div>{photoUrls.length > 0 && <div className="sm-scroll" style={{ display: 'flex', gap: 8, overflowX: 'auto', marginBottom: 8 }}>{photoUrls.map((url, i) => <img key={i} src={url} alt="" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8 }} />)}</div>}{voiceUrl && <div style={{ marginBottom: 12 }}><audio controls src={voiceUrl} style={{ width: '100%', height: 32 }} /></div>}<div style={{ display: 'flex', gap: 8 }}><input type="file" accept="image/*" aria-label="Add photo" ref={fileInputRef} onChange={handlePhotoUpload} style={{ display: 'none' }} /><Btn onClick={() => fileInputRef.current?.click()} bg={mode === 'dark' ? 'rgba(255,255,255,0.05)' : T.pinkTint} color={T.pink} T={T} style={{ flex: 1, padding: '8px 0', fontSize: 11.5 }}>📸 Add Photo</Btn></div></InfoCard>;
 }

@@ -21,7 +21,7 @@ import { triggerHaptic } from '../../lib/haptics';
 const STATUS_COLORS = {
   Scheduled: { bg: 'rgba(59,130,246,0.12)',   color: '#3B82F6', border: 'rgba(59,130,246,0.25)' },
   Completed:  { bg: 'rgba(34,197,94,0.12)',   color: '#22C55E', border: 'rgba(34,197,94,0.25)'  },
-  Cancelled:  { bg: 'rgba(107,114,128,0.12)', color: '#6B7280', border: 'rgba(107,114,128,0.25)' },
+  Cancelled:  { bg: 'rgba(55,65,81,0.12)',    color: '#374151', border: 'rgba(55,65,81,0.25)'    },
 };
 const PAY_COLORS = {
   Paid:    { bg: 'rgba(34,197,94,0.12)',   color: '#22C55E', border: 'rgba(34,197,94,0.25)'  },

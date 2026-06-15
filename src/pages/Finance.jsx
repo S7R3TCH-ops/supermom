@@ -16,7 +16,7 @@ const STATUS_PILL = {
   partial:   { bg: '#FEF3C7', color: '#92400E', label: 'Partial' },
   unpaid:    { bg: '#FFE0EC', color: '#9B0D3A', label: 'Unpaid' },
   scheduled: { bg: '#EFF6FF', color: '#1D4ED8', label: 'Scheduled' },
-  cancelled: { bg: '#F3F4F6', color: '#4B5563', label: 'Cancelled' },
+  cancelled: { bg: '#E5E7EB', color: '#374151', label: 'Cancelled' },
 };
 
 // Parse a date value — handles YYYY-MM-DD strings as local dates (not UTC)
@@ -537,7 +537,7 @@ export default function Finance() {
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: T.ink }}>${Number(inv.total_amount).toFixed(2)}</div>
-                    <div style={{ fontSize: 9, color: inv.status === 'Paid' ? '#10B981' : '#F59E0B', fontWeight: 700 }}>{inv.status.toUpperCase()}</div>
+                    <div style={{ fontSize: 9, color: inv.status === 'Paid' ? '#14532D' : '#FC4693', fontWeight: 700, background: inv.status === 'Paid' ? '#DCFCE7' : '#FFEFF4', padding: '2px 6px', borderRadius: 4, display: 'inline-block', letterSpacing: '0.4px' }}>{inv.status.toUpperCase()}</div>
                   </div>
                 </div>
               ))}

@@ -12,7 +12,7 @@ function formatDate(dateStr) {
 
 const CREAM   = '#EAE2D8';
 const FAINT   = '#F5F1EC';
-const PINK    = '#B01550';
+const PINK    = '#FC4693';
 const PAID    = '#16A34A';
 const INK     = '#1a1a1a';
 const MUTED   = '#555';

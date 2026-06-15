@@ -138,13 +138,14 @@ A mobile-first CRM & operations web app for **Sandra**, a solo personal-life-ope
 
 ---
 
-## Current version: 0.12.67 — Jun 15, 2026 (package.json synced)
+## Current version: 0.12.68 — Jun 15, 2026 (package.json synced)
 
 Sandra's business is live — data wiped and re-provisioned Jun 9. App in active use.
 
 **⚠️ Multi-client git discipline**: Always push local commits before starting an online Claude Code session; always pull before the online session writes code.
 
 ### Recent changes (full history in `docs/changelog/` + `git log`)
+- **v0.12.68 (Jun 15)** — Brand pink alignment: INVOICE heading on web preview (`InvoiceView.jsx`) + PDF builder (`api/_lib/invoicePdf.js`) changed from `#B01550` (dark crimson) → `#FC4693` (Sandra's actual brand pink). Finance.jsx invoice status badge upgraded from plain amber text → proper pill (`#FC4693`/`#FFEFF4` for non-Paid, green for Paid). Cancelled job pill darkened from medium gray `#6B7280` → charcoal `#374151` in JobDetailSheet + Finance STATUS_PILL (more contrast vs. Scheduled blue).
 - **v0.12.67 (Jun 15)** ⚠️ NOT YET DEVICE-TESTED — **Crash fix**: Home page TDZ bug — `visibilitychange` useEffect referenced `todayJobs` in its dep array before `todayJobs` was declared (const useMemo at line 134 vs useEffect at line 80); production bundle renamed it to `L`, causing "Cannot access 'L' before initialization" on every Home render — crashed app for all users on desktop Chrome, likely all browsers. Fixed by moving the useEffect to after `todayJobs`'s useMemo. Multi-job invoice: owner sees "Add to this invoice" panel on `/i/:id` — checkboxes default-checked for all outstanding same-client jobs; "Add N jobs to invoice" calls `addJobsToInvoice()` which re-links each job from its old standalone invoice (voiding it if now empty), recalculates `invoice.total_amount` with business-aware tax. Invoice web preview + PDF loop all `invoice_jobs` as line items (Rate/Hr column shown if ANY linked job is hourly). `settleInvoiceOutstanding` uses `invoiceJobBalances[]` (not just `invoice_jobs[0]`). `decorateInvoiceWithBalances` aggregates across all linked jobs; exposes `invoiceJobBalances[]`. `invoice_sent_at`/`receipt_sent_at` stamped on ALL linked jobs on email send. DB migration `invoice_jobs_job_id_unique UNIQUE (job_id)` — **already run**.
 - **v0.12.66 (Jun 15)** — Narrow selects: `fetchActiveJobs`+`fetchJobsByClientId` drop ~10 unused columns (review fields, reschedule history, legacy rates, timestamps) via `SELECT_LIST` (33/43 cols); `fetchClients` drops `phone2`, `referral_source`, `created_at`, `deleted_at`. Detail fetches (`fetchJobById`, `fetchClientById`) keep `*`. Closed open item #29.
 - **v0.12.65 (Jun 15)** — Egress reduction: `realtime.js` debounces `notifyDataChanged` 500ms so N rapid job writes (e.g. `updateDailyRoutes` writing 3 jobs) trigger 1 refresh instead of 3; `updateDailyRoutes` in `maps.js` now accepts display jobs (already have `address`) — removes redundant `fetchClients()` call; both Home.jsx callers updated. Closed open item #3.
@@ -204,7 +205,7 @@ Sandra's business is live — data wiped and re-provisioned Jun 9. App in active
 
 ### ⚠️ Infrastructure / housekeeping
 
-4. **Device verification** — v0.12.32–v0.12.67 not phone-tested. v0.12.67 crash fix deployed but unverified on real devices. Test Home page + invoice flow on Pixel 10 Pro + Sandra's iPhone before next feature push.
+4. **Device verification** — v0.12.32–v0.12.68 not phone-tested. v0.12.67 crash fix deployed but unverified on real devices. Test Home page + invoice flow on Pixel 10 Pro + Sandra's iPhone before next feature push.
 5. **Vercel function slot** — 9/12 used. One feature away from the limit. Options: consolidate `transcribe` into `ai/[action]`, or upgrade to Pro.
 
 ### 🤖 AI features (HIGH PRIORITY)

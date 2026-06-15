@@ -493,7 +493,7 @@ export default function InvoiceView() {
           </div>
 
           <div className="info-col-right" style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 26, fontWeight: 700, color: isReceipt ? '#16A34A' : '#B01550', letterSpacing: '2px', textTransform: 'uppercase', lineHeight: 1, marginBottom: 8 }}>{docLabel}</div>
+            <div style={{ fontSize: 26, fontWeight: 700, color: isReceipt ? '#16A34A' : '#FC4693', letterSpacing: '2px', textTransform: 'uppercase', lineHeight: 1, marginBottom: 8 }}>{docLabel}</div>
             <div className="invoice-meta" style={{ display: 'grid', gridTemplateColumns: 'auto auto', gap: '5px 14px', justifyContent: 'end' }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textAlign: 'right', alignSelf: 'center' }}>#</div>
               <div style={{ fontWeight: 600 }}>{invoice.invoice_number}</div>

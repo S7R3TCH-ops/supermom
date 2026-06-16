@@ -488,7 +488,18 @@ function ReadMode({
         <InfoCard T={T}>
           <Row T={T} label="Date" value={fmtDate(job.scheduled_date)} />
           <Row T={T} label="Time" value={timeRange} />
-          <Row T={T} label="Pricing" value={job.pricing_type || '—'} last={!job.worker_name} />
+          <Row T={T} label="Pricing" value={job.pricing_type || '—'} last={!job.worker_name && !job.distance_to_km && !job.distance_home_km} />
+          {(job.distance_to_km != null || job.distance_home_km != null) && (
+            <Row
+              T={T}
+              label="Drive"
+              value={[
+                job.distance_to_km != null ? `${Number(job.distance_to_km).toFixed(1)} km to client` : null,
+                job.distance_home_km != null ? `${Number(job.distance_home_km).toFixed(1)} km home` : null,
+              ].filter(Boolean).join(' · ')}
+              last={!job.worker_name}
+            />
+          )}
           {job.worker_name && (
             <Row T={T} label={job.assignee_type === 'staff' ? 'Wingmom' : 'Sidekick'} value={`${job.worker_name}${job.worker_pay != null ? ` · $${Number(job.worker_pay).toFixed(0)}` : ''}`} last />
           )}

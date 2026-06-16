@@ -67,7 +67,9 @@
       "Bash(npx madge *)",
       "Bash(git rebase *)",
       "Bash(rm -rf .git/rebase-merge && git status)",
-      "Bash(git *)"
+      "Bash(git *)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(npm list *)"
     ],
     "additionalDirectories": [
       "C:\\Projects\\supermom\\.git\\rebase-merge"

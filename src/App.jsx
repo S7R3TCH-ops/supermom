@@ -14,6 +14,7 @@ import { JobDetailSheetProvider } from './context/JobDetailSheet';
 import { FinanceDetailSheetProvider } from './context/FinanceDetailSheet';
 import { PostJobSheetProvider } from './context/PostJobSheet';
 import { EditClientSheetProvider } from './context/EditClientSheet';
+import { AiChatSheetProvider } from './context/AiChatSheet';
 import { GeofenceProvider } from './context/GeofenceContext';
 import LogoBar from './components/layout/LogoBar';
 import BottomNav from './components/layout/BottomNav';
@@ -415,9 +416,11 @@ function Gate() {
             <EditClientSheetProvider>
               <JobDetailSheetProvider>
                 <FinanceDetailSheetProvider>
-                  <GeofenceProvider>
-                    <AuthedShell />
-                  </GeofenceProvider>
+                  <AiChatSheetProvider>
+                    <GeofenceProvider>
+                      <AuthedShell />
+                    </GeofenceProvider>
+                  </AiChatSheetProvider>
                 </FinanceDetailSheetProvider>
               </JobDetailSheetProvider>
             </EditClientSheetProvider>

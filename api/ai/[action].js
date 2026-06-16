@@ -315,6 +315,13 @@ Generate the briefing now. Focus on patterns, preferences, or things she should 
   return res.status(200).json({ summary: response.content[0].text });
 }
 
+async function transcribeVoiceNote(req, res, supabase) {
+  const { filePath } = req.body;
+  if (!filePath) return res.status(400).json({ error: 'Missing filePath' });
+  // TODO: download from job-assets bucket → OpenAI Whisper → return transcript
+  return res.json({ transcript: '', note: 'transcription not yet implemented' });
+}
+
 async function testPersona(req, res, anthropic) {
   if (!anthropic) {
     const mockGreetings = {
@@ -359,6 +366,7 @@ export default async function handler(req, res) {
     if (action === 'estimate-duration') return await estimateDuration(req, res, supabase, anthropic);
     if (action === 'prep-note') return await prepNote(req, res, supabase, anthropic);
     if (action === 'test-persona') return await testPersona(req, res, anthropic);
+    if (action === 'transcribe-voice-note') return await transcribeVoiceNote(req, res, supabase);
     return res.status(404).json({ error: `Unknown AI action: ${action}` });
   } catch (error) {
     console.error(`AI handler error [${action}]:`, error);

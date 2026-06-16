@@ -1,7 +1,7 @@
 import { memo, useCallback, useMemo, useState } from 'react';
 import { useAppTheme } from '../context/AppThemeContext';
 import { SectionLabel } from '../components/ui/typography';
-import { useJobs, useExpenses, useInvoices } from '../data/useData';
+import { useJobs, useExpenses, useInvoices, useBusiness } from '../data/useData';
 import { useFinanceDetailSheet } from '../context/FinanceDetailSheetContext';
 import { useJobDetailSheet } from '../context/JobDetailSheetContext';
 import { computeJobFinancials } from '../lib/financialMath';
@@ -290,9 +290,11 @@ export default function Finance() {
   const { openJob } = useJobDetailSheet();
   const { open: openFinanceDetail } = useFinanceDetailSheet();
 
+  const { business } = useBusiness();
   const [period, setPeriod] = useState('Month');
   const [showNewExpense, setShowNewExpense] = useState(false);
   const [showTaxReady, setShowTaxReady] = useState(false);
+  const [showMileage, setShowMileage] = useState(false);
 
   const now = useMemo(() => new Date(), []);
   const periodRange = useMemo(() => getPeriodRange(period), [period]);
@@ -354,6 +356,24 @@ export default function Finance() {
     () => computeChartBuckets(period, completedPeriodJobs, periodExpenses),
     [period, completedPeriodJobs, periodExpenses],
   );
+
+  const mileageEnabled = business?.ai_profile?.mileage_tracking ?? false;
+  const craRate = business?.ai_profile?.mileage_rate_per_km ?? 0.70;
+
+  const mileageStats = useMemo(() => {
+    if (!mileageEnabled) return null;
+    const rows = completedPeriodJobs
+      .filter(j => j.raw?.distance_to_km != null || j.raw?.distance_home_km != null)
+      .map(j => ({
+        date: j.raw?.scheduled_date || '',
+        client: j.client_name || '',
+        service: j.raw?.service_name || '',
+        to_km: Number(j.raw?.distance_to_km || 0),
+        home_km: Number(j.raw?.distance_home_km || 0),
+      }));
+    const totalKm = rows.reduce((s, r) => s + r.to_km + r.home_km, 0);
+    return { rows, totalKm, deductible: totalKm * craRate };
+  }, [completedPeriodJobs, mileageEnabled, craRate]);
 
   const transactions = useMemo(() => {
     const jobTx = periodJobs.map(j => {
@@ -611,6 +631,78 @@ export default function Finance() {
               Download {period} CSV ({completedPeriodJobs.length} jobs)
             </button>
           </div>
+        )}
+
+        {mileageEnabled && mileageStats && (
+          <>
+            <button
+              type="button"
+              onClick={() => setShowMileage(v => !v)}
+              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, marginBottom: showMileage ? 8 : 28 }}
+            >
+              <SectionLabel style={{ marginBottom: 0 }}>Mileage Deductions · {periodLabel}</SectionLabel>
+              <span style={{ fontSize: 10, color: T.inkMuted, fontWeight: 600, transform: showMileage ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>▾</span>
+            </button>
+            {showMileage && (
+              <div style={{
+                background: mode === 'dark' ? '#1C1C1E' : '#F0FDF4',
+                border: `1.5px solid ${mode === 'dark' ? '#14532D' : '#86EFAC'}`,
+                borderRadius: 16, padding: '16px', marginBottom: 30,
+              }}>
+                <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+                  <div style={{ flex: 1, background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 12, padding: '10px 12px' }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px', color: T.inkMuted, marginBottom: 4 }}>Total km</div>
+                    <div style={{ fontSize: 22, fontWeight: 500, fontFamily: T.serif, color: T.ink }}>{mileageStats.totalKm.toFixed(1)}</div>
+                    <div style={{ fontSize: 9, color: T.inkMuted, marginTop: 2 }}>{mileageStats.rows.length} job{mileageStats.rows.length !== 1 ? 's' : ''}</div>
+                  </div>
+                  <div style={{ flex: 1, background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 12, padding: '10px 12px' }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px', color: T.inkMuted, marginBottom: 4 }}>Deductible</div>
+                    <div style={{ fontSize: 22, fontWeight: 500, fontFamily: T.serif, color: '#16A34A' }}>${mileageStats.deductible.toFixed(2)}</div>
+                    <div style={{ fontSize: 9, color: T.inkMuted, marginTop: 2 }}>@ ${Number(craRate).toFixed(2)}/km</div>
+                  </div>
+                </div>
+                {mileageStats.rows.length === 0 ? (
+                  <div style={{ fontSize: 12, color: T.inkMuted, textAlign: 'center', padding: '8px 0' }}>
+                    No km data for this period. Drive times are calculated automatically when Google Maps is active.
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const csvRows = [
+                        ['Date', 'Client', 'Service', 'To Client (km)', 'Home (km)', 'Total (km)', `Rate ($/km)`, 'Deductible ($)'],
+                        ...mileageStats.rows.map(r => [
+                          r.date,
+                          r.client,
+                          r.service,
+                          r.to_km.toFixed(2),
+                          r.home_km.toFixed(2),
+                          (r.to_km + r.home_km).toFixed(2),
+                          Number(craRate).toFixed(2),
+                          ((r.to_km + r.home_km) * craRate).toFixed(2),
+                        ]),
+                      ];
+                      const csv = csvRows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+                      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `Mileage_${period === 'All' ? 'AllTime' : period}_${now.getFullYear()}.csv`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }}
+                    style={{
+                      width: '100%', padding: '12px', borderRadius: 12,
+                      background: '#16A34A', color: 'white', border: 'none',
+                      fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                    }}
+                  >
+                    Export mileage log ({mileageStats.rows.length} jobs · {mileageStats.totalKm.toFixed(1)} km)
+                  </button>
+                )}
+              </div>
+            )}
+          </>
         )}
       </div>
 

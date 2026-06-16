@@ -70,7 +70,7 @@ function ToggleSwitch({ checked, onChange, pink, inkMuted }) {
 }
 
 export default function Settings() {
-  const { T, mode } = useAppTheme();
+  const { T, mode, toggleMode } = useAppTheme();
   const toast = useToast();
   const navigate = useNavigate();
   const location = useLocation();
@@ -98,17 +98,21 @@ export default function Settings() {
   useEffect(() => {
     if (business && !formInitialized.current) {
       setForm({
-        name:        business.name        ?? '',
-        owner_name:  business.owner_name  ?? '',
-        phone:       business.phone       ?? '',
-        email:       business.email       ?? '',
-        address:     business.address     ?? '',
-        city:        business.city        ?? '',
-        postal_code: business.postal_code ?? '',
-        hourly_rate: business.hourly_rate != null ? String(business.hourly_rate) : '',
-        tax_enabled: business.tax_enabled ?? false,
-        hst_number:  business.hst_number  ?? '',
-        signature:   business.ai_profile?.signature ?? '',
+        name:               business.name        ?? '',
+        owner_name:         business.owner_name  ?? '',
+        phone:              business.phone       ?? '',
+        email:              business.email       ?? '',
+        address:            business.address     ?? '',
+        city:               business.city        ?? '',
+        postal_code:        business.postal_code ?? '',
+        hourly_rate:        business.hourly_rate != null ? String(business.hourly_rate) : '',
+        tax_enabled:        business.tax_enabled ?? false,
+        hst_number:         business.hst_number  ?? '',
+        signature:          business.ai_profile?.signature ?? '',
+        mileage_tracking:   business.ai_profile?.mileage_tracking ?? false,
+        mileage_rate_per_km: business.ai_profile?.mileage_rate_per_km != null
+          ? String(business.ai_profile.mileage_rate_per_km)
+          : '0.70',
       });
       formInitialized.current = true;
 
@@ -203,6 +207,8 @@ export default function Settings() {
           ai_profile: {
             ...(business?.ai_profile || {}),
             signature: form.signature,
+            mileage_tracking: form.mileage_tracking,
+            mileage_rate_per_km: form.mileage_rate_per_km === '' ? 0.70 : Number(form.mileage_rate_per_km),
           }
         })
         .eq('id', bid);
@@ -290,7 +296,9 @@ export default function Settings() {
     form.hourly_rate !== (business.hourly_rate != null ? String(business.hourly_rate) : '') ||
     form.tax_enabled !== (business.tax_enabled ?? false) ||
     form.hst_number  !== (business.hst_number  ?? '') ||
-    form.signature   !== (business.ai_profile?.signature ?? '')
+    form.signature   !== (business.ai_profile?.signature ?? '') ||
+    form.mileage_tracking !== (business.ai_profile?.mileage_tracking ?? false) ||
+    form.mileage_rate_per_km !== (business.ai_profile?.mileage_rate_per_km != null ? String(business.ai_profile.mileage_rate_per_km) : '0.70')
   );
 
   const inputStyle = {
@@ -460,6 +468,47 @@ export default function Settings() {
                 <input className="sm-input" value={form.hst_number} onChange={e => setForm({...form, hst_number: e.target.value})} placeholder="123456789 RT0001" style={inputStyle} />
               </div>
             )}
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderTop: `1px solid ${T.cardBorder}`, marginTop: 4 }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: T.ink }}>Mileage Tracking</div>
+                <div style={{ fontSize: 10, color: T.inkMuted }}>Log km driven per job for CRA deductions</div>
+              </div>
+              <ToggleSwitch
+                checked={form.mileage_tracking}
+                onChange={v => setForm({...form, mileage_tracking: v})}
+                pink={T.pink}
+                inkMuted={T.inkMuted}
+              />
+            </div>
+            {form.mileage_tracking && (
+              <div>
+                <label style={labelStyle}>CRA rate ($/km)</label>
+                <input
+                  className="sm-input"
+                  type="number"
+                  step="0.01"
+                  value={form.mileage_rate_per_km}
+                  onChange={e => setForm({...form, mileage_rate_per_km: e.target.value})}
+                  onFocus={e => e.target.select()}
+                  style={inputStyle}
+                />
+                <div style={{ fontSize: 10, color: T.inkMuted, marginTop: 4 }}>2024 CRA rate: $0.70/km (first 5,000 km)</div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderTop: `1px solid ${T.cardBorder}`, marginTop: 4 }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: T.ink }}>Dark mode</div>
+                <div style={{ fontSize: 10, color: T.inkMuted }}>Switch between light and dark theme</div>
+              </div>
+              <ToggleSwitch
+                checked={mode === 'dark'}
+                onChange={toggleMode}
+                pink={T.pink}
+                inkMuted={T.inkMuted}
+              />
+            </div>
           </div>
         </div>
 

@@ -55,7 +55,7 @@ After the v0.6.2 refactor, these symbols moved. The old locations no longer exis
 
 ---
 
-## Current State (v0.12.74 — Jun 16, 2026)
+## Current State (v0.12.77 — Jun 16, 2026)
 
 | Feature | Status |
 |---|---|
@@ -65,8 +65,9 @@ After the v0.6.2 refactor, these symbols moved. The old locations no longer exis
 | Clients list | ✅ Live — stat tiles as buttons w/ aria-pressed, search focus ring restored, count badges on chips, "Owes $" label, clear × on search (v0.12.56) |
 | Client profile | ✅ Live — back→/clients, 44px tap targets, focus rings on AI textareas, job rows as buttons, AI insights label (v0.12.52–53) |
 | Finance | ✅ Live — Fraunces revenue hero, dynamic period label, StatCard/TransactionRow as buttons, Tax Ready collapsible, "You cleared $X after expenses" sub-label (v0.12.57–58) |
-| Settings | ✅ Live — in-app two-tap Reset All Data, focus rings, avatar as button, save button in persistent footer, sentence-case labels, 44px password toggle (v0.12.59) |
+| Settings | ✅ Live — dark mode toggle moved here (Preferences card); in-app two-tap Reset All Data, focus rings, avatar as button, save button in persistent footer, sentence-case labels, 44px password toggle (v0.12.77) |
 | New Job sheet | ✅ Live — focus rings, step progress bar (3-segment), recent-client/service as buttons, 44px close, sentence-case, step review date formatted (v0.12.55) |
+| LogoBar | ✅ Live — dark mode removed, avatar → 34px white circle/pink initial, right cluster: ✦ + 👁 + avatar (v0.12.77) |
 | Job Detail sheet | ✅ Live — in-app future-date confirm, EditMode 4 named sections, "Revert to Scheduled (Admin)" replaces "Mark as Unpaid" (v0.12.74) |
 | New Client sheet | ✅ Live — focus rings, 44px close, sentence-case, VIP checkbox enlarged, Intel labels expanded (v0.12.61) |
 | Edit Client sheet | ✅ Live — focus rings, 44px close, sentence-case, VIP enlarged, dark-mode delete tint (v0.12.60) |
@@ -92,12 +93,11 @@ After the v0.6.2 refactor, these symbols moved. The old locations no longer exis
 
 ## Next priorities
 
-1. **⚠️ Device verification** — v0.12.52–74 not fully phone-tested. v0.12.67 crash fix deployed but unverified on real devices. Test Home page + invoice flow on Pixel 10 Pro + Sandra's iPhone.
-2. **GCal sync — root cause unfixed** — OAuth app still in "Testing" mode → refresh tokens expire after 7 days. Joel must go to Google Cloud Console → OAuth consent screen → Publish App. Sandra reconnects once after.
-3. **AI chat interface** — `api/ai/[action].js` + `ANTHROPIC_API_KEY` in place. Needs chat UI + conversation state. HIGH PRIORITY.
-4. **Client invoice history** — Add "Invoices" section to ClientProfile listing all invoices per client, tappable to `/i/:id`.
-5. **Offline mode** — app crashes if Supabase unreachable on first load. Per-page `ErrorBoundary` exists (v0.12.64) but no "tap to reload" fallback copy yet.
-6. **Vercel function slot** — 9/12 used. Consider consolidating `transcribe` into `ai/[action]` to free a slot.
+1. **⚠️ Device verification** — v0.12.52–77 not fully phone-tested. Test Home + invoice + AI chat on Pixel 10 Pro + Sandra's iPhone.
+2. **AI chat** — ✅ Done v0.12.76. `api/ai/chat.js` + `AiChatSheet.jsx` + ✦ LogoBar button. In-memory per session.
+3. **Client invoice history** — Add "Invoices" section to ClientProfile listing all invoices per client, tappable to `/i/:id`.
+4. **Offline mode** — app crashes if Supabase unreachable on first load. Per-page `ErrorBoundary` exists (v0.12.64) but no "tap to reload" fallback copy yet.
+5. **Vercel function slots** — 10/12 used. Next feature may need consolidation or Pro upgrade.
 
 ### Key data-layer rules (NEVER skip)
 - `revertJobToPreCompletion(id)` — admin revert: deletes payments, voids invoice (`status='Void'` + `deleted_at`), resets job to `Scheduled`, nulls `actual_duration`/`subtotal`/`hst_amount`/`total_amount`/`completion_notes`.

@@ -1,16 +1,19 @@
+import { useContext } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { useViewpoint } from '../../context/ViewpointContext';
 import { useBusiness } from '../../data/useData';
+import { AiChatSheetContext } from '../../context/AiChatSheetContext';
 
 export default function LogoBar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { T, mode, toggleMode, privacyOn, togglePrivacy } = useAppTheme();
+  const { T, mode, privacyOn, togglePrivacy } = useAppTheme();
   const { user, profile } = useAuth();
   const { business } = useBusiness();
   const { isSuperAdmin } = useViewpoint();
+  const aiChat = useContext(AiChatSheetContext);
 
   const onAvatarClick = () => {
     if (user) {
@@ -60,28 +63,24 @@ export default function LogoBar() {
       )}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-        <button
-          role="switch"
-          aria-checked={mode === 'dark'}
-          aria-label="Toggle Theme"
-          onClick={toggleMode}
-          title="Toggle Light/Dark Mode"
-          style={{
-            width: 38, height: 22, borderRadius: 11, 
-            border: '1px solid rgba(255,255,255,0.28)',
-            background: mode === 'dark' ? 'rgba(0,0,0,0.35)' : 'rgba(255,255,255,0.15)',
-            position: 'relative', transition: 'background 0.2s', cursor: 'pointer',
-            padding: 0, flexShrink: 0, outline: 'none'
-          }}
-        >
-          <span style={{
-            position: 'absolute', top: 1, left: mode === 'dark' ? 17 : 1,
-            width: 18, height: 18, borderRadius: '50%', background: 'white',
-            transition: 'left 0.2s cubic-bezier(0.4, 0.0, 0.2, 1)', 
-            boxShadow: '0 1px 4px rgba(0,0,0,0.3)', display: 'block'
-          }} />
-        </button>
-
+        {aiChat && (
+          <button
+            type="button"
+            onClick={() => aiChat.openChat()}
+            aria-label="Open AI assistant"
+            title="AI assistant"
+            style={{
+              width: 28, height: 28, borderRadius: 8,
+              background: 'rgba(255,255,255,0.15)',
+              border: '1px solid rgba(255,255,255,0.28)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', fontSize: 13, color: 'white',
+              fontFamily: "'Inter',sans-serif", fontWeight: 700,
+            }}
+          >
+            ✦
+          </button>
+        )}
         <button
           onClick={togglePrivacy}
           aria-label={privacyOn ? 'Privacy mode on — tap to show info' : 'Privacy mode off — tap to hide info'}
@@ -99,12 +98,13 @@ export default function LogoBar() {
           aria-label="Settings"
           title={user ? `Settings (${user.email})` : 'Settings'}
           style={{
-            width: 28, height: 28, borderRadius: 8,
-            background: 'rgba(255,255,255,0.22)',
+            width: 34, height: 34, borderRadius: '50%',
+            background: 'white',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontFamily: "'Fraunces',Georgia,serif", fontSize: 13, fontWeight: 600, color: 'white',
-            border: '1.5px solid rgba(255,255,255,0.38)',
-            cursor: user ? 'pointer' : 'default', padding: 0,
+            fontFamily: "'Fraunces',Georgia,serif", fontSize: 15, fontWeight: 700, color: '#FC4693',
+            border: 'none',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.18)',
+            cursor: user ? 'pointer' : 'default', padding: 0, flexShrink: 0,
           }}>{initial}</button>
       </div>
     </div>

@@ -138,13 +138,16 @@ A mobile-first CRM & operations web app for **Sandra**, a solo personal-life-ope
 
 ---
 
-## Current version: 0.12.74 — Jun 16, 2026 (package.json synced)
+## Current version: 0.12.77 — Jun 16, 2026 (package.json synced)
 
 Sandra's business is live — data wiped and re-provisioned Jun 9. App in active use.
 
 **⚠️ Multi-client git discipline**: Always push local commits before starting an online Claude Code session; always pull before the online session writes code.
 
 ### Recent changes (full history in `docs/changelog/` + `git log`)
+- **v0.12.77 (Jun 16)** — LogoBar cleanup: dark mode toggle moved to Settings (Preferences card, same toggle-row pattern); LogoBar right cluster trimmed to ✦ + 👁 + avatar; avatar upgraded to 34px white circle with `#FC4693` Fraunces initial + drop shadow.
+- **v0.12.76 (Jun 16)** — AI chat interface (#6): new `api/ai/chat.js` Vercel function (10/12 slots now); `AiChatSheet.jsx` bottom sheet with user/assistant message bubbles, in-memory conversation state (last 20 msgs sent to Claude per request); `AiChatSheetContext.js` + `AiChatSheet.jsx` provider; ✦ button in LogoBar opens chat from any authed page. System prompt enriched with business profile; optional `clientId`/`jobId` context injection for future use. Model: `claude-haiku-4-5-20251001`. No DB persistence (in-memory per session).
+- **v0.12.75 (Jun 16)** — Mileage tracking (#21) + transcribe consolidation (#30): `api/transcribe.js` deleted, `transcribe-voice-note` handler merged into `api/ai/[action].js` (9/12 → 8/12 slots). Settings: mileage tracking toggle + CRA rate field stored in `business.ai_profile`. JobDetailSheet: "Drive" row shows `distance_to_km` + `distance_home_km` when populated. Finance: "Mileage Deductions" collapsible section (km total, deductible, CSV export) — only visible when mileage tracking enabled.
 - **v0.12.74 (Jun 16)** — Admin "Revert to Scheduled" replaces "Mark as Unpaid": `markJobUnpaid` → `revertJobToPreCompletion` in `jobsRepo.js`. Now: hard-deletes all payments, voids + soft-deletes the job's invoice (or removes job from multi-job invoice and recalculates total), resets `job_status='Scheduled'` + nulls `actual_duration`, `completion_notes`, `subtotal`, `hst_amount`, `total_amount`. Button shows on any Completed job (was Paid/Partial only). Confirm text updated. JobDetailSheet import + all prop names updated accordingly.
 - **v0.12.73 (Jun 16)** — Invoice payment rows redesigned: each payment now shows service name (dark, normal weight) + date · method (muted) + green amount (only dollar is green). `payment_method` added to payments select in `invoiceBalances.js`. Line items: service name no longer bold (only Amount column stays bold); flat rate jobs show "Flat rate" sub-label in description cell. All changes mirrored in `InvoiceView.jsx` + `api/_lib/invoicePdf.js`.
 - **v0.12.72 (Jun 15)** — PostJobSheet invoice pre-flight: after saving, checks for other outstanding completed+unpaid/partial jobs for same client BEFORE showing the nudge screen. If found, shows a bundle step — unpaid context: "add to invoice?" (calls `addJobsToInvoice`); paid/partial context: "did this payment cover these?" (calls `settleInvoiceOutstanding`). Phase state machine: `'form' | 'checking' | 'bundle' | 'nudge'` replaces `done` boolean. New `fetchOutstandingJobsForClient` export in `jobsRepo.js`. InvoiceView "Add to invoice" panel unchanged (fallback for old invoices navigated directly).
@@ -194,16 +197,12 @@ Sandra's business is live — data wiped and re-provisioned Jun 9. App in active
 ## Open items
 
 > **Sync rule**: every change to `api/_lib/invoicePdf.js` must be mirrored in `InvoiceView.jsx` before commit.
-> Vercel Hobby: **9 of 12** serverless functions. Functions: `maps`, `invoice`, `auth/google/login`, `auth/google/callback`, `briefing/daily`, `sync/gcal`, `ai/[action]`, `transcribe`, `admin/provision`.
+> Vercel Hobby: **10 of 12** serverless functions. Functions: `maps`, `invoice`, `auth/google/login`, `auth/google/callback`, `briefing/daily`, `sync/gcal`, `ai/[action]`, `ai/chat`, `admin/provision`, `transcribe` deleted.
 > Maps quota: Distance Matrix hard-capped at 500 elements/day. Sandra's real usage ~15–30/day. **Don't rapid-redeploy** (resets cron clock).
 
 ### 🔴 Bugs / Active issues
 
-1. **GCal sync — root cause: OAuth app in Testing mode** ⬅ DO THIS FIRST (Joel, not code)
-   - Go to Google Cloud Console → APIs & Services → OAuth consent screen → Publishing status → **PUBLISH APP** (move Testing → Production). This stops the 7-day refresh-token expiry.
-   - After publishing: Sandra reconnects once (Settings → Google Calendar → Reconnect) for a permanent token.
-   - Code fix (v0.12.63): added `sync_status` column to `integrations` table; API detects `invalid_grant` and writes `token_expired`; `AuthedShell` shows amber banner on Home; Settings shows warning card. Token failures are no longer silent.
-   - **Schema migration required**: `ALTER TABLE public.integrations ADD COLUMN IF NOT EXISTS sync_status text DEFAULT 'ok';` — run in Supabase SQL Editor.
+1. ~~**GCal sync**~~ — **RESOLVED (Jun 16)**. OAuth app published (Testing → Production); Sandra reconnected for permanent token. Code fix in v0.12.63: `sync_status` column, `invalid_grant` detection, amber banner on Home, Settings warning card.
 
 2. ~~**Home.jsx drive-time bugs**~~ — fixed in v0.12.64 (GPS timeout 12s, visibilitychange handler, lastFetchTimeRef guard).
 
@@ -216,7 +215,7 @@ Sandra's business is live — data wiped and re-provisioned Jun 9. App in active
 
 ### 🤖 AI features (HIGH PRIORITY)
 
-6. **AI chat interface** — `api/ai/[action].js` + `ANTHROPIC_API_KEY` in place. Needs chat UI + conversation state.
+6. ~~**AI chat interface**~~ — DONE v0.12.76. `api/ai/chat.js` + `AiChatSheet.jsx` + ✦ LogoBar button. In-memory per session. DB persistence = future item if needed.
 7. **Voice scheduling** — `api/transcribe.js` exists. Flow: mic → transcribe → Claude parses intent → pre-fills NewJobSheet.
 8. **Smart scheduling suggestions** — given Sandra's calendar + drive times, Claude suggests optimal day/time for new bookings. All data is already available.
 9. **Weekly AI debrief** — Sunday evening summary: revenue, hours, top clients, one pattern observation. Extend the daily briefing cron.
@@ -237,7 +236,7 @@ Sandra's business is live — data wiped and re-provisioned Jun 9. App in active
 18. **Cross-job search** — find "all jobs containing 'basement'" or "all October jobs". One search endpoint serves this.
 19. **Swipe-to-complete on Home cards** — `Swipeable.jsx` already exists but isn't wired. Right-swipe → complete/pay shortcut.
 20. **"Last job" quick-rebook** — from ClientProfile, 1-tap to duplicate the last job (same service/rate). Saves the 3-step booking flow.
-21. **Mileage tracking** — drive time already calculated. Optional: log as CRA-rate deductible entry. One toggle in Settings.
+21. ~~**Mileage tracking**~~ — DONE v0.12.75. Toggle + CRA rate in Settings, Drive row in JobDetailSheet, Mileage Deductions section in Finance with CSV export.
 22. **Revenue goal progress bar** — Sandra sets a monthly target in Settings; Home hero shows progress ring.
 23. **Client lifetime value** — ClientProfile shows total paid. Add "avg per visit" + "top 5 by revenue" card to Finance.
 24. **Year-over-year comparison** — Finance page: toggle "vs last year" for tax planning context.
@@ -249,7 +248,7 @@ Sandra's business is live — data wiped and re-provisioned Jun 9. App in active
 ### 🔧 Technical quality / refactor
 
 29. ~~**Eliminate `select *` queries**~~ — fixed in v0.12.66. List fetches (jobs, clients) now use named column sets. Detail fetches still `*` intentionally.
-30. **Consolidate AI + transcribe Vercel functions** — saves a slot; both functions are same auth/error pattern.
+30. ~~**Consolidate AI + transcribe Vercel functions**~~ — DONE v0.12.75. `transcribe.js` deleted, merged into `ai/[action].js`.
 31. **React Query / TanStack migration** — `useData.js` does manual caching, stale-state, refetch-on-focus by hand. TanStack replaces that whole layer and gives background refresh for free.
 32. **TypeScript — start with `selectors.js`** — `computeJobFinancials`, `toDisplayJob`, `computeJobTotal` are where subtle display-vs-DB bugs hide. Type just these and the repo files they call.
 33. **Bundle audit** — `react-pdf` is the biggest dep. Verify it isn't bundled into frontend (it should only run in `api/`).

@@ -138,13 +138,25 @@ A mobile-first CRM & operations web app for **Sandra**, a solo personal-life-ope
 
 ---
 
-## Current version: 0.12.77 — Jun 16, 2026 (package.json synced)
+## App Icons & Web App Config
+
+`public/manifest.json` defines PWA setup:
+- **Maskable icons** (192, 512) — OS applies rounding (Android 12+, iOS 16.4+)
+- **Non-maskable fallback** (96, 144, 180, 256, 384) — older devices
+- Generated from `public/branding/supermom_icon_transparent.png` via `scripts/generate-icons.mjs`
+
+Icons properly round across all platforms — no more square-in-round-hole.
+
+---
+
+## Current version: 0.12.78 — Jun 16, 2026 (package.json synced)
 
 Sandra's business is live — data wiped and re-provisioned Jun 9. App in active use.
 
 **⚠️ Multi-client git discipline**: Always push local commits before starting an online Claude Code session; always pull before the online session writes code.
 
 ### Recent changes (full history in `docs/changelog/` + `git log`)
+- **v0.12.78 (Jun 16)** — App icon rounding: maskable PNG icons (192, 512) let OS apply corner radius per-platform; fallback non-maskable sizes (96, 144, 180, 256, 384) for older devices. Icon properly round on Android/iOS/web. `public/manifest.json` added with PWA config. `scripts/generate-icons.mjs` generates all sizes from transparent source.
 - **v0.12.77 (Jun 16)** — LogoBar cleanup: dark mode toggle moved to Settings (Preferences card, same toggle-row pattern); LogoBar right cluster trimmed to ✦ + 👁 + avatar; avatar upgraded to 34px white circle with `#FC4693` Fraunces initial + drop shadow.
 - **v0.12.76 (Jun 16)** — AI chat interface (#6): new `api/ai/chat.js` Vercel function (10/12 slots now); `AiChatSheet.jsx` bottom sheet with user/assistant message bubbles, in-memory conversation state (last 20 msgs sent to Claude per request); `AiChatSheetContext.js` + `AiChatSheet.jsx` provider; ✦ button in LogoBar opens chat from any authed page. System prompt enriched with business profile; optional `clientId`/`jobId` context injection for future use. Model: `claude-haiku-4-5-20251001`. No DB persistence (in-memory per session).
 - **v0.12.75 (Jun 16)** — Mileage tracking (#21) + transcribe consolidation (#30): `api/transcribe.js` deleted, `transcribe-voice-note` handler merged into `api/ai/[action].js` (9/12 → 8/12 slots). Settings: mileage tracking toggle + CRA rate field stored in `business.ai_profile`. JobDetailSheet: "Drive" row shows `distance_to_km` + `distance_home_km` when populated. Finance: "Mileage Deductions" collapsible section (km total, deductible, CSV export) — only visible when mileage tracking enabled.

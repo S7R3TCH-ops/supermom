@@ -55,7 +55,7 @@ After the v0.6.2 refactor, these symbols moved. The old locations no longer exis
 
 ---
 
-## Current State (v0.12.77 — Jun 16, 2026)
+## Current State (v0.12.78 — Jun 16, 2026)
 
 | Feature | Status |
 |---|---|
@@ -82,7 +82,9 @@ After the v0.6.2 refactor, these symbols moved. The old locations no longer exis
 | Drive time / mileage | ✅ Live — GPS timeout 12s, visibilitychange handler, stale-guard >10 min (v0.12.64) |
 | Geofence / auto-timer | ✅ Live |
 | Super Admin + Viewpoint switching | ✅ Live |
-| Dark mode toggle | ✅ Live — warm/dark via smTokens(); toggle in logo bar |
+| Dark mode toggle | ✅ Live — warm/dark via smTokens(); toggle in Settings > Preferences (v0.12.77) |
+| AI chat (✦) | ✅ Live — `api/ai/chat.js` + `AiChatSheet.jsx` + ✦ LogoBar button; in-memory per session; model: `claude-haiku-4-5-20251001` (v0.12.76) |
+| Mileage tracking | ✅ Live — toggle + CRA rate in Settings; Drive row in JobDetailSheet; Mileage Deductions section in Finance with CSV export (v0.12.75) |
 | Privacy toggle | ✅ Live |
 | Storage (photos + voice notes) | ✅ Live |
 | Conflict detection | ✅ Live |
@@ -93,11 +95,10 @@ After the v0.6.2 refactor, these symbols moved. The old locations no longer exis
 
 ## Next priorities
 
-1. **⚠️ Device verification** — v0.12.52–77 not fully phone-tested. Test Home + invoice + AI chat on Pixel 10 Pro + Sandra's iPhone.
-2. **AI chat** — ✅ Done v0.12.76. `api/ai/chat.js` + `AiChatSheet.jsx` + ✦ LogoBar button. In-memory per session.
-3. **Client invoice history** — Add "Invoices" section to ClientProfile listing all invoices per client, tappable to `/i/:id`.
-4. **Offline mode** — app crashes if Supabase unreachable on first load. Per-page `ErrorBoundary` exists (v0.12.64) but no "tap to reload" fallback copy yet.
-5. **Vercel function slots** — 10/12 used. Next feature may need consolidation or Pro upgrade.
+1. **⚠️ Device verification** — v0.12.52–78 not fully phone-tested. Test Home + invoice + AI chat on Pixel 10 Pro + Sandra's iPhone.
+2. **Client invoice history** — Add "Invoices" section to ClientProfile listing all invoices per client, tappable to `/i/:id`.
+3. **Offline mode** — app crashes if Supabase unreachable on first load. Per-page `ErrorBoundary` exists (v0.12.64) but no "tap to reload" fallback copy yet.
+4. **Vercel function slots** — 9/12 used. One slot remaining before limit.
 
 ### Key data-layer rules (NEVER skip)
 - `revertJobToPreCompletion(id)` — admin revert: deletes payments, voids invoice (`status='Void'` + `deleted_at`), resets job to `Scheduled`, nulls `actual_duration`/`subtotal`/`hst_amount`/`total_amount`/`completion_notes`.
@@ -106,6 +107,6 @@ After the v0.6.2 refactor, these symbols moved. The old locations no longer exis
 - Always `computeJobFinancials()` for UI math — never read `total_amount` raw.
 
 ### Vercel function count
-9 of 12 serverless functions used: `maps`, `invoice`, `auth/google/login`, `auth/google/callback`, `briefing/daily`, `sync/gcal`, `ai/[action]`, `transcribe`, `admin/provision`. 3 remaining.
+9 of 12 serverless functions used: `maps`, `invoice`, `auth/google/login`, `auth/google/callback`, `briefing/daily`, `sync/gcal`, `ai/[action]`, `ai/chat`, `admin/provision`. 3 remaining. (`transcribe` deleted in v0.12.75, merged into `ai/[action]`.)
 
-(Updated by Claude Code — June 16, 2026)
+(Updated by Claude Code — June 16, 2026 — v0.12.78)

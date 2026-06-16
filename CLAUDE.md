@@ -57,6 +57,7 @@ A mobile-first CRM & operations web app for **Sandra**, a solo personal-life-ope
 - **CRITICAL**: Never commit `.env`. Gitignored.
 - Client-side vars: `VITE_` prefix. Server-only: no prefix, Vercel env only.
 - `api/sync/gcal.js` has **no `INTERNAL_API_SECRET` check** intentionally — `triggerGCalSync` is called client-side; endpoint is write-only to GCal, exposure is low.
+- **Local-only dirs** (gitignored): `.agents/`, `skills-lock.json`, `.impeccable/` — never commit these.
 
 ---
 

@@ -490,6 +490,25 @@ export async function recordPayment(jobId, amount, method = 'Cash', _paymentStat
   return updated;
 }
 
+/**
+ * Fetches completed, unpaid/partial jobs for a client — used by PostJobSheet
+ * to offer Sandra the chance to bundle or settle them before the invoice PDF is opened.
+ * Excludes the job that was just completed (excludeJobId).
+ */
+export async function fetchOutstandingJobsForClient(clientId, excludeJobId) {
+  const businessId = await getCurrentBusinessId();
+  const { data } = await supabase
+    .from('jobs')
+    .select('id, scheduled_date, payment_status, flat_rate, subtotal, pricing_type, actual_duration, estimated_hours, additional_cost, additional_costs_json, hst_amount, tax_enabled, services(name)')
+    .eq('client_id', clientId)
+    .eq('business_id', businessId)
+    .eq('job_status', 'Completed')
+    .is('deleted_at', null)
+    .neq('id', excludeJobId)
+    .order('scheduled_date', { ascending: true });
+  return (data ?? []).filter(j => !j.payment_status || j.payment_status === 'Partial');
+}
+
 // ---------- helpers ----------
 
 function addDaysToDateStr(dateStr, days) {

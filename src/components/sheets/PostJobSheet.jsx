@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { SectionLabel } from '../ui/typography';
-import { fetchJobById, recordPayment } from '../../data/jobsRepo';
+import { fetchJobById, recordPayment, fetchOutstandingJobsForClient } from '../../data/jobsRepo';
+import { addJobsToInvoice, settleInvoiceOutstanding } from '../../data/invoicesRepo';
+import { computeJobTotal } from '../../lib/financialMath';
 import { notifyDataChanged, useBusiness } from '../../data/useData';
 import { useToast } from '../../context/ToastContext';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
@@ -27,9 +29,13 @@ export default function PostJobSheet({ jobId, onClose }) {
   // payStatus: 'paid' | 'partial' | 'unpaid'
   const [payStatus, setPayStatus] = useState('paid');
   const [busy, setBusy] = useState(false);
-  const [done, setDone] = useState(false);
-  const [savedPs, setSavedPs] = useState(null); // final payment status after save
+  // phase: 'form' | 'checking' | 'bundle' | 'nudge'
+  const [phase, setPhase] = useState('form');
+  const [savedPs, setSavedPs] = useState(null);
   const [invoiceId, setInvoiceId] = useState(null);
+  const [clientOutstanding, setClientOutstanding] = useState([]);
+  const [bundleSelected, setBundleSelected] = useState(new Set());
+  const [bundleBusy, setBundleBusy] = useState(false);
   const [jobPayments, setJobPayments] = useState([]);
   const [costs, setCosts] = useState([{ amount: '', description: '' }]);
   const [workerPaid, setWorkerPaid] = useState(false);
@@ -177,8 +183,23 @@ export default function PostJobSheet({ jobId, onClose }) {
 
       notifyDataChanged();
       setSavedPs(ps);
-      setDone(true);
+      setPhase('checking');
       triggerHaptic('success');
+
+      // Check for other outstanding jobs for this client before opening PDF
+      try {
+        const outstanding = await fetchOutstandingJobsForClient(job.client_id, jobId);
+        if (outstanding.length > 0) {
+          setClientOutstanding(outstanding);
+          setBundleSelected(new Set(outstanding.map(j => j.id)));
+          setPhase('bundle');
+        } else {
+          setPhase('nudge');
+        }
+      } catch (_) {
+        setPhase('nudge');
+      }
+      setBusy(false);
     } catch (e) {
       const msg = e.message || String(e);
       toast.error(msg);
@@ -198,6 +219,9 @@ export default function PostJobSheet({ jobId, onClose }) {
   }
 
   const isPaidRecord = job?.payment_status === 'Paid';
+  const isNudge = phase === 'nudge';
+  const isBundle = phase === 'bundle';
+  const isChecking = phase === 'checking';
 
   return (
     <div ref={sheetRef} role="dialog" aria-modal="true" aria-label="Complete job" style={{
@@ -289,7 +313,126 @@ export default function PostJobSheet({ jobId, onClose }) {
           <div style={{ padding: 40, textAlign: 'center', color: T.inkMuted }}>Initializing...</div>
         ) : fetchErr ? (
           <div style={{ padding: 40, textAlign: 'center', color: '#EF4444' }}>{fetchErr}</div>
-        ) : done ? (
+        ) : isChecking ? (
+          /* ── Checking outstanding jobs ── */
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '32px 24px', gap: 16, textAlign: 'center' }}>
+            <div style={{ fontSize: 32 }}>✓</div>
+            <div style={{ fontSize: 14, color: T.inkMuted }}>Checking outstanding invoices…</div>
+          </div>
+
+        ) : isBundle ? (
+          /* ── Bundle outstanding jobs pre-flight ── */
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '24px 20px', gap: 0 }}>
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontFamily: T.serif, fontSize: 20, fontWeight: 500, color: T.ink, marginBottom: 6 }}>
+                {job?.client_name || 'This client'} has other open invoices
+              </div>
+              <div style={{ fontSize: 13, color: T.inkMuted, lineHeight: 1.45 }}>
+                {savedPs !== 'Paid' && savedPs !== 'Partial'
+                  ? 'Do you want to bundle these on the same invoice?'
+                  : 'Did this payment also cover any of these?'}
+              </div>
+            </div>
+
+            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {clientOutstanding.map(j => {
+                const svcName = j.services?.name || 'Service';
+                const dateStr = j.scheduled_date
+                  ? new Intl.DateTimeFormat('en-CA', { month: 'short', day: 'numeric', timeZone: 'America/Toronto' }).format(new Date(j.scheduled_date + 'T12:00:00'))
+                  : '';
+                const total = computeJobTotal(j);
+                const isSelected = bundleSelected.has(j.id);
+                return (
+                  <label
+                    key={j.id}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer',
+                      background: isSelected ? T.pinkTint : T.card,
+                      border: `1.5px solid ${isSelected ? T.pink : T.cardBorder}`,
+                      borderRadius: 12, padding: '12px 14px', transition: 'all 0.15s',
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => {
+                        setBundleSelected(prev => {
+                          const next = new Set(prev);
+                          next.has(j.id) ? next.delete(j.id) : next.add(j.id);
+                          return next;
+                        });
+                      }}
+                      style={{ width: 18, height: 18, accentColor: T.pink, flexShrink: 0 }}
+                    />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: T.ink }}>{svcName}</div>
+                      <div style={{ fontSize: 11, color: T.inkMuted, marginTop: 2 }}>
+                        {dateStr}
+                        {j.payment_status === 'Partial' && (
+                          <span style={{ marginLeft: 6, background: '#FEF3C7', color: '#92400E', borderRadius: 4, padding: '1px 5px', fontSize: 10, fontWeight: 700 }}>Partial</span>
+                        )}
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: T.ink, fontVariantNumeric: 'tabular-nums' }}>
+                      ${total.toFixed(2)}
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+
+            <div style={{ paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <button
+                type="button"
+                disabled={bundleBusy || bundleSelected.size === 0}
+                onClick={async () => {
+                  if (bundleSelected.size === 0) { setPhase('nudge'); return; }
+                  setBundleBusy(true);
+                  try {
+                    const ids = [...bundleSelected];
+                    if (savedPs !== 'Paid' && savedPs !== 'Partial') {
+                      await addJobsToInvoice(invoiceId, ids);
+                    } else {
+                      await settleInvoiceOutstanding(invoiceId, method, ids);
+                    }
+                    notifyDataChanged();
+                  } catch (_) {
+                    // non-fatal — proceed to nudge regardless
+                  }
+                  setBundleBusy(false);
+                  setPhase('nudge');
+                }}
+                style={{
+                  width: '100%', padding: '14px', borderRadius: 12,
+                  background: bundleSelected.size === 0 ? T.cardBorder : T.pink,
+                  color: bundleSelected.size === 0 ? T.inkMuted : 'white',
+                  border: 'none', fontFamily: T.font, fontSize: 14, fontWeight: 700,
+                  cursor: bundleBusy || bundleSelected.size === 0 ? 'default' : 'pointer',
+                  boxShadow: bundleSelected.size > 0 ? '0 4px 12px rgba(233,30,106,0.3)' : 'none',
+                  minHeight: 44,
+                }}
+              >
+                {bundleBusy ? 'Saving…' : savedPs !== 'Paid' && savedPs !== 'Partial'
+                  ? `Add ${bundleSelected.size} job${bundleSelected.size !== 1 ? 's' : ''} to invoice`
+                  : `Yes, mark ${bundleSelected.size} paid`}
+              </button>
+              <button
+                type="button"
+                onClick={() => setPhase('nudge')}
+                disabled={bundleBusy}
+                style={{
+                  width: '100%', padding: '13px', borderRadius: 12,
+                  background: 'transparent', border: `1.5px solid ${T.cardBorder}`,
+                  color: T.inkMuted, fontFamily: T.font, fontSize: 14, fontWeight: 600,
+                  cursor: 'pointer', minHeight: 44,
+                }}
+              >
+                No, keep separate
+              </button>
+            </div>
+          </div>
+
+        ) : isNudge ? (
           /* ── Success + send nudge ── */
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '32px 24px', gap: 24, textAlign: 'center' }}>
             <div style={{ fontSize: 48 }}>✓</div>

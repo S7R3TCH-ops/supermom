@@ -121,6 +121,7 @@ function InvoiceDocument({ invoice }) {
   const biz      = invoice.businesses || {};
   const client   = invoice.clients    || {};
   const allJobs  = (invoice.invoice_jobs || []).map(ij => ij.jobs).filter(Boolean);
+  const jobById  = Object.fromEntries(allJobs.map(j => [j.id, j]));
   const isReceipt = !!invoice.isPaidInFull;
   const anyHourly = allJobs.some(j => j.pricing_type === 'Hourly');
   const allF      = allJobs.map(j => computeJobFinancials(j, biz));
@@ -224,7 +225,10 @@ function InvoiceDocument({ invoice }) {
         return [
           V({ key: `job-${job.id}`, style: s.tableRow },
             V({ style: s.cDate  }, T({ style: s.tdMuted  }, job.scheduled_date ? formatDate(job.scheduled_date) : '—')),
-            V({ style: s.cDesc  }, T({ style: s.tdBold }, job.service_name || 'Professional Services')),
+            V({ style: s.cDesc },
+              T({ style: { fontSize: 10, color: INK } }, job.service_name || 'Professional Services'),
+              !f.isHourly ? T({ style: { fontSize: 7, color: LIGHT, marginTop: 2 } }, 'Flat rate') : null,
+            ),
             anyHourly ? V({ style: s.cRate  }, f.isHourly ? T({ style: s.tdCenter }, `$${f.rate.toFixed(2)}`) : T({ style: s.tdCenter }, '')) : null,
             anyHourly ? V({ style: s.cHours }, f.isHourly ? T({ style: s.tdCenter }, f.hours.toFixed(1))     : T({ style: s.tdCenter }, '')) : null,
             V({ style: s.cAmt   }, T({ style: s.tdRight  }, `$${f.subtotal.toFixed(2)}`)),
@@ -250,14 +254,21 @@ function InvoiceDocument({ invoice }) {
       V({ style: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 4, marginBottom: 10 } },
         // Left — payments received, fills white space beside totals column
         invoice.payments?.length > 0
-          ? V({ style: { width: 160, marginRight: 16 } },
+          ? V({ style: { width: 180, marginRight: 16 } },
               T({ style: { fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#999', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 5 } }, 'Payments Received'),
-              ...invoice.payments.map((p, i) =>
-                V({ key: p.id ?? `pmt-${i}`, style: { flexDirection: 'row', justifyContent: 'space-between', paddingTop: 2, paddingBottom: 2 } },
-                  T({ style: { fontSize: 9, color: MUTED } }, formatDate(p.payment_date)),
-                  T({ style: { fontSize: 9, color: INK    } }, `$${Number(p.amount).toFixed(2)}`),
-                )
-              ),
+              ...invoice.payments.map((p, i) => {
+                const relatedJob = jobById[p.job_id];
+                const dateLine = p.payment_method
+                  ? `${formatDate(p.payment_date)} · ${p.payment_method}`
+                  : formatDate(p.payment_date);
+                return V({ key: p.id ?? `pmt-${i}`, style: { marginBottom: 6 } },
+                  relatedJob ? T({ style: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: INK, marginBottom: 1 } }, relatedJob.service_name || 'Professional Services') : null,
+                  V({ style: { flexDirection: 'row', justifyContent: 'space-between' } },
+                    T({ style: { fontSize: 8, color: MUTED } }, dateLine),
+                    T({ style: { fontSize: 9, fontFamily: 'Helvetica-Bold', color: PAID } }, `$${Number(p.amount).toFixed(2)}`),
+                  ),
+                );
+              }),
             )
           : V({ style: {} }),
         // Right — subtotal / HST / invoice total / remaining

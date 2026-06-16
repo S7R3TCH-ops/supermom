@@ -138,13 +138,14 @@ A mobile-first CRM & operations web app for **Sandra**, a solo personal-life-ope
 
 ---
 
-## Current version: 0.12.72 — Jun 15, 2026 (package.json synced)
+## Current version: 0.12.73 — Jun 16, 2026 (package.json synced)
 
 Sandra's business is live — data wiped and re-provisioned Jun 9. App in active use.
 
 **⚠️ Multi-client git discipline**: Always push local commits before starting an online Claude Code session; always pull before the online session writes code.
 
 ### Recent changes (full history in `docs/changelog/` + `git log`)
+- **v0.12.73 (Jun 16)** — Invoice payment rows redesigned: each payment now shows service name (dark, normal weight) + date · method (muted) + green amount (only dollar is green). `payment_method` added to payments select in `invoiceBalances.js`. Line items: service name no longer bold (only Amount column stays bold); flat rate jobs show "Flat rate" sub-label in description cell. All changes mirrored in `InvoiceView.jsx` + `api/_lib/invoicePdf.js`.
 - **v0.12.72 (Jun 15)** — PostJobSheet invoice pre-flight: after saving, checks for other outstanding completed+unpaid/partial jobs for same client BEFORE showing the nudge screen. If found, shows a bundle step — unpaid context: "add to invoice?" (calls `addJobsToInvoice`); paid/partial context: "did this payment cover these?" (calls `settleInvoiceOutstanding`). Phase state machine: `'form' | 'checking' | 'bundle' | 'nudge'` replaces `done` boolean. New `fetchOutstandingJobsForClient` export in `jobsRepo.js`. InvoiceView "Add to invoice" panel unchanged (fallback for old invoices navigated directly).
 - **v0.12.71 (Jun 15)** — PostJobSheet send nudge: after saving, sheet replaces form with centered success screen instead of auto-closing. Paid → "Receipt ready! Want to send the receipt to [client]?"; Partial → "Payment saved! Want to send the updated invoice?"; Unpaid/complete → "Invoice ready! Want to send the invoice?". "Send Receipt/Invoice" opens `/i/:id` in new tab then closes sheet. "Not now" closes. No invoiceId → "Done" button only. Removed redundant inline invoice-ready card from scroll body.
 - **v0.12.70 (Jun 15)** — Invoice preview fixes: date fields get `white-space: nowrap` (meta grid + table td) to prevent 2-line wrap; PDF `cDate` width 72→88pt. Record Payment panel now gated on `invoiceSentAt || receiptSentAt` — no longer appears on fresh job-completion preview. Back button uses `window.close()` when page opened in new tab (always `_blank`), `navigate(-1)` otherwise. Admin page: removed redundant "← Reset to My Real View" pink button when viewing as another business (ribbon header already handles this).

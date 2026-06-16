@@ -29,7 +29,7 @@ export async function decorateInvoiceWithBalances(supabase, invoice) {
       .eq('business_id', invoice.business_id)
       .eq('job_status', 'Completed')
       .is('deleted_at', null),
-    supabase.from('payments').select('id, job_id, amount, payment_date, invoice_id')
+    supabase.from('payments').select('id, job_id, amount, payment_date, invoice_id, payment_method')
       .eq('client_id', clientId)
       .eq('business_id', invoice.business_id)
       .eq('is_void', false)

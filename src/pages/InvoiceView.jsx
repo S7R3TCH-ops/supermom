@@ -101,6 +101,7 @@ export default function InvoiceView() {
   const biz            = invoice.businesses || {};
   const client         = invoice.clients    || {};
   const allInvoiceJobs = (invoice.invoice_jobs || []).map(ij => ij.jobs).filter(Boolean);
+  const jobByIdMap     = Object.fromEntries(allInvoiceJobs.map(j => [j.id, j]));
   const isReceipt      = !!invoice.isPaidInFull;
   const anyHourly      = allInvoiceJobs.some(j => j.pricing_type === 'Hourly');
   const allFinancials  = allInvoiceJobs.map(j => computeJobFinancials(j, biz));
@@ -527,7 +528,8 @@ export default function InvoiceView() {
                         {j.scheduled_date ? formatDate(j.scheduled_date) : '—'}
                       </td>
                       <td style={{ padding: '8px 14px', verticalAlign: 'top' }}>
-                        <div style={{ fontWeight: 600 }}>{j.service_name || 'Professional Services'}</div>
+                        <div>{j.service_name || 'Professional Services'}</div>
+                        {!f.isHourly && <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>Flat rate</div>}
                       </td>
                       {anyHourly && <td style={{ textAlign: 'center', padding: '8px 14px', color: '#555', verticalAlign: 'top' }}>{f.isHourly ? `$${f.rate.toFixed(2)}` : ''}</td>}
                       {anyHourly && <td style={{ textAlign: 'center', padding: '8px 14px', color: '#555', verticalAlign: 'top' }}>{f.isHourly ? f.hours.toFixed(1) : ''}</td>}
@@ -562,16 +564,28 @@ export default function InvoiceView() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 14, gap: 20 }}>
           {/* Left — payments received, compact, bottom-aligned with the totals column */}
           {invoice.payments?.length > 0 ? (
-            <div style={{ minWidth: 140, maxWidth: 210 }}>
-              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: '#999', marginBottom: 4 }}>
+            <div style={{ minWidth: 140, maxWidth: 240 }}>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: '#999', marginBottom: 6 }}>
                 Payments Received
               </div>
-              {invoice.payments.map(p => (
-                <div key={p.id ?? `${p.payment_date}-${p.amount}`} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '1px 0', fontSize: 12 }}>
-                  <div style={{ color: '#555' }}>{formatDate(p.payment_date)}</div>
-                  <div style={{ color: '#1a1a1a', fontVariantNumeric: 'tabular-nums' }}>${Number(p.amount).toFixed(2)}</div>
-                </div>
-              ))}
+              {invoice.payments.map(p => {
+                const relatedJob = jobByIdMap[p.job_id];
+                return (
+                  <div key={p.id ?? `${p.payment_date}-${p.amount}`} style={{ marginBottom: 8 }}>
+                    {relatedJob && (
+                      <div style={{ fontSize: 11, color: '#333', fontWeight: 500, marginBottom: 1 }}>
+                        {relatedJob.service_name || 'Professional Services'}
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12 }}>
+                      <div style={{ color: '#888' }}>
+                        {formatDate(p.payment_date)}{p.payment_method ? ` · ${p.payment_method}` : ''}
+                      </div>
+                      <div style={{ color: '#16A34A', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>${Number(p.amount).toFixed(2)}</div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           ) : <div />}
 

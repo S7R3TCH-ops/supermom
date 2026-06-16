@@ -357,13 +357,52 @@ export async function hardDeleteJob(id) {
   if (error) throw error;
 }
 
-export async function markJobUnpaid(id) {
+export async function revertJobToPreCompletion(id) {
   const businessId = await getCurrentBusinessId();
-  const { error: delErr } = await supabase.from('payments').delete().eq('job_id', id);
-  if (delErr) throw delErr;
-  const { error } = await supabase
-    .from('jobs')
-    .update({ payment_status: '', payment_method: null })
+
+  // 1. Hard-delete all payments for this job
+  const { error: delPayErr } = await supabase
+    .from('payments').delete().eq('job_id', id).eq('business_id', businessId);
+  if (delPayErr) throw delPayErr;
+
+  // 2. Find all invoices linked to this job and clean them up
+  const { data: links } = await supabase
+    .from('invoice_jobs').select('invoice_id').eq('job_id', id).eq('business_id', businessId);
+
+  for (const { invoice_id } of (links ?? [])) {
+    await supabase.from('invoice_jobs')
+      .delete().eq('invoice_id', invoice_id).eq('job_id', id);
+
+    const { data: remaining } = await supabase
+      .from('invoice_jobs').select('job_id').eq('invoice_id', invoice_id);
+
+    if (!remaining || remaining.length === 0) {
+      await supabase.from('invoices')
+        .update({ status: 'Void', deleted_at: new Date().toISOString() })
+        .eq('id', invoice_id).eq('business_id', businessId);
+    } else {
+      const jobIds = remaining.map(r => r.job_id);
+      const { data: jobs } = await supabase
+        .from('jobs').select('*').in('id', jobIds).eq('business_id', businessId);
+      const newTotal = (jobs ?? []).reduce((s, j) => s + computeJobFinancials(j).total, 0);
+      await supabase.from('invoices')
+        .update({ total_amount: newTotal, status: 'Draft' })
+        .eq('id', invoice_id).eq('business_id', businessId);
+    }
+  }
+
+  // 3. Revert job to pre-completion state
+  const { error } = await supabase.from('jobs')
+    .update({
+      job_status: 'Scheduled',
+      payment_status: '',
+      payment_method: null,
+      actual_duration: null,
+      completion_notes: null,
+      subtotal: null,
+      hst_amount: null,
+      total_amount: null,
+    })
     .eq('id', id)
     .eq('business_id', businessId);
   if (error) throw error;

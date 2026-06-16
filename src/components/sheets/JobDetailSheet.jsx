@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useKeyboardFocus } from '../../hooks/useKeyboardFocus';
-import { fetchJobById, updateJob, softDeleteJob, cancelJob, hardDeleteJob, markJobUnpaid } from '../../data/jobsRepo';
+import { fetchJobById, updateJob, softDeleteJob, cancelJob, hardDeleteJob, revertJobToPreCompletion } from '../../data/jobsRepo';
 import { useAuth } from '../../context/AuthContext';
 import { notifyDataChanged, useBusiness, useServices, useWorkers } from '../../data/useData';
 import { useToast } from '../../context/ToastContext';
@@ -190,14 +190,14 @@ export default function JobDetailSheet({ jobId, onClose }) {
     } catch (e) { setMutErr(e.message || String(e)); setBusy(false); }
   }
 
-  const [markUnpaidConfirm, setMarkUnpaidConfirm] = useState(false);
+  const [revertConfirm, setRevertConfirm] = useState(false);
   const [futureConfirmType, setFutureConfirmType] = useState(null); // 'complete' | 'paid' | null
-  async function handleMarkUnpaid() {
+  async function handleRevertJob() {
     triggerHaptic('medium');
     setBusy(true); setMutErr(null);
     try {
-      await markJobUnpaid(job.id);
-      showToast('Job marked as unpaid');
+      await revertJobToPreCompletion(job.id);
+      showToast('Job reverted to scheduled');
     } catch (e) { setMutErr(e.message || String(e)); setBusy(false); }
   }
 
@@ -374,10 +374,10 @@ export default function JobDetailSheet({ jobId, onClose }) {
             onHardDeleteConfirm={() => setHardDeleteConfirm(true)}
             onHardDeleteCancel={() => setHardDeleteConfirm(false)}
             onHardDelete={handleHardDelete}
-            markUnpaidConfirm={markUnpaidConfirm}
-            onMarkUnpaidConfirm={() => setMarkUnpaidConfirm(true)}
-            onMarkUnpaidCancel={() => setMarkUnpaidConfirm(false)}
-            onMarkUnpaid={handleMarkUnpaid}
+            revertConfirm={revertConfirm}
+            onRevertConfirm={() => setRevertConfirm(true)}
+            onRevertCancel={() => setRevertConfirm(false)}
+            onRevert={handleRevertJob}
             onEdit={openEditMode}
             onUpdate={(patch) => updateJob(job.id, patch).then(() => notifyDataChanged())}
             onDeepPrep={() => setShowDeepPrep(true)}
@@ -414,7 +414,7 @@ function ReadMode({
   onSetShowCancelForm, onSetCancelReason, onHandleCancel,
   onClose, onMarkComplete, onMarkPaid, onMarkWorkerPaid, onCancelConfirm, onConfirmDelete, onDismissConfirm, onEdit, onUpdate, onDeepPrep,
   hardDeleteConfirm, onHardDeleteConfirm, onHardDeleteCancel, onHardDelete,
-  markUnpaidConfirm, onMarkUnpaidConfirm, onMarkUnpaidCancel, onMarkUnpaid,
+  revertConfirm, onRevertConfirm, onRevertCancel, onRevert,
   futureConfirmType, onFutureConfirmProceed, onFutureConfirmCancel,
 }) {
   const navigate = useNavigate();
@@ -595,32 +595,32 @@ function ReadMode({
           {!futureConfirmType && isAdmin && (
             <>
               <div style={{ height: 1, background: T.cardBorder, margin: '4px 0' }} />
-              {(job.payment_status === 'Paid' || job.payment_status === 'Partial') && (
+              {job.job_status === 'Completed' && (
                 <>
-                  {!markUnpaidConfirm ? (
+                  {!revertConfirm ? (
                     <button
-                      onClick={onMarkUnpaidConfirm}
+                      onClick={onRevertConfirm}
                       style={{ background: 'transparent', border: 'none', fontSize: 12, color: '#B45309', padding: '4px 0', cursor: 'pointer', fontFamily: T.font, fontWeight: 600, textAlign: 'left' }}
                     >
-                      Mark as Unpaid (Admin)
+                      Revert to Scheduled (Admin)
                     </button>
                   ) : (
                     <div style={{ background: 'rgba(180,83,9,0.08)', border: '1px solid rgba(180,83,9,0.3)', borderRadius: 10, padding: '10px 12px', marginTop: 4 }}>
                       <div style={{ fontFamily: T.font, fontSize: 11, color: '#B45309', marginBottom: 8, fontWeight: 600 }}>
-                        Delete all payment records for this job and mark it Unpaid?
+                        Delete all payments and revert this job to Scheduled? The invoice will be voided.
                       </div>
                       <div style={{ display: 'flex', gap: 8 }}>
                         <button
-                          onClick={onMarkUnpaidCancel}
+                          onClick={onRevertCancel}
                           style={{ flex: 1, background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 9, padding: '8px 0', fontFamily: T.font, fontSize: 12, fontWeight: 600, color: T.inkSub, cursor: 'pointer' }}
                         >
                           Cancel
                         </button>
                         <button
-                          onClick={onMarkUnpaid}
+                          onClick={onRevert}
                           style={{ flex: 1, background: '#B45309', border: 'none', borderRadius: 9, padding: '8px 0', fontFamily: T.font, fontSize: 12, fontWeight: 700, color: 'white', cursor: 'pointer' }}
                         >
-                          Yes, mark unpaid
+                          Yes, revert job
                         </button>
                       </div>
                     </div>

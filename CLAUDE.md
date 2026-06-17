@@ -150,13 +150,14 @@ Icons properly round across all platforms — no more square-in-round-hole.
 
 ---
 
-## Current version: 0.12.83 — Jun 17, 2026 (package.json synced)
+## Current version: 0.12.84 — Jun 17, 2026 (package.json synced)
 
 Sandra's business is live — data wiped and re-provisioned Jun 9. App in active use.
 
 **⚠️ Multi-client git discipline**: Always push local commits before starting an online Claude Code session; always pull before the online session writes code.
 
 ### Recent changes (full history in `docs/changelog/` + `git log`)
+- **v0.12.84 (Jun 17)** — Fix home screen shortcut icon: `icon-192.png` + `icon-512.png` (`purpose: "any"`) were transparent — white icon invisible on white OS background. Regenerated with `#FC4693` brand pink background baked in. `generate-icons.mjs` now has dedicated `pinkBgSizes` array for these.
 - **v0.12.83 (Jun 17)** — Fix app drawer icon: add `purpose: "any"` icons at 192px + 512px alongside maskable versions. Android app drawer needs `any` purpose at those sizes; maskable-only caused wrong/missing icon.
 - **v0.12.82 (Jun 17)** — Fix PWA install broken on Android: `index.html` had two `<link rel="manifest">` (one to `manifest.json`, one VitePWA-injected `manifest.webmanifest`). Chrome used first link, which conflicted with service worker tied to `manifest.webmanifest`. Fix: remove manual link from `index.html`, consolidate icons + screenshot into `vite.config.js`, delete `public/manifest.json`. Built HTML now has single `/manifest.webmanifest` link.
 - **v0.12.81 (Jun 17)** — Dark mode audit pass (#28): added `amberFg`, `greenBg`, `greenFg`, `errorFg` tokens to `tokens.js` (both palettes). Fixed 11 files: PrepNoteSheet sheet bg + text (`var(--pink-pale)` → `T.card`, `#1C1C1E` → `T.ink`); Finance `STATUS_PILL` → `makeStatusPill(T)` function; error states in Home/NewExpenseSheet/NewJobSheet (`#FEE2E2` → `T.redBg`); status badges (amber/green/pink) in ClientProfile/PostJobSheet/FinanceDetailSheet/Calendar/Clients. Intentional colors left alone: status pill semantic colors, brand pinks, SVG chart lines.

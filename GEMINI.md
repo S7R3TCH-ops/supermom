@@ -33,7 +33,7 @@ After the v0.6.2 refactor, these symbols moved. The old locations no longer exis
 |---|---|---|
 | `sameDay`, `addDays`, `getWeekRange`, `fmtTime12`, `fmtTimeRange`, `dateBrief` | `src/pages/Home.jsx` | `src/lib/dateUtils.js` |
 | `composeTorontoISO` | `src/data/jobsRepo.js` (defined) | `src/lib/dateUtils.js` (defined); `jobsRepo.js` re-exports for compat |
-| `computeJobTotal` (was `computeTotal`) | `src/pages/Home.jsx` | `src/lib/financialMath.js` |
+| `computeJobTotal` (was `computeTotal`) | `src/pages/Home.jsx` | `src/lib/financialMath.ts` (migrated to TypeScript v0.12.80) |
 | `getBriefingMessage` (was inline useMemo) | `src/pages/Home.jsx` | `src/lib/briefingMessages.js` |
 | `JobCard`, `UpcomingCard`, `EmptyState`, `LiveTimer`, `MissionIntel`, `PaymentBreakdown` | `src/pages/Home.jsx` | `src/components/cards/` |
 
@@ -55,7 +55,7 @@ After the v0.6.2 refactor, these symbols moved. The old locations no longer exis
 
 ---
 
-## Current State (v0.12.78 — Jun 16, 2026)
+## Current State (v0.12.83 — Jun 17, 2026)
 
 | Feature | Status |
 |---|---|
@@ -72,7 +72,7 @@ After the v0.6.2 refactor, these symbols moved. The old locations no longer exis
 | New Client sheet | ✅ Live — focus rings, 44px close, sentence-case, VIP checkbox enlarged, Intel labels expanded (v0.12.61) |
 | Edit Client sheet | ✅ Live — focus rings, 44px close, sentence-case, VIP enlarged, dark-mode delete tint (v0.12.60) |
 | Post-job / Wrap-up sheet | ✅ Live — send nudge screen, pre-flight bundle/settle step, haptic feedback on submit (v0.12.60–72) |
-| Prep Note sheet | ✅ Live — sentence-case, type="button" on close (v0.12.60) |
+| Prep Note sheet | ✅ Live — dark mode fixed: sheet bg T.card, text T.ink (v0.12.81) |
 | Finance Detail sheet | ✅ Live — JobRow div→button, worker cost amber text (v0.12.60) |
 | Admin | ✅ Live — ToolRow div→button, in-app confirms for delete/restore, persona cards as buttons, sm-input on inputs (v0.12.61) |
 | Invoicing | ✅ Live — payment rows show service name + date/method + green amount; flat-rate "Flat rate" sub-label; brand pink #FC4693 heading; multi-job invoices; settlement; receipt layout (v0.12.67–73) |
@@ -90,15 +90,19 @@ After the v0.6.2 refactor, these symbols moved. The old locations no longer exis
 | Conflict detection | ✅ Live |
 | Haptic feedback | ✅ Live — `src/lib/haptics.js`, triggered on book/complete/pay/submit/destructive (v0.12.64) |
 | DESIGN.md | ✅ Regenerated v2.0 — Stitch-compliant frontmatter, dual-theme documented, `.impeccable/design.json` sidecar with 9 component snippets (v0.12.62) |
+| TypeScript migration | ✅ Done — `financialMath.ts` + `selectors.ts` with full interfaces: `PricingType`, `CostItem`, `JobInput`, `BusinessInput`, `LiveFormInput`, `JobFinancials`, `DisplayClient`, `DisplayJob` (v0.12.80) |
+| Dark mode audit | ✅ Done — new tokens `amberFg`/`greenBg`/`greenFg`/`errorFg`; fixed 11 files; Finance STATUS_PILL → makeStatusPill(T); error states + status badges all theme-aware (v0.12.81) |
+| PWA install | ✅ Fixed — removed duplicate manifest link; consolidated into vite.config.js; both `any` + `maskable` icons at 192/512 (v0.12.82–83) |
 
 ---
 
 ## Next priorities
 
-1. **⚠️ Device verification** — v0.12.52–78 not fully phone-tested. Test Home + invoice + AI chat on Pixel 10 Pro + Sandra's iPhone.
-2. **Client invoice history** — Add "Invoices" section to ClientProfile listing all invoices per client, tappable to `/i/:id`.
-3. **Offline mode** — app crashes if Supabase unreachable on first load. Per-page `ErrorBoundary` exists (v0.12.64) but no "tap to reload" fallback copy yet.
-4. **Vercel function slots** — 9/12 used. One slot remaining before limit.
+1. **⚠️ Device verification** — v0.12.67–83 not fully phone-tested on Sandra's iPhone. Joel tested Android (Pixel 10 Pro) v0.12.80–81, confirmed good.
+2. **React Query / TanStack migration (#31)** — `useData.js` manual caching layer. Migrate hook-by-hook. Push only after Joel device-tests each hook. Do NOT batch-push unverified.
+3. **Client invoice history** — Add "Invoices" section to ClientProfile listing all invoices per client, tappable to `/i/:id`.
+4. **Offline mode** — Per-page `ErrorBoundary` exists (v0.12.64) but no "tap to reload" fallback copy yet.
+5. **Vercel function slots** — 9/12 used. One slot remaining before limit.
 
 ### Key data-layer rules (NEVER skip)
 - `revertJobToPreCompletion(id)` — admin revert: deletes payments, voids invoice (`status='Void'` + `deleted_at`), resets job to `Scheduled`, nulls `actual_duration`/`subtotal`/`hst_amount`/`total_amount`/`completion_notes`.
@@ -109,4 +113,4 @@ After the v0.6.2 refactor, these symbols moved. The old locations no longer exis
 ### Vercel function count
 9 of 12 serverless functions used: `maps`, `invoice`, `auth/google/login`, `auth/google/callback`, `briefing/daily`, `sync/gcal`, `ai/[action]`, `ai/chat`, `admin/provision`. 3 remaining. (`transcribe` deleted in v0.12.75, merged into `ai/[action]`.)
 
-(Updated by Claude Code — June 16, 2026 — v0.12.78)
+(Updated by Claude Code — June 17, 2026 — v0.12.83)

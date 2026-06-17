@@ -60,7 +60,7 @@
   ],
   "screenshots": [
     {
-      "src": "/public/branding/supermom_app.jpg",
+      "src": "/branding/supermom_app.jpg",
       "sizes": "540x720",
       "type": "image/jpeg",
       "form_factor": "narrow"

@@ -6,8 +6,11 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const sourceIcon = join(__dirname, '../public/branding/supermom_icon_transparent.png');
 const iconsDir = join(__dirname, '../public/icons');
 
-// Maskable icons (transparent, OS applies rounding)
+// Maskable icons (transparent, OS applies rounding + safe-zone)
 const maskableSizes = [192, 512];
+
+// Any-purpose icons (pink brand background, white icon — used for app drawer/home screen)
+const pinkBgSizes = [192, 512];
 
 // Non-maskable fallback sizes (white background for older devices)
 const nonMaskableSizes = [96, 144, 180, 256, 384];
@@ -23,6 +26,16 @@ async function generateIcons() {
       .png()
       .toFile(outputPath);
     console.log(`✓ Maskable ${size}x${size}: ${outputPath}`);
+  }
+
+  // Generate any-purpose icons (pink brand background #FC4693)
+  for (const size of pinkBgSizes) {
+    const outputPath = join(iconsDir, `icon-${size}.png`);
+    await sharp(sourceIcon)
+      .resize(size, size, { fit: 'contain', background: { r: 252, g: 70, b: 147, alpha: 1 } })
+      .png()
+      .toFile(outputPath);
+    console.log(`✓ Any-purpose (pink bg) ${size}x${size}: ${outputPath}`);
   }
 
   // Generate non-maskable icons (white background)

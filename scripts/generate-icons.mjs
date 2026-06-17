@@ -18,21 +18,31 @@ const nonMaskableSizes = [96, 144, 180, 256, 384];
 async function generateIcons() {
   console.log('🎨 Generating app icons...\n');
 
-  // Generate maskable icons (transparent background)
+  const pink = { r: 252, g: 70, b: 147, alpha: 1 };
+
+  // Generate maskable icons: pink bg + artwork at 75% safe zone (OS crops to shape)
   for (const size of maskableSizes) {
     const outputPath = join(iconsDir, `icon-${size}x${size}-maskable.png`);
-    await sharp(sourceIcon)
-      .resize(size, size, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+    const artworkSize = Math.round(size * 0.75);
+    const offset = Math.round((size - artworkSize) / 2);
+    const artwork = await sharp(sourceIcon)
+      .resize(artworkSize, artworkSize, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+      .toBuffer();
+    await sharp({ create: { width: size, height: size, channels: 4, background: pink } })
+      .composite([{ input: artwork, left: offset, top: offset }])
       .png()
       .toFile(outputPath);
     console.log(`✓ Maskable ${size}x${size}: ${outputPath}`);
   }
 
-  // Generate any-purpose icons (pink brand background #FC4693)
+  // Generate any-purpose icons (pink brand background #FC4693, artwork fills space)
   for (const size of pinkBgSizes) {
     const outputPath = join(iconsDir, `icon-${size}.png`);
-    await sharp(sourceIcon)
-      .resize(size, size, { fit: 'contain', background: { r: 252, g: 70, b: 147, alpha: 1 } })
+    const artwork = await sharp(sourceIcon)
+      .resize(size, size, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+      .toBuffer();
+    await sharp({ create: { width: size, height: size, channels: 4, background: pink } })
+      .composite([{ input: artwork, left: 0, top: 0 }])
       .png()
       .toFile(outputPath);
     console.log(`✓ Any-purpose (pink bg) ${size}x${size}: ${outputPath}`);
@@ -48,10 +58,13 @@ async function generateIcons() {
     console.log(`✓ Non-maskable ${size}x${size}: ${outputPath}`);
   }
 
-  // Generate apple-touch-icon (180x180, non-maskable)
+  // Generate apple-touch-icon (180x180, pink bg for iOS home screen)
   const applePath = join(iconsDir, 'apple-touch-icon.png');
-  await sharp(sourceIcon)
-    .resize(180, 180, { fit: 'contain', background: { r: 255, g: 255, b: 255, alpha: 1 } })
+  const appleArtwork = await sharp(sourceIcon)
+    .resize(140, 140, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+    .toBuffer();
+  await sharp({ create: { width: 180, height: 180, channels: 4, background: pink } })
+    .composite([{ input: appleArtwork, left: 20, top: 20 }])
     .png()
     .toFile(applePath);
   console.log(`✓ Apple touch icon: ${applePath}`);

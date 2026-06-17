@@ -150,13 +150,14 @@ Icons properly round across all platforms — no more square-in-round-hole.
 
 ---
 
-## Current version: 0.12.78 — Jun 16, 2026 (package.json synced)
+## Current version: 0.12.79 — Jun 16, 2026 (package.json synced)
 
 Sandra's business is live — data wiped and re-provisioned Jun 9. App in active use.
 
 **⚠️ Multi-client git discipline**: Always push local commits before starting an online Claude Code session; always pull before the online session writes code.
 
 ### Recent changes (full history in `docs/changelog/` + `git log`)
+- **v0.12.79 (Jun 16)** — Finance week filter corrected: "Week" now = Monday 00:00 → Sunday 23:59:59.999 of current calendar week (was rolling last-7-days). Chart buckets also start Monday. Month/Year end times include 999ms to prevent midnight edge-case exclusions.
 - **v0.12.78 (Jun 16)** — App icon rounding: maskable PNG icons (192, 512) let OS apply corner radius per-platform; fallback non-maskable sizes (96, 144, 180, 256, 384) for older devices. Icon properly round on Android/iOS/web. `public/manifest.json` added with PWA config. `scripts/generate-icons.mjs` generates all sizes from transparent source.
 - **v0.12.77 (Jun 16)** — LogoBar cleanup: dark mode toggle moved to Settings (Preferences card, same toggle-row pattern); LogoBar right cluster trimmed to ✦ + 👁 + avatar; avatar upgraded to 34px white circle with `#FC4693` Fraunces initial + drop shadow.
 - **v0.12.76 (Jun 16)** — AI chat interface (#6): new `api/ai/chat.js` Vercel function (10/12 slots now); `AiChatSheet.jsx` bottom sheet with user/assistant message bubbles, in-memory conversation state (last 20 msgs sent to Claude per request); `AiChatSheetContext.js` + `AiChatSheet.jsx` provider; ✦ button in LogoBar opens chat from any authed page. System prompt enriched with business profile; optional `clientId`/`jobId` context injection for future use. Model: `claude-haiku-4-5-20251001`. No DB persistence (in-memory per session).

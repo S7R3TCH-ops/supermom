@@ -1,4 +1,6 @@
 import { Component, lazy, Suspense, useState, useEffect, useRef } from 'react';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from './lib/queryClient';
 import { BrowserRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { supabase } from './lib/supabase';
@@ -433,6 +435,7 @@ function Gate() {
 
 export default function App() {
   return (
+    <QueryClientProvider client={queryClient}>
     <AppThemeProvider>
       <ToastProvider>
       <PWAUpdatePrompt />
@@ -450,5 +453,6 @@ export default function App() {
       </BrowserRouter>
       </ToastProvider>
     </AppThemeProvider>
+    </QueryClientProvider>
   );
 }

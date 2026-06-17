@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { triggerHaptic } from '../../lib/haptics';
 
-export default function Swipeable({ children, onDelete, threshold = 80 }) {
+export default function Swipeable({ children, onDelete, onAction, actionLabel = 'Wrap up', actionColor = '#16A34A', threshold = 80 }) {
   const { T } = useAppTheme();
   const [startX, setStartX] = useState(0);
   const [startY, setStartY] = useState(0);
@@ -36,14 +36,22 @@ export default function Swipeable({ children, onDelete, threshold = 80 }) {
       return;
     }
 
-    // Only allow left swipe (delete gesture)
-    if (diffX < 0) {
+    if (diffX < 0 && onDelete) {
       const off = Math.max(diffX, -120);
       setOffsetX(off);
       if (Math.abs(off) > threshold && !hapticTriggered) {
         triggerHaptic('light');
         setHapticTriggered(true);
       } else if (Math.abs(off) <= threshold && hapticTriggered) {
+        setHapticTriggered(false);
+      }
+    } else if (diffX > 0 && onAction) {
+      const off = Math.min(diffX, 120);
+      setOffsetX(off);
+      if (off > threshold && !hapticTriggered) {
+        triggerHaptic('light');
+        setHapticTriggered(true);
+      } else if (off <= threshold && hapticTriggered) {
         setHapticTriggered(false);
       }
     }
@@ -58,9 +66,12 @@ export default function Swipeable({ children, onDelete, threshold = 80 }) {
 
     setSwiping(false);
 
-    if (offsetX < -threshold) {
+    if (offsetX < -threshold && onDelete) {
       triggerHaptic('medium');
-      if (onDelete) onDelete();
+      onDelete();
+    } else if (offsetX > threshold && onAction) {
+      triggerHaptic('medium');
+      onAction();
     }
 
     setOffsetX(0);
@@ -79,6 +90,18 @@ export default function Swipeable({ children, onDelete, threshold = 80 }) {
           transition: 'opacity 0.2s',
         }}>
           <div style={{ color: 'white', fontWeight: 800, fontSize: 12, textTransform: 'uppercase' }}>Delete</div>
+        </div>
+      )}
+      {onAction && (
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: actionColor,
+          display: 'flex', justifyContent: 'flex-start', alignItems: 'center',
+          paddingLeft: 24, borderRadius: 12,
+          opacity: offsetX > 0 ? 1 : 0,
+          transition: 'opacity 0.2s',
+        }}>
+          <div style={{ color: 'white', fontWeight: 800, fontSize: 12, textTransform: 'uppercase' }}>{actionLabel}</div>
         </div>
       )}
       <div

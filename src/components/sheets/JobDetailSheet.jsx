@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { useBackClose } from '../../hooks/useBackClose';
 import { useKeyboardFocus } from '../../hooks/useKeyboardFocus';
 import { fetchJobById, updateJob, softDeleteJob, cancelJob, hardDeleteJob, revertJobToPreCompletion } from '../../data/jobsRepo';
 import { useAuth } from '../../context/AuthContext';
@@ -73,6 +74,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
   const { workers } = useWorkers();
   const sheetRef = useRef(null);
   useFocusTrap(sheetRef, true, onClose);
+  useBackClose(true, onClose);
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

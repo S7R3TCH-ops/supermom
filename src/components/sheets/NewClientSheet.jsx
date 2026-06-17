@@ -3,6 +3,7 @@ import { useAppTheme } from '../../context/AppThemeContext';
 import { createClient } from '../../data/clientsRepo';
 import { RECURRENCE } from '../../data/services';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { useBackClose } from '../../hooks/useBackClose';
 import { useKeyboardFocus } from '../../hooks/useKeyboardFocus';
 import { useToast } from '../../context/ToastContext';
 import GrabBar from '../ui/GrabBar';
@@ -23,6 +24,7 @@ export default function NewClientSheet({ onClose, onCreated }) {
   const sheetRef = useRef(null);
   const submittingRef = useRef(false);
   useFocusTrap(sheetRef, true, onClose);
+  useBackClose(true, onClose);
 
   const [first, setFirst] = useState('');
   const [last, setLast] = useState('');

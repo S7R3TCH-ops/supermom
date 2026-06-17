@@ -7,6 +7,7 @@ import { fetchWorkersWithSkills } from '../../data/workersRepo';
 import { toDisplayClient } from '../../data/selectors';
 import { useToast } from '../../context/ToastContext';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { useBackClose } from '../../hooks/useBackClose';
 import { SectionLabel } from '../ui/typography';
 import NewClientSheet from './NewClientSheet';
 import { calculateEstimatedDuration } from '../../data/ai';
@@ -66,6 +67,7 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
   const { services } = useServices();
   const sheetRef = useRef(null);
   useFocusTrap(sheetRef, true, onClose);
+  useBackClose(true, onClose);
   const hasPrefill = (!!prefillClientId && prefillClientId !== 'null') || !!prefillData;
   const [step, setStep] = useState(() => hasPrefill ? 2 : 1);
   const { panelRef: swipePanelRef, scrollRef: swipeScrollRef, handlers: swipeHandlers } = useSwipeToDismiss(onClose);

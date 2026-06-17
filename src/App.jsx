@@ -24,6 +24,7 @@ import OnboardingWalkthrough from './components/layout/OnboardingWalkthrough';
 import FAB from './components/ui/FAB';
 import { useRealtimeSync } from './data/useData';
 import { getCurrentBusinessId } from './data/currentBusiness';
+import { useIdleTimeout } from './hooks/useIdleTimeout';
 
 function PWAUpdatePrompt() {
   const { needRefresh: [needRefresh], updateServiceWorker } = useRegisterSW();
@@ -200,6 +201,7 @@ function GCalExpiredBanner() {
 function AuthedShell() {
   const { T } = useAppTheme();
   const { viewingAsId } = useViewpoint();
+  const { signOut: authSignOut } = useAuth();
   const location = useLocation();
   useRealtimeSync();
 
@@ -209,6 +211,12 @@ function AuthedShell() {
 
   const hideFAB = ['/settings', '/admin'].includes(location.pathname);
 
+  const { showWarning, secondsRemaining, reset } = useIdleTimeout({
+    timeoutMs: 30 * 60 * 1000,
+    warningMs: 60 * 1000,
+    onTimeout: () => authSignOut(),
+  });
+
   return (
     <ErrorBoundary>
       <div style={{
@@ -216,6 +224,37 @@ function AuthedShell() {
         height: '100dvh', width: '100%',
         background: T.bg, color: T.ink, overflow: 'hidden',
       }}>
+        {showWarning && (
+          <div style={{
+            position: 'fixed', inset: 0, zIndex: 2000,
+            background: 'rgba(0,0,0,0.6)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <div style={{
+              background: T.card, borderRadius: 20, padding: '28px 24px',
+              maxWidth: 320, margin: '0 24px', textAlign: 'center',
+              boxShadow: '0 8px 40px rgba(0,0,0,0.3)',
+            }}>
+              <div style={{ fontFamily: T.serif, fontSize: 20, fontWeight: 600, color: T.ink, marginBottom: 8 }}>
+                Still there?
+              </div>
+              <div style={{ fontFamily: T.font, fontSize: 14, color: T.inkSub, marginBottom: 24, lineHeight: 1.5 }}>
+                Signing out in {secondsRemaining}s to protect your client data.
+              </div>
+              <button
+                type="button"
+                onClick={reset}
+                style={{
+                  background: T.pink, color: '#fff', border: 'none',
+                  borderRadius: 12, padding: '14px 32px',
+                  font: `600 15px/1 ${T.font}`, cursor: 'pointer', width: '100%',
+                }}
+              >
+                I'm still here
+              </button>
+            </div>
+          </div>
+        )}
         <ViewpointBanner />
         <GCalExpiredBanner />
         <OnboardingWalkthrough />

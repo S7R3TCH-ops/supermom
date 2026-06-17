@@ -19,6 +19,7 @@ import { sameDay, getWeekRange, fmtTime12, dateBrief, fmtDuration } from '../lib
 import { computeJobTotal, computeJobSubtotal } from '../lib/financialMath';
 import JobCard from '../components/cards/JobCard';
 import UpcomingCard from '../components/cards/UpcomingCard';
+import Swipeable from '../components/ui/Swipeable';
 import EmptyState from '../components/cards/EmptyState';
 import LiveTimer from '../components/cards/LiveTimer';
 import MissionIntel from '../components/cards/MissionIntel';
@@ -1051,16 +1052,18 @@ export default function Home() {
               const leaveBy = locDrive ? formatLeaveBy(locDrive.durationValue, j.start, now) : null;
               return (
                 <div key={j.id}>
-                  <UpcomingCard
-                    job={j}
-                    T={T}
-                    onClick={() => openJob(j.id)}
-                    total={computeJobSubtotal(j)}
-                    grandTotal={computeJobTotal(j)}
-                    paid={paymentMap[j.id] || 0}
-                    privacyOn={privacyOn}
-                    hstNote={computeJobTotal(j) > computeJobSubtotal(j)}
-                  />
+                  <Swipeable onAction={() => openPostJob(j.id)} actionLabel="Wrap up" actionColor="#16A34A">
+                    <UpcomingCard
+                      job={j}
+                      T={T}
+                      onClick={() => openJob(j.id)}
+                      total={computeJobSubtotal(j)}
+                      grandTotal={computeJobTotal(j)}
+                      paid={paymentMap[j.id] || 0}
+                      privacyOn={privacyOn}
+                      hstNote={computeJobTotal(j) > computeJobSubtotal(j)}
+                    />
+                  </Swipeable>
                   {leaveBy && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: -4, marginBottom: 8, paddingLeft: 16 }}>
                       <span style={{ fontSize: 10 }}>{leaveBy.urgent ? '⚠️' : '🚗'}</span>

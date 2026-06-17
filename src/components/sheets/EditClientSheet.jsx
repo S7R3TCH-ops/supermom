@@ -5,6 +5,7 @@ import { fetchClientById, updateClient, softDeleteClient } from '../../data/clie
 import { notifyDataChanged } from '../../data/useData';
 import { useToast } from '../../context/ToastContext';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { useBackClose } from '../../hooks/useBackClose';
 import { useKeyboardFocus } from '../../hooks/useKeyboardFocus';
 import { RECURRENCE } from '../../data/services';
 import GrabBar from '../ui/GrabBar';
@@ -27,6 +28,7 @@ export default function EditClientSheet({ clientId, onClose }) {
   const isKeyboardFocused = useKeyboardFocus();
   const sheetRef = useRef(null);
   useFocusTrap(sheetRef, true, onClose);
+  useBackClose(true, onClose);
 
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);

@@ -1,0 +1,52 @@
+import { useEffect, useRef } from 'react';
+
+// Module-level LIFO stack — one listener shared across all open sheets.
+// Prevents double-close when nested sheets (e.g. NewJobSheet → NewClientSheet) are both mounted.
+const backStack = [];
+let listenerAttached = false;
+
+function handlePopState() {
+  const top = backStack[backStack.length - 1];
+  if (!top || top.consumed) return;
+  top.consumed = true;
+  backStack.pop();
+  top.onClose();
+}
+
+function attachListener() {
+  if (listenerAttached) return;
+  listenerAttached = true;
+  window.addEventListener('popstate', handlePopState);
+}
+
+export function useBackClose(isOpen, onClose) {
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  useEffect(() => {
+    if (!isOpen) return;
+    attachListener();
+
+    // Push a synthetic history entry at the same URL so React Router
+    // sees no location change but the browser gains a "back" step to intercept.
+    history.pushState(null, '', window.location.href);
+
+    const entry = {
+      onClose: () => onCloseRef.current(),
+      consumed: false,
+    };
+    backStack.push(entry);
+
+    return () => {
+      const idx = backStack.indexOf(entry);
+      if (idx !== -1) {
+        // Sheet closed via UI (swipe, button, Escape) — remove from stack
+        // and consume the synthetic history entry we pushed.
+        backStack.splice(idx, 1);
+        entry.consumed = true;
+        // history.back() fires another popstate; entry.consumed=true makes handlePopState no-op.
+        if (backStack.length >= 0) history.back();
+      }
+    };
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+}

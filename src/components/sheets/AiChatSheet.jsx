@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { useBackClose } from '../../hooks/useBackClose';
 import { getCurrentBusinessId } from '../../data/currentBusiness';
 import GrabBar from '../ui/GrabBar';
 
@@ -9,6 +10,7 @@ export default function AiChatSheet({ onClose, context = {} }) {
   const sheetRef = useRef(null);
   const scrollRef = useRef(null);
   useFocusTrap(sheetRef, true, onClose);
+  useBackClose(true, onClose);
 
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');

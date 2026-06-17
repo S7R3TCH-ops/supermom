@@ -150,13 +150,14 @@ Icons properly round across all platforms — no more square-in-round-hole.
 
 ---
 
-## Current version: 0.12.86 — Jun 17, 2026 (package.json synced)
+## Current version: 0.12.87 — Jun 17, 2026 (package.json synced)
 
 Sandra's business is live — data wiped and re-provisioned Jun 9. App in active use.
 
 **⚠️ Multi-client git discipline**: Always push local commits before starting an online Claude Code session; always pull before the online session writes code.
 
 ### Recent changes (full history in `docs/changelog/` + `git log`)
+- **v0.12.87 (Jun 17)** — Mobile UX hardening: (1) **Idle session timeout** — 30-min inactivity auto-logout; 60s countdown warning modal ("Still there?") in `AuthedShell`; `useIdleTimeout` hook (`src/hooks/useIdleTimeout.js`) tracks `touchstart`/`click`/`keydown`, rechecks on `visibilitychange`. (2) **Android back button closes sheets** — `useBackClose` hook (`src/hooks/useBackClose.js`) pushes synthetic `history.pushState` on mount, LIFO stack + single `popstate` listener closes topmost sheet; wired to 6 sheets (JobDetailSheet, NewJobSheet, NewClientSheet, PostJobSheet, EditClientSheet, AiChatSheet). (3) **Swipe-to-wrap-up on Home job cards** — `Swipeable.jsx` extended with `onAction`/`actionLabel`/`actionColor` props for right-swipe; `todayUpcoming` cards in Home.jsx wrapped — swipe right → opens PostJobSheet. Prerequisite fix: `signOut` in `Auth.jsx` now calls `queryClient.clear()` before `supabase.auth.signOut()` to prevent stale TanStack cache after logout.
 - **v0.12.86 (Jun 17)** — TanStack Query migration (#31): `useData.js` 383→165 lines. All 9 hooks use `useQuery`. `src/lib/queryClient.js` singleton: `staleTime: Infinity`, `refetchOnWindowFocus/Reconnect: false` (egress-safe). `notifyDataChanged` in `events.js` now calls `queryClient.invalidateQueries()` inside existing 300ms debounce — all mutation invalidation routes through here. `QueryClientProvider` added to `App.jsx`. Zero caller changes. Foundation for all future data hooks.
 - **v0.12.85 (Jun 17)** — Fix PWA icon white background: maskable icons had transparent bg → OS wrapped in white circle. Now all icons (maskable 192/512, any-purpose 192/512, apple-touch-icon) use `#FC4693` pink background. Maskable artwork at 75% safe zone so OS circle/squircle masking never clips logo. `generate-icons.mjs` uses sharp `composite()` to layer artwork over pink canvas.
 - **v0.12.84 (Jun 17)** — Fix home screen shortcut icon: `icon-192.png` + `icon-512.png` (`purpose: "any"`) were transparent — white icon invisible on white OS background. Regenerated with `#FC4693` brand pink background baked in. `generate-icons.mjs` now has dedicated `pinkBgSizes` array for these.
@@ -255,7 +256,7 @@ Sandra's business is live — data wiped and re-provisioned Jun 9. App in active
 
 17. **Job templates** — Sandra books the same configs repeatedly. Save a job as a template; pre-fill NewJobSheet from it. Schema already supports it.
 18. **Cross-job search** — find "all jobs containing 'basement'" or "all October jobs". One search endpoint serves this.
-19. **Swipe-to-complete on Home cards** — `Swipeable.jsx` already exists but isn't wired. Right-swipe → complete/pay shortcut.
+19. ~~**Swipe-to-complete on Home cards**~~ — DONE v0.12.87. Right-swipe `todayUpcoming` cards → opens PostJobSheet ("Wrap up"). `Swipeable.jsx` extended with right-swipe `onAction` prop.
 20. **"Last job" quick-rebook** — from ClientProfile, 1-tap to duplicate the last job (same service/rate). Saves the 3-step booking flow.
 21. ~~**Mileage tracking**~~ — DONE v0.12.75. Toggle + CRA rate in Settings, Drive row in JobDetailSheet, Mileage Deductions section in Finance with CSV export.
 22. **Revenue goal progress bar** — Sandra sets a monthly target in Settings; Home hero shows progress ring.

@@ -7,6 +7,7 @@ import { computeJobTotal } from '../../lib/financialMath';
 import { notifyDataChanged, useBusiness } from '../../data/useData';
 import { useToast } from '../../context/ToastContext';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { useBackClose } from '../../hooks/useBackClose';
 import { supabase } from '../../lib/supabase';
 import GrabBar from '../ui/GrabBar';
 import FinancialMathBreakdown from '../ui/FinancialMathBreakdown';
@@ -19,6 +20,7 @@ export default function PostJobSheet({ jobId, onClose }) {
   const toast = useToast();
   const sheetRef = useRef(null);
   useFocusTrap(sheetRef, true, onClose);
+  useBackClose(true, onClose);
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
   const [fetchErr, setFetchErr] = useState(null);

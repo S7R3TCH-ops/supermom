@@ -150,13 +150,14 @@ Icons properly round across all platforms — no more square-in-round-hole.
 
 ---
 
-## Current version: 0.12.79 — Jun 16, 2026 (package.json synced)
+## Current version: 0.12.80 — Jun 17, 2026 (package.json synced)
 
 Sandra's business is live — data wiped and re-provisioned Jun 9. App in active use.
 
 **⚠️ Multi-client git discipline**: Always push local commits before starting an online Claude Code session; always pull before the online session writes code.
 
 ### Recent changes (full history in `docs/changelog/` + `git log`)
+- **v0.12.80 (Jun 17)** — TypeScript migration (#32): `src/lib/financialMath.js` → `financialMath.ts` + `src/data/selectors.js` → `selectors.ts`. Exports typed interfaces: `PricingType`, `CostItem`, `JobInput`, `BusinessInput`, `LiveFormInput`, `JobFinancials`, `DisplayClient`, `DisplayJob`. Build clean (154 modules, zero TS errors). Bundle audit (#33) confirmed clean — `react-pdf` serverless-only, not in frontend bundle.
 - **v0.12.79 (Jun 16)** — Finance week filter corrected: "Week" now = Monday 00:00 → Sunday 23:59:59.999 of current calendar week (was rolling last-7-days). Chart buckets also start Monday. Month/Year end times include 999ms to prevent midnight edge-case exclusions.
 - **v0.12.78 (Jun 16)** — App icon rounding: maskable PNG icons (192, 512) let OS apply corner radius per-platform; fallback non-maskable sizes (96, 144, 180, 256, 384) for older devices. Icon properly round on Android/iOS/web. `public/manifest.json` added with PWA config. `scripts/generate-icons.mjs` generates all sizes from transparent source.
 - **v0.12.77 (Jun 16)** — LogoBar cleanup: dark mode toggle moved to Settings (Preferences card, same toggle-row pattern); LogoBar right cluster trimmed to ✦ + 👁 + avatar; avatar upgraded to 34px white circle with `#FC4693` Fraunces initial + drop shadow.
@@ -264,8 +265,8 @@ Sandra's business is live — data wiped and re-provisioned Jun 9. App in active
 29. ~~**Eliminate `select *` queries**~~ — fixed in v0.12.66. List fetches (jobs, clients) now use named column sets. Detail fetches still `*` intentionally.
 30. ~~**Consolidate AI + transcribe Vercel functions**~~ — DONE v0.12.75. `transcribe.js` deleted, merged into `ai/[action].js`.
 31. **React Query / TanStack migration** — `useData.js` does manual caching, stale-state, refetch-on-focus by hand. TanStack replaces that whole layer and gives background refresh for free.
-32. **TypeScript — start with `selectors.js`** — `computeJobFinancials`, `toDisplayJob`, `computeJobTotal` are where subtle display-vs-DB bugs hide. Type just these and the repo files they call.
-33. **Bundle audit** — `react-pdf` is the biggest dep. Verify it isn't bundled into frontend (it should only run in `api/`).
+32. ~~**TypeScript — start with `selectors.js`**~~ — DONE v0.12.80. `financialMath.ts` + `selectors.ts` with full interfaces. Build clean.
+33. ~~**Bundle audit**~~ — DONE v0.12.80. `react-pdf` confirmed serverless-only; not in frontend bundle (443KB).
 34. ~~**Per-page `ErrorBoundary`** wrappers~~ — fixed in v0.12.64. Each Route element now wrapped; crash isolates to one page, BottomNav stays usable.
 
 ### 🏢 Multi-tenant / future

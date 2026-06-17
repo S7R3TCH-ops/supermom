@@ -5,20 +5,71 @@
 //   total_amount = tax-inclusive grand total written by recordPayment; never use as pre-tax subtotal
 //   actual_duration = completed hours (use over estimated_hours for completed jobs)
 
-/**
- * Computes the full financial breakdown for a job.
- * Handles live form state (if editing) and business tax settings.
- * 
- * @param {Object} job - The job object from the DB (or decorated display job)
- * @param {Object} business - (Optional) The business object for tax settings
- * @param {Object} liveForm - (Optional) Current edit form state for live math
- * @returns {Object} A full breakdown of costs, taxes, and totals
- */
-export function computeJobFinancials(job, business = null, liveForm = null) {
-  const src = job?.raw ?? job ?? {};
-  
+export type PricingType = 'Hourly' | 'Flat';
+
+export interface CostItem {
+  amount: number | string;
+  description?: string | null;
+}
+
+// Raw DB job fields consumed by financial calculations.
+// tax_enabled is nullable: null/undefined = inherit from business; true/false = per-job override.
+export interface JobInput {
+  raw?: JobInput;
+  pricing_type?: string | null;
+  job_status?: string | null;
+  actual_duration?: number | string | null;
+  estimated_hours?: number | string | null;
+  // flat_rate stores $/hr for Hourly jobs — not a flat fee. See CLAUDE.md.
+  flat_rate?: number | string | null;
+  additional_costs_json?: CostItem[] | null;
+  additional_cost?: number | string | null;
+  additional_cost_notes?: string | null;
+  tax_enabled?: boolean | null;
+  hst_amount?: number | string | null;
+  worker_pay?: number | string | null;
+  subtotal?: number | string | null;
+}
+
+export interface BusinessInput {
+  hourly_rate?: number | string | null;
+  hst_rate?: number | string | null;
+  tax_enabled?: boolean | null;
+}
+
+export interface LiveFormInput {
+  pricing_type?: string | null;
+  estimated_hours?: number | string | null;
+  hourly_rate?: number | string | null;
+  flat_rate?: number | string | null;
+  additional_costs_json?: CostItem[] | null;
+  tax_enabled?: boolean | null;
+}
+
+export interface JobFinancials {
+  pricingType: PricingType;
+  isHourly: boolean;
+  hours: number;
+  rate: number;
+  subtotal: number;
+  activeCosts: CostItem[];
+  additionalTotal: number;
+  taxEnabled: boolean;
+  taxAmount: number;
+  taxRate: number;
+  total: number;
+  workerCost: number;
+}
+
+export function computeJobFinancials(
+  job: JobInput,
+  business: BusinessInput | null = null,
+  liveForm: LiveFormInput | null = null
+): JobFinancials {
+  const src: JobInput = job?.raw ?? job ?? {};
+
   // 1. Resolve Pricing Type
-  const pricingType = liveForm?.pricing_type ?? src?.pricing_type ?? 'Hourly';
+  const pricingType = (liveForm?.pricing_type ?? src?.pricing_type ?? 'Hourly') as PricingType;
   const isHourly = pricingType === 'Hourly';
 
   // 2. Resolve Hours
@@ -52,13 +103,15 @@ export function computeJobFinancials(job, business = null, liveForm = null) {
 
   // 5. Additional Costs
   // liveForm costs are expected to be an array of { amount, description }
-  const formCosts = Array.isArray(liveForm?.additional_costs_json) 
-    ? liveForm.additional_costs_json 
+  const formCosts: CostItem[] = Array.isArray(liveForm?.additional_costs_json)
+    ? liveForm.additional_costs_json
     : [];
-  const jobCosts = Array.isArray(src?.additional_costs_json)
+  const jobCosts: CostItem[] = Array.isArray(src?.additional_costs_json)
     ? src.additional_costs_json
-    : (Number(src?.additional_cost) > 0 ? [{ amount: src.additional_cost, description: src.additional_cost_notes }] : []);
-  
+    : (Number(src?.additional_cost) > 0
+        ? [{ amount: src.additional_cost as number, description: src.additional_cost_notes }]
+        : []);
+
   const activeCosts = liveForm ? formCosts : jobCosts;
   const additionalTotal = activeCosts.reduce((s, c) => s + (Number(c.amount) || 0), 0);
 
@@ -71,7 +124,7 @@ export function computeJobFinancials(job, business = null, liveForm = null) {
   let taxAmount = 0;
 
   if (hasTaxOverride) {
-    taxEnabled = perJobTax;
+    taxEnabled = !!perJobTax;
     taxAmount = taxEnabled ? (subtotal + additionalTotal) * taxRate : 0;
   } else if (business) {
     taxEnabled = business.tax_enabled ?? false;
@@ -100,21 +153,17 @@ export function computeJobFinancials(job, business = null, liveForm = null) {
     taxAmount,
     taxRate,
     total,
-    workerCost
+    workerCost,
   };
 }
 
-/**
- * Convenience wrapper for getting just the final grand total.
- */
-export function computeJobTotal(job) {
+/** Convenience wrapper for getting just the final grand total. */
+export function computeJobTotal(job: JobInput): number {
   return computeJobFinancials(job).total;
 }
 
-/**
- * Pre-tax subtotal (base + additional costs, no HST). Use on cards where HST isn't Sandra's revenue.
- */
-export function computeJobSubtotal(job) {
+/** Pre-tax subtotal (base + additional costs, no HST). Use on cards where HST isn't Sandra's revenue. */
+export function computeJobSubtotal(job: JobInput): number {
   const { subtotal, additionalTotal } = computeJobFinancials(job);
   return subtotal + additionalTotal;
 }

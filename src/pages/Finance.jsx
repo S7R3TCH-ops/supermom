@@ -30,25 +30,35 @@ function parseDate(val) {
   return isNaN(d.getTime()) ? null : d;
 }
 
+function getMondayOfWeek(date) {
+  const d = new Date(date);
+  const day = d.getDay(); // 0=Sun
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
 function getPeriodRange(period) {
   const now = new Date();
   if (period === 'All') return null;
   if (period === 'Week') {
-    const start = new Date(now);
-    start.setDate(now.getDate() - 6);
-    start.setHours(0, 0, 0, 0);
-    return { start, end: now };
+    const start = getMondayOfWeek(now);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+    return { start, end };
   }
   if (period === 'Month') {
     return {
       start: new Date(now.getFullYear(), now.getMonth(), 1),
-      end: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59),
+      end: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999),
     };
   }
   if (period === 'Year') {
     return {
       start: new Date(now.getFullYear(), 0, 1),
-      end: new Date(now.getFullYear(), 11, 31, 23, 59, 59),
+      end: new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999),
     };
   }
   return null;
@@ -69,9 +79,10 @@ function computeChartBuckets(period, completedJobs, expenses) {
   let buckets = [];
 
   if (period === 'Week') {
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(now);
-      d.setDate(now.getDate() - i);
+    const monday = getMondayOfWeek(now);
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
       buckets.push({
         label: d.toLocaleDateString('en-US', { weekday: 'narrow' }),
         start: new Date(d.getFullYear(), d.getMonth(), d.getDate()),

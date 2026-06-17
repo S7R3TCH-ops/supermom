@@ -150,13 +150,14 @@ Icons properly round across all platforms — no more square-in-round-hole.
 
 ---
 
-## Current version: 0.12.85 — Jun 17, 2026 (package.json synced)
+## Current version: 0.12.86 — Jun 17, 2026 (package.json synced)
 
 Sandra's business is live — data wiped and re-provisioned Jun 9. App in active use.
 
 **⚠️ Multi-client git discipline**: Always push local commits before starting an online Claude Code session; always pull before the online session writes code.
 
 ### Recent changes (full history in `docs/changelog/` + `git log`)
+- **v0.12.86 (Jun 17)** — TanStack Query migration (#31): `useData.js` 383→165 lines. All 9 hooks use `useQuery`. `src/lib/queryClient.js` singleton: `staleTime: Infinity`, `refetchOnWindowFocus/Reconnect: false` (egress-safe). `notifyDataChanged` in `events.js` now calls `queryClient.invalidateQueries()` inside existing 300ms debounce — all mutation invalidation routes through here. `QueryClientProvider` added to `App.jsx`. Zero caller changes. Foundation for all future data hooks.
 - **v0.12.85 (Jun 17)** — Fix PWA icon white background: maskable icons had transparent bg → OS wrapped in white circle. Now all icons (maskable 192/512, any-purpose 192/512, apple-touch-icon) use `#FC4693` pink background. Maskable artwork at 75% safe zone so OS circle/squircle masking never clips logo. `generate-icons.mjs` uses sharp `composite()` to layer artwork over pink canvas.
 - **v0.12.84 (Jun 17)** — Fix home screen shortcut icon: `icon-192.png` + `icon-512.png` (`purpose: "any"`) were transparent — white icon invisible on white OS background. Regenerated with `#FC4693` brand pink background baked in. `generate-icons.mjs` now has dedicated `pinkBgSizes` array for these.
 - **v0.12.83 (Jun 17)** — Fix app drawer icon: add `purpose: "any"` icons at 192px + 512px alongside maskable versions. Android app drawer needs `any` purpose at those sizes; maskable-only caused wrong/missing icon.
@@ -269,7 +270,7 @@ Sandra's business is live — data wiped and re-provisioned Jun 9. App in active
 
 29. ~~**Eliminate `select *` queries**~~ — fixed in v0.12.66. List fetches (jobs, clients) now use named column sets. Detail fetches still `*` intentionally.
 30. ~~**Consolidate AI + transcribe Vercel functions**~~ — DONE v0.12.75. `transcribe.js` deleted, merged into `ai/[action].js`.
-31. **React Query / TanStack migration** — `useData.js` does manual caching, stale-state, refetch-on-focus by hand. TanStack replaces that whole layer and gives background refresh for free.
+31. ~~**React Query / TanStack migration**~~ — DONE v0.12.86. `useData.js` 383→165 lines. All hooks use `useQuery`. `queryClient.js` singleton. `notifyDataChanged` routes invalidation. Foundation for future data hooks.
 32. ~~**TypeScript — start with `selectors.js`**~~ — DONE v0.12.80. `financialMath.ts` + `selectors.ts` with full interfaces. Build clean.
 33. ~~**Bundle audit**~~ — DONE v0.12.80. `react-pdf` confirmed serverless-only; not in frontend bundle (443KB).
 34. ~~**Per-page `ErrorBoundary`** wrappers~~ — fixed in v0.12.64. Each Route element now wrapped; crash isolates to one page, BottomNav stays usable.

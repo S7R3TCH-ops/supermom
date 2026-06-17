@@ -523,28 +523,28 @@ const AgendaCard = memo(function AgendaCard({ T, mode, privacyOn, job, isNext, c
 
   const badges = [];
   if (isCancelled) {
-    badges.push({ text: 'Cancelled', bg: '#F3F4F6', fg: '#6B7280' });
+    badges.push({ text: 'Cancelled', bg: mode === 'dark' ? 'rgba(156,163,175,0.15)' : '#F3F4F6', fg: '#6B7280' });
   } else if (isNext) {
     badges.push({ text: 'Next up', bg: '#E91E6A', fg: 'white' });
   }
   if (!isCancelled) {
-    if (paid)   badges.push({ text: 'Paid ✓', bg: '#DCFCE7', fg: '#14532D' });
+    if (paid)   badges.push({ text: 'Paid ✓', bg: T.greenBg, fg: T.greenFg });
     else if (isUnpaidCompleted) badges.push({ text: 'Unpaid', bg: '#F59E0B', fg: 'white' });
   }
 
   if (job.status === 'Completed' && !job.actual_duration) {
-    badges.push({ text: 'Log hours', bg: '#FEF3C7', fg: '#B45309' });
+    badges.push({ text: 'Log hours', bg: T.amberBg, fg: T.amberFg });
   }
 
   if (job.recurrence_rule) {
     const rMap = {
-      weekly:   { text: '↻ Weekly',   bg: '#F5F3FF', fg: '#5B21B6' },
-      biweekly: { text: '↻ Biweekly', bg: '#EEF2FF', fg: '#3730A3' },
-      monthly:  { text: '↻ Monthly',  bg: '#FEF3C7', fg: '#78350F' },
+      weekly:   { text: '↻ Weekly',   bg: mode === 'dark' ? 'rgba(139,92,246,0.12)' : '#F5F3FF', fg: mode === 'dark' ? '#A78BFA' : '#5B21B6' },
+      biweekly: { text: '↻ Biweekly', bg: mode === 'dark' ? 'rgba(99,102,241,0.12)'  : '#EEF2FF', fg: mode === 'dark' ? '#818CF8' : '#3730A3' },
+      monthly:  { text: '↻ Monthly',  bg: T.amberBg, fg: T.amberFg },
     };
     if (rMap[job.recurrence_rule]) badges.push(rMap[job.recurrence_rule]);
   }
-  if (conflict) badges.push({ text: '⚠ <1hr gap', bg: '#FECDD3', fg: '#881337' });
+  if (conflict) badges.push({ text: '⚠ <1hr gap', bg: T.redBg, fg: T.errorFg });
 
   return (
     <button

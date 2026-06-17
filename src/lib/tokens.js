@@ -20,8 +20,12 @@ const LIGHT_PALETTE = {
   pinkTint: '#FFF0F7',
   amberBg: '#FEF3C7',
   amberBorder: 'rgba(245,158,11,0.4)',
+  amberFg: '#92400E',
   redBg: '#FFF1F1',
   redBorder: '#FCA5A540',
+  errorFg: '#991B1B',
+  greenBg: '#DCFCE7',
+  greenFg: '#14532D',
   ink: '#4E342E',         // Warm Cocoa
   inkSub: '#795548',      // Soft Brown
   inkMuted: '#836459',    // Muted Clay — #836459 achieves ~4.9:1 on #FFF0F3 (WCAG AA pass)
@@ -43,8 +47,12 @@ const DARK_PALETTE = {
   pinkTint: 'rgba(255,112,166,0.1)',
   amberBg: 'rgba(245,158,11,0.1)',
   amberBorder: 'rgba(245,158,11,0.28)',
+  amberFg: '#FBBF24',
   redBg: 'rgba(220,38,38,0.08)',
   redBorder: 'rgba(220,38,38,0.22)',
+  errorFg: '#EF4444',
+  greenBg: 'rgba(34,197,94,0.12)',
+  greenFg: '#4ADE80',
   ink: '#FFFFFF',         // White Ink
   inkSub: 'rgba(255,255,255,0.65)',
   inkMuted: 'rgba(255,255,255,0.55)',

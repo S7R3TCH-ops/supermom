@@ -238,9 +238,9 @@ export default function ClientProfile() {
               )}
               {client.tags.includes('⚠ Overdue') && (
                 <span style={{
-                  background: '#FEF3C7', borderRadius: 5, padding: '2px 7px',
+                  background: T.amberBg, borderRadius: 5, padding: '2px 7px',
                 }}>
-                  <SectionLabel style={{ fontSize: 9, color: '#78350F', marginBottom: 0 }}>⚠ Overdue</SectionLabel>
+                  <SectionLabel style={{ fontSize: 9, color: T.amberFg, marginBottom: 0 }}>⚠ Overdue</SectionLabel>
                 </span>
               )}
             </div>
@@ -544,10 +544,10 @@ export default function ClientProfile() {
                   <div style={{ fontFamily: T.font, fontSize: 10.5, color: T.inkMuted, marginTop: 2 }}>{h.duration}</div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                  <AmtCell amount={privacyOn ? '•••' : h.amt} size={13} color={h.status === 'paid' ? T.ink : h.status === 'partial' ? '#92400E' : '#E91E6A'} />
+                  <AmtCell amount={privacyOn ? '•••' : h.amt} size={13} color={h.status === 'paid' ? T.ink : h.status === 'partial' ? T.amberFg : T.pink} />
                   <span style={{
-                    background: h.status === 'paid' ? '#DCFCE7' : h.status === 'partial' ? '#FEF3C7' : '#FFE0EC',
-                    color:      h.status === 'paid' ? '#14532D' : h.status === 'partial' ? '#92400E' : '#9B0D3A',
+                    background: h.status === 'paid' ? T.greenBg : h.status === 'partial' ? T.amberBg : T.pinkTint,
+                    color:      h.status === 'paid' ? T.greenFg : h.status === 'partial' ? T.amberFg : T.pink,
                     borderRadius: 5, padding: '1px 6px',
                     fontFamily: T.font, fontSize: 8.5, fontWeight: 700, letterSpacing: '0.4px', textTransform: 'uppercase',
                   }}>{h.status === 'paid' ? 'Paid ✓' : h.status === 'partial' ? 'Partial' : 'Unpaid'}</span>

@@ -150,13 +150,14 @@ Icons properly round across all platforms — no more square-in-round-hole.
 
 ---
 
-## Current version: 0.12.80 — Jun 17, 2026 (package.json synced)
+## Current version: 0.12.81 — Jun 17, 2026 (package.json synced)
 
 Sandra's business is live — data wiped and re-provisioned Jun 9. App in active use.
 
 **⚠️ Multi-client git discipline**: Always push local commits before starting an online Claude Code session; always pull before the online session writes code.
 
 ### Recent changes (full history in `docs/changelog/` + `git log`)
+- **v0.12.81 (Jun 17)** — Dark mode audit pass (#28): added `amberFg`, `greenBg`, `greenFg`, `errorFg` tokens to `tokens.js` (both palettes). Fixed 11 files: PrepNoteSheet sheet bg + text (`var(--pink-pale)` → `T.card`, `#1C1C1E` → `T.ink`); Finance `STATUS_PILL` → `makeStatusPill(T)` function; error states in Home/NewExpenseSheet/NewJobSheet (`#FEE2E2` → `T.redBg`); status badges (amber/green/pink) in ClientProfile/PostJobSheet/FinanceDetailSheet/Calendar/Clients. Intentional colors left alone: status pill semantic colors, brand pinks, SVG chart lines.
 - **v0.12.80 (Jun 17)** — TypeScript migration (#32): `src/lib/financialMath.js` → `financialMath.ts` + `src/data/selectors.js` → `selectors.ts`. Exports typed interfaces: `PricingType`, `CostItem`, `JobInput`, `BusinessInput`, `LiveFormInput`, `JobFinancials`, `DisplayClient`, `DisplayJob`. Build clean (154 modules, zero TS errors). Bundle audit (#33) confirmed clean — `react-pdf` serverless-only, not in frontend bundle.
 - **v0.12.79 (Jun 16)** — Finance week filter corrected: "Week" now = Monday 00:00 → Sunday 23:59:59.999 of current calendar week (was rolling last-7-days). Chart buckets also start Monday. Month/Year end times include 999ms to prevent midnight edge-case exclusions.
 - **v0.12.78 (Jun 16)** — App icon rounding: maskable PNG icons (192, 512) let OS apply corner radius per-platform; fallback non-maskable sizes (96, 144, 180, 256, 384) for older devices. Icon properly round on Android/iOS/web. `public/manifest.json` added with PWA config. `scripts/generate-icons.mjs` generates all sizes from transparent source.
@@ -258,7 +259,7 @@ Sandra's business is live — data wiped and re-provisioned Jun 9. App in active
 25. **Automated post-job follow-up email** — 24h after complete, send "Thanks!" with invoice link. Toggle in Settings. Daily briefing cron infrastructure already exists.
 26. **Calendar week view** — proper rebuild (130 lines of parked code removed in v0.12.60; worth doing properly).
 27. ~~**Haptics on destructive actions**~~ — fixed in v0.12.64. Wired to: hard-delete job, mark-unpaid, delete client, reset data, archive worker, delete skill type.
-28. **Dark mode audit pass** — some hardcoded colors survive from pre-impeccable code. One QA pass to catch stragglers.
+28. ~~**Dark mode audit pass**~~ — DONE v0.12.81. New tokens: `amberFg`, `greenBg`, `greenFg`, `errorFg`. Fixed PrepNoteSheet, Finance STATUS_PILL, error states, status badges across 11 files.
 
 ### 🔧 Technical quality / refactor
 

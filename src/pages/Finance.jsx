@@ -11,13 +11,15 @@ import { EmptyActivity, NoResults } from '../components/ui/Illustrations';
 
 const periods = ['Week', 'Month', 'Year', 'All'];
 
-const STATUS_PILL = {
-  paid:      { bg: '#DCFCE7', color: '#14532D', label: 'Paid ✓' },
-  partial:   { bg: '#FEF3C7', color: '#92400E', label: 'Partial' },
-  unpaid:    { bg: '#FFE0EC', color: '#9B0D3A', label: 'Unpaid' },
-  scheduled: { bg: '#EFF6FF', color: '#1D4ED8', label: 'Scheduled' },
-  cancelled: { bg: '#E5E7EB', color: '#374151', label: 'Cancelled' },
-};
+function makeStatusPill(T) {
+  return {
+    paid:      { bg: T.greenBg,                color: T.greenFg, label: 'Paid ✓' },
+    partial:   { bg: T.amberBg,                color: T.amberFg, label: 'Partial' },
+    unpaid:    { bg: T.pinkTint,               color: T.pink,    label: 'Unpaid' },
+    scheduled: { bg: 'rgba(59,130,246,0.12)',  color: '#3B82F6', label: 'Scheduled' },
+    cancelled: { bg: 'rgba(55,65,81,0.12)',    color: '#6B7280', label: 'Cancelled' },
+  };
+}
 
 // Parse a date value — handles YYYY-MM-DD strings as local dates (not UTC)
 function parseDate(val) {
@@ -239,11 +241,11 @@ const TransactionRow = memo(function TransactionRow({ tx, T, privacyOn, onPress 
     : tx.status === 'Completed' ? 'unpaid'
     : 'scheduled'
     : null;
-  const pill = pillKey ? STATUS_PILL[pillKey] : null;
+  const pill = pillKey ? makeStatusPill(T)[pillKey] : null;
   const workerPill = isWorkerCost
     ? tx.workerPaid
-      ? { bg: '#DCFCE7', color: '#14532D', label: 'Paid ✓' }
-      : { bg: '#FEF3C7', color: '#92400E', label: 'Unpaid' }
+      ? { bg: T.greenBg, color: T.greenFg, label: 'Paid ✓' }
+      : { bg: T.amberBg, color: T.amberFg, label: 'Unpaid' }
     : null;
 
   const Tag = tappable ? 'button' : 'div';

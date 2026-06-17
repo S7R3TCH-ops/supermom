@@ -47,11 +47,11 @@ const ClientCard = memo(function ClientCard({ c, T, onPress }) {
               const isLead = tag === 'Lead';
               return (
                 <span key={tag} style={{
-                  background: isOverdue ? '#FEF3C7' : isLead ? '#F3F0FF' : T.pinkTint,
-                  border: `1px solid ${isOverdue ? '#F59E0B40' : isLead ? '#7C3AED30' : T.cardBorder}`,
+                  background: isOverdue ? T.amberBg : isLead ? (mode === 'dark' ? 'rgba(139,92,246,0.12)' : '#F3F0FF') : T.pinkTint,
+                  border: `1px solid ${isOverdue ? T.amberBorder : isLead ? '#7C3AED30' : T.cardBorder}`,
                   borderRadius: 4, padding: '3px 7px',
                   fontFamily: T.font, fontSize: 11, fontWeight: 700,
-                  color: isOverdue ? '#78350F' : isLead ? '#5B21B6' : T.inkMuted,
+                  color: isOverdue ? T.amberFg : isLead ? (mode === 'dark' ? '#A78BFA' : '#5B21B6') : T.inkMuted,
                   letterSpacing: '0.3px', textTransform: 'uppercase',
                 }}>{tag}</span>
               );

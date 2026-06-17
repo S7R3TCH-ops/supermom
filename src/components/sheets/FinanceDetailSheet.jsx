@@ -82,7 +82,7 @@ function WorkerCostRow({ item, T, privacyOn }) {
           {privacyOn ? '•••' : `-$${Number(item.amount || 0).toFixed(0)}`}
         </div>
         <span style={{ fontSize: 8.5, fontWeight: 700, padding: '1px 5px', borderRadius: 4, textTransform: 'uppercase',
-          background: paid ? '#DCFCE7' : '#FEF3C7', color: paid ? '#14532D' : '#92400E' }}>
+          background: paid ? T.greenBg : T.amberBg, color: paid ? T.greenFg : T.amberFg }}>
           {paid ? 'Paid ✓' : 'Unpaid'}
         </span>
       </div>

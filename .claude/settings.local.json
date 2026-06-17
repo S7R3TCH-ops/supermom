@@ -69,7 +69,10 @@
       "Bash(rm -rf .git/rebase-merge && git status)",
       "Bash(git *)",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "Bash(npm list *)"
+      "Bash(npm list *)",
+      "PowerShell(npm run *)",
+      "PowerShell(git push *)",
+      "PowerShell(npm version *)"
     ],
     "additionalDirectories": [
       "C:\\Projects\\supermom\\.git\\rebase-merge"

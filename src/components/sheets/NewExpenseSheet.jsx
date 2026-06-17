@@ -125,12 +125,12 @@ export default function NewExpenseSheet({ isOpen, onClose }) {
                 <button key={c.key} role="radio" aria-checked={on} onClick={() => setCategory(c.key)} style={{
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
                   padding: '10px 4px', borderRadius: 12,
-                  border: `1.5px solid ${on ? '#F59E0B' : T.cardBorder}`,
-                  background: on ? '#FEF3C7' : T.card,
+                  border: `1.5px solid ${on ? T.amberBorder : T.cardBorder}`,
+                  background: on ? T.amberBg : T.card,
                   cursor: 'pointer',
                 }}>
                   <span style={{ fontSize: 18 }}>{c.icon}</span>
-                  <span style={{ fontFamily: T.font, fontSize: 8.5, fontWeight: 700, color: on ? '#78350F' : T.inkMuted, letterSpacing: '0.3px' }}>{c.key}</span>
+                  <span style={{ fontFamily: T.font, fontSize: 8.5, fontWeight: 700, color: on ? T.amberFg : T.inkMuted, letterSpacing: '0.3px' }}>{c.key}</span>
                 </button>
               );
             })}
@@ -180,7 +180,7 @@ export default function NewExpenseSheet({ isOpen, onClose }) {
           </div>
 
           {saveErr && (
-            <div style={{ padding: '8px 12px', borderRadius: 8, background: '#FEE2E2', border: '1px solid #FECACA', fontFamily: T.font, fontSize: 11.5, color: '#991B1B', marginBottom: 12 }}>
+            <div style={{ padding: '8px 12px', borderRadius: 8, background: T.redBg, border: `1px solid ${T.redBorder}`, fontFamily: T.font, fontSize: 11.5, color: T.errorFg, marginBottom: 12 }}>
               {saveErr}
             </div>
           )}

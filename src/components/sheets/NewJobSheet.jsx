@@ -673,7 +673,7 @@ function Step2What({
           {aiLoading ? (
             <span style={{ fontSize: 10, color: T.pink, fontWeight: 600 }}>Calculating…</span>
           ) : aiDuration && duration ? (
-            <div style={{ fontSize: 10, color: '#059669', background: '#D1FAE5', padding: '2px 8px', borderRadius: 10, fontWeight: 700 }}>AI Suggested</div>
+            <div style={{ fontSize: 10, color: T.greenFg, background: T.greenBg, padding: '2px 8px', borderRadius: 10, fontWeight: 700 }}>AI Suggested</div>
           ) : null}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -975,20 +975,20 @@ function Step3Review({
 
       {isPastBooking && (
         <div style={{
-          padding: '14px', borderRadius: 16, background: '#FEF2F2',
+          padding: '14px', borderRadius: 16, background: T.redBg,
           border: '1.5px solid #EF4444', display: 'flex', flexDirection: 'column', gap: 8
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 18 }}>⏪</span>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#991B1B' }}>This date is in the past</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: T.errorFg }}>This date is in the past</div>
           </div>
-          <div style={{ fontSize: 12, color: '#991B1B', opacity: 0.9, lineHeight: 1.4 }}>
+          <div style={{ fontSize: 12, color: T.errorFg, opacity: 0.9, lineHeight: 1.4 }}>
             You're booking a job on a date that's already passed. This is allowed (e.g. logging a job after the fact), but double-check the date.
           </div>
           <label style={{
             display: 'flex', alignItems: 'center', gap: 10, marginTop: 4,
-            padding: '10px', background: 'white', borderRadius: 10, cursor: 'pointer',
-            border: `1px solid ${pastConfirmed ? '#EF4444' : '#FECACA'}`
+            padding: '10px', background: T.card, borderRadius: 10, cursor: 'pointer',
+            border: `1px solid ${pastConfirmed ? '#EF4444' : T.redBorder}`
           }}>
             <input
               type="checkbox"

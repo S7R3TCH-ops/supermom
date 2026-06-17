@@ -1297,7 +1297,7 @@ export default function Home() {
             </div>
 
             {costErr && (
-              <div style={{ padding: '8px 12px', borderRadius: 8, background: '#FEE2E2', border: '1px solid #FECACA', fontFamily: T.font, fontSize: 11.5, color: '#991B1B', marginBottom: 14 }}>
+              <div style={{ padding: '8px 12px', borderRadius: 8, background: T.redBg, border: `1px solid ${T.redBorder}`, fontFamily: T.font, fontSize: 11.5, color: T.errorFg, marginBottom: 14 }}>
                 {costErr}
               </div>
             )}

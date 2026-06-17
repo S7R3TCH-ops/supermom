@@ -369,7 +369,7 @@ export default function PostJobSheet({ jobId, onClose }) {
                       <div style={{ fontSize: 11, color: T.inkMuted, marginTop: 2 }}>
                         {dateStr}
                         {j.payment_status === 'Partial' && (
-                          <span style={{ marginLeft: 6, background: '#FEF3C7', color: '#92400E', borderRadius: 4, padding: '1px 5px', fontSize: 10, fontWeight: 700 }}>Partial</span>
+                          <span style={{ marginLeft: 6, background: T.amberBg, color: T.amberFg, borderRadius: 4, padding: '1px 5px', fontSize: 10, fontWeight: 700 }}>Partial</span>
                         )}
                       </div>
                     </div>

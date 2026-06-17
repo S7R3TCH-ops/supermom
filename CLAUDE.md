@@ -150,13 +150,14 @@ Icons properly round across all platforms — no more square-in-round-hole.
 
 ---
 
-## Current version: 0.12.81 — Jun 17, 2026 (package.json synced)
+## Current version: 0.12.82 — Jun 17, 2026 (package.json synced)
 
 Sandra's business is live — data wiped and re-provisioned Jun 9. App in active use.
 
 **⚠️ Multi-client git discipline**: Always push local commits before starting an online Claude Code session; always pull before the online session writes code.
 
 ### Recent changes (full history in `docs/changelog/` + `git log`)
+- **v0.12.82 (Jun 17)** — Fix PWA install broken on Android: `index.html` had two `<link rel="manifest">` (one to `manifest.json`, one VitePWA-injected `manifest.webmanifest`). Chrome used first link, which conflicted with service worker tied to `manifest.webmanifest`. Fix: remove manual link from `index.html`, consolidate icons + screenshot into `vite.config.js`, delete `public/manifest.json`. Built HTML now has single `/manifest.webmanifest` link.
 - **v0.12.81 (Jun 17)** — Dark mode audit pass (#28): added `amberFg`, `greenBg`, `greenFg`, `errorFg` tokens to `tokens.js` (both palettes). Fixed 11 files: PrepNoteSheet sheet bg + text (`var(--pink-pale)` → `T.card`, `#1C1C1E` → `T.ink`); Finance `STATUS_PILL` → `makeStatusPill(T)` function; error states in Home/NewExpenseSheet/NewJobSheet (`#FEE2E2` → `T.redBg`); status badges (amber/green/pink) in ClientProfile/PostJobSheet/FinanceDetailSheet/Calendar/Clients. Intentional colors left alone: status pill semantic colors, brand pinks, SVG chart lines.
 - **v0.12.80 (Jun 17)** — TypeScript migration (#32): `src/lib/financialMath.js` → `financialMath.ts` + `src/data/selectors.js` → `selectors.ts`. Exports typed interfaces: `PricingType`, `CostItem`, `JobInput`, `BusinessInput`, `LiveFormInput`, `JobFinancials`, `DisplayClient`, `DisplayJob`. Build clean (154 modules, zero TS errors). Bundle audit (#33) confirmed clean — `react-pdf` serverless-only, not in frontend bundle.
 - **v0.12.79 (Jun 16)** — Finance week filter corrected: "Week" now = Monday 00:00 → Sunday 23:59:59.999 of current calendar week (was rolling last-7-days). Chart buckets also start Monday. Month/Year end times include 999ms to prevent midnight edge-case exclusions.

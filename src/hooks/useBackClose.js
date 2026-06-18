@@ -35,9 +35,9 @@ export function useBackClose(isOpen, onClose) {
     if (!isOpen) return;
     attachListener();
 
-    // Push a synthetic history entry at the same URL so React Router
-    // sees no location change but the browser gains a "back" step to intercept.
-    history.pushState(null, '', window.location.href);
+    // Push a synthetic history entry at the same URL. Preserve React Router's
+    // history state (idx/key) so its popstate listener doesn't lose position.
+    history.pushState(window.history.state, '', window.location.href);
 
     const entry = {
       onClose: () => onCloseRef.current(),

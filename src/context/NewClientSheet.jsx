@@ -1,6 +1,6 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, lazy, Suspense } from 'react';
 import { NewClientSheetContext } from './NewClientSheetContext';
-import NewClientSheet from '../components/sheets/NewClientSheet';
+const NewClientSheet = lazy(() => import('../components/sheets/NewClientSheet'));
 
 export function NewClientSheetProvider({ children }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -20,13 +20,15 @@ export function NewClientSheetProvider({ children }) {
     <NewClientSheetContext.Provider value={{ open, close, isOpen }}>
       {children}
       {isOpen && (
-        <NewClientSheet 
-          onClose={close} 
-          onCreated={(c) => {
-            if (onCreatedCb) onCreatedCb(c);
-            close();
-          }} 
-        />
+        <Suspense fallback={null}>
+          <NewClientSheet
+            onClose={close}
+            onCreated={(c) => {
+              if (onCreatedCb) onCreatedCb(c);
+              close();
+            }}
+          />
+        </Suspense>
       )}
     </NewClientSheetContext.Provider>
   );

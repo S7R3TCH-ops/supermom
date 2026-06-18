@@ -1,6 +1,6 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, lazy, Suspense } from 'react';
 import { FinanceDetailSheetContext } from './FinanceDetailSheetContext';
-import FinanceDetailSheetComponent from '../components/sheets/FinanceDetailSheet';
+const FinanceDetailSheetComponent = lazy(() => import('../components/sheets/FinanceDetailSheet'));
 
 export function FinanceDetailSheetProvider({ children }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -23,12 +23,14 @@ export function FinanceDetailSheetProvider({ children }) {
     <FinanceDetailSheetContext.Provider value={{ open, close, isOpen }}>
       {children}
       {isOpen && (
-        <FinanceDetailSheetComponent 
-          title={sheetProps.title}
-          items={sheetProps.items}
-          type={sheetProps.type}
-          onClose={close} 
-        />
+        <Suspense fallback={null}>
+          <FinanceDetailSheetComponent
+            title={sheetProps.title}
+            items={sheetProps.items}
+            type={sheetProps.type}
+            onClose={close}
+          />
+        </Suspense>
       )}
     </FinanceDetailSheetContext.Provider>
   );

@@ -1,6 +1,6 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, lazy, Suspense } from 'react';
 import { JobDetailSheetContext } from './JobDetailSheetContext';
-import JobDetailSheet from '../components/sheets/JobDetailSheet';
+const JobDetailSheet = lazy(() => import('../components/sheets/JobDetailSheet'));
 
 export function JobDetailSheetProvider({ children }) {
   const [jobId, setJobId] = useState(null);
@@ -10,7 +10,7 @@ export function JobDetailSheetProvider({ children }) {
   return (
     <JobDetailSheetContext.Provider value={value}>
       {children}
-      {jobId != null && <JobDetailSheet jobId={jobId} onClose={closeJob} />}
+      {jobId != null && <Suspense fallback={null}><JobDetailSheet jobId={jobId} onClose={closeJob} /></Suspense>}
     </JobDetailSheetContext.Provider>
   );
 }

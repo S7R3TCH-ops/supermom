@@ -1,6 +1,6 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, lazy, Suspense } from 'react';
 import { AiChatSheetContext } from './AiChatSheetContext';
-import AiChatSheet from '../components/sheets/AiChatSheet';
+const AiChatSheet = lazy(() => import('../components/sheets/AiChatSheet'));
 
 export function AiChatSheetProvider({ children }) {
   const [open, setOpen] = useState(false);
@@ -11,7 +11,7 @@ export function AiChatSheetProvider({ children }) {
   return (
     <AiChatSheetContext.Provider value={value}>
       {children}
-      {open && <AiChatSheet onClose={closeChat} context={ctx} />}
+      {open && <Suspense fallback={null}><AiChatSheet onClose={closeChat} context={ctx} /></Suspense>}
     </AiChatSheetContext.Provider>
   );
 }

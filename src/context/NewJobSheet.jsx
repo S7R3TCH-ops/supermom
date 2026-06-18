@@ -1,6 +1,6 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, lazy, Suspense } from 'react';
 import { NewJobSheetContext } from './NewJobSheetContext';
-import NewJobSheet from '../components/sheets/NewJobSheet';
+const NewJobSheet = lazy(() => import('../components/sheets/NewJobSheet'));
 
 export function NewJobSheetProvider({ children }) {
   const [open, setOpen] = useState(false);
@@ -31,7 +31,7 @@ export function NewJobSheetProvider({ children }) {
   return (
     <NewJobSheetContext.Provider value={value}>
       {children}
-      {open && <NewJobSheet prefillClientId={prefillClientId} prefillData={prefillData} onClose={close} />}
+      {open && <Suspense fallback={null}><NewJobSheet prefillClientId={prefillClientId} prefillData={prefillData} onClose={close} /></Suspense>}
     </NewJobSheetContext.Provider>
   );
 }

@@ -48,7 +48,7 @@ export async function fetchClientByContact({ email, first_name, last_name, phone
 
   let query = supabase
     .from('clients')
-    .select(SELECT_FULL)
+    .select(SELECT_LIST)
     .eq('business_id', businessId)
     .is('deleted_at', null);
 
@@ -61,7 +61,7 @@ export async function fetchClientByContact({ email, first_name, last_name, phone
 
   let nameQuery = supabase
     .from('clients')
-    .select(SELECT_FULL)
+    .select(SELECT_LIST)
     .eq('business_id', businessId)
     .eq('first_name', first_name)
     .is('deleted_at', null);

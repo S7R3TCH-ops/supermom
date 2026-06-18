@@ -4,8 +4,16 @@ import { useEffect, useRef } from 'react';
 // Prevents double-close when nested sheets (e.g. NewJobSheet → NewClientSheet) are both mounted.
 const backStack = [];
 let listenerAttached = false;
+// Suppresses the next popstate when we fired history.back() ourselves (cleanup path).
+// Without this, React StrictMode's double-invoke causes the cleanup's history.back() to
+// fire a popstate AFTER the re-mount's new entry is on the stack, closing the sheet.
+let suppressNextPopState = false;
 
 function handlePopState() {
+  if (suppressNextPopState) {
+    suppressNextPopState = false;
+    return;
+  }
   const top = backStack[backStack.length - 1];
   if (!top || top.consumed) return;
   top.consumed = true;
@@ -45,7 +53,8 @@ export function useBackClose(isOpen, onClose) {
         backStack.splice(idx, 1);
         entry.consumed = true;
         // history.back() fires another popstate; entry.consumed=true makes handlePopState no-op.
-        if (backStack.length >= 0) history.back();
+        suppressNextPopState = true;
+        history.back();
       }
     };
   }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps

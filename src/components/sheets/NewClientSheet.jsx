@@ -96,8 +96,10 @@ export default function NewClientSheet({ onClose, onCreated }) {
       toast.success(`${first.trim()} added!`);
       if (onCreated) onCreated(created);
       onClose();
-    } catch {
-      const msg = 'Something went wrong — please try again.';
+    } catch (err) {
+      console.error('[NewClientSheet] createClient failed:', err);
+      const isKnown = err?.message?.includes('already exists') || err?.message?.includes('No active business');
+      const msg = isKnown ? err.message : 'Something went wrong — please try again.';
       setErr(msg);
       toast.error(msg);
       submittingRef.current = false;

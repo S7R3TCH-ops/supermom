@@ -3,7 +3,7 @@ import { useAppTheme } from '../../context/AppThemeContext';
 import { triggerHaptic } from '../../lib/haptics';
 
 const items = [
-  { to: '/',         k: 'home',     icon: '⌂', label: 'Home' },
+  { to: '/',         k: 'home',     icon: '⌂', label: 'Week' },
   { to: '/calendar', k: 'schedule', icon: '◫', label: 'Schedule' },
   { to: '/clients',  k: 'clients',  icon: '◉', label: 'Clients' },
   { to: '/finance',  k: 'finance',  icon: '$', label: 'Finance' },

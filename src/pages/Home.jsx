@@ -43,7 +43,6 @@ export default function Home() {
   // Use a stable reference for "today"
   const [today] = useState(() => new Date());
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [owingOpen, setOwingOpen] = useState(false);
 
   const [currentWeekStart, currentWeekEnd] = useMemo(() => {
     const week = getWeekRange(today);
@@ -296,7 +295,7 @@ export default function Home() {
     }).sort((a, b) => b.hoursOld - a.hoursOld);
   }, [attentionItems, paymentMap, now]);
 
-  const owingTotal = useMemo(() => owingJobs.reduce((sum, j) => sum + j.remaining, 0), [owingJobs]);
+  const owingTotal = useMemo(() => owingJobs.filter(j => j.status === 'Completed').reduce((sum, j) => sum + j.remaining, 0), [owingJobs]);
 
   const collectedThisWeek = useMemo(() => {
     return allWeekJobs.reduce((s, j) => {
@@ -1099,91 +1098,89 @@ export default function Home() {
           </div>
         )}
 
-        {/* OWING — flat per-job rows; collapse only when 3+ jobs */}
+        {/* NEEDS ATTENTION — wrap-up jobs and outstanding payment jobs */}
         {owingJobs.length > 0 && (
           <div style={{ marginBottom: 16 }}>
-            {owingJobs.length >= 3 && (
-              <button
-                type="button"
-                onClick={() => setOwingOpen(o => !o)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  width: '100%', textAlign: 'left',
-                  padding: '9px 12px',
-                  background: mode === 'dark' ? 'rgba(181,0,78,0.1)' : '#FFF0F4',
-                  borderRadius: owingOpen ? '12px 12px 0 0' : 12,
-                  border: `1px solid rgba(181,0,78,0.25)`,
-                  cursor: 'pointer',
-                  userSelect: 'none',
-                }}
-              >
-                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style={{ flexShrink: 0, transform: owingOpen ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.18s ease-out', display: 'block' }}>
-                  <path d="M3 2L7 5L3 8" stroke={DEEP_ROSE} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                <div style={{ flex: 1, fontSize: 13, fontWeight: 700, color: DEEP_ROSE }}>
-                  {owingJobs.length} jobs owing{!privacyOn && owingTotal > 0 ? ` · $${owingTotal.toFixed(0)}` : ''}
-                </div>
-                <span style={{ fontSize: 11, color: DEEP_ROSE, opacity: 0.55, fontWeight: 600 }}>
-                  {owingOpen ? 'hide' : 'show'}
-                </span>
-              </button>
-            )}
-            {(owingJobs.length < 3 || owingOpen) && (
-              <div style={{
-                overflow: 'hidden',
-                border: `1px solid rgba(181,0,78,0.25)`,
-                ...(owingJobs.length >= 3
-                  ? { borderTop: 'none', borderRadius: '0 0 12px 12px' }
-                  : { borderRadius: 12 }),
-              }}>
-                {owingJobs.map((j, i) => {
-                  const isStale = j.hoursOld >= 48 && j.status === 'Completed';
-                  const isFresh = !isStale && j.status === 'Completed';
-                  const bgColor = isStale
-                    ? (mode === 'dark' ? 'rgba(220,38,38,0.15)' : 'rgba(220,38,38,0.07)')
-                    : isFresh
-                      ? (mode === 'dark' ? 'rgba(181,0,78,0.1)' : 'rgba(181,0,78,0.05)')
-                      : (mode === 'dark' ? 'rgba(181,0,78,0.06)' : 'rgba(181,0,78,0.03)');
-                  const accentColor = isStale ? '#DC2626' : DEEP_ROSE;
-                  const dateLabel = j.start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-                  return (
-                    <button
-                      key={j.id}
-                      type="button"
-                      onClick={() => openJob(j.id)}
-                      style={{
-                        display: 'block', width: '100%', textAlign: 'left',
-                        background: bgColor,
-                        border: 'none',
-                        borderTop: i > 0 ? `1px solid rgba(181,0,78,0.12)` : 'none',
-                        padding: '10px 14px 10px 12px',
-                        cursor: 'pointer',
-                        borderRadius: 0,
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
-                        <div style={{ fontFamily: T.serif, fontSize: 16, fontWeight: 600, color: T.ink, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.3px' }}>
-                          {j.client_name}
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 600, color: accentColor, whiteSpace: 'nowrap' }}>
-                            {privacyOn ? '•••' : `$${j.remaining.toFixed(0)} owing`}
-                          </div>
-                          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0 }}>
-                            <path d="M4 2.5L8 6L4 9.5" stroke={accentColor} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.5" />
-                          </svg>
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 11, color: T.inkMuted }}>{dateLabel}</span>
-                        <span style={{ fontSize: 11, color: T.inkMuted, opacity: 0.4 }}>·</span>
-                        <span style={{ fontSize: 11, color: T.inkMuted }}>{j.service_name}</span>
-                      </div>
-                    </button>
-                  );
-                })}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 2px', marginBottom: 8 }}>
+              <div style={{ fontFamily: T.serif, fontSize: 14, fontWeight: 500, color: DEEP_ROSE }}>
+                Needs attention
               </div>
-            )}
+              {!privacyOn && owingTotal > 0 && (
+                <div style={{ fontFamily: T.font, fontSize: 12, fontWeight: 600, color: DEEP_ROSE, opacity: 0.65 }}>
+                  ${owingTotal.toFixed(0)} outstanding
+                </div>
+              )}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {owingJobs.map((j) => {
+                const isWrapUp = j.status !== 'Completed';
+                const isPartial = j.status === 'Completed' && j.payment_status === 'Partial';
+                const isStale = j.hoursOld >= 48;
+                const variant = isWrapUp ? 'wrap-up' : isPartial ? 'partial' : isStale ? 'unpaid-stale' : 'unpaid-fresh';
+                const dk = mode === 'dark';
+                const VSTYLES = {
+                  'wrap-up':      { border: '#F59E0B', bg: dk ? 'rgba(245,158,11,0.12)' : 'rgba(245,158,11,0.06)', pillBg: dk ? 'rgba(245,158,11,0.25)' : 'rgba(245,158,11,0.15)', pillColor: dk ? '#FCD34D' : '#92400E', amountColor: dk ? '#FCD34D' : '#92400E', recencyColor: dk ? '#FCD34D' : '#B45309', label: 'WRAP UP' },
+                  'unpaid-fresh': { border: '#E91E6A', bg: dk ? 'rgba(233,30,106,0.1)'  : 'rgba(233,30,106,0.05)', pillBg: dk ? 'rgba(233,30,106,0.25)' : 'rgba(233,30,106,0.12)', pillColor: dk ? '#FF70A6' : '#B5004E', amountColor: dk ? '#FF70A6' : '#B5004E', recencyColor: dk ? 'rgba(255,112,166,0.75)' : '#9D174D', label: 'UNPAID' },
+                  'unpaid-stale': { border: '#DC2626', bg: dk ? 'rgba(220,38,38,0.15)'  : 'rgba(220,38,38,0.08)', pillBg: dk ? 'rgba(220,38,38,0.3)'  : 'rgba(220,38,38,0.12)',  pillColor: dk ? '#FCA5A5' : '#991B1B', amountColor: dk ? '#FCA5A5' : '#991B1B', recencyColor: dk ? '#FCA5A5' : '#B91C1C', label: 'UNPAID' },
+                  'partial':      { border: '#F97316', bg: dk ? 'rgba(249,115,22,0.12)' : 'rgba(249,115,22,0.06)', pillBg: dk ? 'rgba(249,115,22,0.25)' : 'rgba(249,115,22,0.12)', pillColor: dk ? '#FDBA74' : '#C2410C', amountColor: dk ? '#FDBA74' : '#C2410C', recencyColor: dk ? 'rgba(253,186,116,0.75)' : '#EA580C', label: 'PARTIAL PAID' },
+                }[variant];
+
+                const h = j.hoursOld;
+                const recencyText = isWrapUp
+                  ? (h < 1 ? 'just now' : h < 24 ? `${Math.floor(h)}h overdue` : `${Math.floor(h / 24)}d overdue`)
+                  : (h < 1 ? 'moments ago' : h < 24 ? `${Math.floor(h)}h ago` : `${Math.floor(h / 24)}d ago`);
+
+                const dateStr = j.start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                const fmtTime = (d) => {
+                  const hh = d.getHours(); const mm = d.getMinutes();
+                  const ap = hh >= 12 ? 'pm' : 'am'; const h12 = hh % 12 || 12;
+                  return mm > 0 ? `${h12}:${String(mm).padStart(2, '0')}${ap}` : `${h12}${ap}`;
+                };
+                const timeRange = `${fmtTime(j.start)}–${fmtTime(j.end)}`;
+
+                return (
+                  <button
+                    key={j.id}
+                    type="button"
+                    onClick={() => openJob(j.id)}
+                    style={{
+                      display: 'block', width: '100%', textAlign: 'left',
+                      background: VSTYLES.bg,
+                      border: `1px solid ${VSTYLES.border}33`,
+                      borderLeft: `4px solid ${VSTYLES.border}`,
+                      borderRadius: 12,
+                      padding: '10px 12px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+                      <span style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.5px', background: VSTYLES.pillBg, color: VSTYLES.pillColor, padding: '2px 6px', borderRadius: 4 }}>
+                        {VSTYLES.label}
+                      </span>
+                      {isWrapUp ? (
+                        <span style={{ fontFamily: T.font, fontSize: 11, color: VSTYLES.amountColor, opacity: 0.8 }}>Tap to wrap up →</span>
+                      ) : (
+                        <span style={{ fontFamily: T.serif, fontSize: 14, fontWeight: 700, color: VSTYLES.amountColor, fontVariantNumeric: 'tabular-nums' }}>
+                          {privacyOn ? '•••' : `$${j.remaining.toFixed(0)} owing`}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontFamily: T.serif, fontSize: 16, fontWeight: 600, color: T.ink, letterSpacing: '-0.3px', marginBottom: 2 }}>
+                      {j.client_name}
+                    </div>
+                    {j.service_name && (
+                      <div style={{ fontFamily: T.font, fontSize: 12, color: T.inkSub, marginBottom: 4 }}>
+                        {j.service_name}
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontFamily: T.font, fontSize: 11, color: T.inkMuted }}>{dateStr} · {timeRange}</span>
+                      <span style={{ fontFamily: T.font, fontSize: 11, fontWeight: 600, color: VSTYLES.recencyColor }}>{recencyText}</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
 

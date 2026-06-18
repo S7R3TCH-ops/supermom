@@ -62,10 +62,9 @@ export default function InvoiceView() {
         const jobs = (inv.invoice_jobs || []).map(ij => ij.jobs).filter(Boolean);
         setInvoiceSentAt(jobs.find(j => j.invoice_sent_at)?.invoice_sent_at || null);
         setReceiptSentAt(jobs.find(j => j.receipt_sent_at)?.receipt_sent_at || null);
-        // Default all outstanding to selected for settle panel
+        // Default invoice jobs (only) to selected for settle panel
         const settleIds = (inv.invoiceJobBalances ?? [])
           .filter(b => b.owing > 0.01).map(b => b.job.id);
-        (inv.otherOutstanding ?? []).forEach(b => settleIds.push(b.job.id));
         setSelectedIds(new Set(settleIds));
         // Default all other outstanding to checked for add-to-invoice panel
         setAddJobIds(new Set((inv.otherOutstanding ?? []).map(b => b.job.id)));
@@ -114,14 +113,10 @@ export default function InvoiceView() {
   const bizCity    = [biz.city, biz.province].filter(Boolean).join(', ');
   const clientCity = [[client.city, client.province].filter(Boolean).join(', '), client.postal_code].filter(Boolean).join(' ');
 
-  // Jobs the owner can mark paid from this page: all invoice-linked jobs + other outstanding
-  const outstandingJobs = [];
-  (invoice.invoiceJobBalances ?? []).forEach(b => {
-    if (b.owing > 0.01) outstandingJobs.push({ id: b.job.id, label: b.job.service_name || 'Professional Services', date: b.job.scheduled_date, owing: b.owing, isCurrent: true });
-  });
-  (invoice.otherOutstanding ?? []).forEach(b => {
-    outstandingJobs.push({ id: b.job.id, label: b.job.service_name || 'Professional Services', date: b.job.scheduled_date, owing: b.owing, isCurrent: false });
-  });
+  // Jobs the owner can mark paid: only jobs on THIS invoice with remaining balance
+  const outstandingJobs = (invoice.invoiceJobBalances ?? [])
+    .filter(b => b.owing > 0.01)
+    .map(b => ({ id: b.job.id, label: b.job.service_name || 'Professional Services', date: b.job.scheduled_date, owing: b.owing, paid: b.paid ?? 0 }));
   const selectedTotal = outstandingJobs
     .filter(j => selectedIds.has(j.id))
     .reduce((s, j) => s + j.owing, 0);
@@ -407,11 +402,15 @@ export default function InvoiceView() {
               <label key={j.id} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, color: '#333' }}>
                 <input type="checkbox" checked={selectedIds.has(j.id)} onChange={() => toggleJob(j.id)} style={{ width: 18, height: 18, accentColor: '#E91E6A' }} />
                 <span style={{ flex: 1, minWidth: 0 }}>
-                  {j.isCurrent && <span style={{ fontSize: 9, fontWeight: 700, color: '#E91E6A', textTransform: 'uppercase', marginRight: 6 }}>This Invoice</span>}
                   {j.label}
                   <span style={{ color: '#999' }}>{j.date ? ` · ${formatDate(j.date)}` : ''}</span>
+                  {j.paid > 0 && (
+                    <span style={{ display: 'block', fontSize: 11, color: '#16A34A', fontWeight: 600 }}>
+                      ${j.paid.toFixed(2)} already paid
+                    </span>
+                  )}
                 </span>
-                <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>${j.owing.toFixed(2)}</span>
+                <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>${j.owing.toFixed(2)} owing</span>
               </label>
             ))}
           </div>
@@ -453,7 +452,7 @@ export default function InvoiceView() {
         </div>
       )}
 
-      <div ref={wrapRef} className="invoice-scale-wrap" style={{ overflow: 'hidden', height: scale < 1 && boxNaturalH ? boxNaturalH * scale : 'auto' }}>
+      <div ref={wrapRef} className="invoice-scale-wrap" style={{ overflowX: 'hidden', height: scale < 1 && boxNaturalH ? boxNaturalH * scale : 'auto' }}>
       <div ref={boxRef} className="invoice-box" style={scale < 1 ? { transform: `scale(${scale})`, transformOrigin: 'top left', width: 800, maxWidth: 'none' } : {}}>
 
         {/* Header */}

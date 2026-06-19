@@ -4,7 +4,7 @@ import { SectionLabel } from '../components/ui/typography';
 import { useJobs, useExpenses, useInvoices, useBusiness } from '../data/useData';
 import { useFinanceDetailSheet } from '../context/FinanceDetailSheetContext';
 import { useJobDetailSheet } from '../context/JobDetailSheetContext';
-import { computeJobFinancials } from '../lib/financialMath';
+import { computeJobFinancials, computeJobSubtotal } from '../lib/financialMath';
 import NewExpenseSheet from '../components/sheets/NewExpenseSheet';
 import AmtCell from '../components/ui/AmtCell';
 import { EmptyActivity, NoResults } from '../components/ui/Illustrations';
@@ -136,7 +136,7 @@ function computeChartBuckets(period, completedJobs, expenses) {
     label: b.label,
     revenue: completedJobs
       .filter(j => { const d = parseDate(j.scheduled_at || j.raw?.scheduled_at); return d && d >= b.start && d < b.end; })
-      .reduce((s, j) => s + computeJobFinancials(j).total, 0),
+      .reduce((s, j) => s + computeJobSubtotal(j), 0),
     expenses: expenses
       .filter(e => { const d = parseDate(e.expense_date || e.created_at); return d && d >= b.start && d < b.end; })
       .reduce((s, e) => s + Number(e.amount || 0), 0),
@@ -329,15 +329,16 @@ export default function Finance() {
   const revenueItems = useMemo(() => completedPeriodJobs.map(j => ({
     ...j.raw,
     client_name: j.client_name,
-    total: computeJobFinancials(j).total,
+    total: computeJobSubtotal(j),
   })), [completedPeriodJobs]);
 
   const outstandingItems = useMemo(() =>
     completedPeriodJobs
       .filter(j => j.payment_status !== 'Paid')
       .map(j => {
-        const total = computeJobFinancials(j).total;
-        const owing = Math.max(0, total - (j.amount_paid || 0));
+        const sub = computeJobSubtotal(j);
+        const paid = j.amount_paid || 0;
+        const owing = Math.max(0, sub - Math.min(paid, sub));
         return { ...j.raw, client_name: j.client_name, total: owing };
       }),
     [completedPeriodJobs],
@@ -391,11 +392,12 @@ export default function Finance() {
   const transactions = useMemo(() => {
     const jobTx = periodJobs.map(j => {
       const computed = computeJobFinancials(j);
+      const sub = computed.subtotal + computed.additionalTotal;
       return {
         type: 'job',
         rawId: j.id,
         label: j.client_name,
-        amount: computed.total,
+        amount: sub,
         total: computed.total,
         _date: parseDate(j.scheduled_at) || new Date(0),
         dateBrief: (parseDate(j.scheduled_at) || new Date()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),

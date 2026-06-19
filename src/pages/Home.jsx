@@ -289,7 +289,8 @@ export default function Home() {
   const owingJobs = useMemo(() => {
     return attentionItems.map(j => {
       const paid = paymentMap[j.id] || 0;
-      const remaining = Math.max(0, computeJobTotal(j) - paid);
+      const sub = computeJobSubtotal(j);
+      const remaining = Math.max(0, sub - Math.min(paid, sub));
       const hoursOld = (now - j.end) / 3600000;
       return { ...j, remaining, hoursOld };
     }).sort((a, b) => b.hoursOld - a.hoursOld);
@@ -299,8 +300,9 @@ export default function Home() {
 
   const collectedThisWeek = useMemo(() => {
     return allWeekJobs.reduce((s, j) => {
-      if (j.payment_status === 'Paid') return s + computeJobTotal(j);
-      if (j.payment_status === 'Partial') return s + (paymentMap[j.id] || 0);
+      const sub = computeJobSubtotal(j);
+      if (j.payment_status === 'Paid') return s + sub;
+      if (j.payment_status === 'Partial') return s + Math.min(paymentMap[j.id] || 0, sub);
       return s;
     }, 0);
   }, [allWeekJobs, paymentMap]);
@@ -308,7 +310,11 @@ export default function Home() {
   const weekOwed = useMemo(() => {
     return allWeekJobs
       .filter(j => j.status === 'Completed' && j.payment_status !== 'Paid')
-      .reduce((s, j) => s + Math.max(0, computeJobTotal(j) - (paymentMap[j.id] || 0)), 0);
+      .reduce((s, j) => {
+        const sub = computeJobSubtotal(j);
+        const paid = paymentMap[j.id] || 0;
+        return s + Math.max(0, sub - Math.min(paid, sub));
+      }, 0);
   }, [allWeekJobs, paymentMap]);
 
   const weekUpcoming = useMemo(() => {

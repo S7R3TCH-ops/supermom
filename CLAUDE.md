@@ -149,13 +149,14 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 
 ---
 
-## Current version: 0.12.94 — Jun 18, 2026 (package.json synced)
+## Current version: 0.12.95 — Jun 19, 2026 (package.json synced)
 
 Sandra's business is live — data wiped and re-provisioned Jun 9. App in active use.
 
 **⚠️ Multi-client git discipline**: Always push local commits before starting an online Claude Code session; always pull before the online session writes code.
 
 ### Recent changes (full history in `docs/changelog/` + `git log`)
+- **v0.12.95 (Jun 19)** — Fix financial math consistency: all revenue/collected/owing figures now use subtotal (no HST) as primary basis, matching the card displays that show "$X +HST". Home: `collectedThisWeek` changed from `computeJobTotal` to `computeJobSubtotal` for paid jobs (caps partial at subtotal); `owingJobs.remaining` same fix. Finance: `revenueItems`, `outstandingItems`, transaction amounts, chart buckets all switched from `.total` to `computeJobSubtotal`. Previously "collected" used total-with-HST while "This Week" used subtotal — impossible for Sandra to reconcile. HST is still shown as "+HST" annotation on cards; CSV export unchanged (still exports all three: subtotal/HST/total).
 - **v0.12.94 (Jun 18)** — iOS PWA height fix: split `html, body, #root` height rule — `html` gets `height: -webkit-fill-available`, `body`/`#root` get `min-height: -webkit-fill-available`. Fixes white strip at bottom where `height: 100%` resolves shorter than actual screen in iOS standalone mode.
 - **v0.12.93 (Jun 18)** — iOS PWA safe area fix: LogoBar gets `paddingTop: calc(env(safe-area-inset-top) + 10px)` so logo bar no longer hides behind status bar/notch; BottomNav gets `paddingBottom: calc(env(safe-area-inset-bottom) + 8px)` replacing hardcoded `22px` so white strip below nav disappears on iPhone.
 - **v0.12.92 (Jun 18)** — InvoiceView fixes: (1) Scroll restored — `overflow: hidden` → `overflowX: hidden` on scale wrapper; vertical clipping was cutting off invoice content. (2) Record Payment panel now only shows jobs ON this invoice (removed `otherOutstanding` from the settle checklist) — prevents accidental cross-invoice payment assignment and fixes the confusion where jobs with prepayments appeared as settleable on unrelated invoices. (3) Rows with partial payment now show "$X already paid" in green. reload() no longer pre-selects otherOutstanding in `selectedIds`. "Add to Invoice" panel unchanged — still shows `otherOutstanding` as the correct consolidation path.

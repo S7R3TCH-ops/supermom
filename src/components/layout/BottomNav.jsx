@@ -16,7 +16,8 @@ export default function BottomNav() {
       display: 'flex',
       background: T.navBg,
       borderTop: `1.5px solid ${T.navBorder}`,
-      padding: '8px 0 22px',
+      padding: '8px 0',
+      paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)',
       flexShrink: 0,
     }}>
       {items.map(({ to, k, icon, label }) => (

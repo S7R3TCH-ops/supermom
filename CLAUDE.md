@@ -149,13 +149,14 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 
 ---
 
-## Current version: 0.12.92 — Jun 18, 2026 (package.json synced)
+## Current version: 0.12.93 — Jun 18, 2026 (package.json synced)
 
 Sandra's business is live — data wiped and re-provisioned Jun 9. App in active use.
 
 **⚠️ Multi-client git discipline**: Always push local commits before starting an online Claude Code session; always pull before the online session writes code.
 
 ### Recent changes (full history in `docs/changelog/` + `git log`)
+- **v0.12.93 (Jun 18)** — iOS PWA safe area fix: LogoBar gets `paddingTop: calc(env(safe-area-inset-top) + 10px)` so logo bar no longer hides behind status bar/notch; BottomNav gets `paddingBottom: calc(env(safe-area-inset-bottom) + 8px)` replacing hardcoded `22px` so white strip below nav disappears on iPhone.
 - **v0.12.92 (Jun 18)** — InvoiceView fixes: (1) Scroll restored — `overflow: hidden` → `overflowX: hidden` on scale wrapper; vertical clipping was cutting off invoice content. (2) Record Payment panel now only shows jobs ON this invoice (removed `otherOutstanding` from the settle checklist) — prevents accidental cross-invoice payment assignment and fixes the confusion where jobs with prepayments appeared as settleable on unrelated invoices. (3) Rows with partial payment now show "$X already paid" in green. reload() no longer pre-selects otherOutstanding in `selectedIds`. "Add to Invoice" panel unchanged — still shows `otherOutstanding` as the correct consolidation path.
 - **v0.12.91 (Jun 18)** — Home screen "Needs attention" section redesign. (1) Bottom nav "Home" → "Week". (2) Attention section split into 3 visual variants with left-border accent cards: amber WRAP UP (past time, not completed), pink UNPAID (completed, unpaid <48h), red UNPAID (completed, unpaid ≥48h), orange PARTIAL PAID. (3) Cards now show service name + date/time range + recency ("6d ago" / "2h overdue"). (4) Collapse toggle removed — all items always visible. (5) `owingTotal` now excludes wrap-up jobs (not yet billable). Section header: "Needs attention · $X outstanding".
 - **v0.12.90 (Jun 18)** — Fix `useBackClose` navigating to wrong page (admin screen) on sheet close. `history.pushState(null, ...)` was wiping React Router's internal state (`idx`/`key`) from the synthetic entry — when cleanup called `history.back()`, React Router's `popstate` listener lost position tracking and jumped to wrong history entry. Fix: `history.pushState(window.history.state, ...)` preserves React Router state in synthetic push.

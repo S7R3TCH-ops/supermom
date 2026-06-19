@@ -33,7 +33,10 @@ export default function LogoBar() {
       background: mode === 'dark' 
         ? '#0A0A0A' 
         : `linear-gradient(to bottom, ${T.pink} 0%, ${T.pinkLight} 100%)`,
-      padding: '10px 18px 12px',
+      paddingTop: 'calc(env(safe-area-inset-top) + 10px)',
+      paddingBottom: '12px',
+      paddingLeft: '18px',
+      paddingRight: '18px',
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       flexShrink: 0, minHeight: 64,
       borderBottom: mode === 'dark' ? `1px solid ${T.navBorder}` : 'none'

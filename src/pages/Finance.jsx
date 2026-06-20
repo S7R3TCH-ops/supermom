@@ -358,6 +358,16 @@ export default function Finance() {
     [completedPeriodJobs],
   );
 
+  const hstItems = useMemo(() => completedPeriodJobs.map(j => {
+    const f = computeJobFinancials(j);
+    return { ...j.raw, client_name: j.client_name, total: f.taxAmount };
+  }), [completedPeriodJobs]);
+
+  const hstCollected = useMemo(
+    () => hstItems.reduce((s, j) => s + j.total, 0),
+    [hstItems]
+  );
+
   const stats = useMemo(() => {
     const revenue = revenueItems.reduce((s, j) => s + j.total, 0);
     const outstanding = outstandingItems.reduce((s, j) => s + j.total, 0);
@@ -456,8 +466,10 @@ export default function Finance() {
         return db - da;
       });
       openFinanceDetail(`Profit Breakdown · ${periodLabel}`, mixed, 'profit');
+    } else if (type === 'hst') {
+      openFinanceDetail(`HST Collected · ${periodLabel}`, hstItems, 'jobs');
     }
-  }, [revenueItems, outstandingItems, periodExpenses, workerCostItems, periodLabel, openFinanceDetail]);
+  }, [revenueItems, outstandingItems, periodExpenses, workerCostItems, hstItems, periodLabel, openFinanceDetail]);
 
   if (loading && (!allJobs || allJobs.length === 0)) {
     return <FinanceSkeleton T={T} />;
@@ -530,6 +542,24 @@ export default function Finance() {
           <StatCard T={T} mode={mode} label="Outstanding" value={stats.outstanding} color="#F59E0B" privacyOn={privacyOn} onClick={() => handleStatClick('outstanding')} count={outstandingItems.length} />
           <StatCard T={T} mode={mode} label="Profit" value={stats.profit} color="#10B981" privacyOn={privacyOn} onClick={() => handleStatClick('profit')} workerCosts={stats.workerCosts} />
         </div>
+
+        {hstCollected > 0 && (
+          <button
+            type="button"
+            onClick={() => handleStatClick('hst')}
+            style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              width: '100%', background: T.card, border: `1.5px solid ${T.cardBorder}`,
+              borderRadius: 12, padding: '10px 14px', marginBottom: 16,
+              cursor: 'pointer', fontFamily: T.font, textAlign: 'left',
+            }}
+          >
+            <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: T.inkMuted }}>HST Collected</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: T.inkSub, fontVariantNumeric: 'tabular-nums' }}>
+              {privacyOn ? '•••' : `$${Math.round(hstCollected).toLocaleString('en-CA')}`}
+            </span>
+          </button>
+        )}
 
         {/* Trend Chart */}
         <div style={{ background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 16, padding: '14px 14px 10px', marginBottom: 24 }}>

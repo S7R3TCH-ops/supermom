@@ -16,7 +16,7 @@ import { useGeofence } from '../context/GeofenceContext';
 import { useToast } from '../context/ToastContext';
 import { useKeyboardFocus } from '../hooks/useKeyboardFocus';
 import { sameDay, getWeekRange, fmtTime12, dateBrief, fmtDuration } from '../lib/dateUtils';
-import { computeJobTotal, computeJobSubtotal } from '../lib/financialMath';
+import { computeJobTotal } from '../lib/financialMath';
 import JobCard from '../components/cards/JobCard';
 import UpcomingCard from '../components/cards/UpcomingCard';
 import Swipeable from '../components/ui/Swipeable';
@@ -150,7 +150,7 @@ export default function Home() {
   const allDone = todayJobs.length > 0 && !todayJobs.some(j => j.status === 'Scheduled' || j.payment_status !== 'Paid');
 
   const displayRevenue = useMemo(
-    () => allWeekJobs.reduce((s, j) => s + computeJobSubtotal(j), 0),
+    () => allWeekJobs.reduce((s, j) => s + computeJobTotal(j), 0),
     [allWeekJobs]
   );
 
@@ -289,8 +289,8 @@ export default function Home() {
   const owingJobs = useMemo(() => {
     return attentionItems.map(j => {
       const paid = paymentMap[j.id] || 0;
-      const sub = computeJobSubtotal(j);
-      const remaining = Math.max(0, sub - Math.min(paid, sub));
+      const tot = computeJobTotal(j);
+      const remaining = Math.max(0, tot - Math.min(paid, tot));
       const hoursOld = (now - j.end) / 3600000;
       return { ...j, remaining, hoursOld };
     }).sort((a, b) => b.hoursOld - a.hoursOld);
@@ -300,9 +300,9 @@ export default function Home() {
 
   const collectedThisWeek = useMemo(() => {
     return allWeekJobs.reduce((s, j) => {
-      const sub = computeJobSubtotal(j);
-      if (j.payment_status === 'Paid') return s + sub;
-      if (j.payment_status === 'Partial') return s + Math.min(paymentMap[j.id] || 0, sub);
+      const tot = computeJobTotal(j);
+      if (j.payment_status === 'Paid') return s + tot;
+      if (j.payment_status === 'Partial') return s + Math.min(paymentMap[j.id] || 0, tot);
       return s;
     }, 0);
   }, [allWeekJobs, paymentMap]);
@@ -311,16 +311,16 @@ export default function Home() {
     return allWeekJobs
       .filter(j => j.status === 'Completed' && j.payment_status !== 'Paid')
       .reduce((s, j) => {
-        const sub = computeJobSubtotal(j);
+        const tot = computeJobTotal(j);
         const paid = paymentMap[j.id] || 0;
-        return s + Math.max(0, sub - Math.min(paid, sub));
+        return s + Math.max(0, tot - Math.min(paid, tot));
       }, 0);
   }, [allWeekJobs, paymentMap]);
 
   const weekUpcoming = useMemo(() => {
     return allWeekJobs
       .filter(j => j.status === 'Scheduled')
-      .reduce((s, j) => s + computeJobSubtotal(j), 0);
+      .reduce((s, j) => s + computeJobTotal(j), 0);
   }, [allWeekJobs]);
 
   const todayUpcoming = useMemo(() => {
@@ -649,7 +649,7 @@ export default function Home() {
               type="button"
               onClick={() => openDetail(
                 'This Week',
-                allWeekJobs.map(j => ({ ...j, total: computeJobSubtotal(j) })),
+                allWeekJobs.map(j => ({ ...j, total: computeJobTotal(j) })),
                 'jobs'
               )}
               aria-label="View this week's jobs"
@@ -919,9 +919,9 @@ export default function Home() {
                                   {timingLabel}
                                 </div>
                               )}
-                              {!privacyOn && computeJobSubtotal(next) > 0 && (
+                              {!privacyOn && computeJobTotal(next) > 0 && (
                                 <div style={{ fontSize: 11, fontWeight: 600, color: DEEP_ROSE, opacity: 0.65, marginTop: 4, whiteSpace: 'nowrap' }}>
-                                  ${computeJobSubtotal(next).toFixed(0)}{computeJobTotal(next) > computeJobSubtotal(next) && <span style={{ fontSize: 8, fontWeight: 700, opacity: 0.7, marginLeft: 2 }}> +HST</span>}
+                                  ${computeJobTotal(next).toFixed(0)}
                                 </div>
                               )}
                             </div>
@@ -1062,11 +1062,10 @@ export default function Home() {
                       job={j}
                       T={T}
                       onClick={() => openJob(j.id)}
-                      total={computeJobSubtotal(j)}
+                      total={computeJobTotal(j)}
                       grandTotal={computeJobTotal(j)}
                       paid={paymentMap[j.id] || 0}
                       privacyOn={privacyOn}
-                      hstNote={computeJobTotal(j) > computeJobSubtotal(j)}
                     />
                   </Swipeable>
                   {leaveBy && (
@@ -1095,10 +1094,9 @@ export default function Home() {
                 T={T}
                 onClick={() => openJob(j.id)}
                 paid={paymentMap[j.id] || 0}
-                total={computeJobSubtotal(j)}
+                total={computeJobTotal(j)}
                 grandTotal={computeJobTotal(j)}
                 privacyOn={privacyOn}
-                hstNote={computeJobTotal(j) > computeJobSubtotal(j)}
               />
             ))}
           </div>
@@ -1201,10 +1199,9 @@ export default function Home() {
                 T={T}
                 onClick={() => openJob(j.id)}
                 paid={paymentMap[j.id] || 0}
-                total={computeJobSubtotal(j)}
+                total={computeJobTotal(j)}
                 grandTotal={computeJobTotal(j)}
                 privacyOn={privacyOn}
-                hstNote={computeJobTotal(j) > computeJobSubtotal(j)}
                 subtle
               />
             ))}
@@ -1222,10 +1219,9 @@ export default function Home() {
                 T={T}
                 onClick={() => openJob(j.id)}
                 paid={paymentMap[j.id] || 0}
-                total={computeJobSubtotal(j)}
+                total={computeJobTotal(j)}
                 grandTotal={computeJobTotal(j)}
                 privacyOn={privacyOn}
-                hstNote={computeJobTotal(j) > computeJobSubtotal(j)}
                 subtle
               />
             ))}

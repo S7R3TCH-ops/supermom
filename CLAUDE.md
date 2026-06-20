@@ -91,8 +91,8 @@ A mobile-first CRM & operations web app for **Sandra**, a solo personal-life-ope
 - `subtotal` = base labor only. `hst_amount` = finalized HST. `total_amount` = final grand total. All three written on completion.
 - `additional_costs_json` is the array of cost items. `additional_cost` is a backward-compat scalar sum.
 - `toDisplayJob()` in `selectors.js` wraps raw DB rows — use `j.raw.fieldName` to access DB fields from display objects.
-- `computeJobTotal(job)` = subtotal + additional costs + HST. Use for collection math (what client owes).
-- `computeJobSubtotal(job)` = subtotal + additional costs (no HST). Use for card/revenue display.
+- `computeJobTotal(job)` = subtotal + additional costs + HST. Use for Home screen card display, collection math, and all totals Sandra sees.
+- `computeJobSubtotal(job)` = subtotal + additional costs (no HST). Use for Finance page revenue display (pre-tax revenue reporting).
 - **Never trust caller-supplied `paymentStatus`** — `recordPayment` always re-derives from DB payments sum.
 - `jobs.tax_enabled` is nullable: NULL = inherit from `business.tax_enabled`, true/false = explicit per-job override.
 
@@ -149,13 +149,14 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 
 ---
 
-## Current version: 0.12.95 — Jun 19, 2026 (package.json synced)
+## Current version: 0.12.96 — Jun 19, 2026 (package.json synced)
 
 Sandra's business is live — data wiped and re-provisioned Jun 9. App in active use.
 
 **⚠️ Multi-client git discipline**: Always push local commits before starting an online Claude Code session; always pull before the online session writes code.
 
 ### Recent changes (full history in `docs/changelog/` + `git log`)
+- **v0.12.96 (Jun 19)** — Home screen: Sandra wants to see amounts WITH HST. All Home.jsx amounts switched to `computeJobTotal` (HST-inclusive): `displayRevenue`, `collectedThisWeek`, `owingJobs.remaining`, `weekOwed`, `weekUpcoming`, all JobCard/UpcomingCard `total` props, "next job" inline display. `computeJobSubtotal` import removed from Home.jsx. `hstNote` prop removed from all cards (total already includes HST). Finance page remains on subtotal basis.
 - **v0.12.95 (Jun 19)** — Fix financial math consistency: all revenue/collected/owing figures now use subtotal (no HST) as primary basis, matching the card displays that show "$X +HST". Home: `collectedThisWeek` changed from `computeJobTotal` to `computeJobSubtotal` for paid jobs (caps partial at subtotal); `owingJobs.remaining` same fix. Finance: `revenueItems`, `outstandingItems`, transaction amounts, chart buckets all switched from `.total` to `computeJobSubtotal`. Previously "collected" used total-with-HST while "This Week" used subtotal — impossible for Sandra to reconcile. HST is still shown as "+HST" annotation on cards; CSV export unchanged (still exports all three: subtotal/HST/total).
 - **v0.12.94 (Jun 18)** — iOS PWA height fix: split `html, body, #root` height rule — `html` gets `height: -webkit-fill-available`, `body`/`#root` get `min-height: -webkit-fill-available`. Fixes white strip at bottom where `height: 100%` resolves shorter than actual screen in iOS standalone mode.
 - **v0.12.93 (Jun 18)** — iOS PWA safe area fix: LogoBar gets `paddingTop: calc(env(safe-area-inset-top) + 10px)` so logo bar no longer hides behind status bar/notch; BottomNav gets `paddingBottom: calc(env(safe-area-inset-bottom) + 8px)` replacing hardcoded `22px` so white strip below nav disappears on iPhone.

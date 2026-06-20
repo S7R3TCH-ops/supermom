@@ -249,14 +249,14 @@ export default function ClientProfile() {
         </div>
 
         {/* 3-stat row */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: 12, position: 'relative' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: 8, position: 'relative' }}>
           {[
             { n: String(client.stats.jobsTotal), l: 'Jobs' },
             { n: privacyOn ? '•••' : `$${client.stats.revenueYtd.toLocaleString()}`, l: 'Revenue YTD' },
             { n: client.stats.lastVisit, l: 'Last visit' },
           ].map(s => (
             <div key={s.l} style={{
-              background: mode === 'dark' ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.4)', 
+              background: mode === 'dark' ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.4)',
               border: `1px solid ${mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'}`,
               borderRadius: 11, padding: '9px 6px', textAlign: 'center',
             }}>
@@ -265,6 +265,25 @@ export default function ClientProfile() {
             </div>
           ))}
         </div>
+
+        {/* LTV row */}
+        {client.stats.totalBilled > 0 && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 12, position: 'relative' }}>
+            {[
+              { n: privacyOn ? '•••' : `$${Math.round(client.stats.totalBilled).toLocaleString()}`, l: 'Total billed' },
+              { n: privacyOn ? '•••' : `$${Math.round(client.stats.avgPerJob).toLocaleString()}`, l: 'Avg per job' },
+            ].map(s => (
+              <div key={s.l} style={{
+                background: mode === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.25)',
+                border: `1px solid ${mode === 'dark' ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.04)'}`,
+                borderRadius: 11, padding: '7px 6px', textAlign: 'center',
+              }}>
+                <Subheading style={{ fontSize: 14, fontWeight: 500, color: mode === 'dark' ? 'rgba(255,255,255,0.8)' : T.ink, letterSpacing: '-0.2px', fontVariantNumeric: 'tabular-nums', margin: 0 }}>{s.n}</Subheading>
+                <Caption style={{ fontSize: 9, fontWeight: 600, color: mode === 'dark' ? 'rgba(255,255,255,0.35)' : T.inkMuted, letterSpacing: '0.4px', textTransform: 'uppercase', marginTop: 2 }}>{s.l}</Caption>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Action row */}
         <div style={{ display: 'flex', gap: 8, position: 'relative' }}>

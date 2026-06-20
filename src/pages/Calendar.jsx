@@ -3,6 +3,7 @@ import { useAppTheme } from '../context/AppThemeContext';
 import { useJobs } from '../data/useData';
 import { useJobDetailSheet } from '../context/JobDetailSheetContext';
 import { EmptySchedule } from '../components/ui/Illustrations';
+import OfflineMessage from '../components/ui/OfflineMessage';
 import WeekStrip from '../components/ui/WeekStrip';
 import { getNavigationUrl } from '../lib/maps';
 import { triggerHaptic } from '../lib/haptics';
@@ -151,7 +152,7 @@ export default function Calendar() {
   const { openJob } = useJobDetailSheet();
   const handleJobPress = useCallback((id) => openJob(id), [openJob]);
 
-  const { jobs: displayJobs, clients: clientLookup, loading, error } = useJobs();
+  const { jobs: displayJobs, clients: clientLookup, loading, error, refresh: refetchJobs } = useJobs();
   const allJobs = useMemo(() => enrichDisplayJobs(displayJobs, clientLookup), [displayJobs, clientLookup]);
   const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
 
@@ -201,6 +202,14 @@ export default function Calendar() {
     lineHeight: 1,
     userSelect: 'none',
   };
+
+  if (error && !displayJobs?.length) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: T.bg }}>
+        <OfflineMessage onRetry={refetchJobs} />
+      </div>
+    );
+  }
 
   return (
     <div

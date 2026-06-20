@@ -1,6 +1,9 @@
 import { fmtTimeRange, dateBrief } from '../../lib/dateUtils';
+import { useBusiness } from '../../data/useData';
+import { getWorkerLabel } from '../../lib/labels';
 
 export default function JobCard({ job: j, T, onClick, paid = 0, total = 0, grandTotal, privacyOn = false, subtle = false, hstNote = false }) {
+  const { business } = useBusiness();
   const isCompleted = j.status === 'Completed';
   const isPaid = j.payment_status === 'Paid';
   const isPartial = j.payment_status === 'Partial';
@@ -84,7 +87,7 @@ export default function JobCard({ job: j, T, onClick, paid = 0, total = 0, grand
       {j.worker_name && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 10.5, color: T.inkMuted, fontFamily: T.font }}>
-            {j.assignee_type === 'staff' ? '🌟 Wingmom:' : '🦸 Sidekick:'} {j.worker_name}
+            {getWorkerLabel(business, j.assignee_type)}: {j.worker_name}
           </span>
           {isPaid && Number(j.raw?.worker_pay) > 0 && !j.raw?.worker_paid && (
             <span style={{ fontSize: 8.5, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: T.amberBg, color: isDark ? '#FCD34D' : '#92400E', textTransform: 'uppercase', letterSpacing: '0.3px', flexShrink: 0 }}>

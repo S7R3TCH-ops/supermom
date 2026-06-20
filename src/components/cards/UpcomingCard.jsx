@@ -1,8 +1,11 @@
 import { fmtTimeRange, dateBrief } from '../../lib/dateUtils';
 import { useAppTheme } from '../../context/AppThemeContext';
+import { useBusiness } from '../../data/useData';
+import { getWorkerLabel } from '../../lib/labels';
 
 export default function UpcomingCard({ job: j, T, onClick, total = 0, grandTotal, paid = 0, privacyOn = false, hstNote = false }) {
   const { mode } = useAppTheme();
+  const { business } = useBusiness();
   const ACCENT = T.pink;
   const BG = mode === 'dark' ? 'rgba(233,30,106,0.1)' : '#FFF0F7';
   const timeRange = j.start && j.end ? fmtTimeRange(j.start, j.end) : '—';
@@ -69,7 +72,7 @@ export default function UpcomingCard({ job: j, T, onClick, total = 0, grandTotal
       {/* Worker */}
       {j.worker_name && (
         <div style={{ fontSize: 10.5, color: T.inkMuted, marginTop: 2, fontFamily: T.font }}>
-          {j.assignee_type === 'staff' ? '🌟 Wingmom:' : '🦸 Sidekick:'} {j.worker_name}
+          {getWorkerLabel(business, j.assignee_type)}: {j.worker_name}
         </div>
       )}
 

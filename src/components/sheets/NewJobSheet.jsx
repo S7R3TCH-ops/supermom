@@ -12,6 +12,7 @@ import { SectionLabel } from '../ui/typography';
 import NewClientSheet from './NewClientSheet';
 import { calculateEstimatedDuration } from '../../data/ai';
 import { fetchSmartDurationEstimate } from '../../data/ai';
+import { getWorkerLabel } from '../../lib/labels';
 import { useKeyboardFocus } from '../../hooks/useKeyboardFocus';
 import GrabBar from '../ui/GrabBar';
 import FinancialMathBreakdown from '../ui/FinancialMathBreakdown';
@@ -835,14 +836,14 @@ function Step2What({
           >
             <option value="">— Unassigned —</option>
             {workers.filter(w => (w.person_type || 'worker') === 'worker').length > 0 && (
-              <optgroup label="── Sidekicks ──">
+              <optgroup label={`── ${getWorkerLabel(business, 'worker')}s ──`}>
                 {workers.filter(w => (w.person_type || 'worker') === 'worker').map(w => (
                   <option key={w.id} value={w.id}>{w.name}{w.skills?.length > 0 ? ` · ${w.skills.map(s => s.skill_name).join(', ')}` : ''}</option>
                 ))}
               </optgroup>
             )}
             {workers.filter(w => w.person_type === 'staff').length > 0 && (
-              <optgroup label="── Wingmoms ──">
+              <optgroup label={`── ${getWorkerLabel(business, 'staff')}s ──`}>
                 {workers.filter(w => w.person_type === 'staff').map(w => (
                   <option key={w.id} value={w.id}>{w.name}{w.skills?.length > 0 ? ` · ${w.skills.map(s => s.skill_name).join(', ')}` : ''}</option>
                 ))}
@@ -948,7 +949,7 @@ function Step3Review({
             <span style={{ fontSize: 16 }}>{assignedWorker.person_type === 'staff' ? '🌟' : '🦸'}</span>
             <div>
               <div style={{ fontSize: 10, color: 'var(--pink-label)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '1.2px', marginBottom: 1 }}>
-                Assigned {assignedWorker.person_type === 'staff' ? 'Wingmom' : 'Sidekick'}
+                Assigned {getWorkerLabel(business, assignedWorker.person_type)}
               </div>
               <div style={{ fontFamily: T.serif, fontSize: 14, fontWeight: 500, color: 'white' }}>
                 {assignedWorker.name}

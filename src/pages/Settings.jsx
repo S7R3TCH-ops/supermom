@@ -113,6 +113,11 @@ export default function Settings() {
         mileage_rate_per_km: business.ai_profile?.mileage_rate_per_km != null
           ? String(business.ai_profile.mileage_rate_per_km)
           : '0.70',
+        worker_label:       business.ai_profile?.worker_labels?.worker ?? '🦸 Sidekick',
+        staff_label:        business.ai_profile?.worker_labels?.staff ?? '🌟 Wingmom',
+        revenue_goal_monthly: business.ai_profile?.revenue_goal_monthly != null
+          ? String(business.ai_profile.revenue_goal_monthly)
+          : '',
       });
       formInitialized.current = true;
 
@@ -209,6 +214,11 @@ export default function Settings() {
             signature: form.signature,
             mileage_tracking: form.mileage_tracking,
             mileage_rate_per_km: form.mileage_rate_per_km === '' ? 0.70 : Number(form.mileage_rate_per_km),
+            worker_labels: {
+              worker: form.worker_label || '🦸 Sidekick',
+              staff: form.staff_label || '🌟 Wingmom',
+            },
+            revenue_goal_monthly: form.revenue_goal_monthly === '' ? null : Number(form.revenue_goal_monthly),
           }
         })
         .eq('id', bid);
@@ -298,7 +308,10 @@ export default function Settings() {
     form.hst_number  !== (business.hst_number  ?? '') ||
     form.signature   !== (business.ai_profile?.signature ?? '') ||
     form.mileage_tracking !== (business.ai_profile?.mileage_tracking ?? false) ||
-    form.mileage_rate_per_km !== (business.ai_profile?.mileage_rate_per_km != null ? String(business.ai_profile.mileage_rate_per_km) : '0.70')
+    form.mileage_rate_per_km !== (business.ai_profile?.mileage_rate_per_km != null ? String(business.ai_profile.mileage_rate_per_km) : '0.70') ||
+    form.worker_label !== (business.ai_profile?.worker_labels?.worker ?? '🦸 Sidekick') ||
+    form.staff_label !== (business.ai_profile?.worker_labels?.staff ?? '🌟 Wingmom') ||
+    form.revenue_goal_monthly !== (business.ai_profile?.revenue_goal_monthly != null ? String(business.ai_profile.revenue_goal_monthly) : '')
   );
 
   const inputStyle = {
@@ -563,6 +576,39 @@ export default function Settings() {
             >
               Manage
             </button>
+          </div>
+        </div>
+
+        <SectionLabel>Branding &amp; Goals</SectionLabel>
+        <div style={cardStyle}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div>
+              <span style={{ fontSize: 14, fontWeight: 600, color: T.ink, display: 'block', marginBottom: 4 }}>Team labels</span>
+              <div style={{ fontSize: 11, color: T.inkMuted, marginBottom: 10 }}>How your helpers are called in the app</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div>
+                  <label style={labelStyle}>Worker label</label>
+                  <input className="sm-input" value={form.worker_label} onChange={e => setForm({...form, worker_label: e.target.value})} placeholder="🦸 Sidekick" style={inputStyle} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Staff label</label>
+                  <input className="sm-input" value={form.staff_label} onChange={e => setForm({...form, staff_label: e.target.value})} placeholder="🌟 Wingmom" style={inputStyle} />
+                </div>
+              </div>
+            </div>
+            <div style={{ borderTop: `1px solid ${T.cardBorder}`, paddingTop: 12 }}>
+              <label style={labelStyle}>Monthly revenue goal ($)</label>
+              <input
+                className="sm-input"
+                type="number"
+                value={form.revenue_goal_monthly}
+                onChange={e => setForm({...form, revenue_goal_monthly: e.target.value})}
+                onFocus={e => e.target.select()}
+                placeholder="e.g. 5000"
+                style={inputStyle}
+              />
+              <div style={{ fontSize: 10, color: T.inkMuted, marginTop: 4 }}>Shows a progress ring on your home screen</div>
+            </div>
           </div>
         </div>
 

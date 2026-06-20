@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAppTheme } from '../context/AppThemeContext';
 import AmtCell from '../components/ui/AmtCell';
 import { useClients } from '../data/useData';
+import OfflineMessage from '../components/ui/OfflineMessage';
 import { EmptyClients, NoResults } from '../components/ui/Illustrations';
 
 const filters = ['All', 'Owes $', 'VIP', 'Active', 'Leads'];
@@ -87,7 +88,7 @@ export default function Clients() {
   const [search, setSearch] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
   const navigate = useNavigate();
-  const { clients, loading, error } = useClients();
+  const { clients, loading, error, refresh: refetchClients } = useClients();
   const handleClientPress = useCallback((id) => navigate(`/clients/${id}`), [navigate]);
 
   const filtered = useMemo(() => {
@@ -118,6 +119,14 @@ export default function Clients() {
   }), [clients]);
 
   const isDark = mode === 'dark';
+
+  if (error && !clients.length) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: T.bg }}>
+        <OfflineMessage onRetry={refetchClients} />
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: T.bg, color: T.ink, position: 'relative' }}>

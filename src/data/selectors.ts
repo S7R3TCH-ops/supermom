@@ -103,6 +103,8 @@ export interface DisplayClient {
   stats: {
     jobsTotal: number;
     revenueYtd: number;
+    totalBilled: number;
+    avgPerJob: number;
     lastVisit: string;
   };
   upcoming: UpcomingJobItem[];
@@ -236,6 +238,10 @@ export function toDisplayClient(
     stats: {
       jobsTotal: sorted.length,
       revenueYtd: past.reduce((sum, j) => sum + computeJobTotal(j), 0),
+      totalBilled: past.reduce((sum, j) => sum + computeJobTotal(j), 0),
+      avgPerJob: past.length > 0
+        ? past.reduce((sum, j) => sum + computeJobTotal(j), 0) / past.length
+        : 0,
       lastVisit: lastJob ? fmtShortDate(lastJob.scheduled_at as string) : '—',
     },
     upcoming: future.map(j => {

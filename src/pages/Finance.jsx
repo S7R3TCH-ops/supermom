@@ -5,9 +5,11 @@ import { useJobs, useExpenses, useInvoices, useBusiness } from '../data/useData'
 import { useFinanceDetailSheet } from '../context/FinanceDetailSheetContext';
 import { useJobDetailSheet } from '../context/JobDetailSheetContext';
 import { computeJobFinancials, computeJobSubtotal } from '../lib/financialMath';
+import { getWorkerLabel } from '../lib/labels';
 import NewExpenseSheet from '../components/sheets/NewExpenseSheet';
 import AmtCell from '../components/ui/AmtCell';
 import { EmptyActivity, NoResults } from '../components/ui/Illustrations';
+import OfflineMessage from '../components/ui/OfflineMessage';
 
 const periods = ['Week', 'Month', 'Year', 'All'];
 
@@ -143,7 +145,7 @@ function computeChartBuckets(period, completedJobs, expenses) {
   }));
 }
 
-const TrendChart = memo(function TrendChart({ data, T, mode }) {
+const TrendChart = memo(function TrendChart({ data, T, mode, idPrefix = 'fc' }) {
   if (!data || data.length < 2) {
     return (
       <div style={{ height: 110, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.inkMuted, fontSize: 11 }}>
@@ -190,11 +192,11 @@ const TrendChart = memo(function TrendChart({ data, T, mode }) {
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 100, display: 'block' }}>
         <defs>
-          <linearGradient id="fc-rev-grad" x1="0" y1="0" x2="0" y2="1">
+          <linearGradient id={`${idPrefix}-rev-grad`} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#E91E6A" stopOpacity="0.22" />
             <stop offset="100%" stopColor="#E91E6A" stopOpacity="0" />
           </linearGradient>
-          <linearGradient id="fc-exp-grad" x1="0" y1="0" x2="0" y2="1">
+          <linearGradient id={`${idPrefix}-exp-grad`} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#6B7280" stopOpacity="0.14" />
             <stop offset="100%" stopColor="#6B7280" stopOpacity="0" />
           </linearGradient>
@@ -207,8 +209,8 @@ const TrendChart = memo(function TrendChart({ data, T, mode }) {
             stroke={gridColor} strokeWidth="1"
           />
         ))}
-        <path d={expArea} fill="url(#fc-exp-grad)" />
-        <path d={revArea} fill="url(#fc-rev-grad)" />
+        <path d={expArea} fill={`url(#${idPrefix}-exp-grad)`} />
+        <path d={revArea} fill={`url(#${idPrefix}-rev-grad)`} />
         <path d={expPath} fill="none" stroke="#6B7280" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
         <path d={revPath} fill="none" stroke="#E91E6A" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
         {data.map((d, i) => showLabel(i) && (
@@ -297,7 +299,7 @@ const TransactionRow = memo(function TransactionRow({ tx, T, privacyOn, onPress 
 
 export default function Finance() {
   const { T, mode, privacyOn } = useAppTheme();
-  const { jobs: allJobs, loading } = useJobs();
+  const { jobs: allJobs, loading, error: jobsError, refresh: refetchJobs } = useJobs();
   const { expenses: allExpenses } = useExpenses();
   const { invoices } = useInvoices();
   const { openJob } = useJobDetailSheet();
@@ -308,6 +310,7 @@ export default function Finance() {
   const [showNewExpense, setShowNewExpense] = useState(false);
   const [showTaxReady, setShowTaxReady] = useState(false);
   const [showMileage, setShowMileage] = useState(false);
+  const [showYoY, setShowYoY] = useState(false);
 
   const now = useMemo(() => new Date(), []);
   const periodRange = useMemo(() => getPeriodRange(period), [period]);
@@ -380,6 +383,34 @@ export default function Finance() {
     () => computeChartBuckets(period, completedPeriodJobs, periodExpenses),
     [period, completedPeriodJobs, periodExpenses],
   );
+
+  const priorYearChartData = useMemo(() => {
+    if (!showYoY || !allJobs || !allExpenses) return null;
+    const range = getPeriodRange(period);
+    if (!range) return null;
+    const priorRange = {
+      start: new Date(range.start.getFullYear() - 1, range.start.getMonth(), range.start.getDate()),
+      end: new Date(range.end.getFullYear() - 1, range.end.getMonth(), range.end.getDate()),
+    };
+    const priorJobs = filterByPeriod(allJobs, priorRange, 'scheduled_at').filter(j => j.status === 'Completed');
+    const priorExpenses = filterByPeriod(allExpenses, priorRange, 'expense_date');
+    const buckets = computeChartBuckets(period, priorJobs, priorExpenses);
+    return buckets;
+  }, [showYoY, allJobs, allExpenses, period]);
+
+  const top5Clients = useMemo(() => {
+    if (!completedPeriodJobs.length) return [];
+    const byClient = {};
+    completedPeriodJobs.forEach(j => {
+      const id = j.client_id || 'unknown';
+      if (!byClient[id]) byClient[id] = { name: j.client_name || 'Unknown', revenue: 0, jobs: 0 };
+      byClient[id].revenue += computeJobSubtotal(j);
+      byClient[id].jobs++;
+    });
+    return Object.values(byClient)
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 5);
+  }, [completedPeriodJobs]);
 
   const mileageEnabled = business?.ai_profile?.mileage_tracking ?? false;
   const craRate = business?.ai_profile?.mileage_rate_per_km ?? 0.70;
@@ -475,6 +506,14 @@ export default function Finance() {
     return <FinanceSkeleton T={T} />;
   }
 
+  if (jobsError && !allJobs) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: T.bg }}>
+        <OfflineMessage onRetry={refetchJobs} />
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: T.bg, color: T.ink }}>
       <div style={{
@@ -562,9 +601,58 @@ export default function Finance() {
         )}
 
         {/* Trend Chart */}
-        <div style={{ background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 16, padding: '14px 14px 10px', marginBottom: 24 }}>
+        <div style={{ background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 16, padding: '14px 14px 10px', marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}>
+            <button
+              type="button"
+              onClick={() => setShowYoY(v => !v)}
+              style={{
+                background: showYoY ? T.pinkTint : 'transparent',
+                border: `1px solid ${showYoY ? T.pink : T.cardBorder}`,
+                borderRadius: 6, padding: '3px 10px',
+                fontSize: 9, fontWeight: 700, color: showYoY ? T.pink : T.inkMuted,
+                cursor: 'pointer', letterSpacing: '0.3px',
+              }}
+            >
+              vs Last Year
+            </button>
+          </div>
           <TrendChart data={chartData} T={T} mode={mode} />
+          {showYoY && priorYearChartData && priorYearChartData.length > 0 && (
+            <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${T.cardBorder}` }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                <div style={{ width: 14, height: 2, background: '#9CA3AF', borderRadius: 1 }} />
+                <span style={{ fontSize: 9, fontWeight: 700, color: T.inkMuted, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                  Prior year revenue
+                </span>
+              </div>
+              <TrendChart data={priorYearChartData} T={T} mode={mode} idPrefix="fc-yoy" />
+            </div>
+          )}
         </div>
+
+        {/* Top 5 clients */}
+        {top5Clients.length > 0 && (
+          <div style={{ background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 16, padding: '14px', marginBottom: 16 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: T.inkMuted, marginBottom: 10 }}>Top clients · {periodLabel}</div>
+            {top5Clients.map((c, i) => (
+              <div key={c.name} style={{ display: 'flex', alignItems: 'center', gap: 10, paddingBottom: i < top5Clients.length - 1 ? 8 : 0, marginBottom: i < top5Clients.length - 1 ? 8 : 0, borderBottom: i < top5Clients.length - 1 ? `1px solid ${T.cardBorder}` : 'none' }}>
+                <div style={{ width: 22, height: 22, borderRadius: 6, background: T.pinkTint, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: T.serif, fontSize: 11, fontWeight: 700, color: T.pink, flexShrink: 0 }}>
+                  {i + 1}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: T.serif, fontSize: 13, fontWeight: 500, color: T.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
+                  <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted }}>{c.jobs} job{c.jobs !== 1 ? 's' : ''}</div>
+                </div>
+                {!privacyOn && (
+                  <div style={{ fontFamily: T.font, fontSize: 13, fontWeight: 700, color: T.ink, fontVariantNumeric: 'tabular-nums' }}>
+                    ${Math.round(c.revenue).toLocaleString('en-CA')}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <SectionLabel style={{ marginBottom: 0 }}>Activity · {periodLabel}{transactions.length > 0 ? ` · ${transactions.length}` : ''}</SectionLabel>
@@ -638,7 +726,7 @@ export default function Finance() {
               type="button"
               onClick={() => {
                 const rows = [
-                  ['Date', 'Client', 'Service', 'Pricing', 'Duration (hrs)', 'Subtotal', 'HST', 'Total', 'Payment Method', 'Payment Status', 'Sidekick', 'Sidekick Pay', 'Sidekick Paid'],
+                  ['Date', 'Client', 'Service', 'Pricing', 'Duration (hrs)', 'Subtotal', 'HST', 'Total', 'Payment Method', 'Payment Status', getWorkerLabel(business, 'worker'), `${getWorkerLabel(business, 'worker')} Pay`, `${getWorkerLabel(business, 'worker')} Paid`],
                 ];
                 completedPeriodJobs.forEach(j => {
                   const f = computeJobFinancials(j);

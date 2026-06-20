@@ -17,6 +17,8 @@ import { useToast } from '../context/ToastContext';
 import { useKeyboardFocus } from '../hooks/useKeyboardFocus';
 import { sameDay, getWeekRange, fmtTime12, dateBrief, fmtDuration } from '../lib/dateUtils';
 import { computeJobTotal } from '../lib/financialMath';
+import { getWorkerLabel } from '../lib/labels';
+import OfflineMessage from '../components/ui/OfflineMessage';
 import JobCard from '../components/cards/JobCard';
 import UpcomingCard from '../components/cards/UpcomingCard';
 import Swipeable from '../components/ui/Swipeable';
@@ -77,7 +79,7 @@ export default function Home() {
   }, []);
 
   const { T = {}, mode, privacyOn } = themeCtx || {};
-  const { jobs: allJobs, loading } = jobsCtx || {};
+  const { jobs: allJobs, loading, error: jobsError, refresh: refetchJobs } = jobsCtx || {};
   const { profile } = authCtx || {};
   const { business } = bizCtx || {};
   
@@ -153,6 +155,24 @@ export default function Home() {
     () => allWeekJobs.reduce((s, j) => s + computeJobTotal(j), 0),
     [allWeekJobs]
   );
+
+  const monthlyGoal = business?.ai_profile?.revenue_goal_monthly || null;
+  const monthlyRevenue = useMemo(() => {
+    if (!monthlyGoal || !allJobs) return 0;
+    const now2 = new Date();
+    const monthStart = new Date(now2.getFullYear(), now2.getMonth(), 1);
+    const monthEnd = new Date(now2.getFullYear(), now2.getMonth() + 1, 0, 23, 59, 59, 999);
+    return allJobs
+      .filter(j => {
+        if (j.status !== 'Completed') return false;
+        const d = j.raw?.scheduled_date;
+        if (!d) return false;
+        const [y, m, day] = d.split('-').map(Number);
+        const date = new Date(y, m - 1, day);
+        return date >= monthStart && date <= monthEnd;
+      })
+      .reduce((s, j) => s + computeJobTotal(j), 0);
+  }, [allJobs, monthlyGoal]);
 
   const activeJob = todayJobs.find(j => j.status === 'Scheduled' && j.ai_context?.clock_in_time != null);
 
@@ -613,6 +633,14 @@ export default function Home() {
     return <div style={{ padding: 20, color: 'white' }}>Initializing context...</div>;
   }
 
+  if (jobsError && !allJobs) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: T.bg }}>
+        <OfflineMessage onRetry={refetchJobs} />
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: T.bg, color: T.ink }}>
       {/* Hero */}
@@ -685,6 +713,30 @@ export default function Home() {
             </button>
           </div>
         </div>
+
+        {monthlyGoal && !privacyOn && (
+          <div style={{ marginTop: 10, position: 'relative' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+              <span style={{ fontSize: 9, fontWeight: 700, color: mode === 'dark' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Monthly goal
+              </span>
+              <span style={{ fontSize: 9, fontWeight: 700, color: mode === 'dark' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)' }}>
+                ${Math.round(monthlyRevenue).toLocaleString('en-CA')} / ${Math.round(monthlyGoal).toLocaleString('en-CA')}
+              </span>
+            </div>
+            <div style={{ height: 5, borderRadius: 3, background: mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)', overflow: 'hidden' }}>
+              <div style={{
+                height: '100%',
+                width: `${Math.min(100, (monthlyRevenue / monthlyGoal) * 100).toFixed(1)}%`,
+                background: monthlyRevenue >= monthlyGoal
+                  ? 'linear-gradient(90deg, #16A34A, #22C55E)'
+                  : `linear-gradient(90deg, ${T.pink}, #FF78B0)`,
+                borderRadius: 3,
+                transition: 'width 0.4s ease',
+              }} />
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '16px 14px' }}>
@@ -907,7 +959,7 @@ export default function Home() {
                                 </div>
                               )}
                               {next.worker_name && (
-                                <div style={{ fontSize: 11, color: T.inkMuted, marginTop: 3 }}>{next.assignee_type === 'staff' ? '🌟 Wingmom:' : '🦸 Sidekick:'} {next.worker_name}</div>
+                                <div style={{ fontSize: 11, color: T.inkMuted, marginTop: 3 }}>{getWorkerLabel(business, next.assignee_type)}: {next.worker_name}</div>
                               )}
                             </div>
                             <div style={{ flexShrink: 0, textAlign: 'right' }}>

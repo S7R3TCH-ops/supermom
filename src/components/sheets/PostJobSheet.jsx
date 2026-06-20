@@ -13,6 +13,7 @@ import GrabBar from '../ui/GrabBar';
 import FinancialMathBreakdown from '../ui/FinancialMathBreakdown';
 import { useSwipeToDismiss } from '../../hooks/useSwipeToDismiss';
 import { triggerHaptic } from '../../lib/haptics';
+import { getWorkerLabel } from '../../lib/labels';
 
 export default function PostJobSheet({ jobId, onClose }) {
   const { T, mode } = useAppTheme();
@@ -254,7 +255,7 @@ export default function PostJobSheet({ jobId, onClose }) {
             </div>
             {!loading && job?.worker_name && (
               <div style={{ fontSize: 11, color: T.inkMuted, marginTop: 3 }}>
-                {job.assignee_type === 'staff' ? '🌟 Wingmom:' : '🦸 Sidekick:'} {job.worker_name}{job.worker_pay != null ? <span style={{ opacity: 0.7 }}> · ${Number(job.worker_pay).toFixed(0)} pay</span> : ''}
+                {getWorkerLabel(business, job.assignee_type)}: {job.worker_name}{job.worker_pay != null ? <span style={{ opacity: 0.7 }}> · ${Number(job.worker_pay).toFixed(0)} pay</span> : ''}
               </div>
             )}
           </div>

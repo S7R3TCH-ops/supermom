@@ -12,6 +12,7 @@ import { usePostJobSheet } from '../../context/PostJobSheetContext';
 import { RECURRENCE } from '../../data/services';
 import { uploadFile, getSignedUrls, getSignedUrl } from '../../lib/storage';
 import { generateCommandBrief, speakBrief, stopSpeaking, fetchDeepPrepNote } from '../../data/ai';
+import { getWorkerLabel } from '../../lib/labels';
 import PrepNoteSheet from '../sheets/PrepNoteSheet';
 import { queryClient } from '../../lib/queryClient';
 import { supabase } from '../../lib/supabase';
@@ -515,7 +516,7 @@ function ReadMode({
             />
           )}
           {job.worker_name && (
-            <Row T={T} label={job.assignee_type === 'staff' ? 'Wingmom' : 'Sidekick'} value={`${job.worker_name}${job.worker_pay != null ? ` · $${Number(job.worker_pay).toFixed(0)}` : ''}`} last />
+            <Row T={T} label={getWorkerLabel(business, job.assignee_type)} value={`${job.worker_name}${job.worker_pay != null ? ` · $${Number(job.worker_pay).toFixed(0)}` : ''}`} last />
           )}
         </InfoCard>
 
@@ -860,14 +861,14 @@ function EditMode({ job, form, setForm, services, workers, business, T, mode, bu
             >
               <option value="">— Unassigned —</option>
               {workers.filter(w => (w.person_type || 'worker') === 'worker').length > 0 && (
-                <optgroup label="── Sidekicks ──">
+                <optgroup label={`── ${getWorkerLabel(business, 'worker')}s ──`}>
                   {workers.filter(w => (w.person_type || 'worker') === 'worker').map(w => (
                     <option key={w.id} value={w.id}>{w.name}{w.skills?.length > 0 ? ` · ${w.skills.map(s => s.skill_name).join(', ')}` : ''}</option>
                   ))}
                 </optgroup>
               )}
               {workers.filter(w => w.person_type === 'staff').length > 0 && (
-                <optgroup label="── Wingmoms ──">
+                <optgroup label={`── ${getWorkerLabel(business, 'staff')}s ──`}>
                   {workers.filter(w => w.person_type === 'staff').map(w => (
                     <option key={w.id} value={w.id}>{w.name}{w.skills?.length > 0 ? ` · ${w.skills.map(s => s.skill_name).join(', ')}` : ''}</option>
                   ))}

@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { useToast } from '../../context/ToastContext';
-import { notifyDataChanged } from '../../data/useData';
+import { notifyDataChanged, useBusiness } from '../../data/useData';
+import { getWorkerLabel } from '../../lib/labels';
 import {
   fetchWorkersWithSkills, createWorker, updateWorker, archiveWorker,
   fetchSkillTypes, createSkillType, updateSkillType, deleteSkillType,
@@ -16,6 +17,7 @@ const BLANK = { name: '', phone: '', email: '', person_type: 'worker' };
 
 export default function WorkerCatalogSheet({ isOpen, onClose }) {
   const { T, mode } = useAppTheme();
+  const { business } = useBusiness();
   const toast = useToast();
   const sheetRef = useRef(null);
   useFocusTrap(sheetRef, isOpen, onClose);
@@ -107,7 +109,7 @@ export default function WorkerCatalogSheet({ isOpen, onClose }) {
           person_type: form.person_type,
         });
         savedId = w.id;
-        toast.success(`${form.person_type === 'staff' ? 'Wingmom' : 'Sidekick'} added!`);
+        toast.success(`${getWorkerLabel(business, form.person_type)} added!`);
       } else {
         await updateWorker(editing, {
           name: form.name.trim(),
@@ -192,7 +194,7 @@ export default function WorkerCatalogSheet({ isOpen, onClose }) {
   };
 
   const filtered = workers.filter(w => (w.person_type || 'worker') === activeTab && !w.deleted_at);
-  const tabLabel = activeTab === 'staff' ? 'Wingmoms' : 'Sidekicks';
+  const tabLabel = `${getWorkerLabel(business, activeTab)}s`;
 
   return (
     <div
@@ -244,7 +246,7 @@ export default function WorkerCatalogSheet({ isOpen, onClose }) {
                 borderBottom: activeTab === tab ? `2.5px solid ${T.pink}` : '2.5px solid transparent',
               }}
             >
-              {tab === 'worker' ? '🦸 Sidekicks' : '🌟 Wingmoms'}
+              {`${getWorkerLabel(business, tab)}s`}
             </button>
           ))}
         </div>
@@ -254,7 +256,7 @@ export default function WorkerCatalogSheet({ isOpen, onClose }) {
           {/* Staff note */}
           {activeTab === 'staff' && (
             <div style={{ background: T.pinkTint, border: `1px solid ${T.pink}22`, borderRadius: 10, padding: '9px 12px', marginBottom: 14, fontSize: 11, color: T.pink, fontFamily: T.font }}>
-              Wingmoms will receive app access in a future update. For now, they can be assigned to jobs like Sidekicks.
+              {`${getWorkerLabel(business, 'staff')}s`} will receive app access in a future update. For now, they can be assigned to jobs like {`${getWorkerLabel(business, 'worker')}s`}.
             </div>
           )}
 
@@ -357,7 +359,7 @@ export default function WorkerCatalogSheet({ isOpen, onClose }) {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                     <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 500, color: T.ink }}>{w.name}</div>
                     <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', padding: '2px 6px', borderRadius: 4, background: w.person_type === 'staff' ? 'rgba(139,92,246,0.12)' : 'rgba(233,30,106,0.10)', color: w.person_type === 'staff' ? '#8B5CF6' : T.pink }}>
-                      {w.person_type === 'staff' ? 'Wingmom' : 'Sidekick'}
+                      {getWorkerLabel(business, w.person_type)}
                     </span>
                   </div>
                   {w.skills && w.skills.length > 0 && (

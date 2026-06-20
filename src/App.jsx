@@ -210,6 +210,12 @@ function AuthedShell() {
     window.__SUPER_VIEW_ID = viewingAsId;
   }, [viewingAsId]);
 
+  useEffect(() => {
+    const onOnline = () => queryClient.invalidateQueries();
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
+  }, []);
+
   const hideFAB = ['/settings', '/admin'].includes(location.pathname);
 
   const { showWarning, secondsRemaining, reset } = useIdleTimeout({

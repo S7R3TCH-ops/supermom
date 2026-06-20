@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useNewJobSheet } from '../../context/NewJobSheetContext';
 import { useNewClientSheet } from '../../context/NewClientSheetContext';
 import { useAppTheme } from '../../context/AppThemeContext';
@@ -10,6 +10,7 @@ export default function FAB() {
   const { open: openNewClient } = useNewClientSheet();
   const { T } = useAppTheme();
   const location = useLocation();
+  const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
 
   if (jobSheetOpen) return null;
@@ -20,10 +21,12 @@ export default function FAB() {
     ? [
         { label: '+ New Client', action: () => { openNewClient(); } },
         { label: '+ New Job',    action: () => { openBlank(); } },
+        { label: '🔍 Search',    action: () => { navigate('/search'); } },
       ]
     : [
         { label: '+ New Job',    action: () => { openBlank(); } },
         { label: '+ New Client', action: () => { openNewClient(); } },
+        { label: '🔍 Search',    action: () => { navigate('/search'); } },
       ];
 
   const handleOptionTap = (action) => {

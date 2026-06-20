@@ -21,7 +21,6 @@ import { GeofenceProvider } from './context/GeofenceContext';
 import LogoBar from './components/layout/LogoBar';
 import BottomNav from './components/layout/BottomNav';
 import OnboardingWalkthrough from './components/layout/OnboardingWalkthrough';
-import FAB from './components/ui/FAB';
 import { useRealtimeSync } from './data/useData';
 import { getCurrentBusinessId } from './data/currentBusiness';
 import { useIdleTimeout } from './hooks/useIdleTimeout';
@@ -216,8 +215,6 @@ function AuthedShell() {
     return () => window.removeEventListener('online', onOnline);
   }, []);
 
-  const hideFAB = ['/settings', '/admin'].includes(location.pathname);
-
   const { showWarning, secondsRemaining, reset } = useIdleTimeout({
     timeoutMs: 30 * 60 * 1000,
     warningMs: 60 * 1000,
@@ -282,7 +279,6 @@ function AuthedShell() {
               <Route path="/preview" element={<ErrorBoundary><PalettePreview /></ErrorBoundary>} />
             </Routes>
           </Suspense>
-          {!hideFAB && <FAB />}
         </div>
         <BottomNav />
       </div>

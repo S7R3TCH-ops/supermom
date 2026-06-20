@@ -149,13 +149,14 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 
 ---
 
-## Current version: 0.13.1 — Jun 20, 2026 (package.json synced)
+## Current version: 0.13.2 — Jun 20, 2026 (package.json synced)
 
 Sandra's business is live — data wiped and re-provisioned Jun 9. App in active use.
 
 **⚠️ Multi-client git discipline**: Always push local commits before starting an online Claude Code session; always pull before the online session writes code.
 
 ### Recent changes (full history in `docs/changelog/` + `git log`)
+- **v0.13.2 (Jun 20)** — BottomNav: 5-item layout with raised pink circle search button as center item (translateY -14px, 46px, white border ring, box shadow); FAB reverts to 2 options (Job + Client).
 - **v0.13.1 (Jun 20)** — FAB: add "🔍 Search" as third option in FAB menu (navigates to /search).
 - **v0.13.0 (Jun 20)** — LogoBar: remove 🔍 search icon (too cramped; `/search` route still exists, entry point TBD). FAB: `sm-scroll::after` adds 100px bottom clearance in global CSS so last list items always scroll above the FAB button.
 - **v0.12.99 (Jun 20)** — LogoBar: remove visible admin `<select>` (was crowding right button row); super-admin business switcher is now a double-tap Easter egg on the Supermom logo — floating picker appears below logo, single-tap still navigates home.

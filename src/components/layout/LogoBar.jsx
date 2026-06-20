@@ -125,21 +125,6 @@ export default function LogoBar() {
       )}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-        <button
-          type="button"
-          onClick={() => navigate('/search')}
-          aria-label="Search jobs"
-          title="Search jobs"
-          style={{
-            width: 28, height: 28, borderRadius: 8,
-            background: 'rgba(255,255,255,0.15)',
-            border: '1px solid rgba(255,255,255,0.28)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', fontSize: 13, color: 'white',
-          }}
-        >
-          🔍
-        </button>
         {aiChat && (
           <button
             type="button"

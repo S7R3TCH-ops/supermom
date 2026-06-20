@@ -176,9 +176,15 @@ button {
 .go-btn-urgent { animation: goUrgentPulse 0.9s ease-in-out infinite; }
 
 .sm-scroll::-webkit-scrollbar { width: 0; }
-.sm-scroll { 
-  scrollbar-width: none; 
+.sm-scroll {
+  scrollbar-width: none;
   -webkit-overflow-scrolling: touch; /* Momentum scrolling for iOS */
+}
+.sm-scroll::after {
+  content: '';
+  display: block;
+  height: 100px; /* clearance for FAB button (52px) + bottom offset (56px) - some overlap */
+  flex-shrink: 0;
 }
 
 /* Global Mobile Polish */

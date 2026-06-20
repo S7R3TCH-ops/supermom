@@ -1,13 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchClients, fetchClientById } from './clientsRepo';
-import { fetchActiveJobs, fetchJobsByClientId } from './jobsRepo';
+import { fetchActiveJobs, fetchJobsByClientId, searchJobs } from './jobsRepo';
 import { fetchExpenses } from './expensesRepo';
 import { fetchWorkers, fetchWorkersWithSkills, fetchSkillTypes } from './workersRepo';
 import { toDisplayClient, toDisplayJob } from './selectors';
 import { initRealtime, stopRealtime } from './realtime';
 import { getBusinessProfile, updateBusinessProfile, getCurrentBusinessId } from './currentBusiness';
 import { notifyDataChanged } from './events';
-import { fetchInvoices } from './invoicesRepo';
+import { fetchInvoices, fetchInvoicesByClientId } from './invoicesRepo';
 import { supabase } from '../lib/supabase';
 import { queryClient } from '../lib/queryClient';
 import { useEffect } from 'react';
@@ -156,6 +156,24 @@ export function useInvoices() {
     queryFn: () => fetchInvoices(),
   });
   return { invoices: data ?? [], loading, error, refresh: refetch };
+}
+
+export function useClientInvoices(clientId) {
+  const { data, error, isFetching: loading, refetch } = useQuery({
+    queryKey: ['client-invoices', clientId],
+    enabled: !!clientId,
+    queryFn: () => fetchInvoicesByClientId(clientId),
+  });
+  return { invoices: data ?? [], loading, error, refresh: refetch };
+}
+
+export function useSearchJobs(q, dateFrom, dateTo) {
+  const { data, error, isFetching: loading } = useQuery({
+    queryKey: ['job-search', q, dateFrom, dateTo],
+    enabled: !!(q || dateFrom || dateTo),
+    queryFn: () => searchJobs(q, dateFrom, dateTo),
+  });
+  return { results: data ?? [], loading, error };
 }
 
 export function useServices() {

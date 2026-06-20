@@ -3,6 +3,7 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
 import { clearBusinessCache, setSuperOverride } from '../data/currentBusiness';
+import { queryClient } from '../lib/queryClient';
 
 const ViewpointContext = createContext(null);
 
@@ -32,6 +33,17 @@ export function ViewpointProvider({ children }) {
     window.location.href = '/';
   };
 
+  // Like switchTo but no page reload — use for LogoBar quick-switch
+  const quickSwitch = (id, name) => {
+    sessionStorage.setItem('superViewId', id);
+    sessionStorage.setItem('superViewName', name);
+    setViewingAsId(id);
+    setViewingAsName(name);
+    setSuperOverride(id);
+    clearBusinessCache();
+    queryClient.invalidateQueries();
+  };
+
   const reset = () => {
     sessionStorage.removeItem('superViewId');
     sessionStorage.removeItem('superViewName');
@@ -51,12 +63,13 @@ export function ViewpointProvider({ children }) {
   };
 
   return (
-    <ViewpointContext.Provider value={{ 
-      isSuperAdmin, 
-      allBusinesses, 
-      viewingAsId, 
-      viewingAsName, 
-      switchTo, 
+    <ViewpointContext.Provider value={{
+      isSuperAdmin,
+      allBusinesses,
+      viewingAsId,
+      viewingAsName,
+      switchTo,
+      quickSwitch,
       reset,
       refresh
     }}>

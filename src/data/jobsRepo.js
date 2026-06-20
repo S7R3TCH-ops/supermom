@@ -59,6 +59,30 @@ export async function fetchJobsByClientId(clientId) {
   return (data ?? []).map(decorateJob);
 }
 
+export async function searchJobs(q, dateFrom, dateTo) {
+  const businessId = await getCurrentBusinessId();
+  if (!businessId) return [];
+  let query = supabase
+    .from('jobs')
+    .select(`${SELECT_LIST}, clients(first_name, last_name)`)
+    .eq('business_id', businessId)
+    .is('deleted_at', null);
+  if (q) {
+    const safe = q.replace(/[%_,()]/g, ' ').trim();
+    if (safe) query = query.or(`service_name.ilike.%${safe}%,job_notes.ilike.%${safe}%`);
+  }
+  if (dateFrom) query = query.gte('scheduled_date', dateFrom);
+  if (dateTo) query = query.lte('scheduled_date', dateTo);
+  const { data, error } = await query.order('scheduled_date', { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map(j => {
+    const c = j.clients;
+    const client_name = c ? [c.first_name, c.last_name].filter(Boolean).join(' ') : null;
+    const { clients: _dropped, ...rest } = j;
+    return { ...decorateJob(rest), client_name };
+  });
+}
+
 export async function fetchJobById(id) {
   const businessId = await getCurrentBusinessId();
   if (!businessId) return null;

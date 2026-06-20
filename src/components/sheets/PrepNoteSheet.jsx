@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
+import { useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { fetchDeepPrepNote } from '../../data/ai';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
@@ -8,27 +9,16 @@ export default function PrepNoteSheet({ isOpen, onClose, clientId, businessProfi
   const { T } = useAppTheme();
   const sheetRef = useRef(null);
   useFocusTrap(sheetRef, isOpen, onClose);
-  const [summary, setSummary] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    if (isOpen && clientId) {
-      const getNote = async () => {
-        setLoading(true);
-        setError(null);
-        try {
-          const note = await fetchDeepPrepNote(clientId, businessProfile);
-          setSummary(note);
-        } catch (err) {
-          setError(err.message || 'Could not generate prep note.');
-        } finally {
-          setLoading(false);
-        }
-      };
-      getNote();
-    }
-  }, [isOpen, clientId, businessProfile]);
+  const { data: summary, isLoading: loading, error: queryError } = useQuery({
+    queryKey: ['prep-note', clientId],
+    queryFn: () => fetchDeepPrepNote(clientId, businessProfile),
+    enabled: isOpen && !!clientId,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+
+  const error = queryError ? (queryError.message || 'Could not generate prep note.') : null;
 
   if (!isOpen) return null;
 

@@ -11,8 +11,9 @@ import { useToast } from '../../context/ToastContext';
 import { usePostJobSheet } from '../../context/PostJobSheetContext';
 import { RECURRENCE } from '../../data/services';
 import { uploadFile, getSignedUrls, getSignedUrl } from '../../lib/storage';
-import { generateCommandBrief, speakBrief, stopSpeaking } from '../../data/ai';
+import { generateCommandBrief, speakBrief, stopSpeaking, fetchDeepPrepNote } from '../../data/ai';
 import PrepNoteSheet from '../sheets/PrepNoteSheet';
+import { queryClient } from '../../lib/queryClient';
 import { supabase } from '../../lib/supabase';
 import GrabBar from '../ui/GrabBar';
 import FinancialMathBreakdown from '../ui/FinancialMathBreakdown';
@@ -132,6 +133,17 @@ export default function JobDetailSheet({ jobId, onClose }) {
       .catch(e => { if (alive) { setError(e.message || String(e)); setLoading(false); } });
     return () => { alive = false; };
   }, [jobId]);
+
+  // Prefetch prep note so it's ready when Sandra taps "Client briefing"
+  useEffect(() => {
+    if (job?.client_id && business) {
+      queryClient.prefetchQuery({
+        queryKey: ['prep-note', job.client_id],
+        queryFn: () => fetchDeepPrepNote(job.client_id, business),
+        staleTime: 5 * 60 * 1000,
+      });
+    }
+  }, [job?.client_id, business]);
 
   function showToast(msg, ok = true) {
     if (ok) toast.success(msg);

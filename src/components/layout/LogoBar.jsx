@@ -12,7 +12,7 @@ export default function LogoBar() {
   const { T, mode, privacyOn, togglePrivacy } = useAppTheme();
   const { user, profile } = useAuth();
   const { business } = useBusiness();
-  const { isSuperAdmin } = useViewpoint();
+  const { isSuperAdmin, allBusinesses, viewingAsId, quickSwitch } = useViewpoint();
   const aiChat = useContext(AiChatSheetContext);
 
   const onAvatarClick = () => {
@@ -66,6 +66,48 @@ export default function LogoBar() {
       )}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+        {isSuperAdmin && allBusinesses.length > 0 && (
+          <select
+            value={viewingAsId || ''}
+            onChange={e => {
+              if (!e.target.value) return; // "— Admin —" is view-only; use /admin reset button
+              const biz = allBusinesses.find(b => b.id === e.target.value);
+              if (biz) { quickSwitch(biz.id, biz.name); navigate('/'); }
+            }}
+            style={{
+              background: 'rgba(255,255,255,0.15)',
+              border: '1px solid rgba(255,255,255,0.28)',
+              borderRadius: 8,
+              color: 'white',
+              fontSize: 11,
+              fontFamily: T.font,
+              fontWeight: 600,
+              padding: '4px 6px',
+              cursor: 'pointer',
+              maxWidth: 100,
+            }}
+          >
+            <option value="" style={{ color: '#333', background: 'white' }}>— Admin —</option>
+            {allBusinesses.map(b => (
+              <option key={b.id} value={b.id} style={{ color: '#333', background: 'white' }}>{b.name}</option>
+            ))}
+          </select>
+        )}
+        <button
+          type="button"
+          onClick={() => navigate('/search')}
+          aria-label="Search jobs"
+          title="Search jobs"
+          style={{
+            width: 28, height: 28, borderRadius: 8,
+            background: 'rgba(255,255,255,0.15)',
+            border: '1px solid rgba(255,255,255,0.28)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', fontSize: 13, color: 'white',
+          }}
+        >
+          🔍
+        </button>
         {aiChat && (
           <button
             type="button"

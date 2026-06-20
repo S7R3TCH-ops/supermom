@@ -343,3 +343,20 @@ export async function fetchInvoices() {
   if (error) throw error;
   return data;
 }
+
+/**
+ * Fetches all invoices for a specific client.
+ */
+export async function fetchInvoicesByClientId(clientId) {
+  const businessId = await getCurrentBusinessId();
+  const { data, error } = await supabase
+    .from('invoices')
+    .select('*')
+    .eq('business_id', businessId)
+    .eq('client_id', clientId)
+    .is('deleted_at', null)
+    .order('invoice_date', { ascending: false });
+
+  if (error) throw error;
+  return data ?? [];
+}

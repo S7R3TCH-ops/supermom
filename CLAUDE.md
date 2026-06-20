@@ -149,13 +149,14 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 
 ---
 
-## Current version: 0.12.96 — Jun 19, 2026 (package.json synced)
+## Current version: 0.12.97 — Jun 20, 2026 (package.json synced)
 
 Sandra's business is live — data wiped and re-provisioned Jun 9. App in active use.
 
 **⚠️ Multi-client git discipline**: Always push local commits before starting an online Claude Code session; always pull before the online session writes code.
 
 ### Recent changes (full history in `docs/changelog/` + `git log`)
+- **v0.12.97 (Jun 20)** — Wave 1 feature batch: (1) **#22 Admin quick-switch** — LogoBar gets compact `<select>` for super-admin switching between businesses without page reload (`quickSwitch` in ViewpointContext uses queryClient.invalidateQueries). (2) **#6 Prep note prefetch** — JobDetailSheet prefetches prep note via queryClient when job opens; PrepNoteSheet switches to useQuery so cached result shows instantly. (3) **#8 Client invoice history** — ClientProfile shows "Invoices" section listing all invoices for that client, tap → `/i/:id`. New `fetchInvoicesByClientId` + `useClientInvoices` hook. (4) **#14 Cross-job search** — search icon in LogoBar → `/search` page; `searchJobs(q, dateFrom, dateTo)` does Supabase `.ilike()` on `service_name`+`job_notes`; `useSearchJobs` hook.
 - **v0.12.96 (Jun 19)** — Home screen: Sandra wants to see amounts WITH HST. All Home.jsx amounts switched to `computeJobTotal` (HST-inclusive): `displayRevenue`, `collectedThisWeek`, `owingJobs.remaining`, `weekOwed`, `weekUpcoming`, all JobCard/UpcomingCard `total` props, "next job" inline display. `computeJobSubtotal` import removed from Home.jsx. `hstNote` prop removed from all cards (total already includes HST). Finance page remains on subtotal basis.
 - **v0.12.95 (Jun 19)** — Fix financial math consistency: all revenue/collected/owing figures now use subtotal (no HST) as primary basis, matching the card displays that show "$X +HST". Home: `collectedThisWeek` changed from `computeJobTotal` to `computeJobSubtotal` for paid jobs (caps partial at subtotal); `owingJobs.remaining` same fix. Finance: `revenueItems`, `outstandingItems`, transaction amounts, chart buckets all switched from `.total` to `computeJobSubtotal`. Previously "collected" used total-with-HST while "This Week" used subtotal — impossible for Sandra to reconcile. HST is still shown as "+HST" annotation on cards; CSV export unchanged (still exports all three: subtotal/HST/total).
 - **v0.12.94 (Jun 18)** — iOS PWA height fix: split `html, body, #root` height rule — `html` gets `height: -webkit-fill-available`, `body`/`#root` get `min-height: -webkit-fill-available`. Fixes white strip at bottom where `height: 100%` resolves shorter than actual screen in iOS standalone mode.

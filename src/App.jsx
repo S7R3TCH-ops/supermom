@@ -118,6 +118,7 @@ const Login = lazy(() => import('./pages/Login'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Admin = lazy(() => import('./pages/Admin'));
 const InvoiceView = lazy(() => import('./pages/InvoiceView'));
+const Search = lazy(() => import('./pages/Search'));
 
 function ViewpointBanner() {
   const { viewingAsName, reset } = useViewpoint();
@@ -271,6 +272,7 @@ function AuthedShell() {
               <Route path="/finance" element={<ErrorBoundary><Finance /></ErrorBoundary>} />
               <Route path="/settings" element={<ErrorBoundary><Settings /></ErrorBoundary>} />
               <Route path="/admin" element={<ErrorBoundary><Admin /></ErrorBoundary>} />
+              <Route path="/search" element={<ErrorBoundary><Search /></ErrorBoundary>} />
               <Route path="/preview" element={<ErrorBoundary><PalettePreview /></ErrorBoundary>} />
             </Routes>
           </Suspense>

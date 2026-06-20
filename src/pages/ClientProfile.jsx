@@ -7,7 +7,7 @@ import { useEditClientSheet } from '../context/EditClientSheetContext';
 import { useToast } from '../context/ToastContext';
 import AmtCell from '../components/ui/AmtCell';
 import { Title, Subheading, Text, Caption, SectionLabel } from '../components/ui/typography';
-import { useClient, notifyDataChanged } from '../data/useData';
+import { useClient, useClientInvoices, notifyDataChanged } from '../data/useData';
 import { simulateAILearning, updateClient, softDeleteClient, hardDeleteClient } from '../data/clientsRepo';
 import { archiveClientJobs } from '../data/jobsRepo';
 import { useAuth } from '../context/AuthContext';
@@ -29,6 +29,7 @@ export default function ClientProfile() {
   const { open: openEditClient } = useEditClientSheet();
   const toast = useToast();
   const { client, raw, loading, error, refresh } = useClient(id);
+  const { invoices: clientInvoices } = useClientInvoices(id);
 
   const [isSavingAi, setIsSavingAi] = useState(false);
   const [isEditingIntel, setIsEditingIntel] = useState(false);
@@ -556,6 +557,46 @@ export default function ClientProfile() {
             ))
           )}
         </div>
+
+        {/* Invoices */}
+        {clientInvoices.length > 0 && (
+          <>
+            <SectionLabel>Invoices</SectionLabel>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+              {clientInvoices.map(inv => (
+                <button
+                  key={inv.id}
+                  type="button"
+                  onClick={() => navigate(`/i/${inv.id}`)}
+                  style={{
+                    background: T.card, border: `1.5px solid ${T.cardBorder}`,
+                    borderRadius: 13, padding: '10px 12px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    cursor: 'pointer', width: '100%', textAlign: 'left',
+                  }}
+                >
+                  <div>
+                    <div style={{ fontFamily: T.serif, fontSize: 13.5, fontWeight: 500, color: T.ink }}>#{inv.invoice_number}</div>
+                    <div style={{ fontFamily: T.font, fontSize: 10.5, color: T.inkMuted, marginTop: 2 }}>{inv.invoice_date}</div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                    {!privacyOn && (
+                      <div style={{ fontFamily: T.font, fontSize: 13, fontWeight: 700, color: T.ink }}>
+                        ${Number(inv.total_amount || 0).toFixed(2)}
+                      </div>
+                    )}
+                    <span style={{
+                      background: inv.status === 'Paid' ? T.greenBg : T.pinkTint,
+                      color: inv.status === 'Paid' ? T.greenFg : T.pink,
+                      borderRadius: 5, padding: '1px 6px',
+                      fontFamily: T.font, fontSize: 8.5, fontWeight: 700, letterSpacing: '0.4px', textTransform: 'uppercase',
+                    }}>{inv.status}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
 
         {/* Admin Danger Zone */}
         {isAdmin && (

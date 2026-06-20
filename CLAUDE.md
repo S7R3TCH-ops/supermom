@@ -149,13 +149,14 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 
 ---
 
-## Current version: 0.12.98 — Jun 20, 2026 (package.json synced)
+## Current version: 0.12.99 — Jun 20, 2026 (package.json synced)
 
 Sandra's business is live — data wiped and re-provisioned Jun 9. App in active use.
 
 **⚠️ Multi-client git discipline**: Always push local commits before starting an online Claude Code session; always pull before the online session writes code.
 
 ### Recent changes (full history in `docs/changelog/` + `git log`)
+- **v0.12.99 (Jun 20)** — LogoBar: remove visible admin `<select>` (was crowding right button row); super-admin business switcher is now a double-tap Easter egg on the Supermom logo — floating picker appears below logo, single-tap still navigates home.
 - **v0.12.98 (Jun 20)** — Wave 2 feature batch: (5) **#21 Per-business labels** — `getWorkerLabel(business, personType)` helper in `src/lib/labels.js`; all 16 hardcoded "Sidekick/Wingmom" instances replaced across 9 files; Settings form adds worker/staff label inputs stored in `ai_profile.worker_labels`. (6) **#16 Revenue goal** — Settings form adds monthly goal (stored in `ai_profile.revenue_goal_monthly`); Home hero shows thin progress bar (pink → green at 100%) when goal is set. (7) **#17 Client LTV** — `toDisplayClient` adds `totalBilled` + `avgPerJob` stats; ClientProfile shows LTV row below existing stats; Finance shows "Top 5 clients" card with rank, revenue, job count. (8) **#18 Year-over-year** — Finance: "vs Last Year" toggle button; prior-year chart rendered as second TrendChart with `idPrefix="fc-yoy"` to avoid SVG gradient ID conflicts. (9) **#11 Offline mode** — `OfflineMessage` component with retry button; Home/Clients/Finance/Calendar show it when `error && !data`; App.jsx adds `online` event listener → `queryClient.invalidateQueries()` on reconnect.
 - **v0.12.97 (Jun 20)** — Wave 1 feature batch: (1) **#22 Admin quick-switch** — LogoBar gets compact `<select>` for super-admin switching between businesses without page reload (`quickSwitch` in ViewpointContext uses queryClient.invalidateQueries). (2) **#6 Prep note prefetch** — JobDetailSheet prefetches prep note via queryClient when job opens; PrepNoteSheet switches to useQuery so cached result shows instantly. (3) **#8 Client invoice history** — ClientProfile shows "Invoices" section listing all invoices for that client, tap → `/i/:id`. New `fetchInvoicesByClientId` + `useClientInvoices` hook. (4) **#14 Cross-job search** — search icon in LogoBar → `/search` page; `searchJobs(q, dateFrom, dateTo)` does Supabase `.ilike()` on `service_name`+`job_notes`; `useSearchJobs` hook.
 - **v0.12.96 (Jun 19)** — Home screen: Sandra wants to see amounts WITH HST. All Home.jsx amounts switched to `computeJobTotal` (HST-inclusive): `displayRevenue`, `collectedThisWeek`, `owingJobs.remaining`, `weekOwed`, `weekUpcoming`, all JobCard/UpcomingCard `total` props, "next job" inline display. `computeJobSubtotal` import removed from Home.jsx. `hstNote` prop removed from all cards (total already includes HST). Finance page remains on subtotal basis.

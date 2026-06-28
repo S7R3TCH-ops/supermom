@@ -37,6 +37,7 @@ export function useBackClose(isOpen, onClose) {
 
     // Push a synthetic history entry at the same URL. Preserve React Router's
     // history state (idx/key) so its popstate listener doesn't lose position.
+    const entryHref = window.location.href;
     history.pushState(window.history.state, '', window.location.href);
 
     const entry = {
@@ -52,9 +53,13 @@ export function useBackClose(isOpen, onClose) {
         // and consume the synthetic history entry we pushed.
         backStack.splice(idx, 1);
         entry.consumed = true;
-        // history.back() fires another popstate; entry.consumed=true makes handlePopState no-op.
-        suppressNextPopState = true;
-        history.back();
+        // Only go back if we're still on the same page. If navigate() fired
+        // (e.g. clicking a client name to open ClientProfile), the URL has
+        // already changed and history.back() would undo that navigation.
+        if (window.location.href === entryHref) {
+          suppressNextPopState = true;
+          history.back();
+        }
       }
     };
   }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps

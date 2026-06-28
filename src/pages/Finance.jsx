@@ -1,4 +1,5 @@
 import { memo, useCallback, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppTheme } from '../context/AppThemeContext';
 import { SectionLabel } from '../components/ui/typography';
 import { useJobs, useExpenses, useInvoices, useBusiness } from '../data/useData';
@@ -299,6 +300,7 @@ const TransactionRow = memo(function TransactionRow({ tx, T, privacyOn, onPress 
 
 export default function Finance() {
   const { T, mode, privacyOn } = useAppTheme();
+  const navigate = useNavigate();
   const { jobs: allJobs, loading, error: jobsError, refresh: refetchJobs } = useJobs();
   const { expenses: allExpenses } = useExpenses();
   const { invoices } = useInvoices();
@@ -403,7 +405,7 @@ export default function Finance() {
     const byClient = {};
     completedPeriodJobs.forEach(j => {
       const id = j.client_id || 'unknown';
-      if (!byClient[id]) byClient[id] = { name: j.client_name || 'Unknown', revenue: 0, jobs: 0 };
+      if (!byClient[id]) byClient[id] = { id, name: j.client_name || 'Unknown', revenue: 0, jobs: 0 };
       byClient[id].revenue += computeJobSubtotal(j);
       byClient[id].jobs++;
     });
@@ -636,7 +638,12 @@ export default function Finance() {
           <div style={{ background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 16, padding: '14px', marginBottom: 16 }}>
             <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: T.inkMuted, marginBottom: 10 }}>Top clients · {periodLabel}</div>
             {top5Clients.map((c, i) => (
-              <div key={c.name} style={{ display: 'flex', alignItems: 'center', gap: 10, paddingBottom: i < top5Clients.length - 1 ? 8 : 0, marginBottom: i < top5Clients.length - 1 ? 8 : 0, borderBottom: i < top5Clients.length - 1 ? `1px solid ${T.cardBorder}` : 'none' }}>
+              <button
+                key={c.name}
+                type="button"
+                onClick={c.id !== 'unknown' ? () => navigate('/clients/' + c.id) : undefined}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', background: 'none', border: 'none', borderBottom: i < top5Clients.length - 1 ? `1px solid ${T.cardBorder}` : 'none', padding: 0, paddingBottom: i < top5Clients.length - 1 ? 8 : 0, marginBottom: i < top5Clients.length - 1 ? 8 : 0, cursor: c.id !== 'unknown' ? 'pointer' : 'default', textAlign: 'left' }}
+              >
                 <div style={{ width: 22, height: 22, borderRadius: 6, background: T.pinkTint, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: T.serif, fontSize: 11, fontWeight: 700, color: T.pink, flexShrink: 0 }}>
                   {i + 1}
                 </div>
@@ -649,7 +656,7 @@ export default function Finance() {
                     ${Math.round(c.revenue).toLocaleString('en-CA')}
                   </div>
                 )}
-              </div>
+              </button>
             ))}
           </div>
         )}

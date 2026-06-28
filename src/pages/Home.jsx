@@ -511,6 +511,8 @@ export default function Home() {
     if (!next?.address) return;
     setIsGoLaunching(true);
     setIsFlyingIcon(true);
+    // Open synchronously to capture user gesture — iOS Safari blocks window.open from setTimeout
+    const win = window.open('', '_blank');
     const gpsPromise = new Promise(resolve =>
       navigator.geolocation.getCurrentPosition(
         pos => resolve(`${pos.coords.latitude},${pos.coords.longitude}`),
@@ -523,7 +525,8 @@ export default function Home() {
       const origin = freshOrigin ?? lastKnownOrigin;
       if (freshOrigin) setLastKnownOrigin(freshOrigin);
       const originParam = origin ? `&origin=${encodeURIComponent(origin)}` : '';
-      window.open(`https://www.google.com/maps/dir/?api=1${originParam}&destination=${encodeURIComponent(next.address)}&travelmode=driving&avoid=tolls`, '_blank');
+      const url = `https://www.google.com/maps/dir/?api=1${originParam}&destination=${encodeURIComponent(next.address)}&travelmode=driving&avoid=tolls`;
+      if (win) win.location.href = url;
       setIsGoLaunching(false);
     }, 1100);
     setTimeout(() => setIsFlyingIcon(false), 1450);

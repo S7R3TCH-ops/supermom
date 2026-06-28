@@ -149,13 +149,14 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 
 ---
 
-## Current version: 0.13.4 — Jun 28, 2026 (package.json synced)
+## Current version: 0.13.5 — Jun 28, 2026 (package.json synced)
 
 Sandra's business is live — data wiped and re-provisioned Jun 9. App in active use.
 
 **⚠️ Multi-client git discipline**: Always push local commits before starting an online Claude Code session; always pull before the online session writes code.
 
 ### Recent changes (full history in `docs/changelog/` + `git log`)
+- **v0.13.5 (Jun 28)** — Fix Go button not opening Maps on Sandra's iPhone 16: `window.open()` was called inside `setTimeout` — iOS Safari blocks that as non-user-gesture. Fix: open blank window synchronously on tap, then set `location.href` after GPS resolves.
 - **v0.13.4 (Jun 28)** — Navigation audit + fixes: (1) `useBackClose` no longer calls `history.back()` on cleanup when URL already changed — fixes any sheet-→-navigate flow (e.g. JobDetailSheet client name now correctly opens ClientProfile). (2) ClientProfile back button changed from hardcoded `navigate('/clients')` to `navigate(-1)` — returns to true origin. (3) Finance "Top 5 clients" rows are now tappable buttons navigating to `/clients/:id`; computed object now includes `id` field.
 - **v0.13.3 (Jun 20)** — BottomNav: FAB merged into center raised + button (Week | Schedule | [+] | Clients | Finance). Tapping + expands options above nav: New Job / New Client / Search (centered, rises from + position). Standalone FAB removed from App.jsx entirely.
 - **v0.13.2 (Jun 20)** — BottomNav: 5-item layout with raised pink circle search button as center item (translateY -14px, 46px, white border ring, box shadow); FAB reverts to 2 options (Job + Client).

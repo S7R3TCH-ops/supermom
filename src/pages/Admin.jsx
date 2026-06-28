@@ -231,7 +231,7 @@ export default function Admin() {
       {/* Hero */}
       <div style={{ 
         background: T.hero, 
-        borderBottom: mode === 'dark' ? '3px solid #E91E6A' : 'none', 
+        borderBottom: mode === 'dark' ? '3px solid #FC4693' : 'none', 
         padding: '13px 15px 15px', 
         position: 'relative', 
         overflow: 'hidden' 

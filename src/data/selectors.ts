@@ -6,7 +6,7 @@
 import { computeJobTotal, JobInput } from '../lib/financialMath';
 
 const PALETTE = [
-  '#E91E6A', '#8B5CF6', '#06B6D4', '#F59E0B', '#22C55E', '#EC4899',
+  '#FC4693', '#8B5CF6', '#06B6D4', '#F59E0B', '#22C55E', '#EC4899',
   '#3B82F6', '#EF4444', '#14B8A6', '#A855F7',
 ];
 

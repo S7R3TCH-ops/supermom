@@ -183,7 +183,7 @@ const TrendChart = memo(function TrendChart({ data, T, mode, idPrefix = 'fc' }) 
     <div>
       <div style={{ display: 'flex', gap: 14, marginBottom: 6, paddingLeft: 2 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-          <div style={{ width: 14, height: 2.5, borderRadius: 2, background: '#E91E6A' }} />
+          <div style={{ width: 14, height: 2.5, borderRadius: 2, background: '#FC4693' }} />
           <span style={{ fontSize: 9, fontWeight: 700, color: T.inkMuted, textTransform: 'uppercase', letterSpacing: '0.4px' }}>Revenue</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -194,8 +194,8 @@ const TrendChart = memo(function TrendChart({ data, T, mode, idPrefix = 'fc' }) 
       <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 100, display: 'block' }}>
         <defs>
           <linearGradient id={`${idPrefix}-rev-grad`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#E91E6A" stopOpacity="0.22" />
-            <stop offset="100%" stopColor="#E91E6A" stopOpacity="0" />
+            <stop offset="0%" stopColor="#FC4693" stopOpacity="0.22" />
+            <stop offset="100%" stopColor="#FC4693" stopOpacity="0" />
           </linearGradient>
           <linearGradient id={`${idPrefix}-exp-grad`} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#6B7280" stopOpacity="0.14" />
@@ -213,7 +213,7 @@ const TrendChart = memo(function TrendChart({ data, T, mode, idPrefix = 'fc' }) 
         <path d={expArea} fill={`url(#${idPrefix}-exp-grad)`} />
         <path d={revArea} fill={`url(#${idPrefix}-rev-grad)`} />
         <path d={expPath} fill="none" stroke="#6B7280" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
-        <path d={revPath} fill="none" stroke="#E91E6A" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+        <path d={revPath} fill="none" stroke="#FC4693" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
         {data.map((d, i) => showLabel(i) && (
           <text
             key={i}
@@ -448,7 +448,7 @@ export default function Finance() {
         isPaid: j.payment_status === 'Paid',
         isPartial: j.payment_status === 'Partial',
         icon: '💰',
-        color: '#E91E6A',
+        color: '#FC4693',
       };
     });
     const expTx = periodExpenses.map(e => ({
@@ -520,7 +520,7 @@ export default function Finance() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: T.bg, color: T.ink }}>
       <div style={{
         background: T.hero,
-        borderBottom: mode === 'dark' ? '3px solid #E91E6A' : 'none',
+        borderBottom: mode === 'dark' ? '3px solid #FC4693' : 'none',
         padding: '13px 15px 16px',
         position: 'relative',
         overflow: 'hidden',
@@ -855,7 +855,7 @@ function FinanceSkeleton({ T }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: T.bg }}>
       <style>{`@keyframes sm-pulse{0%,100%{opacity:1}50%{opacity:0.45}}`}</style>
-      <div style={{ background: T.hero, borderBottom: '3px solid #E91E6A', padding: '13px 15px 15px' }}>
+      <div style={{ background: T.hero, borderBottom: '3px solid #FC4693', padding: '13px 15px 15px' }}>
         <div style={{ width: 110, height: 10, borderRadius: 5, background: T.cardBorder, animation: 'sm-pulse 1.5s ease-in-out infinite', marginBottom: 10 }} />
         <div style={{ width: 190, height: 22, borderRadius: 7, background: T.cardBorder, animation: 'sm-pulse 1.5s ease-in-out infinite 0.1s' }} />
       </div>

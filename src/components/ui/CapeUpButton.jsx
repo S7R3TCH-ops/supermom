@@ -68,7 +68,7 @@ export default function CapeUpButton({ job, onGo, name }) {
             display: 'none',
             position: 'absolute', top: 0, left: 0,
             width: 40, height: 36, borderRadius: 9,
-            background: 'linear-gradient(135deg,#FF5A9D,#E91E6A)',
+            background: 'linear-gradient(135deg,#FF5A9D,#FC4693)',
             alignItems: 'center', justifyContent: 'center',
             boxShadow: '0 4px 12px rgba(233,30,106,0.4)',
           }}

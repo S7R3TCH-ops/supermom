@@ -114,7 +114,7 @@ function enrichDisplayJobs(displayJobs, clientLookup) {
       // High-glance coloring: Grey for Cancelled, Amber for Unpaid, Green for Paid, Pink for Scheduled
       const color = isCancelled
         ? '#9CA3AF'
-        : isUnpaidCompleted ? '#F59E0B' : paid ? '#22C55E' : '#E91E6A';
+        : isUnpaidCompleted ? '#F59E0B' : paid ? '#22C55E' : '#FC4693';
 
       return {
         ...j,
@@ -218,7 +218,7 @@ export default function Calendar() {
       {/* Dark hero */}
       <div style={{
         background: T.hero,
-        borderBottom: '3px solid #E91E6A',
+        borderBottom: '3px solid #FC4693',
         padding: '11px 13px 13px',
         position: 'relative',
         overflow: 'hidden',
@@ -518,7 +518,7 @@ const AgendaCard = memo(function AgendaCard({ T, mode, privacyOn, job, isNext, c
       ? '#D1D5DB'
       : isUnpaidCompleted
         ? '#F59E0B'
-        : (isNext ? '#E91E6A' : (paid ? '#86EFAC' : T.cardBorder));
+        : (isNext ? '#FC4693' : (paid ? '#86EFAC' : T.cardBorder));
 
   const bg = isCancelled
     ? (mode === 'dark' ? 'rgba(156,163,175,0.08)' : '#F9FAFB')
@@ -534,7 +534,7 @@ const AgendaCard = memo(function AgendaCard({ T, mode, privacyOn, job, isNext, c
   if (isCancelled) {
     badges.push({ text: 'Cancelled', bg: mode === 'dark' ? 'rgba(156,163,175,0.15)' : '#F3F4F6', fg: '#6B7280' });
   } else if (isNext) {
-    badges.push({ text: 'Next up', bg: '#E91E6A', fg: 'white' });
+    badges.push({ text: 'Next up', bg: '#FC4693', fg: 'white' });
   }
   if (!isCancelled) {
     if (paid)   badges.push({ text: 'Paid ✓', bg: T.greenBg, fg: T.greenFg });
@@ -575,7 +575,7 @@ const AgendaCard = memo(function AgendaCard({ T, mode, privacyOn, job, isNext, c
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
         <div style={{
           width: 40, height: 40, borderRadius: 10,
-          background: job.client?.color ?? '#E91E6A',
+          background: job.client?.color ?? '#FC4693',
           color: 'white',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontFamily: T.serif, fontSize: 16, fontWeight: 500, flexShrink: 0,

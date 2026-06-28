@@ -2,30 +2,30 @@
 name: Supermom for Hire
 description: Mobile-first CRM & operations tool for solo personal-services operators
 colors:
-  # Primary brand
-  pink: "#E91E6A"
-  pink-light: "#FF94BC"
-  pink-dark: "#B01550"
+  # Primary brand (Sandra's official palette)
+  pink: "#FC4693"
+  pink-light: "#FFA8CC"
+  pink-dark: "#C4006B"
   deep-rose: "#B5004E"
   pink-tint: "#FFF0F7"
-  pink-border: "#FCE8EF"
-  pink-label: "#FF78B0"
-  # Dark panel (shared across both themes)
+  pink-border: "#FFD9EC"
+  pink-label: "#FC4693"
+  # Dark panel (shared across both themes — never changes)
   plum-dark: "#1C1C1E"
   plum-mid: "#2C2C2E"
   # Light theme surfaces
-  bg: "#FFF0F3"
-  surface: "#FCF5EF"
+  bg: "#FFEFF4"
+  surface: "#FFF5F8"
   card: "#FFFFFF"
   # Dark theme surfaces
   dark-bg: "#0A0A0A"
   dark-surface: "#1C1C1E"
   dark-card: "#2C2C2E"
   dark-pink: "#FF70A6"
-  # Ink / text
-  ink: "#4E342E"
-  ink-sub: "#795548"
-  ink-muted: "#836459"
+  # Ink / text (light theme — neutral, not warm-brown)
+  ink: "#2D2D2D"
+  ink-sub: "#606060"
+  ink-muted: "#8A8A8A"
   # Status
   green: "#16A34A"
   green-light: "#DCFCE7"

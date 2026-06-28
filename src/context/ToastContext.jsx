@@ -6,7 +6,7 @@ const ToastContext = createContext(null);
 const COLORS = {
   success: { bg: '#DCFCE7', border: '#86EFAC', text: '#14532D', icon: '✓' },
   error:   { bg: '#FFE0EC', border: '#FFB3CC', text: '#9B0D3A', icon: '✕' },
-  info:    { bg: '#FFF0F7', border: '#FFD6E8', text: '#E91E6A', icon: '✦' },
+  info:    { bg: '#FFF0F7', border: '#FFD6E8', text: '#FC4693', icon: '✦' },
 };
 
 function ToastItem({ toast, onDismiss }) {

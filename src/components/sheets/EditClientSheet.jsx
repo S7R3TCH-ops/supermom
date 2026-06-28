@@ -284,7 +284,7 @@ export default function EditClientSheet({ clientId, onClose }) {
                       onClick={() => setRecurrence(r.key)}
                       style={{
                         flex: 1, padding: '8px 0', borderRadius: 8, border: 'none',
-                        background: on ? '#E91E6A' : 'transparent',
+                        background: on ? '#FC4693' : 'transparent',
                         fontFamily: T.font, fontSize: 11, fontWeight: 600,
                         color: on ? 'white' : T.inkSub, cursor: 'pointer',
                         minHeight: 36,
@@ -399,7 +399,7 @@ export default function EditClientSheet({ clientId, onClose }) {
                   style={{
                     width: '100%', padding: '11px 0', borderRadius: 12,
                     background: 'transparent', border: `1.5px solid rgba(233,30,106,0.3)`,
-                    color: '#E91E6A', fontFamily: T.font, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                    color: '#FC4693', fontFamily: T.font, fontSize: 13, fontWeight: 600, cursor: 'pointer',
                     minHeight: 44,
                   }}
                 >Delete client</button>
@@ -418,7 +418,7 @@ export default function EditClientSheet({ clientId, onClose }) {
                       type="button"
                       onClick={handleDelete}
                       disabled={busy}
-                      style={{ flex: 1, minHeight: 44, borderRadius: 10, background: '#E91E6A', border: 'none', color: 'white', fontFamily: T.font, fontSize: 13, fontWeight: 700, cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.6 : 1 }}
+                      style={{ flex: 1, minHeight: 44, borderRadius: 10, background: '#FC4693', border: 'none', color: 'white', fontFamily: T.font, fontSize: 13, fontWeight: 700, cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.6 : 1 }}
                     >{busy ? 'Deleting…' : 'Yes, delete'}</button>
                   </div>
                 </div>

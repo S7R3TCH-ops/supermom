@@ -197,7 +197,7 @@ export default function NewExpenseSheet({ isOpen, onClose }) {
           <button
             onClick={handleSave}
             disabled={saving}
-            style={{ flex: 2, padding: '12px 0', borderRadius: 12, border: 'none', background: saving ? '#F9C5DB' : '#E91E6A', color: 'white', fontFamily: T.font, fontSize: 13, fontWeight: 700, cursor: saving ? 'default' : 'pointer', boxShadow: saving ? 'none' : '0 4px 12px rgba(233,30,106,0.3)' }}
+            style={{ flex: 2, padding: '12px 0', borderRadius: 12, border: 'none', background: saving ? '#F9C5DB' : '#FC4693', color: 'white', fontFamily: T.font, fontSize: 13, fontWeight: 700, cursor: saving ? 'default' : 'pointer', boxShadow: saving ? 'none' : '0 4px 12px rgba(233,30,106,0.3)' }}
           >
             {saving ? 'Saving…' : 'Log Expense'}
           </button>

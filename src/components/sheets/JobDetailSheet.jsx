@@ -29,7 +29,7 @@ const STATUS_COLORS = {
 const PAY_COLORS = {
   Paid:    { bg: 'rgba(34,197,94,0.12)',   color: '#22C55E', border: 'rgba(34,197,94,0.25)'  },
   Partial: { bg: 'rgba(245,158,11,0.12)', color: '#F59E0B', border: 'rgba(245,158,11,0.25)' },
-  '':      { bg: 'rgba(233,30,106,0.12)', color: '#E91E6A', border: 'rgba(233,30,106,0.25)' },
+  '':      { bg: 'rgba(233,30,106,0.12)', color: '#FC4693', border: 'rgba(233,30,106,0.25)' },
 };
 
 function fmtDate(s) {
@@ -448,7 +448,7 @@ function ReadMode({
     <>
       <div style={{ 
         background: T.hero, 
-        borderBottom: mode === 'dark' ? '3px solid #E91E6A' : 'none', 
+        borderBottom: mode === 'dark' ? '3px solid #FC4693' : 'none', 
         padding: '10px 14px 12px', 
         position: 'relative', 
         overflow: 'hidden' 
@@ -541,7 +541,7 @@ function ReadMode({
             <div style={{ fontSize: 12.5, fontWeight: 600, color: T.ink, marginBottom: 10 }}>Delete this job?</div>
             <div style={{ display: 'flex', gap: 8 }}>
               <Btn onClick={onDismissConfirm} bg={T.card} border={`1px solid ${T.cardBorder}`} color={T.inkSub} T={T} style={{ flex: 1 }}>Keep it</Btn>
-              <Btn onClick={onConfirmDelete} disabled={busy} bg="#E91E6A" color="white" T={T} style={{ flex: 1 }}>{busy ? 'Deleting…' : 'Yes, delete'}</Btn>
+              <Btn onClick={onConfirmDelete} disabled={busy} bg="#FC4693" color="white" T={T} style={{ flex: 1 }}>{busy ? 'Deleting…' : 'Yes, delete'}</Btn>
             </div>
           </div>
         )}
@@ -556,12 +556,12 @@ function ReadMode({
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <Btn onClick={onFutureConfirmCancel} bg={T.card} border={`1px solid ${T.cardBorder}`} color={T.inkSub} T={T} style={{ flex: 1 }}>Not yet</Btn>
-                <Btn onClick={onFutureConfirmProceed} bg="#E91E6A" color="white" T={T} style={{ flex: 1 }}>Yes, continue</Btn>
+                <Btn onClick={onFutureConfirmProceed} bg="#FC4693" color="white" T={T} style={{ flex: 1 }}>Yes, continue</Btn>
               </div>
             </div>
           )}
           {!futureConfirmType && !isCancelled && isScheduled && <Btn onClick={onMarkComplete} disabled={busy} bg="#22C55E" color="white" T={T}>Mark Complete</Btn>}
-          {!futureConfirmType && !isCancelled && !isPaid && <Btn onClick={onMarkPaid} disabled={busy} bg="#E91E6A" color="white" T={T}>Mark Paid</Btn>}
+          {!futureConfirmType && !isCancelled && !isPaid && <Btn onClick={onMarkPaid} disabled={busy} bg="#FC4693" color="white" T={T}>Mark Paid</Btn>}
           {!futureConfirmType && !isCancelled && isPaid && Number(job.raw?.worker_pay) > 0 && !job.raw?.worker_paid && (
             <Btn onClick={onMarkWorkerPaid} disabled={busy} bg="#F59E0B" color="white" T={T}>
               🦸 Mark {job.raw?.worker_name || 'Team Member'} Paid — ${Number(job.raw.worker_pay).toFixed(0)}
@@ -918,7 +918,7 @@ function EditMode({ job, form, setForm, services, workers, business, T, mode, bu
       </div>
       <div style={{ padding: '10px 14px 28px', borderTop: `1px solid ${T.cardBorder}`, display: 'flex', gap: 8 }}>
         <Btn onClick={onCancelEdit} bg={T.card} border={`1.5px solid ${T.cardBorder}`} color={T.inkSub} T={T} style={{ flex: 1 }}>Cancel</Btn>
-        <Btn onClick={onSave} disabled={busy} bg="#E91E6A" color="white" T={T} style={{ flex: 2 }}>{busy ? 'Saving…' : 'Save'}</Btn>
+        <Btn onClick={onSave} disabled={busy} bg="#FC4693" color="white" T={T} style={{ flex: 2 }}>{busy ? 'Saving…' : 'Save'}</Btn>
       </div>
     </>
   );
@@ -1012,7 +1012,7 @@ function PrepNoteCard({ job, T, business, onDeepPrep, mode }) {
         <button 
           onClick={handleToggleSpeak} 
           style={{ 
-            background: isSpeaking ? '#E91E6A' : (mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'), 
+            background: isSpeaking ? '#FC4693' : (mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'), 
             border: 'none', 
             borderRadius: 20, 
             padding: '4px 10px', 

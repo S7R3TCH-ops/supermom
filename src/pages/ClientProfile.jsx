@@ -146,7 +146,7 @@ export default function ClientProfile() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: T.bg, color: T.ink }}>
       {/* Hero */}
       <div style={{
-        background: T.hero, borderBottom: mode === 'dark' ? '3px solid #E91E6A' : 'none',
+        background: T.hero, borderBottom: mode === 'dark' ? '3px solid #FC4693' : 'none',
         padding: '12px 14px 16px', position: 'relative', overflow: 'hidden', flexShrink: 0,
       }}>
         {/* Radial glow */}
@@ -198,7 +198,7 @@ export default function ClientProfile() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, position: 'relative' }}>
           <div style={{
             width: 56, height: 56, borderRadius: 16, flexShrink: 0,
-            background: 'linear-gradient(135deg,#FF5A9D,#E91E6A)',
+            background: 'linear-gradient(135deg,#FF5A9D,#FC4693)',
             border: '2px solid rgba(255,255,255,0.15)',
             boxShadow: '0 6px 16px rgba(233,30,106,0.4)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',

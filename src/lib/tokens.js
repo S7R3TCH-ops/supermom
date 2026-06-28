@@ -6,17 +6,17 @@
  */
 
 const LIGHT_PALETTE = {
-  name: 'Vibrant Papaya',
-  bg: '#FFF0F3',          // Soft Rose Cream (Pinker hue)
-  surface: '#FCF5EF',     // Soft Sand
+  name: 'Brand Rose',
+  bg: '#FFEFF4',          // Sandra's official light pink background
+  surface: '#FFF5F8',     // Soft white-pink surface
   card: '#FFFFFF',
-  cardBorder: '#FCE8EF',  // Soft Pink Border
-  navBg: '#FFF0F3',
-  navBorder: '#FCE8EF',
-  pink: '#E91E6A',        // Punchy Pink
-  pinkLight: '#FF94BC',
-  pinkLabel: '#E91E6A',
-  pinkGlow: 'rgba(233,30,106,0.15)',
+  cardBorder: '#FFD9EC',  // Soft pink border
+  navBg: '#FFEFF4',
+  navBorder: '#FFD9EC',
+  pink: '#FC4693',        // Sandra's official brand pink
+  pinkLight: '#FFA8CC',
+  pinkLabel: '#FC4693',
+  pinkGlow: 'rgba(252,70,147,0.15)',
   pinkTint: '#FFF0F7',
   amberBg: '#FEF3C7',
   amberBorder: 'rgba(245,158,11,0.4)',
@@ -26,10 +26,10 @@ const LIGHT_PALETTE = {
   errorFg: '#991B1B',
   greenBg: '#DCFCE7',
   greenFg: '#14532D',
-  ink: '#4E342E',         // Warm Cocoa
-  inkSub: '#795548',      // Soft Brown
-  inkMuted: '#836459',    // Muted Clay — #836459 achieves ~4.9:1 on #FFF0F3 (WCAG AA pass)
-  secLabel: '#8D6E63',
+  ink: '#2D2D2D',         // Neutral near-black
+  inkSub: '#606060',      // Sandra's official gray
+  inkMuted: '#8A8A8A',    // Neutral muted gray — passes WCAG AA for large/UI text
+  secLabel: '#888888',
 };
 
 const DARK_PALETTE = {

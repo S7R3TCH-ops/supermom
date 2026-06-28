@@ -1,6 +1,6 @@
 const FONT = "'Inter', system-ui, sans-serif";
 const SERIF = "'Fraunces', Georgia, serif";
-const PINK = '#E91E6A';
+const PINK = '#FC4693';
 const PINK_LIGHT = '#FF5A9D';
 const PINK_MID = '#B01550';
 const PINK_BORDER = '#FFD6E8';

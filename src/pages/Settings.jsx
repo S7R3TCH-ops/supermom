@@ -358,7 +358,7 @@ export default function Settings() {
       {/* Hero */}
       <div style={{
         background: T.hero,
-        borderBottom: mode === 'dark' ? '3px solid #E91E6A' : 'none',
+        borderBottom: mode === 'dark' ? '3px solid #FC4693' : 'none',
         padding: '13px 15px 15px',
         position: 'relative',
         overflow: 'hidden',
@@ -622,7 +622,7 @@ export default function Settings() {
               <input className="sm-input" type={showPw ? 'text' : 'password'} value={pw} onChange={e => setPw(e.target.value)} placeholder="Min 8 characters" style={{ ...inputStyle, paddingRight: 44 }} />
               <ToggleBtn show={showPw} onToggle={() => setShowPw(!showPw)} />
             </div>
-            {pwError && <div style={{ fontSize: 11, color: '#E91E6A' }}>{pwError}</div>}
+            {pwError && <div style={{ fontSize: 11, color: '#FC4693' }}>{pwError}</div>}
             <button type="submit" disabled={pwBusy || !pw} style={{ width: '100%', padding: '10px', borderRadius: 10, background: pwBusy || !pw ? T.surface : T.pink, color: pwBusy || !pw ? T.inkMuted : 'white', border: 'none', fontWeight: 700, fontSize: 12, cursor: pwBusy || !pw ? 'default' : 'pointer' }}>
               {pwBusy ? 'Updating...' : 'Update password'}
             </button>
@@ -704,7 +704,7 @@ export default function Settings() {
         borderTop: `1.5px solid ${T.cardBorder}`,
         background: T.card,
       }}>
-        {error && <div style={{ marginBottom: 8, textAlign: 'center', color: '#E91E6A', fontSize: 12, fontWeight: 600 }}>{error}</div>}
+        {error && <div style={{ marginBottom: 8, textAlign: 'center', color: '#FC4693', fontSize: 12, fontWeight: 600 }}>{error}</div>}
         <button
           type="button"
           onClick={handleSave}

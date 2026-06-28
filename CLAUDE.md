@@ -149,13 +149,14 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 
 ---
 
-## Current version: 0.13.5 — Jun 28, 2026 (package.json synced)
+## Current version: 0.13.6 — Jun 28, 2026 (package.json synced)
 
 Sandra's business is live — data wiped and re-provisioned Jun 9. App in active use.
 
 **⚠️ Multi-client git discipline**: Always push local commits before starting an online Claude Code session; always pull before the online session writes code.
 
 ### Recent changes (full history in `docs/changelog/` + `git log`)
+- **v0.13.6 (Jun 28)** — Light mode color overhaul: align app palette to Sandra's official brand. Primary pink `#E91E6A` → `#FC4693`; warm-brown text (`#4E342E`/`#795548`) → neutral grays (`#2D2D2D`/`#606060`); bg `#FFF0F3` → `#FFEFF4`. Icons were already `#FC4693` — app interior now consistent. LIGHT_PALETTE in `tokens.js` renamed "Brand Rose". CLAUDE.md open items pruned: 8 completed items removed, remaining items renumbered 1–14.
 - **v0.13.5 (Jun 28)** — Fix Go button not opening Maps on Sandra's iPhone 16: `window.open()` was called inside `setTimeout` — iOS Safari blocks that as non-user-gesture. Fix: open blank window synchronously on tap, then set `location.href` after GPS resolves.
 - **v0.13.4 (Jun 28)** — Navigation audit + fixes: (1) `useBackClose` no longer calls `history.back()` on cleanup when URL already changed — fixes any sheet-→-navigate flow (e.g. JobDetailSheet client name now correctly opens ClientProfile). (2) ClientProfile back button changed from hardcoded `navigate('/clients')` to `navigate(-1)` — returns to true origin. (3) Finance "Top 5 clients" rows are now tappable buttons navigating to `/clients/:id`; computed object now includes `id` field.
 - **v0.13.3 (Jun 20)** — BottomNav: FAB merged into center raised + button (Week | Schedule | [+] | Clients | Finance). Tapping + expands options above nav: New Job / New Client / Search (centered, rises from + position). Standalone FAB removed from App.jsx entirely.
@@ -196,38 +197,31 @@ Sandra's business is live — data wiped and re-provisioned Jun 9. App in active
 
 ### 🔴 Bugs / Active issues
 
-1. **Device verification** — v0.12.32–v0.12.68 not phone-tested. v0.12.67 crash fix deployed but unverified on real devices. Test Home page + invoice flow on Pixel 10 Pro + Sandra's iPhone before next feature push.
-2. **Vercel function slot** — 9/12 used. Three slots left before limit. Options: consolidate or upgrade to Pro.
+1. **Device verification** — v0.12.32–v0.12.68 not phone-tested. Test Home page + invoice flow on Pixel 10 Pro + Sandra's iPhone before next feature push.
 
-### 🤖 AI features (HIGH PRIORITY)
+> **Constraint**: Vercel at 9/12 serverless function slots. Defer any feature requiring a new function until we consolidate or upgrade to Pro.
 
-3. **Voice scheduling** — `api/transcribe.js` exists. Flow: mic → transcribe → Claude parses intent → pre-fills NewJobSheet.
-4. **Smart scheduling suggestions** — given Sandra's calendar + drive times, Claude suggests optimal day/time for new bookings. All data already available.
-5. **Weekly AI debrief** — Sunday evening summary: revenue, hours, top clients, one pattern observation. Extend the daily briefing cron.
-6. **Auto-generate prep notes** — based on `ai_context`, pre-draft PrepNoteSheet content before Sandra opens it.
-7. **Invoice draft from voice** — 30-second post-job recording → Claude extracts service/duration/extras → pre-fills PostJobSheet.
+### ✨ Next up (no new serverless functions needed)
+
+2. **Calendar week view** — proper rebuild (130 lines of parked code removed in v0.12.60; worth doing properly).
+3. **"Last job" quick-rebook** — from ClientProfile, 1-tap to duplicate the last job (same service/rate). Saves the 3-step booking flow.
+4. **Job templates** — Sandra books the same configs repeatedly. Save a job as a template; pre-fill NewJobSheet from it. Schema already supports it.
+
+### 🤖 AI features (deferred — needs serverless slots)
+
+5. **Voice scheduling** — `api/transcribe.js` exists. Flow: mic → transcribe → Claude parses intent → pre-fills NewJobSheet.
+6. **Smart scheduling suggestions** — given Sandra's calendar + drive times, Claude suggests optimal day/time for new bookings. All data already available.
+7. **Weekly AI debrief** — Sunday evening summary: revenue, hours, top clients, one pattern observation. Extend the daily briefing cron.
+8. **Auto-generate prep notes** — based on `ai_context`, pre-draft PrepNoteSheet content before Sandra opens it.
+9. **Invoice draft from voice** — 30-second post-job recording → Claude extracts service/duration/extras → pre-fills PostJobSheet.
 
 ### 📱 Phase 2 features
 
-8. **Client invoice history** — "Invoices" tab in ClientProfile listing all invoices per client, each tappable to `/i/:id`.
-9. **Push notifications (iOS proper)** — SW setTimeout unreliable on iOS when backgrounded. Needs VAPID keys + `web-push` npm + server-triggered via Vercel cron. Android works today.
-10. **Custom domain email** — swap `nodemailer` → `resend`, from `invoices@supermomforhire.com`.
-11. **Offline mode** — app crashes if Supabase unreachable on first load. Per-page `ErrorBoundary` + "tap to reload" fallbacks needed.
-12. **Staff app access** — `person_type = 'staff'` tracked in DB. No app login yet.
-
-### ✨ UX / product nice-to-haves
-
-13. **Job templates** — Sandra books the same configs repeatedly. Save a job as a template; pre-fill NewJobSheet from it. Schema already supports it.
-14. **Cross-job search** — find "all jobs containing 'basement'" or "all October jobs". One search endpoint serves this.
-15. **"Last job" quick-rebook** — from ClientProfile, 1-tap to duplicate the last job (same service/rate). Saves the 3-step booking flow.
-16. **Revenue goal progress bar** — Sandra sets a monthly target in Settings; Home hero shows progress ring.
-17. **Client lifetime value** — ClientProfile shows total paid. Add "avg per visit" + "top 5 by revenue" card to Finance.
-18. **Year-over-year comparison** — Finance page: toggle "vs last year" for tax planning context.
-19. **Automated post-job follow-up email** — 24h after complete, send "Thanks!" with invoice link. Toggle in Settings. Daily briefing cron infrastructure already exists.
-20. **Calendar week view** — proper rebuild (130 lines of parked code removed in v0.12.60; worth doing properly).
+10. **Push notifications (iOS proper)** — SW setTimeout unreliable on iOS when backgrounded. Needs VAPID keys + `web-push` npm + server-triggered via Vercel cron. Android works today.
+11. **Custom domain email** — swap `nodemailer` → `resend`, from `invoices@supermomforhire.com`.
+12. **Automated post-job follow-up email** — 24h after complete, send "Thanks!" with invoice link. Toggle in Settings. Daily briefing cron infrastructure already exists.
+13. **Staff app access** — `person_type = 'staff'` tracked in DB. No app login yet.
 
 ### 🏢 Multi-tenant / future
 
-21. **Per-business label config** — "Sidekick/Wingmom" are hardcoded in UI. Must be configurable before tenant #2 onboards.
-22. **Super Admin viewpoint quick-switch** — dropdown to switch businesses without manual ID entry.
-23. **Tenant onboarding wizard** — `scripts/provision-sandra.mjs` is the only path. Need self-serve "Set up your business" flow for growth.
+14. **Tenant onboarding wizard** — `scripts/provision-sandra.mjs` is the only path. Need self-serve "Set up your business" flow for growth.

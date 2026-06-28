@@ -367,7 +367,7 @@ export default function InvoiceView() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
             {(invoice.otherOutstanding ?? []).map(b => (
               <label key={b.job.id} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, color: '#333' }}>
-                <input type="checkbox" checked={addJobIds.has(b.job.id)} onChange={() => toggleAddJob(b.job.id)} style={{ width: 18, height: 18, accentColor: '#E91E6A' }} />
+                <input type="checkbox" checked={addJobIds.has(b.job.id)} onChange={() => toggleAddJob(b.job.id)} style={{ width: 18, height: 18, accentColor: '#FC4693' }} />
                 <span style={{ flex: 1, minWidth: 0 }}>
                   {b.job.service_name || 'Professional Services'}
                   <span style={{ color: '#999' }}>{b.job.scheduled_date ? ` · ${formatDate(b.job.scheduled_date)}` : ''}</span>
@@ -400,7 +400,7 @@ export default function InvoiceView() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
             {outstandingJobs.map(j => (
               <label key={j.id} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, color: '#333' }}>
-                <input type="checkbox" checked={selectedIds.has(j.id)} onChange={() => toggleJob(j.id)} style={{ width: 18, height: 18, accentColor: '#E91E6A' }} />
+                <input type="checkbox" checked={selectedIds.has(j.id)} onChange={() => toggleJob(j.id)} style={{ width: 18, height: 18, accentColor: '#FC4693' }} />
                 <span style={{ flex: 1, minWidth: 0 }}>
                   {j.label}
                   <span style={{ color: '#999' }}>{j.date ? ` · ${formatDate(j.date)}` : ''}</span>

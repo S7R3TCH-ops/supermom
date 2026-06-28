@@ -133,7 +133,7 @@ export default function Clients() {
       {/* Hero */}
       <div style={{
         background: T.hero,
-        borderBottom: isDark ? '3px solid #E91E6A' : 'none',
+        borderBottom: isDark ? '3px solid #FC4693' : 'none',
         padding: '12px 14px 14px',
         position: 'relative',
         overflow: 'hidden',
@@ -214,8 +214,8 @@ export default function Clients() {
           const active = filter === f;
           return (
             <button key={f} type="button" onClick={() => setFilter(f)} aria-pressed={active} style={{
-              background: active ? '#E91E6A' : T.card,
-              border: `1px solid ${active ? '#E91E6A' : T.cardBorder}`,
+              background: active ? '#FC4693' : T.card,
+              border: `1px solid ${active ? '#FC4693' : T.cardBorder}`,
               borderRadius: 20, padding: '5px 12px', whiteSpace: 'nowrap',
               fontFamily: T.font, fontSize: 10.5, fontWeight: 600,
               color: active ? 'white' : T.inkMuted, cursor: 'pointer',

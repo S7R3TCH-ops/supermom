@@ -223,7 +223,7 @@ export default function WorkerCatalogSheet({ isOpen, onClose }) {
         {/* Header */}
         <div style={{
           background: T.hero,
-          borderBottom: mode === 'dark' ? '3px solid #E91E6A' : 'none',
+          borderBottom: mode === 'dark' ? '3px solid #FC4693' : 'none',
           padding: '10px 18px 14px', position: 'relative', overflow: 'hidden',
         }}>
           <div style={{ position: 'absolute', top: -40, right: -20, width: 120, height: 120, borderRadius: '50%', background: `radial-gradient(circle,${T.pinkGlow} 0%,transparent 70%)`, pointerEvents: 'none' }} />

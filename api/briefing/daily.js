@@ -36,7 +36,7 @@ function escapeHtml(s) {
 // ── email builder ─────────────────────────────────────────────────────────────
 
 function buildEmailHtml({ todayJobs, tomorrowJobs, unpaidJobs, todayLabel, tomorrowLabel, ownerName, dadJoke }) {
-  const pink = '#E91E6A';
+  const pink = '#FC4693';
   const cream = '#FFF9F5';
   const green = '#22c55e';
 

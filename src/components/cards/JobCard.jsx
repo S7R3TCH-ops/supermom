@@ -12,13 +12,13 @@ export default function JobCard({ job: j, T, onClick, paid = 0, total = 0, grand
 
   const isDark = T.ink === '#FFFFFF';
 
-  const borderColor = isPartial ? '#F97316' : (isUnpaid && !isPartial) ? '#EF4444' : isPaid ? (isDark ? '#4ADE80' : '#86EFAC') : (isDark ? '#FF70A6' : '#E91E6A');
+  const borderColor = isPartial ? '#EA580C' : (isUnpaid && !isPartial) ? '#DC2626' : isPaid ? (isDark ? '#4ADE80' : '#16A34A') : (isDark ? '#FF70A6' : '#FC4693');
   const bgColor = subtle ? 'transparent'
-    : isPartial ? T.amberBg
-    : (isUnpaid && !isPartial) ? T.redBg
-    : isPaid ? (isDark ? 'rgba(22,163,74,0.08)' : '#F0FFF5')
-    : T.pinkTint;
-  const accentColor = isPartial ? (isDark ? '#FB923C' : '#C2410C') : (isUnpaid && !isPartial) ? (isDark ? '#F87171' : '#991B1B') : isPaid ? (isDark ? '#4ADE80' : '#14532D') : (isDark ? '#FF70A6' : '#E91E6A');
+    : isPartial ? (isDark ? 'rgba(249,115,22,0.14)' : '#FFEDD5')
+    : (isUnpaid && !isPartial) ? (isDark ? 'rgba(220,38,38,0.14)' : '#FEE2E2')
+    : isPaid ? (isDark ? 'rgba(22,163,74,0.12)' : '#DCFCE7')
+    : (isDark ? T.pinkTint : '#FCE7F3');
+  const accentColor = isPartial ? (isDark ? '#FB923C' : '#C2410C') : (isUnpaid && !isPartial) ? (isDark ? '#F87171' : '#991B1B') : isPaid ? (isDark ? '#4ADE80' : '#15803D') : (isDark ? '#FF70A6' : '#BE185D');
   const statusLabel = isPartial ? 'PARTIAL' : isUnpaid ? 'UNPAID' : isPaid ? 'PAID ✓' : 'SCHEDULED';
 
   const timeRange = j.start && j.end ? fmtTimeRange(j.start, j.end) : '—';
@@ -29,9 +29,10 @@ export default function JobCard({ job: j, T, onClick, paid = 0, total = 0, grand
       onClick={onClick}
       style={{
         background: bgColor,
-        border: `1.5px solid ${borderColor}${subtle ? '30' : '50'}`,
+        border: subtle ? `1px solid ${borderColor}44` : `1.5px solid ${borderColor}`,
+        borderLeft: subtle ? undefined : `4px solid ${borderColor}`,
         borderRadius: 16,
-        padding: '10px 14px 10px 12px',
+        padding: '10px 14px 10px 10px',
         marginBottom: 8,
         cursor: 'pointer',
       }}

@@ -17,7 +17,7 @@ function brandedEmailHtml({ clientName, bizName, bizEmail, invoiceNumber, isRece
   bizName      = escapeHtml(bizName);
   bizEmail     = escapeHtml(bizEmail);
   invoiceNumber = escapeHtml(invoiceNumber);
-  const pink  = '#E91E6A';
+  const pink  = '#FC4693';
   const green = '#16A34A';
   const cream = '#FFF9F5';
   const docLabel = isReceipt ? 'Receipt' : 'Invoice';

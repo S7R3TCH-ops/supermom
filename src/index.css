@@ -4,28 +4,28 @@
 
 :root {
   /* Brand */
-  --pink:          #FF70A6;
-  --pink-light:    #FF94BC;
-  --pink-mid:      #B01550;
-  --pink-pale:     #FFF9F5;
+  --pink:          #FC4693;
+  --pink-light:    #FFA8CC;
+  --pink-mid:      #C4006B;
+  --pink-pale:     #FFEFF4;
   --pink-tint:     #FFF0F7;
-  --pink-border:   #FFD6E8;
-  --pink-label:    #FF78B0;
+  --pink-border:   #FFD9EC;
+  --pink-label:    #FC4693;
 
   /* Theme Colors */
-  --bg:            #FFF9F5;
-  --surface:       #FDF6F0;
+  --bg:            #FFEFF4;
+  --surface:       #FFF5F8;
   --card:          #FFFFFF;
-  --card-border:   #FFD6E8;
+  --card-border:   #FFD9EC;
 
   /* Charcoal (dark sections) */
   --plum-dark:     #1C1C1E;
   --plum-mid:      #2C2C2E;
 
   /* Ink */
-  --ink:           #1C1C1E;
-  --ink-mid:       #4A4A4A;
-  --ink-muted:     #8A8A8E;
+  --ink:           #2D2D2D;
+  --ink-mid:       #606060;
+  --ink-muted:     #8A8A8A;
 
   /* Status */
   --green:         #16A34A;
@@ -37,10 +37,10 @@
   --amber-text:    #78350F;
 
   /* Gradients */
-  --grad-pink:   linear-gradient(110deg, #FF70A6 0%, #E91E6A 45%, #B01550 100%);
+  --grad-pink:   linear-gradient(110deg, #FFA8CC 0%, #FC4693 45%, #C4006B 100%);
   --grad-hero:   linear-gradient(145deg, #1C1C1E 0%, #2C2C2E 100%);
-  --border-hero: 3px solid #E91E6A;
-  --grad-action: linear-gradient(135deg, #FF94BC, #FF70A6);
+  --border-hero: 3px solid #FC4693;
+  --grad-action: linear-gradient(135deg, #FFA8CC, #FC4693);
 
   /* Radius */
   --r-card:    16px;
@@ -217,7 +217,7 @@ button:active,
 }
 
 .ai-intel-field::placeholder {
-  color: #836459;
+  color: #8A8A8A;
   opacity: 0.6;
   font-style: italic;
 }

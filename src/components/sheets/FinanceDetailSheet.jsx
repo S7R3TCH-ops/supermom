@@ -54,7 +54,7 @@ function JobRow({ item, T, privacyOn, onTap }) {
         <div style={{ fontSize: 15, fontWeight: 700, color: T.ink, fontVariantNumeric: 'tabular-nums' }}>
           {privacyOn ? '•••' : `$${Number(total).toFixed(0)}`}
         </div>
-        <div style={{ fontSize: 9, fontWeight: 700, color: item.payment_status === 'Paid' ? '#22C55E' : item.payment_status === 'Partial' ? '#F59E0B' : '#E91E6A', textTransform: 'uppercase', marginTop: 2 }}>
+        <div style={{ fontSize: 9, fontWeight: 700, color: item.payment_status === 'Paid' ? '#22C55E' : item.payment_status === 'Partial' ? '#F59E0B' : '#FC4693', textTransform: 'uppercase', marginTop: 2 }}>
           {item.payment_status === 'Paid' ? 'Paid ✓' : item.payment_status === 'Partial' ? 'Partial' : 'Unpaid'}
         </div>
       </div>
@@ -125,7 +125,7 @@ export default function FinanceDetailSheet({ title, items, type, onClose }) {
   const summary = (() => {
     if (type === 'jobs') {
       const total = items.reduce((s, i) => s + Number(i.total || 0), 0);
-      return { line: `${items.length} job${items.length !== 1 ? 's' : ''}`, total, color: '#E91E6A' };
+      return { line: `${items.length} job${items.length !== 1 ? 's' : ''}`, total, color: '#FC4693' };
     }
     if (type === 'expenses') {
       const total = items.reduce((s, i) => s + Number(i.amount || 0), 0);

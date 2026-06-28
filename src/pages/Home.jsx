@@ -649,7 +649,7 @@ export default function Home() {
       {/* Hero */}
       <div style={{ 
         background: T.hero, 
-        borderBottom: mode === 'dark' ? '3px solid #E91E6A' : 'none', 
+        borderBottom: mode === 'dark' ? '3px solid #FC4693' : 'none', 
         padding: '13px 15px 15px',
         position: 'relative',
         overflow: 'hidden'
@@ -819,7 +819,7 @@ export default function Home() {
               position: 'relative',
               overflow: 'hidden'
             }}>
-              <div className="sm-pulse" style={{ position: 'absolute', top: 12, right: 12, width: 8, height: 8, borderRadius: '50%', background: '#E91E6A' }} />
+              <div className="sm-pulse" style={{ position: 'absolute', top: 12, right: 12, width: 8, height: 8, borderRadius: '50%', background: '#FC4693' }} />
 
               <div onClick={() => openJob(activeJob.id)} style={{ cursor: 'pointer' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
@@ -944,7 +944,7 @@ export default function Home() {
                         ? `${startFmt.time} – ${endFmt.time}${endFmt.period}`
                         : `${startFmt.time}${startFmt.period} – ${endFmt.time}${endFmt.period}`;
                       const minsToStart = Math.round((next.start - now) / 60000);
-                      const timingColor = isNowWindow ? '#E91E6A' : minsToStart <= 15 ? '#EF4444' : minsToStart <= 60 ? '#F59E0B' : '#16A34A';
+                      const timingColor = isNowWindow ? '#FC4693' : minsToStart <= 15 ? '#EF4444' : minsToStart <= 60 ? '#F59E0B' : '#16A34A';
                       const timingLabel = isNowWindow ? '🔴 Happening now' : minsToStart > 0 ? `Starts in ${fmtDuration(minsToStart)}` : null;
                       return (
                         <>
@@ -1040,8 +1040,8 @@ export default function Home() {
                                 padding: '12px 14px',
                                 borderRadius: 12,
                                 background: isGoLaunching
-                                  ? 'linear-gradient(90deg,#8B0E3F,#E91E6A,#FF78B0)'
-                                  : `linear-gradient(90deg,${DEEP_ROSE},#E91E6A)`,
+                                  ? 'linear-gradient(90deg,#8B0E3F,#FC4693,#FF78B0)'
+                                  : `linear-gradient(90deg,${DEEP_ROSE},#FC4693)`,
                                 color: 'white',
                                 cursor: isGoLaunching ? 'default' : 'pointer',
                                 display: 'flex',
@@ -1178,10 +1178,10 @@ export default function Home() {
                 const variant = isWrapUp ? 'wrap-up' : isPartial ? 'partial' : isStale ? 'unpaid-stale' : 'unpaid-fresh';
                 const dk = mode === 'dark';
                 const VSTYLES = {
-                  'wrap-up':      { border: '#F59E0B', bg: dk ? 'rgba(245,158,11,0.12)' : 'rgba(245,158,11,0.06)', pillBg: dk ? 'rgba(245,158,11,0.25)' : 'rgba(245,158,11,0.15)', pillColor: dk ? '#FCD34D' : '#92400E', amountColor: dk ? '#FCD34D' : '#92400E', recencyColor: dk ? '#FCD34D' : '#B45309', label: 'WRAP UP' },
-                  'unpaid-fresh': { border: '#E91E6A', bg: dk ? 'rgba(233,30,106,0.1)'  : 'rgba(233,30,106,0.05)', pillBg: dk ? 'rgba(233,30,106,0.25)' : 'rgba(233,30,106,0.12)', pillColor: dk ? '#FF70A6' : '#B5004E', amountColor: dk ? '#FF70A6' : '#B5004E', recencyColor: dk ? 'rgba(255,112,166,0.75)' : '#9D174D', label: 'UNPAID' },
-                  'unpaid-stale': { border: '#DC2626', bg: dk ? 'rgba(220,38,38,0.15)'  : 'rgba(220,38,38,0.08)', pillBg: dk ? 'rgba(220,38,38,0.3)'  : 'rgba(220,38,38,0.12)',  pillColor: dk ? '#FCA5A5' : '#991B1B', amountColor: dk ? '#FCA5A5' : '#991B1B', recencyColor: dk ? '#FCA5A5' : '#B91C1C', label: 'UNPAID' },
-                  'partial':      { border: '#F97316', bg: dk ? 'rgba(249,115,22,0.12)' : 'rgba(249,115,22,0.06)', pillBg: dk ? 'rgba(249,115,22,0.25)' : 'rgba(249,115,22,0.12)', pillColor: dk ? '#FDBA74' : '#C2410C', amountColor: dk ? '#FDBA74' : '#C2410C', recencyColor: dk ? 'rgba(253,186,116,0.75)' : '#EA580C', label: 'PARTIAL PAID' },
+                  'wrap-up':      { border: '#D97706', bg: dk ? 'rgba(245,158,11,0.18)' : '#FEF3C7', pillBg: dk ? 'rgba(245,158,11,0.3)'  : '#FDE68A', pillColor: dk ? '#FCD34D' : '#78350F', amountColor: dk ? '#FCD34D' : '#92400E', recencyColor: dk ? '#FCD34D' : '#B45309', label: 'WRAP UP' },
+                  'unpaid-fresh': { border: '#FC4693', bg: dk ? 'rgba(252,70,147,0.16)' : '#FCE7F3', pillBg: dk ? 'rgba(252,70,147,0.3)'  : '#FBCFE8', pillColor: dk ? '#FF70A6' : '#9D174D', amountColor: dk ? '#FF70A6' : '#B5004E', recencyColor: dk ? 'rgba(255,112,166,0.75)' : '#9D174D', label: 'UNPAID' },
+                  'unpaid-stale': { border: '#DC2626', bg: dk ? 'rgba(220,38,38,0.20)'  : '#FEE2E2', pillBg: dk ? 'rgba(220,38,38,0.35)' : '#FECACA', pillColor: dk ? '#FCA5A5' : '#7F1D1D', amountColor: dk ? '#FCA5A5' : '#991B1B', recencyColor: dk ? '#FCA5A5' : '#B91C1C', label: 'UNPAID' },
+                  'partial':      { border: '#EA580C', bg: dk ? 'rgba(249,115,22,0.18)' : '#FFEDD5', pillBg: dk ? 'rgba(249,115,22,0.3)'  : '#FED7AA', pillColor: dk ? '#FDBA74' : '#7C2D12', amountColor: dk ? '#FDBA74' : '#C2410C', recencyColor: dk ? 'rgba(253,186,116,0.75)' : '#EA580C', label: 'PARTIAL PAID' },
                 }[variant];
 
                 const h = j.hoursOld;
@@ -1205,7 +1205,7 @@ export default function Home() {
                     style={{
                       display: 'block', width: '100%', textAlign: 'left',
                       background: VSTYLES.bg,
-                      border: `1px solid ${VSTYLES.border}33`,
+                      border: `1px solid ${VSTYLES.border}66`,
                       borderLeft: `4px solid ${VSTYLES.border}`,
                       borderRadius: 12,
                       padding: '10px 12px',

@@ -116,7 +116,7 @@ export default function FinancialMathBreakdown({ job, business, liveForm, paymen
                 fontWeight: 700,
                 fontFamily: T.serif,
                 fontVariantNumeric: 'tabular-nums',
-                color: remaining > 0 ? '#E91E6A' : '#16A34A',
+                color: remaining > 0 ? '#FC4693' : '#16A34A',
               }}>
                 {remaining > 0 ? `$${remaining.toFixed(2)}` : 'PAID ✓'}
               </span>

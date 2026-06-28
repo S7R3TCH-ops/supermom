@@ -136,7 +136,7 @@ export default function WeekStrip({
             minHeight: 44,
             borderRadius: 8,
             background: isSelected
-              ? '#E91E6A'
+              ? '#FC4693'
               : isToday
               ? 'rgba(233,30,106,0.2)'
               : mode === 'dark'

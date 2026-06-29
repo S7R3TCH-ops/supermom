@@ -30,6 +30,14 @@ const LIGHT_PALETTE = {
   inkSub: '#606060',      // Sandra's official gray
   inkMuted: '#8A8A8A',    // Neutral muted gray — passes WCAG AA for large/UI text
   secLabel: '#888888',
+  status: {
+    scheduled: { border: '#1E40AF', bg: '#EFF6FF', pill: '#BFDBFE', text: '#1E3A8A' },
+    attention:  { border: '#A16207', bg: '#FEFCE8', pill: '#FEF08A', text: '#713F12' },
+    unpaid:     { border: '#BE123C', bg: '#FFF5F7', pill: '#FECDD3', text: '#9F1239' },
+    overdue:    { border: '#991B1B', bg: '#FEF2F2', pill: '#FCA5A5', text: '#7F1D1D' },
+    partial:    { border: '#9A3412', bg: '#FFF7ED', pill: '#FDBA74', text: '#7C2D12' },
+    paid:       { border: '#15803D', bg: '#F0FDF4', pill: '#86EFAC', text: '#14532D' },
+  },
 };
 
 const DARK_PALETTE = {
@@ -57,6 +65,14 @@ const DARK_PALETTE = {
   inkSub: 'rgba(255,255,255,0.65)',
   inkMuted: 'rgba(255,255,255,0.55)',
   secLabel: 'rgba(255,112,166,0.85)',
+  status: {
+    scheduled: { border: '#3B82F6', bg: 'rgba(59,130,246,0.12)',  pill: 'rgba(59,130,246,0.25)',  text: '#93C5FD' },
+    attention:  { border: '#D97706', bg: 'rgba(217,119,6,0.15)',   pill: 'rgba(217,119,6,0.25)',   text: '#FCD34D' },
+    unpaid:     { border: '#F43F5E', bg: 'rgba(244,63,94,0.12)',   pill: 'rgba(244,63,94,0.25)',   text: '#FDA4AF' },
+    overdue:    { border: '#EF4444', bg: 'rgba(239,68,68,0.15)',   pill: 'rgba(239,68,68,0.30)',   text: '#FCA5A5' },
+    partial:    { border: '#F97316', bg: 'rgba(249,115,22,0.12)',  pill: 'rgba(249,115,22,0.25)',  text: '#FDBA74' },
+    paid:       { border: '#22C55E', bg: 'rgba(34,197,94,0.10)',   pill: 'rgba(34,197,94,0.22)',   text: '#4ADE80' },
+  },
 };
 
 export function smTokens(mode) {

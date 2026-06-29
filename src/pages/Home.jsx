@@ -815,11 +815,11 @@ export default function Home() {
               border: `2px solid ${T.pink}`,
               borderRadius: 18,
               padding: '16px',
-              boxShadow: '0 4px 8px rgba(233,30,106,0.2)',
+              boxShadow: `0 4px 8px ${T.pinkGlow}`,
               position: 'relative',
               overflow: 'hidden'
             }}>
-              <div className="sm-pulse" style={{ position: 'absolute', top: 12, right: 12, width: 8, height: 8, borderRadius: '50%', background: '#FC4693' }} />
+              <div className="sm-pulse" style={{ position: 'absolute', top: 12, right: 12, width: 8, height: 8, borderRadius: '50%', background: T.pink }} />
 
               <div onClick={() => openJob(activeJob.id)} style={{ cursor: 'pointer' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
@@ -1176,12 +1176,11 @@ export default function Home() {
                 const isPartial = j.status === 'Completed' && j.payment_status === 'Partial';
                 const isStale = j.hoursOld >= 48;
                 const variant = isWrapUp ? 'wrap-up' : isPartial ? 'partial' : isStale ? 'unpaid-stale' : 'unpaid-fresh';
-                const dk = mode === 'dark';
                 const VSTYLES = {
-                  'wrap-up':      { border: '#D97706', bg: dk ? 'rgba(245,158,11,0.18)' : '#FEF3C7', pillBg: dk ? 'rgba(245,158,11,0.3)'  : '#FDE68A', pillColor: dk ? '#FCD34D' : '#78350F', amountColor: dk ? '#FCD34D' : '#92400E', recencyColor: dk ? '#FCD34D' : '#B45309', label: 'WRAP UP' },
-                  'unpaid-fresh': { border: '#FC4693', bg: dk ? 'rgba(252,70,147,0.16)' : '#FCE7F3', pillBg: dk ? 'rgba(252,70,147,0.3)'  : '#FBCFE8', pillColor: dk ? '#FF70A6' : '#9D174D', amountColor: dk ? '#FF70A6' : '#B5004E', recencyColor: dk ? 'rgba(255,112,166,0.75)' : '#9D174D', label: 'UNPAID' },
-                  'unpaid-stale': { border: '#DC2626', bg: dk ? 'rgba(220,38,38,0.20)'  : '#FEE2E2', pillBg: dk ? 'rgba(220,38,38,0.35)' : '#FECACA', pillColor: dk ? '#FCA5A5' : '#7F1D1D', amountColor: dk ? '#FCA5A5' : '#991B1B', recencyColor: dk ? '#FCA5A5' : '#B91C1C', label: 'UNPAID' },
-                  'partial':      { border: '#EA580C', bg: dk ? 'rgba(249,115,22,0.18)' : '#FFEDD5', pillBg: dk ? 'rgba(249,115,22,0.3)'  : '#FED7AA', pillColor: dk ? '#FDBA74' : '#7C2D12', amountColor: dk ? '#FDBA74' : '#C2410C', recencyColor: dk ? 'rgba(253,186,116,0.75)' : '#EA580C', label: 'PARTIAL PAID' },
+                  'wrap-up':      { ...T.status.attention, label: 'WRAP UP' },
+                  'unpaid-fresh': { ...T.status.unpaid,    label: 'UNPAID' },
+                  'unpaid-stale': { ...T.status.overdue,   label: 'UNPAID' },
+                  'partial':      { ...T.status.partial,   label: 'PARTIAL PAID' },
                 }[variant];
 
                 const h = j.hoursOld;
@@ -1213,13 +1212,13 @@ export default function Home() {
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
-                      <span style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.5px', background: VSTYLES.pillBg, color: VSTYLES.pillColor, padding: '2px 6px', borderRadius: 4 }}>
+                      <span style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.5px', background: VSTYLES.pill, color: VSTYLES.text, padding: '2px 6px', borderRadius: 4 }}>
                         {VSTYLES.label}
                       </span>
                       {isWrapUp ? (
-                        <span style={{ fontFamily: T.font, fontSize: 11, color: VSTYLES.amountColor, opacity: 0.8 }}>Tap to wrap up →</span>
+                        <span style={{ fontFamily: T.font, fontSize: 11, color: VSTYLES.text, opacity: 0.8 }}>Tap to wrap up →</span>
                       ) : (
-                        <span style={{ fontFamily: T.serif, fontSize: 14, fontWeight: 700, color: VSTYLES.amountColor, fontVariantNumeric: 'tabular-nums' }}>
+                        <span style={{ fontFamily: T.serif, fontSize: 14, fontWeight: 700, color: VSTYLES.text, fontVariantNumeric: 'tabular-nums' }}>
                           {privacyOn ? '•••' : `$${j.remaining.toFixed(0)} owing`}
                         </span>
                       )}
@@ -1234,7 +1233,7 @@ export default function Home() {
                     )}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <span style={{ fontFamily: T.font, fontSize: 11, color: T.inkMuted }}>{dateStr} · {timeRange}</span>
-                      <span style={{ fontFamily: T.font, fontSize: 11, fontWeight: 600, color: VSTYLES.recencyColor }}>{recencyText}</span>
+                      <span style={{ fontFamily: T.font, fontSize: 11, fontWeight: 600, color: VSTYLES.text }}>{recencyText}</span>
                     </div>
                   </button>
                 );
@@ -1257,13 +1256,12 @@ export default function Home() {
                 total={computeJobTotal(j)}
                 grandTotal={computeJobTotal(j)}
                 privacyOn={privacyOn}
-                subtle
               />
             ))}
           </div>
         )}
 
-        {/* DONE THIS WEEK — subtle progress view */}
+        {/* DONE THIS WEEK */}
         {completedPaidThisWeek.length > 0 && (
           <div style={{ marginBottom: 24 }}>
             <SectionLabel color="#16A34A">✓ DONE THIS WEEK</SectionLabel>
@@ -1277,7 +1275,6 @@ export default function Home() {
                 total={computeJobTotal(j)}
                 grandTotal={computeJobTotal(j)}
                 privacyOn={privacyOn}
-                subtle
               />
             ))}
           </div>

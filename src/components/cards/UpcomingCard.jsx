@@ -1,13 +1,10 @@
 import { fmtTimeRange, dateBrief } from '../../lib/dateUtils';
-import { useAppTheme } from '../../context/AppThemeContext';
 import { useBusiness } from '../../data/useData';
 import { getWorkerLabel } from '../../lib/labels';
 
 export default function UpcomingCard({ job: j, T, onClick, total = 0, grandTotal, paid = 0, privacyOn = false, hstNote = false }) {
-  const { mode } = useAppTheme();
   const { business } = useBusiness();
-  const ACCENT = T.pink;
-  const BG = mode === 'dark' ? 'rgba(233,30,106,0.1)' : '#FFF0F7';
+  const S = T.status.scheduled;
   const timeRange = j.start && j.end ? fmtTimeRange(j.start, j.end) : '—';
   const dateLabel = j.start ? dateBrief(j.start) : '';
 
@@ -15,8 +12,8 @@ export default function UpcomingCard({ job: j, T, onClick, total = 0, grandTotal
     <div
       onClick={onClick}
       style={{
-        background: BG,
-        border: `1.5px solid ${ACCENT}45`,
+        background: S.bg,
+        border: `1.5px solid ${S.border}`,
         borderRadius: 16,
         padding: '10px 14px 10px 12px',
         marginBottom: 8,
@@ -32,13 +29,13 @@ export default function UpcomingCard({ job: j, T, onClick, total = 0, grandTotal
         }}>
           {j.client_name}
         </div>
-        <div style={{ fontSize: 12, fontWeight: 700, color: ACCENT, whiteSpace: 'nowrap', flexShrink: 0, letterSpacing: '-0.3px' }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: S.text, whiteSpace: 'nowrap', flexShrink: 0, letterSpacing: '-0.3px' }}>
           {timeRange}
         </div>
         <span style={{
           fontFamily: T.font, fontSize: 9, fontWeight: 700,
           textTransform: 'uppercase', letterSpacing: '0.3px',
-          background: `${ACCENT}22`, color: ACCENT,
+          background: S.pill, color: S.text,
           padding: '2px 6px', borderRadius: 4, flexShrink: 0,
         }}>
           UPCOMING
@@ -50,7 +47,7 @@ export default function UpcomingCard({ job: j, T, onClick, total = 0, grandTotal
         <div style={{ fontSize: 11, fontWeight: 500, color: T.inkSub }}>{dateLabel}</div>
         {total > 0 && (
           <div style={{
-            fontFamily: T.serif, fontSize: 14, fontWeight: 600, color: ACCENT,
+            fontFamily: T.serif, fontSize: 14, fontWeight: 600, color: S.text,
             fontVariantNumeric: 'tabular-nums',
           }}>
             {privacyOn ? '•••' : `$${total.toFixed(0)}`}
@@ -63,7 +60,7 @@ export default function UpcomingCard({ job: j, T, onClick, total = 0, grandTotal
       <div style={{
         fontFamily: T.font, fontSize: 9, fontWeight: 700,
         textTransform: 'uppercase', letterSpacing: '0.4px',
-        background: `${ACCENT}18`, color: ACCENT,
+        background: S.pill, color: S.text,
         padding: '2px 6px', borderRadius: 4, display: 'inline-block', marginBottom: 3,
       }}>
         {j.service_name}

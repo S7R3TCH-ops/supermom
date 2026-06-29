@@ -2,7 +2,7 @@ import { fmtTimeRange, dateBrief } from '../../lib/dateUtils';
 import { useBusiness } from '../../data/useData';
 import { getWorkerLabel } from '../../lib/labels';
 
-export default function JobCard({ job: j, T, onClick, paid = 0, total = 0, grandTotal, privacyOn = false, subtle = false, hstNote = false }) {
+export default function JobCard({ job: j, T, onClick, paid = 0, total = 0, grandTotal, privacyOn = false, hstNote = false }) {
   const { business } = useBusiness();
   const isCompleted = j.status === 'Completed';
   const isPaid = j.payment_status === 'Paid';
@@ -10,15 +10,10 @@ export default function JobCard({ job: j, T, onClick, paid = 0, total = 0, grand
   const isUnpaid = isCompleted && !isPaid;
   const isOwing = isUnpaid || isPartial;
 
-  const isDark = T.ink === '#FFFFFF';
-
-  const borderColor = isPartial ? '#EA580C' : (isUnpaid && !isPartial) ? '#DC2626' : isPaid ? (isDark ? '#4ADE80' : '#16A34A') : (isDark ? '#FF70A6' : '#FC4693');
-  const bgColor = subtle ? 'transparent'
-    : isPartial ? (isDark ? 'rgba(249,115,22,0.14)' : '#FFEDD5')
-    : (isUnpaid && !isPartial) ? (isDark ? 'rgba(220,38,38,0.14)' : '#FEE2E2')
-    : isPaid ? (isDark ? 'rgba(22,163,74,0.12)' : '#DCFCE7')
-    : (isDark ? T.pinkTint : '#FCE7F3');
-  const accentColor = isPartial ? (isDark ? '#FB923C' : '#C2410C') : (isUnpaid && !isPartial) ? (isDark ? '#F87171' : '#991B1B') : isPaid ? (isDark ? '#4ADE80' : '#15803D') : (isDark ? '#FF70A6' : '#BE185D');
+  const S = isPartial ? T.status.partial
+    : (isUnpaid && !isPartial) ? T.status.overdue
+    : isPaid ? T.status.paid
+    : T.status.scheduled;
   const statusLabel = isPartial ? 'PARTIAL' : isUnpaid ? 'UNPAID' : isPaid ? 'PAID ✓' : 'SCHEDULED';
 
   const timeRange = j.start && j.end ? fmtTimeRange(j.start, j.end) : '—';
@@ -28,9 +23,9 @@ export default function JobCard({ job: j, T, onClick, paid = 0, total = 0, grand
     <div
       onClick={onClick}
       style={{
-        background: bgColor,
-        border: subtle ? `1px solid ${borderColor}44` : `1.5px solid ${borderColor}`,
-        borderLeft: subtle ? undefined : `4px solid ${borderColor}`,
+        background: S.bg,
+        border: `1.5px solid ${S.border}`,
+        borderLeft: `4px solid ${S.border}`,
         borderRadius: 16,
         padding: '10px 14px 10px 10px',
         marginBottom: 8,
@@ -46,13 +41,13 @@ export default function JobCard({ job: j, T, onClick, paid = 0, total = 0, grand
         }}>
           {j.client_name}
         </div>
-        <div style={{ fontSize: 12, fontWeight: 700, color: accentColor, whiteSpace: 'nowrap', flexShrink: 0, letterSpacing: '-0.3px' }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: S.text, whiteSpace: 'nowrap', flexShrink: 0, letterSpacing: '-0.3px' }}>
           {timeRange}
         </div>
         <span style={{
           fontFamily: T.font, fontSize: 9, fontWeight: 700,
           textTransform: 'uppercase', letterSpacing: '0.3px',
-          background: `${borderColor}22`, color: accentColor,
+          background: S.pill, color: S.text,
           padding: '2px 6px', borderRadius: 4, flexShrink: 0, whiteSpace: 'nowrap',
         }}>
           {statusLabel}
@@ -66,7 +61,7 @@ export default function JobCard({ job: j, T, onClick, paid = 0, total = 0, grand
           <div style={{
             fontFamily: T.serif, fontSize: 14,
             fontWeight: isOwing ? 700 : 600,
-            color: accentColor, fontVariantNumeric: 'tabular-nums',
+            color: S.text, fontVariantNumeric: 'tabular-nums',
           }}>
             {privacyOn ? '•••' : `$${total.toFixed(0)}`}
             {!privacyOn && hstNote && <span style={{ fontSize: 8, fontWeight: 700, opacity: 0.6, marginLeft: 2, fontFamily: T.font, textTransform: 'uppercase' }}> +HST</span>}
@@ -78,7 +73,7 @@ export default function JobCard({ job: j, T, onClick, paid = 0, total = 0, grand
       <div style={{
         fontFamily: T.font, fontSize: 9, fontWeight: 700,
         textTransform: 'uppercase', letterSpacing: '0.4px',
-        background: `${borderColor}18`, color: accentColor,
+        background: S.pill, color: S.text,
         padding: '2px 6px', borderRadius: 4, display: 'inline-block', marginBottom: 3,
       }}>
         {j.service_name}
@@ -91,7 +86,7 @@ export default function JobCard({ job: j, T, onClick, paid = 0, total = 0, grand
             {getWorkerLabel(business, j.assignee_type)}: {j.worker_name}
           </span>
           {isPaid && Number(j.raw?.worker_pay) > 0 && !j.raw?.worker_paid && (
-            <span style={{ fontSize: 8.5, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: T.amberBg, color: isDark ? '#FCD34D' : '#92400E', textTransform: 'uppercase', letterSpacing: '0.3px', flexShrink: 0 }}>
+            <span style={{ fontSize: 8.5, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: T.status.attention.pill, color: T.status.attention.text, textTransform: 'uppercase', letterSpacing: '0.3px', flexShrink: 0 }}>
               $ Unpaid
             </span>
           )}

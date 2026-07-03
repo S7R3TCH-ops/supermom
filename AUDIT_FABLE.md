@@ -4,6 +4,11 @@
 > `[ ] not started` / `[~] in progress` / `[x] done`. If `[~]`, see "STOPPED AT" note.
 > Fix policy: Phase 2/3 findings, query-invalidation, useBackClose/history, auth/RLS,
 > Tailwind v4 migration = FLAG ONLY. Only safe mechanical fixes auto-applied (see Applied Fixes).
+>
+> **EXECUTION SESSION (Jul 3 2026, `audit-fixes` branch)**: Tier A findings applied and
+> committed (see "## Execution Status" at bottom for per-finding status + commit hashes).
+> Tier B = migrations written, **NOT applied** — Joel runs + verifies against live DB.
+> Tier C untouched. Branch NOT pushed, NOT merged.
 
 ## Phase 1: Dependency & stack currency — [x] done
 
@@ -138,4 +143,75 @@
 4. **`package-lock.json`** — In-range dependency updates via `npm update` + `npm audit fix` (no `package.json` range changes): supabase-js 2.110.0, react-query 5.101.2, vite 8.1.3, **react-router-dom 7.18.1** (clears 2 high-sev advisories), plus babel/js-yaml/tar transitive fixes. Build verified green, vendor chunk split intact. ⚠️ RR bump needs phone-test before deploy (see Phase 1).
 
 ### NOT applied (flagged only)
-- All Phase 2 security findings (SEC-1..4), Phase 3 DATA-1, the `useBusiness.update` invalidation deviation, useBackClose/useIdleTimeout hook-rule violations, Tailwind v4, nodemailer v9 major, remaining dead-code inventory. See respective phases.
+- ~~All Phase 2 security findings (SEC-1..4), Phase 3 DATA-1, nodemailer v9 major, remaining dead-code inventory~~ — **applied in the Jul 3 execution session, see Execution Status below.**
+- Still flagged only: the `useBusiness.update` invalidation deviation, useBackClose/useIdleTimeout hook-rule violations (Tier C), Tailwind v4 (Tier C).
+
+---
+
+## Execution Status (Jul 3 2026 — `audit-fixes` branch)
+
+### ✅ Tier A — applied + committed (build green after every commit; `npm test` 29/29)
+
+| Finding | Status | Commit |
+|---|---|---|
+| SEC-2 AI endpoints no auth | **FIXED** — Bearer JWT via new `api/_lib/authGuard.js` (requireUser → users row → business scope; super-admin `role='admin'` may act cross-business). All 5 client call sites send `Authorization` via `authHeaders()` (new export in `src/lib/supabase.js`). | `a104dca` |
+| SEC-3 maps.js open proxy | **FIXED** — same-origin Origin/Referer host check (x-forwarded-host aware). JWT was NOT used because two callers (`Home.jsx:559`, `NewJobSheet.jsx:157`) are uncommitted theme-WIP and off-limits. ⚠️ Headers spoofable outside a browser — **Joel: set a Google Cloud key restriction (HTTP referrer or per-key daily quota) as the real backstop.** | `68dbe88` |
+| SEC-4 invoice email send unauthenticated | **FIXED** — POST branch requires JWT + invoice-ownership (404/403); sent-timestamp job update now business-scoped; Email button on /i/:id renders only for the owner. GET PDF stays public by design. | `c029a67` |
+| SEC-1 code half (anon-key invoice read) | **FIXED** — `GET /api/invoice?id=X&format=json` (service role, id sole input) added; `fetchInvoiceById` now fetches it; `/i/:id` no longer touches the anon Supabase client. Same return shape — InvoiceView + settle flow unchanged. | `600483d` |
+| DATA-1 child-table scoping | **FIXED** — `.eq('business_id', …)` added to payments/invoice_jobs deletes+selects in `hardDeleteJob`, `revertJobToPreCompletion`, `hardDeleteClient`. | `9846af6` |
+| Phase 4 dead code (committed files) | **FIXED** — all 8 files. Each verified dead first; notable: `Calendar.jsx` `useNow()` KEPT as bare call (per-minute re-render is load-bearing); `torontoDecimalHour` removed (week-view leftover, git history keeps it). | `5ee1195` |
+| nodemailer 8→9 (GHSA-p6gq) | **FIXED** — both consumers use plain `createTransport`+`sendMail`; smoke-tested via jsonTransport; `npm audit` now 0 vulnerabilities. | `b7f33b7` |
+| Phase 5 unit tests | **DONE** — Vitest + 29 tests on `financialMath` + `invoiceBalances` (`npm test`). Scoped to `src/**/*.test.*` so Playwright specs untouched. | `d0ab996` |
+
+Prior-session working-tree fixes committed as: `fdaaf1c` (Clients.jsx mode crash), `057968a` (sw.js lint globals), `c5b843e` (dep bumps incl. react-router-dom 7.18.1), `cf97d80` (docs). Theme WIP checkpointed first as `877731b`.
+
+### 🟠 Tier B — migration written, NOT applied — Joel runs + verifies against live DB
+
+1. **SEC-1 RLS half** — `supabase/migrations/20260703000000_revoke_anon_table_access.sql`.
+   Revokes ALL anon table privileges on invoices/invoice_jobs/clients/businesses/jobs/payments
+   and drops any `{anon}`-role policies. **READ THE HEADER COMMENT FIRST** — it has the
+   4-step runbook. Critical order: **deploy the branch BEFORE running the migration**
+   (old code reads invoices via anon key; migration kills that path). Policies with
+   role `public` are deliberately NOT auto-dropped (public ⊇ authenticated — could break
+   the logged-in app); the header includes the `pg_policies` query to review them manually.
+2. **Undocumented live RLS state** — NOT fixable from the repo. The helpers `is_admin()`/
+   `my_business_id()` and policies on workers/services/worker_skills/skill_types/
+   integrations/invoice_jobs/communication_log/config/audit_log/notification_log/
+   template_schedule that CLAUDE.md describes exist ONLY in the dashboard. **Joel: export
+   live RLS into a committed migration** — either `npx supabase db pull` (CLI is a dev dep)
+   or paste the output of
+   `SELECT * FROM pg_policies WHERE schemaname='public' ORDER BY tablename, policyname;`
+   plus the two function definitions into a new migration file. Until then the repo
+   cannot verify tenant isolation on those tables.
+
+### ⚪ Tier C — flagged only, untouched (unchanged from audit)
+- useBackClose/useIdleTimeout react-hooks v7 violations — needs a dedicated phone-tested session.
+- Tailwind v3→v4 — low-value churn, deferred.
+- `useBusiness.update` narrow invalidation — harmless deviation, left as-is.
+
+### 📱 Phone-test before merging this branch
+- **react-router-dom 7.14.2 → 7.18.1** (committed here as `c5b843e`): sheet open/close,
+  Android back button, JobDetailSheet → client name → ClientProfile nav — on BOTH
+  Joel's Pixel 10 Pro and Sandra's iPhone 16.
+- Invoice flow end-to-end: open a shared `/i/:id` link logged-out (JSON read path),
+  Download PDF, Email send while logged in (now JWT-gated), Record Payment panel.
+- AI features (chat, prep note, duration estimate, test persona) — now require auth
+  headers; verify they still work logged in.
+- Go button / drive times (maps.js now same-origin-gated) — from the installed PWA
+  on both phones.
+
+## Manual Cleanup (theme WIP files) — for Joel AFTER theme work merges
+
+Lint items living in the uncommitted theme WIP (checkpointed as `877731b`) — NOT touched
+this session. Several Home.jsx handlers smell like parked/half-wired features, not dead
+code — decide, don't blind-delete:
+
+- `src/pages/Home.jsx:40` `handleClockOut` unused — parked feature?
+- `src/pages/Home.jsx:330` `weekOwed`, `:340` `weekUpcoming` unused — leftovers from v0.12.96 card rework?
+- `src/pages/Home.jsx:366` `handleDuplicateJob` unused — relates to open item #3 (quick-rebook)?
+- `src/pages/Home.jsx:477` `isRefreshingTraffic`, `:535` `handleRefreshTraffic` unused — parked traffic-refresh UI?
+- `src/pages/Home.jsx:575` `err` unused catch binding — safe mechanical fix
+- `src/pages/Home.jsx:144` TDZ lint error + `:574` `lastFetchTimeRef` mutation lint — deliberate workarounds per in-file comments, leave
+- `src/components/cards/JobCard.jsx:5` `paid`, `grandTotal` unused destructured props
+- `src/components/cards/UpcomingCard.jsx:5` `grandTotal`, `paid` unused destructured props
+- `src/components/sheets/NewJobSheet.jsx:153` setState-in-effect lint (behavior-sensitive, review only)

@@ -1,7 +1,29 @@
 // Proxy for Google Maps APIs. Route via ?type=distance or ?type=geocode.
+
+// The app only ever calls this same-origin, so the Origin/Referer host must
+// match the deployment's own host. Blocks third-party pages and header-less
+// scripts from burning the 500-element/day Distance Matrix quota. (Headers
+// are spoofable outside a browser — Google Cloud key restrictions are the
+// backstop; see AUDIT_FABLE.md SEC-3.)
+function isSameOriginRequest(req) {
+  const ownHost = (req.headers['x-forwarded-host'] || req.headers.host || '').split(',')[0].trim();
+  if (!ownHost) return false;
+  const source = req.headers.origin || req.headers.referer;
+  if (!source) return false;
+  try {
+    return new URL(source).host === ownHost;
+  } catch {
+    return false;
+  }
+}
+
 export default async function handler(req, res) {
   const apiKey = process.env.GOOGLE_MAPS_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'Google Maps API key not configured' });
+
+  if (!isSameOriginRequest(req)) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
 
   const { type } = req.query;
 

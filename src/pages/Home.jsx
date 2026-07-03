@@ -1183,6 +1183,13 @@ export default function Home() {
                   'partial':      { ...T.status.partial,   label: 'PARTIAL PAID' },
                 }[variant];
 
+                // Bold solid fill for unpaid/overdue/partial — switch body text to white for contrast
+                const isBold = !isWrapUp;
+                const cardNameColor = isBold ? VSTYLES.fg : T.ink;
+                const cardSubColor = isBold ? 'rgba(255,255,255,0.85)' : T.inkSub;
+                const cardMutedColor = isBold ? 'rgba(255,255,255,0.75)' : T.inkMuted;
+                const cardAccentColor = isBold ? VSTYLES.fg : VSTYLES.text;
+
                 const h = j.hoursOld;
                 const recencyText = isWrapUp
                   ? (h < 1 ? 'just now' : h < 24 ? `${Math.floor(h)}h overdue` : `${Math.floor(h / 24)}d overdue`)
@@ -1218,22 +1225,22 @@ export default function Home() {
                       {isWrapUp ? (
                         <span style={{ fontFamily: T.font, fontSize: 11, color: VSTYLES.text, opacity: 0.8 }}>Tap to wrap up →</span>
                       ) : (
-                        <span style={{ fontFamily: T.serif, fontSize: 14, fontWeight: 700, color: VSTYLES.text, fontVariantNumeric: 'tabular-nums' }}>
+                        <span style={{ fontFamily: T.serif, fontSize: 14, fontWeight: 700, color: cardAccentColor, fontVariantNumeric: 'tabular-nums' }}>
                           {privacyOn ? '•••' : `$${j.remaining.toFixed(0)} owing`}
                         </span>
                       )}
                     </div>
-                    <div style={{ fontFamily: T.serif, fontSize: 16, fontWeight: 600, color: T.ink, letterSpacing: '-0.3px', marginBottom: 2 }}>
+                    <div style={{ fontFamily: T.serif, fontSize: 16, fontWeight: 600, color: cardNameColor, letterSpacing: '-0.3px', marginBottom: 2 }}>
                       {j.client_name}
                     </div>
                     {j.service_name && (
-                      <div style={{ fontFamily: T.font, fontSize: 12, color: T.inkSub, marginBottom: 4 }}>
+                      <div style={{ fontFamily: T.font, fontSize: 12, color: cardSubColor, marginBottom: 4 }}>
                         {j.service_name}
                       </div>
                     )}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontFamily: T.font, fontSize: 11, color: T.inkMuted }}>{dateStr} · {timeRange}</span>
-                      <span style={{ fontFamily: T.font, fontSize: 11, fontWeight: 600, color: VSTYLES.text }}>{recencyText}</span>
+                      <span style={{ fontFamily: T.font, fontSize: 11, color: cardMutedColor }}>{dateStr} · {timeRange}</span>
+                      <span style={{ fontFamily: T.font, fontSize: 11, fontWeight: 600, color: cardAccentColor }}>{recencyText}</span>
                     </div>
                   </button>
                 );

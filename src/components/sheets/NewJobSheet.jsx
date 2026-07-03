@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { useServices, useBusiness, notifyDataChanged } from '../../data/useData';
 import { createJob, fetchActiveJobs, fetchJobsByClientId, findConflicts, composeTorontoISO } from '../../data/jobsRepo';
@@ -63,6 +64,7 @@ function diffMinutes(startHHMM, endHHMM) {
 
 export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
   const { T } = useAppTheme();
+  const navigate = useNavigate();
   const toast = useToast();
   const isKeyboardFocused = useKeyboardFocus();
   const { services } = useServices();
@@ -288,6 +290,7 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
       notifyDataChanged();
       toast.success('Mission Booked! 🚀');
       onClose();
+      navigate('/');
     } catch (e) {
       setBookErr(e.message || String(e));
     } finally {

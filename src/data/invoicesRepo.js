@@ -1,7 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { getCurrentBusinessId } from './currentBusiness';
 import { computeJobTotal, computeJobFinancials } from '../lib/financialMath';
-import { decorateInvoiceWithBalances } from '../lib/invoiceBalances';
 
 /**
  * Generates a formal invoice for a job if one doesn't already exist.
@@ -97,25 +96,20 @@ export async function generateInvoiceForJob(jobId) {
 }
 
 /**
- * Fetches an invoice and its associated job(s) and client data.
+ * Fetches an invoice and its associated job(s) and client data, decorated with
+ * payment balances.
+ *
+ * Reads via the service-role JSON endpoint (api/invoice.js?format=json) rather
+ * than the browser anon Supabase client, so the public /i/:id route needs no
+ * anon SELECT policies on invoices/clients/businesses/jobs (SEC-1).
  */
 export async function fetchInvoiceById(id) {
-  const { data: invoice, error } = await supabase
-    .from('invoices')
-    .select(`
-      *,
-      clients (*),
-      businesses (*),
-      invoice_jobs (
-        job_id,
-        jobs (*)
-      )
-    `)
-    .eq('id', id)
-    .single();
-
-  if (error) throw error;
-  return decorateInvoiceWithBalances(supabase, invoice);
+  const res = await fetch(`/api/invoice?id=${encodeURIComponent(id)}&format=json`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `Failed to load invoice (${res.status})`);
+  }
+  return res.json();
 }
 
 const torontoToday = () =>

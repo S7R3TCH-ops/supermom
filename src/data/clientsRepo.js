@@ -120,8 +120,8 @@ export async function hardDeleteClient(clientId) {
     .eq('client_id', clientId)
     .eq('business_id', businessId);
   for (const job of jobs ?? []) {
-    await supabase.from('payments').delete().eq('job_id', job.id);
-    await supabase.from('invoice_jobs').delete().eq('job_id', job.id);
+    await supabase.from('payments').delete().eq('job_id', job.id).eq('business_id', businessId);
+    await supabase.from('invoice_jobs').delete().eq('job_id', job.id).eq('business_id', businessId);
     await supabase.from('jobs').delete().eq('id', job.id).eq('business_id', businessId);
   }
   const { error } = await supabase

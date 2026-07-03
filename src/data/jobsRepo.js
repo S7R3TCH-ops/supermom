@@ -375,8 +375,8 @@ export async function archiveClientJobs(clientId) {
 
 export async function hardDeleteJob(id) {
   const businessId = await getCurrentBusinessId();
-  await supabase.from('payments').delete().eq('job_id', id);
-  await supabase.from('invoice_jobs').delete().eq('job_id', id);
+  await supabase.from('payments').delete().eq('job_id', id).eq('business_id', businessId);
+  await supabase.from('invoice_jobs').delete().eq('job_id', id).eq('business_id', businessId);
   const { error } = await supabase.from('jobs').delete().eq('id', id).eq('business_id', businessId);
   if (error) throw error;
 }
@@ -395,10 +395,10 @@ export async function revertJobToPreCompletion(id) {
 
   for (const { invoice_id } of (links ?? [])) {
     await supabase.from('invoice_jobs')
-      .delete().eq('invoice_id', invoice_id).eq('job_id', id);
+      .delete().eq('invoice_id', invoice_id).eq('job_id', id).eq('business_id', businessId);
 
     const { data: remaining } = await supabase
-      .from('invoice_jobs').select('job_id').eq('invoice_id', invoice_id);
+      .from('invoice_jobs').select('job_id').eq('invoice_id', invoice_id).eq('business_id', businessId);
 
     if (!remaining || remaining.length === 0) {
       await supabase.from('invoices')

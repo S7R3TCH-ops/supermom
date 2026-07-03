@@ -3,6 +3,7 @@ import { useAppTheme } from '../../context/AppThemeContext';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useBackClose } from '../../hooks/useBackClose';
 import { getCurrentBusinessId } from '../../data/currentBusiness';
+import { authHeaders } from '../../lib/supabase';
 import GrabBar from '../ui/GrabBar';
 
 export default function AiChatSheet({ onClose, context = {} }) {
@@ -39,7 +40,7 @@ export default function AiChatSheet({ onClose, context = {} }) {
     try {
       const res = await fetch('/api/ai/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await authHeaders(),
         body: JSON.stringify({
           messages: next.slice(-20),
           businessId,

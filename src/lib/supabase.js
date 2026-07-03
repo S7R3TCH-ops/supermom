@@ -14,3 +14,18 @@ export const supabase = createClient(url ?? '', anonKey ?? '', {
 });
 
 export const hasSupabaseConfig = Boolean(url && anonKey);
+
+/** Current session's access token, for Authorization headers on /api/* calls. */
+export async function getAccessToken() {
+  const { data: { session } = {} } = await supabase.auth.getSession();
+  return session?.access_token ?? null;
+}
+
+/** Standard JSON + Bearer headers for authenticated /api/* fetches. */
+export async function authHeaders() {
+  const token = await getAccessToken();
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}

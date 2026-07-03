@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
+import { requireUser, canAccessBusiness } from '../_lib/authGuard.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
@@ -21,6 +22,15 @@ export default async function handler(req, res) {
   }
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+  const auth = await requireUser(req, supabase);
+  if (auth.error) return res.status(auth.error.status).json({ error: auth.error.message });
+  if (businessId && !canAccessBusiness(auth, businessId)) {
+    return res.status(403).json({ error: 'Forbidden: business mismatch' });
+  }
+  // Scope context lookups to the caller's business (admins keep the requested scope).
+  const scopeBusinessId = auth.isAdmin ? businessId : auth.businessId;
+
   const anthropic = new Anthropic({ apiKey: anthropicKey });
 
   const systemParts = [
@@ -41,11 +51,12 @@ export default async function handler(req, res) {
   }
 
   if (clientId) {
-    const { data: client } = await supabase
+    let q = supabase
       .from('clients')
       .select('first_name, last_name, notes, ai_context, tags')
-      .eq('id', clientId)
-      .single();
+      .eq('id', clientId);
+    if (scopeBusinessId) q = q.eq('business_id', scopeBusinessId);
+    const { data: client } = await q.single();
     if (client) {
       const name = [client.first_name, client.last_name].filter(Boolean).join(' ');
       systemParts.push(`Client context: ${name}.`);
@@ -56,11 +67,12 @@ export default async function handler(req, res) {
   }
 
   if (jobId) {
-    const { data: job } = await supabase
+    let q = supabase
       .from('jobs')
       .select('service_name, scheduled_date, job_status, job_notes')
-      .eq('id', jobId)
-      .single();
+      .eq('id', jobId);
+    if (scopeBusinessId) q = q.eq('business_id', scopeBusinessId);
+    const { data: job } = await q.single();
     if (job) {
       systemParts.push(`Job context: ${job.service_name} on ${job.scheduled_date}, status: ${job.job_status}.`);
       if (job.job_notes) systemParts.push(`Job notes: ${job.job_notes}`);

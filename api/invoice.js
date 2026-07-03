@@ -1,6 +1,7 @@
 import nodemailer from 'nodemailer';
 import { createClient } from '@supabase/supabase-js';
 import { buildInvoicePdfBuffer } from './_lib/invoicePdf.js';
+import { requireUser, canAccessBusiness } from './_lib/authGuard.js';
 import { decorateInvoiceWithBalances } from '../src/lib/invoiceBalances.js';
 
 function escapeHtml(str) {
@@ -128,6 +129,24 @@ async function handleEmail(req, res) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
+  const sb = makeSupabase();
+
+  // Sending email + flipping invoice_sent_at/receipt_sent_at is side-effecting:
+  // only the invoice's own business (or a super admin) may trigger it.
+  // GET download stays public — shareable-by-design.
+  const auth = await requireUser(req, sb);
+  if (auth.error) return res.status(auth.error.status).json({ error: auth.error.message });
+
+  const { data: invoiceData } = await sb
+    .from('invoices')
+    .select('*, clients(*), businesses(*), invoice_jobs(job_id, jobs(*))')
+    .eq('id', invoiceId)
+    .single();
+  if (!invoiceData) return res.status(404).json({ error: 'Invoice not found' });
+  if (!canAccessBusiness(auth, invoiceData.business_id)) {
+    return res.status(403).json({ error: 'Forbidden: invoice not in your business' });
+  }
+
   const gmailUser = process.env.GMAIL_USER;
   const gmailPass = process.env.GMAIL_APP_PASSWORD;
 
@@ -135,13 +154,6 @@ async function handleEmail(req, res) {
     console.warn('[invoice/email] Gmail credentials not configured — email not sent');
     return res.status(200).json({ ok: true, mock: true });
   }
-
-  const sb = makeSupabase();
-  const { data: invoiceData } = await sb
-    .from('invoices')
-    .select('*, clients(*), businesses(*), invoice_jobs(job_id, jobs(*))')
-    .eq('id', invoiceId)
-    .single();
 
   let pdfBuffer = null;
   let isReceipt = false;
@@ -181,7 +193,9 @@ async function handleEmail(req, res) {
 
     if (jobIds.length) {
       const sentField = isReceipt ? 'receipt_sent_at' : 'invoice_sent_at';
-      await sb.from('jobs').update({ [sentField]: new Date().toISOString() }).in('id', jobIds);
+      await sb.from('jobs').update({ [sentField]: new Date().toISOString() })
+        .in('id', jobIds)
+        .eq('business_id', invoiceData.business_id);
     }
 
     return res.status(200).json({ ok: true, isReceipt });

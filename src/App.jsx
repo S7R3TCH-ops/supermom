@@ -1,7 +1,7 @@
 import { Component, lazy, Suspense, useState, useEffect, useRef } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './lib/queryClient';
-import { BrowserRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { supabase } from './lib/supabase';
 import { AppThemeProvider } from './context/AppTheme';
@@ -202,7 +202,6 @@ function AuthedShell() {
   const { T } = useAppTheme();
   const { viewingAsId } = useViewpoint();
   const { signOut: authSignOut } = useAuth();
-  const location = useLocation();
   useRealtimeSync();
 
   useEffect(() => {

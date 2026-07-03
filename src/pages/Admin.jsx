@@ -46,7 +46,7 @@ export default function Admin() {
   const { business, loading: bizLoading, update: updateBiz } = useBusiness();
   const { clients, loading: clientsLoading } = useClients();
   const { jobs, loading: jobsLoading } = useJobs();
-  const { isSuperAdmin, allBusinesses, switchTo, viewingAsId, reset, refresh } = useViewpoint();
+  const { isSuperAdmin, allBusinesses, switchTo, viewingAsId, refresh } = useViewpoint();
   const navigate = useNavigate();
 
   // SECURITY: Redirect non-superadmins and non-owners back to home

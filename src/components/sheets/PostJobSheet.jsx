@@ -199,7 +199,7 @@ export default function PostJobSheet({ jobId, onClose }) {
         } else {
           setPhase('nudge');
         }
-      } catch (_) {
+      } catch {
         setPhase('nudge');
       }
       setBusy(false);
@@ -399,7 +399,7 @@ export default function PostJobSheet({ jobId, onClose }) {
                       await settleInvoiceOutstanding(invoiceId, method, ids);
                     }
                     notifyDataChanged();
-                  } catch (_) {
+                  } catch {
                     // non-fatal — proceed to nudge regardless
                   }
                   setBundleBusy(false);

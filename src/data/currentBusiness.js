@@ -4,9 +4,7 @@
 
 import { supabase } from '../lib/supabase';
 
-let cachedBusinessId = null;
 let cachedAuthId = null;
-let cachedRole = null;
 // cachedEffectiveId: the resolved business ID actually returned (covers admin override too).
 // Cleared by clearBusinessCache() and setSuperOverride() so the override is always fresh.
 let cachedEffectiveId = null;
@@ -52,7 +50,6 @@ export async function getCurrentBusinessId() {
       if (error) throw error;
 
       cachedAuthId = user.id;
-      cachedRole = data?.role;
 
       if (data?.role === 'admin') {
         const overrideId = superOverrideId || sessionStorage.getItem('superViewId') || window.__SUPER_VIEW_ID;
@@ -69,7 +66,6 @@ export async function getCurrentBusinessId() {
         throw new Error(`User ${user.email} has no linked business — run scripts/seed.mjs to provision`);
       }
 
-      cachedBusinessId = data.business_id;
       cachedEffectiveId = data.business_id;
       return data.business_id;
     } finally {
@@ -106,8 +102,6 @@ export async function updateBusinessProfile(patch) {
 }
 
 export function clearBusinessCache() {
-  cachedBusinessId = null;
   cachedAuthId = null;
-  cachedRole = null;
   cachedEffectiveId = null;
 }

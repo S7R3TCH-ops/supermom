@@ -6,7 +6,6 @@ import { EmptySchedule } from '../components/ui/Illustrations';
 import OfflineMessage from '../components/ui/OfflineMessage';
 import WeekStrip from '../components/ui/WeekStrip';
 import { getNavigationUrl } from '../lib/maps';
-import { triggerHaptic } from '../lib/haptics';
 
 // Real "now" — was previously a hard-coded prototype anchor.
 const NOW = () => new Date();
@@ -26,15 +25,6 @@ function useNow() {
 // Extract the Toronto calendar date as "YYYY-MM-DD" — used for day comparisons and grouping.
 function torontoDateKey(d) {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Toronto' }).format(d);
-}
-// extract Toronto decimal hour (h + min/60) for block layout calculations.
-function torontoDecimalHour(d) {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Toronto', hourCycle: 'h23', hour: '2-digit', minute: '2-digit',
-  }).formatToParts(d);
-  const h = parseInt(parts.find(p => p.type === 'hour').value, 10);
-  const m = parseInt(parts.find(p => p.type === 'minute').value, 10);
-  return h + m / 60;
 }
 function startOfWeek(d) {
   // Anchor at 17:00 UTC (= noon EDT / 1 PM EST) of the Toronto Monday so torontoDateKey
@@ -144,7 +134,7 @@ function findSameDayConflicts(jobsOnDay) {
 
 export default function Calendar() {
   const { T, mode, privacyOn } = useAppTheme();
-  const now = useNow();
+  useNow(); // subscription only — re-renders once/minute so NOW() reads stay fresh
   const [view, setView] = useState('Agenda');
   const [selectedDay, setSelectedDay] = useState(() => NOW());
   const [weekStart, setWeekStart] = useState(() => startOfWeek(NOW()));

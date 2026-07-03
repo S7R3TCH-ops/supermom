@@ -169,10 +169,6 @@ export default function OnboardingWalkthrough() {
     fontFamily: 'var(--font-ui)', cursor: disabled ? 'default' : 'pointer',
     boxShadow: '0 4px 15px rgba(233,30,106,0.3)', opacity: disabled ? 0.8 : 1,
   });
-  const skipBtn = {
-    background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)',
-    fontSize: 12, cursor: 'pointer', padding: '4px 8px', marginTop: 6,
-  };
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(26,10,18,0.7)', backdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>

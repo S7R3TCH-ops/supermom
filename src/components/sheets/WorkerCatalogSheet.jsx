@@ -47,7 +47,7 @@ export default function WorkerCatalogSheet({ isOpen, onClose }) {
       ]);
       setWorkers(ws);
       setSkillTypes(sts);
-    } catch (e) {
+    } catch {
       toast.error('Failed to load team');
     } finally {
       setLoading(false);

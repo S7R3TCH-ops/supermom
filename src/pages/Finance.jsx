@@ -875,7 +875,7 @@ function FinanceSkeleton({ T }) {
   );
 }
 
-function StatCard({ T, mode, label, value, color, privacyOn, onClick, count, workerCosts }) {
+function StatCard({ T, label, value, color, privacyOn, onClick, count, workerCosts }) {
   const isNeg = value < 0;
   return (
     <button

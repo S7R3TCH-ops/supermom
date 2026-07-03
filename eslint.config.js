@@ -16,6 +16,14 @@ export default defineConfig([
     }
   },
   {
+    files: ['src/sw.js'],
+    languageOptions: {
+      globals: {
+        ...globals.serviceworker,
+      }
+    }
+  },
+  {
     files: ['src/**/*.{js,jsx}'],
     extends: [
       js.configs.recommended,

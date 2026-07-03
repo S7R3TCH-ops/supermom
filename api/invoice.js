@@ -122,6 +122,32 @@ async function handleDownload(req, res) {
   }
 }
 
+// Public JSON read for the /i/:id invoice page (id is the sole input, like the
+// PDF download). Reads via service role so the browser needs NO anon RLS
+// access to invoices/clients/businesses/jobs — closes the SEC-1 exposure where
+// the anon key's policy scope was unverified and load-bearing.
+async function handleJsonRead(req, res) {
+  const { id } = req.query;
+  if (!id) return res.status(400).json({ error: 'Missing id' });
+
+  const sb = makeSupabase();
+  const { data: invoice, error } = await sb
+    .from('invoices')
+    .select('*, clients(*), businesses(*), invoice_jobs(job_id, jobs(*))')
+    .eq('id', id)
+    .single();
+  if (error || !invoice) return res.status(404).json({ error: 'Invoice not found' });
+
+  try {
+    const decorated = await decorateInvoiceWithBalances(sb, invoice);
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(200).json(decorated);
+  } catch (err) {
+    console.error('[invoice/json] decoration failed:', err);
+    return res.status(500).json({ error: 'Failed to load invoice' });
+  }
+}
+
 async function handleEmail(req, res) {
   const { invoiceId, clientEmail, clientName, clientLastName, invoiceNumber, bizName, bizEmail } = req.body;
 
@@ -206,7 +232,9 @@ async function handleEmail(req, res) {
 }
 
 export default async function handler(req, res) {
-  if (req.method === 'GET') return handleDownload(req, res);
+  if (req.method === 'GET') {
+    return req.query.format === 'json' ? handleJsonRead(req, res) : handleDownload(req, res);
+  }
   if (req.method === 'POST') return handleEmail(req, res);
   return res.status(405).end();
 }

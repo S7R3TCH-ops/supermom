@@ -511,8 +511,9 @@ export default function Home() {
     if (!next?.address) return;
     setIsGoLaunching(true);
     setIsFlyingIcon(true);
-    // Open synchronously to capture user gesture — iOS Safari blocks window.open from setTimeout
-    const win = window.open('', '_blank');
+    // Same-tab navigation (not window.open) — immune to popup/"tab-under" blocking
+    // that browsers apply to a blank window redirected after a delay. iOS/Android
+    // universal-link interception still fires on a plain location.href navigation.
     const gpsPromise = new Promise(resolve =>
       navigator.geolocation.getCurrentPosition(
         pos => resolve(`${pos.coords.latitude},${pos.coords.longitude}`),
@@ -526,7 +527,7 @@ export default function Home() {
       if (freshOrigin) setLastKnownOrigin(freshOrigin);
       const originParam = origin ? `&origin=${encodeURIComponent(origin)}` : '';
       const url = `https://www.google.com/maps/dir/?api=1${originParam}&destination=${encodeURIComponent(next.address)}&travelmode=driving&avoid=tolls`;
-      if (win) win.location.href = url;
+      window.location.href = url;
       setIsGoLaunching(false);
     }, 1100);
     setTimeout(() => setIsFlyingIcon(false), 1450);

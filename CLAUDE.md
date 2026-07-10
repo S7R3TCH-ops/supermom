@@ -149,13 +149,16 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 
 ---
 
-## Current version: 0.13.7 — Jun 28, 2026 (package.json synced)
+## Current version: 0.13.8 — Jul 10, 2026 (package.json synced)
 
 Sandra's business is live — data wiped and re-provisioned Jun 9. App in active use.
 
 **⚠️ Multi-client git discipline**: Always push local commits before starting an online Claude Code session; always pull before the online session writes code.
 
 ### Recent changes (full history in `docs/changelog/` + `git log`)
+- **v0.13.8 (Jul 10) — drive time / leave-by / hero Go button: FIXED.** Two independent bugs, both resolved:
+  1. **Maps API key restriction** — Joel set Application restrictions to **None** and API restrictions to **Distance Matrix API + Geocoding API only** in Google Cloud Console. Confirmed live via direct curl to prod `/api/maps` — both `type=distance` and `type=geocode` now return `status: "OK"` (previously `REQUEST_DENIED: "API keys with referer restrictions cannot be used with this API."`). This was the root cause of drive time never updating and the urgency pulsate never firing (distance matrix fetch failed silently, `locationDrives` never populated).
+  2. **Go button not launching Maps app (`Home.jsx` `handleSupermomGo`)** — was a separate regression: `window.open('', '_blank')` opened blank, then redirected via `.location.href` ~1.1s later after an async GPS lookup. That delayed-redirect-of-a-blank-window shape is the "tab-under" pattern browsers have tightened anti-abuse heuristics against — likely why it stopped working despite being the v0.13.5 iOS fix. Replaced with same-tab `window.location.href` navigation (immune to popup/tab-under blocking; iOS/Android universal-link interception into the native Maps app still fires on a plain navigation). Build-verified; **not yet phone-tested** — confirm on Pixel 10 Pro that Go actually opens the Maps app and drive time/pulsate populate on Home.
 - **`audit-fixes` branch (Jul 3, unmerged — phone-test before merge)** — Fable audit execution. Security: AI endpoints (`api/ai/chat.js`, `api/ai/[action].js`) + invoice email POST now require Bearer JWT (`api/_lib/authGuard.js`; client sends via `authHeaders()` from `src/lib/supabase.js`); `api/maps.js` gated by same-origin Origin/Referer check; public `/i/:id` invoice reads via `GET /api/invoice?id=X&format=json` (service role) instead of the browser anon key. Data: child-table deletes business-scoped. Deps: nodemailer 8→9, react-router-dom 7.14.2→**7.18.1** (⚠️ touches useBackClose-adjacent router internals — test sheets + Android back on both phones). Tests: Vitest added, `npm test` = 29 unit tests on financialMath + invoiceBalances. ⚠️ Pending Joel: run `supabase/migrations/20260703000000_revoke_anon_table_access.sql` in SQL Editor AFTER deploying (runbook in file header); export live RLS state to a committed migration; set Google Cloud Maps key restriction. Full status: `AUDIT_FABLE.md`.
 - **v0.13.7 (Jun 28)** — Status card color system overhaul: replaced all hardcoded hex in `VSTYLES` (Home.jsx), `JobCard.jsx`, `UpcomingCard.jsx` with semantic `T.status.*` tokens. New jewel-tone palette in `tokens.js`: scheduled=cobalt, attention/wrap-up=mustard, unpaid=crimson-rose, overdue=scarlet, partial=burnt orange, paid=forest green — none are stock Tailwind defaults. Scheduled cards move from pink to cobalt blue, freeing pink for brand identity only. Hero pulse dot now uses `T.pink` (was hardcoded `#FC4693`); hero card box shadow fixed to `T.pinkGlow` (was old pink value).
 - **v0.13.6 (Jun 28)** — Light mode color overhaul: align app palette to Sandra's official brand. Primary pink `#E91E6A` → `#FC4693`; warm-brown text (`#4E342E`/`#795548`) → neutral grays (`#2D2D2D`/`#606060`); bg `#FFF0F3` → `#FFEFF4`. Icons were already `#FC4693` — app interior now consistent. LIGHT_PALETTE in `tokens.js` renamed "Brand Rose". CLAUDE.md open items pruned: 8 completed items removed, remaining items renumbered 1–14.
@@ -198,6 +201,8 @@ Sandra's business is live — data wiped and re-provisioned Jun 9. App in active
 > Maps quota: Distance Matrix hard-capped at 500 elements/day. Sandra's real usage ~15–30/day. **Don't rapid-redeploy** (resets cron clock).
 
 ### 🔴 Bugs / Active issues
+
+0. **PRIORITY — next session: phone-test v0.13.8 Go button fix on Pixel 10 Pro.** Maps key restriction fixed + confirmed live; Go button same-tab navigation fix build-verified but not device-tested. Full writeup above under "v0.13.8 (Jul 10)" changelog entry.
 
 1. **Device verification** — v0.12.32–v0.12.68 not phone-tested. Test Home page + invoice flow on Pixel 10 Pro + Sandra's iPhone before next feature push.
 

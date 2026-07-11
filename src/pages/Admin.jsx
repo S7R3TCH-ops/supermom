@@ -64,6 +64,19 @@ export default function Admin() {
   const [showWorkers, setShowWorkers] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null); // { id, name }
   const [restoreConfirm, setRestoreConfirm] = useState(null); // { id, name }
+  const [errorLogs, setErrorLogs] = useState([]);
+  const [errorLogsLoading, setErrorLogsLoading] = useState(true);
+  const [expandedErrorId, setExpandedErrorId] = useState(null);
+
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+    supabase.from('error_logs')
+      .select('id, business_id, source, severity, message, stack, context, created_at')
+      .order('created_at', { ascending: false })
+      .limit(50)
+      .then(({ data }) => setErrorLogs(data || []))
+      .finally(() => setErrorLogsLoading(false));
+  }, [isSuperAdmin]);
 
   // Clear pending style when business data actually updates to match - adjusting state during render
   if (pendingStyle && business?.ai_profile?.style === pendingStyle) {
@@ -368,6 +381,52 @@ export default function Admin() {
                 </div>
               </div>
             )}
+
+            <SectionLabel>Super Admin: Error Log</SectionLabel>
+            <div style={{ background: 'var(--plum-dark)', border: '1.5px solid var(--pink-mid)', borderRadius: 16, padding: '14px', marginBottom: 20 }}>
+              <div style={{ fontSize: 11, color: 'var(--pink-label)', marginBottom: 12, fontWeight: 600 }}>
+                Last 50 client + server errors, across all businesses.
+              </div>
+              {errorLogsLoading ? (
+                <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, textAlign: 'center', padding: '10px 0' }}>Loading…</div>
+              ) : errorLogs.length === 0 ? (
+                <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, textAlign: 'center', padding: '10px 0' }}>No errors logged. ✓</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 340, overflowY: 'auto' }}>
+                  {errorLogs.map(e => {
+                    const isOpen = expandedErrorId === e.id;
+                    const sevColor = e.severity === 'critical' ? '#DC2626' : e.severity === 'warning' ? '#F59E0B' : 'var(--pink)';
+                    return (
+                      <div key={e.id} style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)', padding: '10px 12px' }}>
+                        <div
+                          onClick={() => setExpandedErrorId(isOpen ? null : e.id)}
+                          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, cursor: 'pointer' }}
+                        >
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                              <span style={{ fontSize: 9, fontWeight: 800, color: sevColor, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{e.severity}</span>
+                              <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)' }}>· {e.source}</span>
+                            </div>
+                            <div style={{ color: 'white', fontSize: 12.5, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: isOpen ? 'normal' : 'nowrap' }}>{e.message}</div>
+                          </div>
+                          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', whiteSpace: 'nowrap' }}>{new Date(e.created_at).toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</div>
+                        </div>
+                        {isOpen && (
+                          <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                            {e.context && (
+                              <pre style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: '0 0 6px' }}>{JSON.stringify(e.context, null, 2)}</pre>
+                            )}
+                            {e.stack && (
+                              <pre style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0 }}>{e.stack}</pre>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </>
         )}
 

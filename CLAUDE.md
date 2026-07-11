@@ -77,6 +77,7 @@ A mobile-first CRM & operations web app for **Sandra**, a solo personal-life-ope
 | `skill_types` | Business-scoped skill catalog. |
 | `worker_skills` | Junction: `worker_id` → `skill_type_id` + `pay_rate`. |
 | `integrations` | OAuth tokens (Google Calendar). |
+| `error_logs` | Client + server error capture (source, severity, message, stack, context). Append-only, admin-viewable in Admin page. **Migration not yet run** — see Open Items. |
 | `storage.job-assets` | Private bucket for job photos and voice notes. |
 
 ### Critical data layer rules
@@ -156,6 +157,12 @@ Sandra's business is live — data wiped and re-provisioned Jun 9. App in active
 **⚠️ Multi-client git discipline**: Always push local commits before starting an online Claude Code session; always pull before the online session writes code.
 
 ### Recent changes (full history in `docs/changelog/` + `git log`)
+- **Error tracking (Jul 10, `audit-fixes` branch, not yet merged)** — no error tracking service existed anywhere (56 scattered `console.error`/`toast.error` calls, 8 API routes with bare `try/catch`, silent Vercel function logs nobody watches). Lightweight capture, no new serverless function, full Sentry-style tracking deliberately deferred:
+  - New `error_logs` table (migration `20260710010000_add_error_logs.sql`, **not yet run** — see Open Items): `business_id`, `source` (client/server), `severity`, `message`, `stack`, `context` jsonb. RLS: insert own business or null, select `is_admin()` or own business.
+  - `src/lib/errorTracking.js` — `logClientError()` + `installGlobalErrorTracking()` (wired in `main.jsx`), catching genuinely unhandled `window.onerror`/`unhandledrejection` — the errors Sandra hits and never reports because she doesn't even see them.
+  - `api/_lib/errorLog.js` — `logServerError({ severity, message, stack, context, businessId, alert })`; `alert: true` sends Joel (`ALERT_EMAIL` env, defaults `jlundie@gmail.com`) an email via the existing nodemailer/Gmail setup.
+  - Wired into the two most "silent" server failure points: `api/briefing/daily.js` (was **entirely unwrapped** — any uncaught throw crashed the cron with zero notification; now top-level try/catch + per-business sendMail failure both alert) and `api/invoice.js` invoice-email send failure (money-flow action, alerts Joel).
+  - Admin page (`src/pages/Admin.jsx`, super-admin only) — new "Error Log" section, last 50 rows, expandable stack/context.
 - **v0.13.8 (Jul 10) — drive time / leave-by / hero Go button: FIXED.** Two independent bugs, both resolved:
   1. **Maps API key restriction** — Joel set Application restrictions to **None** and API restrictions to **Distance Matrix API + Geocoding API only** in Google Cloud Console. Confirmed live via direct curl to prod `/api/maps` — both `type=distance` and `type=geocode` now return `status: "OK"` (previously `REQUEST_DENIED: "API keys with referer restrictions cannot be used with this API."`). This was the root cause of drive time never updating and the urgency pulsate never firing (distance matrix fetch failed silently, `locationDrives` never populated).
   2. **Go button not launching Maps app (`Home.jsx` `handleSupermomGo`)** — was a separate regression: `window.open('', '_blank')` opened blank, then redirected via `.location.href` ~1.1s later after an async GPS lookup. That delayed-redirect-of-a-blank-window shape is the "tab-under" pattern browsers have tightened anti-abuse heuristics against — likely why it stopped working despite being the v0.13.5 iOS fix. Replaced with same-tab `window.location.href` navigation (immune to popup/tab-under blocking; iOS/Android universal-link interception into the native Maps app still fires on a plain navigation). Build-verified; **not yet phone-tested** — confirm on Pixel 10 Pro that Go actually opens the Maps app and drive time/pulsate populate on Home.
@@ -202,9 +209,9 @@ Sandra's business is live — data wiped and re-provisioned Jun 9. App in active
 
 ### 🔴 Bugs / Active issues
 
-0. **PRIORITY — next session: phone-test v0.13.8 Go button fix on Pixel 10 Pro.** Maps key restriction fixed + confirmed live; Go button same-tab navigation fix build-verified but not device-tested. Full writeup above under "v0.13.8 (Jul 10)" changelog entry.
+0. **PRIORITY — run `error_logs` migration before merging error tracking to main.** `supabase/migrations/20260710010000_add_error_logs.sql` — creates the table the new client/server error capture writes to. Safe to run any time (inserts silently no-op until it exists); code is currently only on `audit-fixes`, not deployed.
 
-1. **Device verification** — v0.12.32–v0.12.68 not phone-tested. Test Home page + invoice flow on Pixel 10 Pro + Sandra's iPhone before next feature push.
+1. **Device verification** — v0.12.32–v0.12.68 not phone-tested. Test Home page + invoice flow on Pixel 10 Pro + Sandra's iPhone before next feature push. (v0.13.8 Go button fix already phone-tested and confirmed working on Pixel 10 Pro — see main's CLAUDE.md.)
 
 > **Constraint**: Vercel at 9/12 serverless function slots. Defer any feature requiring a new function until we consolidate or upgrade to Pro.
 

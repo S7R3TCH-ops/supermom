@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import { createClient } from '@supabase/supabase-js';
+import { logServerError } from '../_lib/errorLog.js';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -179,6 +180,21 @@ export default async function handler(req, res) {
   // ?to= overrides recipient for one-off manual test sends only
   const toOverride = req.query?.to ?? null;
 
+  try {
+    return await runDailyBriefing({ req, toOverride, res });
+  } catch (err) {
+    console.error('[briefing] Unhandled cron failure:', err);
+    await logServerError({
+      severity: 'critical',
+      message: 'Daily briefing cron crashed (uncaught)',
+      stack: err.stack,
+      alert: true,
+    });
+    return res.status(500).json({ error: 'Daily briefing failed', message: err.message });
+  }
+}
+
+async function runDailyBriefing({ req, toOverride, res }) {
   const supabaseUrl = process.env.VITE_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!supabaseUrl || !serviceKey) return res.status(500).json({ error: 'DB config missing' });
@@ -285,6 +301,17 @@ export default async function handler(req, res) {
     } catch (mailErr) {
       console.error(`[briefing] sendMail failed for ${toEmail}:`, mailErr.message);
       results.push({ business: biz.id, sent: false, to: toEmail, error: mailErr.message, todayCount });
+      // Nobody reads this response body — the cron just fires and forgets.
+      // Without this, a broken send here is invisible until someone notices
+      // the briefing email never arrived.
+      await logServerError({
+        severity: 'critical',
+        message: `Daily briefing send failed for ${toEmail}`,
+        stack: mailErr.stack,
+        context: { businessId: biz.id, toEmail, todayCount },
+        businessId: biz.id,
+        alert: true,
+      });
     }
   }
 

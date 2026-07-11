@@ -150,13 +150,14 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 
 ---
 
-## Current version: 0.13.10 — Jul 11, 2026 (package.json synced)
+## Current version: 0.13.11 — Jul 11, 2026 (package.json synced)
 
 Sandra's business is live — data wiped and re-provisioned Jun 9. App in active use.
 
 **⚠️ Multi-client git discipline**: Always push local commits before starting an online Claude Code session; always pull before the online session writes code.
 
 ### Recent changes (full history in `docs/changelog/` + `git log`)
+- **v0.13.11 (Jul 11) — fix silent save failure on job-edit form.** `JobDetailSheet.jsx` `EditMode` was passed `mutErr` but never destructured it — save failures set the error state but nothing rendered, so a missing required field on Save looked like a no-op. Added required-field pre-checks (date/time/service) that jump focus to the bad field, wired the existing red-box error pattern (already used in `ReadMode` and every other sheet) into `EditMode`'s footer, added `toast.error` backstop in `saveEdit`'s catch block. Build + Vitest (29/29) pass. Scoped fix only — a full multi-agent audit of every button/workflow was considered and declined for now (see supermom project `decisions.md` in second-brain, 2026-07-11); a lower-severity twin of this bug exists in `NewJobSheet.jsx`'s step-2 "Next" button (disabled with no message) and is noted but not fixed.
 - **v0.13.10 (Jul 11) — merged `audit-fixes` to main: security hardening, router bump, theme.** Everything previously "deliberately deferred, still only on `audit-fixes`" now on main, not phone-tested at merge time (Joel's call — low blast radius, manual-scheduling fallback exists, fix-forward if issues surface):
   - **Bearer JWT requirement** on AI endpoints (`api/ai/chat.js`, `api/ai/[action].js`) + invoice email POST (SEC-2/SEC-4) — `api/_lib/authGuard.js`; client sends via `authHeaders()` from `src/lib/supabase.js`.
   - **Same-origin Origin/Referer guard** on `api/maps.js` (SEC-3).

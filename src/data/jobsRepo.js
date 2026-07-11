@@ -3,7 +3,7 @@
 // scheduled_date (date) + scheduled_time (time) are stored separately — helpers
 // here combine them into Toronto-local ISO strings for the UI.
 
-import { supabase } from '../lib/supabase';
+import { supabase, authHeaders } from '../lib/supabase';
 import { getCurrentBusinessId } from './currentBusiness';
 import { generateInvoiceForJob } from './invoicesRepo';
 import { computeJobFinancials } from '../lib/financialMath';
@@ -653,11 +653,13 @@ export async function patchJobAiContext(id, contextPatch, columnPatch = {}) {
 
 function triggerLearningEnrichment(clientId) {
   if (!clientId) return;
-  fetch('/api/ai/enrich-client', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ clientId }),
-  }).catch(err => console.error('Learning enrichment error:', err));
+  authHeaders()
+    .then(headers => fetch('/api/ai/enrich-client', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ clientId }),
+    }))
+    .catch(err => console.error('Learning enrichment error:', err));
 }
 
 async function triggerGCalSync(jobId, action = 'upsert') {

@@ -4,6 +4,7 @@ import { fetchInvoiceById, settleInvoiceOutstanding, voidInvoiceSettlement, addJ
 import { computeJobFinancials } from '../lib/financialMath';
 import { useAuth } from '../context/AuthContext';
 import { getCurrentBusinessId } from '../data/currentBusiness';
+import { authHeaders } from '../lib/supabase';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
@@ -198,7 +199,7 @@ export default function InvoiceView() {
     try {
       const res = await fetch('/api/invoice', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await authHeaders(),
         body: JSON.stringify({
           invoiceId: id,
           clientEmail: client.email,
@@ -315,7 +316,7 @@ export default function InvoiceView() {
           >
             ← Back
           </button>
-          <button
+          {isOwner && <button
             onClick={handleEmail}
             disabled={!client.email || emailState === 'sending'}
             style={{
@@ -328,7 +329,7 @@ export default function InvoiceView() {
             }}
           >
             {emailLabel}
-          </button>
+          </button>}
           <a
             href={`/api/invoice?id=${id}`}
             download

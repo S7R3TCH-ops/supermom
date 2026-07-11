@@ -1,5 +1,6 @@
 // Local AI logic for generating briefings and smart suggestions.
 import { fmtTime12 } from '../lib/dateUtils';
+import { authHeaders } from '../lib/supabase';
 
 /**
  * Generates a structured "Command Brief" for a job.
@@ -157,9 +158,7 @@ export async function fetchDeepPrepNote(clientId, businessProfile) {
   try {
     const response = await fetch('/api/ai/prep-note', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: await authHeaders(),
       body: JSON.stringify({ clientId, businessProfile }),
     });
 
@@ -224,9 +223,7 @@ export async function fetchSmartDurationEstimate(clientId, serviceName, business
   try {
     const response = await fetch('/api/ai/estimate-duration', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: await authHeaders(),
       body: JSON.stringify({ clientId, serviceName, businessProfile }),
     });
 

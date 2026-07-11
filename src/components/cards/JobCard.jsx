@@ -19,6 +19,12 @@ export default function JobCard({ job: j, T, onClick, paid = 0, total = 0, grand
   const timeRange = j.start && j.end ? fmtTimeRange(j.start, j.end) : '—';
   const dateLabel = j.start ? dateBrief(j.start) : '';
 
+  // Owing cards (unpaid/overdue/partial) get a bold solid fill — switch body text to white for contrast
+  const nameColor = isOwing ? S.fg : T.ink;
+  const dateColor = isOwing ? 'rgba(255,255,255,0.85)' : T.inkSub;
+  const mutedColor = isOwing ? 'rgba(255,255,255,0.75)' : T.inkMuted;
+  const amountColor = isOwing ? S.fg : S.text;
+
   return (
     <div
       onClick={onClick}
@@ -35,13 +41,13 @@ export default function JobCard({ job: j, T, onClick, paid = 0, total = 0, grand
       {/* Row 1: name · bold time | status pill */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
         <div style={{
-          fontFamily: T.serif, fontSize: 16, fontWeight: 600, color: T.ink,
+          fontFamily: T.serif, fontSize: 16, fontWeight: 600, color: nameColor,
           flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           letterSpacing: '-0.3px',
         }}>
           {j.client_name}
         </div>
-        <div style={{ fontSize: 12, fontWeight: 700, color: S.text, whiteSpace: 'nowrap', flexShrink: 0, letterSpacing: '-0.3px' }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: amountColor, whiteSpace: 'nowrap', flexShrink: 0, letterSpacing: '-0.3px' }}>
           {timeRange}
         </div>
         <span style={{
@@ -56,12 +62,12 @@ export default function JobCard({ job: j, T, onClick, paid = 0, total = 0, grand
 
       {/* Row 2: date | amount */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
-        <div style={{ fontSize: 11, fontWeight: 500, color: T.inkSub }}>{dateLabel}</div>
+        <div style={{ fontSize: 11, fontWeight: 500, color: dateColor }}>{dateLabel}</div>
         {total > 0 && (
           <div style={{
             fontFamily: T.serif, fontSize: 14,
             fontWeight: isOwing ? 700 : 600,
-            color: S.text, fontVariantNumeric: 'tabular-nums',
+            color: amountColor, fontVariantNumeric: 'tabular-nums',
           }}>
             {privacyOn ? '•••' : `$${total.toFixed(0)}`}
             {!privacyOn && hstNote && <span style={{ fontSize: 8, fontWeight: 700, opacity: 0.6, marginLeft: 2, fontFamily: T.font, textTransform: 'uppercase' }}> +HST</span>}
@@ -82,7 +88,7 @@ export default function JobCard({ job: j, T, onClick, paid = 0, total = 0, grand
       {/* Worker */}
       {j.worker_name && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 10.5, color: T.inkMuted, fontFamily: T.font }}>
+          <span style={{ fontSize: 10.5, color: mutedColor, fontFamily: T.font }}>
             {getWorkerLabel(business, j.assignee_type)}: {j.worker_name}
           </span>
           {isPaid && Number(j.raw?.worker_pay) > 0 && !j.raw?.worker_paid && (
@@ -96,7 +102,7 @@ export default function JobCard({ job: j, T, onClick, paid = 0, total = 0, grand
       {/* Notes */}
       {j.notes && (
         <div style={{
-          fontSize: 10.5, color: T.inkMuted, fontStyle: 'italic', marginTop: 4,
+          fontSize: 10.5, color: mutedColor, fontStyle: 'italic', marginTop: 4,
           display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
           overflow: 'hidden', lineHeight: 1.4,
         }}>

@@ -28,7 +28,7 @@
 
 - [x] **Mobile Keyboard Layout** — Keyboard covers the "Save" button in sheets on small iOS devices. *(Fixed — confirmed Jun 4, 2026)*
 - [ ] **Swipe to Delete** — Client request for swipe gestures on job cards.
-- [ ] **Offline Mode** — App crashes if Supabase is unreachable on initial load. Need better `Suspense` fallbacks.
+- [x] **Offline Mode** — `OfflineMessage` component (retry button) now renders on `error && !data` in Home/Clients/Finance/Calendar; App.jsx re-invalidates queries on `online` event. Initial-load crash resolved. *(Verified Jul 3, 2026 — Claude Code / Fable audit; shipped v0.12.98)*
 
 ---
 

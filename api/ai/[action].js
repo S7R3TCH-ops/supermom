@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
+import { requireUser, assertClientAccess } from '../_lib/authGuard.js';
 
 function initClients() {
   const supabaseUrl = process.env.VITE_SUPABASE_URL;
@@ -359,6 +360,15 @@ export default async function handler(req, res) {
   } catch (e) {
     console.error('Missing Supabase environment variables');
     return res.status(500).json({ error: e.message });
+  }
+
+  // All AI actions run with the service-role key (bypasses RLS) — require a
+  // valid Supabase JWT and verify any requested client belongs to the caller.
+  const auth = await requireUser(req, supabase);
+  if (auth.error) return res.status(auth.error.status).json({ error: auth.error.message });
+  if (req.body?.clientId) {
+    const ok = await assertClientAccess(supabase, auth, req.body.clientId);
+    if (!ok) return res.status(403).json({ error: 'Forbidden: client not in your business' });
   }
 
   try {

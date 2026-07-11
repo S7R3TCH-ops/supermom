@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { supabase, authHeaders } from '../lib/supabase';
 import { useAppTheme } from '../context/AppThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useJobs, useBusiness, useClients } from '../data/useData';
@@ -125,7 +125,7 @@ export default function Admin() {
     try {
       const res = await fetch('/api/ai/test-persona', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await authHeaders(),
         body: JSON.stringify({ 
           style: aiStyle, 
           ownerName: business?.owner_name || profile?.first_name

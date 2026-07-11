@@ -2,6 +2,7 @@ import nodemailer from 'nodemailer';
 import { createClient } from '@supabase/supabase-js';
 import { buildInvoicePdfBuffer } from './_lib/invoicePdf.js';
 import { decorateInvoiceWithBalances } from '../src/lib/invoiceBalances.js';
+import { logServerError } from './_lib/errorLog.js';
 
 function escapeHtml(str) {
   return String(str ?? '')
@@ -213,6 +214,14 @@ async function handleEmail(req, res) {
     return res.status(200).json({ ok: true, isReceipt });
   } catch (err) {
     console.error('[invoice/email] Send error:', err);
+    await logServerError({
+      severity: 'error',
+      message: `Invoice email send failed for invoice ${invoiceNumber}`,
+      stack: err.stack,
+      context: { invoiceId, invoiceNumber, clientEmail },
+      businessId: invoiceData?.business_id ?? null,
+      alert: true,
+    });
     return res.status(500).json({ error: err.message });
   }
 }

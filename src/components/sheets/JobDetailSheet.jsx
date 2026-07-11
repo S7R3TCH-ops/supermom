@@ -260,7 +260,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
       }, action);
       setShowSeriesPicker(false);
       showToast('Job updated');
-    } catch (e) { setMutErr(e.message || String(e)); setBusy(false); }
+    } catch (e) { setMutErr(e.message || String(e)); toast.error(e.message || String(e)); setBusy(false); }
   }
 
   async function handleCancel() {
@@ -406,7 +406,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
           <EditMode
             job={job}
             form={form} setForm={setForm} services={services} workers={workers} business={business}
-            T={T} mode={mode} busy={busy} mutErr={mutErr}
+            T={T} mode={mode} busy={busy} mutErr={mutErr} setMutErr={setMutErr}
             showSeriesPicker={showSeriesPicker} onSeriesChoice={onSeriesChoice}
             onSave={initiateSave}
             onCancelEdit={() => { setEditMode(false); setMutErr(null); setShowSeriesPicker(false); }}
@@ -705,8 +705,19 @@ function ReadMode({
 }
 
 /* ============= EDIT MODE ============= */
-function EditMode({ job, form, setForm, services, workers, business, T, mode, busy, showSeriesPicker, onSeriesChoice, onSave, onCancelEdit, isKeyboardFocused }) {
+function EditMode({ job, form, setForm, services, workers, business, T, mode, busy, mutErr, setMutErr, showSeriesPicker, onSeriesChoice, onSave, onCancelEdit, isKeyboardFocused }) {
+  const dateRef = useRef(null);
+  const timeRef = useRef(null);
+  const serviceRef = useRef(null);
   function set(k, v) { setForm(f => ({ ...f, [k]: v })); }
+
+  function handleSaveClick() {
+    if (!form.scheduled_date) { setMutErr('Date is required.'); dateRef.current?.focus(); return; }
+    if (!form.scheduled_time) { setMutErr('Start time is required.'); timeRef.current?.focus(); return; }
+    if (!form.service_id) { setMutErr('Service is required.'); serviceRef.current?.focus(); return; }
+    setMutErr(null);
+    onSave();
+  }
 
   function onPickService(e) {
     const svc = services.find(s => s.id === e.target.value);
@@ -750,12 +761,12 @@ function EditMode({ job, form, setForm, services, workers, business, T, mode, bu
       </div>
       <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '12px 14px 4px' }}>
         <SectionDivider label="Schedule & Service" T={T} />
-        <Field T={T} label="Date"><input type="date" value={form.scheduled_date} onChange={e => set('scheduled_date', e.target.value)} style={iStyle(T)} /></Field>
+        <Field T={T} label="Date"><input ref={dateRef} type="date" value={form.scheduled_date} onChange={e => set('scheduled_date', e.target.value)} style={iStyle(T)} /></Field>
         <Field T={T} label="Time">
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 18px 1fr', alignItems: 'end', gap: 4 }}>
             <div>
               <div style={{ fontSize: 9, fontWeight: 600, color: T.inkMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.4px' }}>Start</div>
-              <input type="time" value={form.scheduled_time} onChange={e => set('scheduled_time', e.target.value)} style={iStyle(T)} />
+              <input ref={timeRef} type="time" value={form.scheduled_time} onChange={e => set('scheduled_time', e.target.value)} style={iStyle(T)} />
             </div>
             <div style={{ textAlign: 'center', color: T.inkMuted, fontSize: 13, paddingBottom: 9 }}>→</div>
             <div>
@@ -774,7 +785,7 @@ function EditMode({ job, form, setForm, services, workers, business, T, mode, bu
           </div>
         </Field>
         <Field T={T} label="Service">
-          <select value={form.service_id || ''} onChange={onPickService} style={{ ...iStyle(T), width: '100%' }}>
+          <select ref={serviceRef} value={form.service_id || ''} onChange={onPickService} style={{ ...iStyle(T), width: '100%' }}>
             <option value="">— select —</option>
             {services.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
@@ -916,9 +927,12 @@ function EditMode({ job, form, setForm, services, workers, business, T, mode, bu
         <SeriesPicker show={showSeriesPicker} onChoice={onSeriesChoice} onCancel={() => onSeriesChoice(null)} busy={busy} T={T} mode={mode} />
         {isKeyboardFocused && <div style={{ height: 260 }} aria-hidden="true" />}
       </div>
-      <div style={{ padding: '10px 14px 28px', borderTop: `1px solid ${T.cardBorder}`, display: 'flex', gap: 8 }}>
-        <Btn onClick={onCancelEdit} bg={T.card} border={`1.5px solid ${T.cardBorder}`} color={T.inkSub} T={T} style={{ flex: 1 }}>Cancel</Btn>
-        <Btn onClick={onSave} disabled={busy} bg="#FC4693" color="white" T={T} style={{ flex: 2 }}>{busy ? 'Saving…' : 'Save'}</Btn>
+      <div style={{ padding: '10px 14px 28px', borderTop: `1px solid ${T.cardBorder}`, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {mutErr && <div style={{ padding: '9px 11px', borderRadius: 8, background: T.redBg, border: `1px solid ${T.redBorder}`, fontSize: 12, color: T.ink }}>{mutErr}</div>}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Btn onClick={onCancelEdit} bg={T.card} border={`1.5px solid ${T.cardBorder}`} color={T.inkSub} T={T} style={{ flex: 1 }}>Cancel</Btn>
+          <Btn onClick={handleSaveClick} disabled={busy} bg="#FC4693" color="white" T={T} style={{ flex: 2 }}>{busy ? 'Saving…' : 'Save'}</Btn>
+        </div>
       </div>
     </>
   );

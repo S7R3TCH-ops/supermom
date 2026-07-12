@@ -399,8 +399,8 @@ export default function PostJobSheet({ jobId, onClose }) {
                       await settleInvoiceOutstanding(invoiceId, method, ids);
                     }
                     notifyDataChanged();
-                  } catch {
-                    // non-fatal — proceed to nudge regardless
+                  } catch (err) {
+                    toast.error(err.message || 'Failed to mark bundled jobs paid.');
                   }
                   setBundleBusy(false);
                   setPhase('nudge');

@@ -121,7 +121,11 @@ export default function WorkerCatalogSheet({ isOpen, onClose }) {
       }
       // Save skills
       const skillsToSave = selectedSkills.filter(s => s.skill_type_id);
-      await setWorkerSkills(savedId, skillsToSave).catch(() => {});
+      try {
+        await setWorkerSkills(savedId, skillsToSave);
+      } catch (skillErr) {
+        toast.error(skillErr.message || 'Saved, but skills/pay rates failed to save.');
+      }
       notifyDataChanged();
       setEditing(null);
       setSelectedSkills([]);
@@ -408,11 +412,24 @@ export default function WorkerCatalogSheet({ isOpen, onClose }) {
                       autoFocus
                       style={{ ...inputStyle, flex: 1 }}
                     />
-                    <button onClick={handleSaveSkillType} disabled={skillTypeBusy || !skillTypeForm.trim()} style={{ padding: '8px 14px', borderRadius: 8, background: T.pink, border: 'none', color: 'white', fontFamily: T.font, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                    <button
+                      onClick={handleSaveSkillType}
+                      disabled={skillTypeBusy || !skillTypeForm.trim()}
+                      style={{
+                        padding: '8px 14px', borderRadius: 8, border: 'none',
+                        background: (skillTypeBusy || !skillTypeForm.trim()) ? T.cardBorder : T.pink,
+                        color: (skillTypeBusy || !skillTypeForm.trim()) ? T.inkMuted : 'white',
+                        fontFamily: T.font, fontSize: 11, fontWeight: 700,
+                        cursor: (skillTypeBusy || !skillTypeForm.trim()) ? 'default' : 'pointer',
+                      }}
+                    >
                       {skillTypeBusy ? '…' : editingSkillType === 'new' ? 'Add' : 'Save'}
                     </button>
                     <button onClick={() => { setEditingSkillType(null); setSkillTypeForm(''); }} style={{ padding: '8px 10px', borderRadius: 8, background: 'transparent', border: `1.5px solid ${T.cardBorder}`, color: T.inkMuted, fontFamily: T.font, fontSize: 11, cursor: 'pointer' }}>✕</button>
                   </div>
+                )}
+                {editingSkillType && !skillTypeForm.trim() && (
+                  <div style={{ fontSize: 10, color: T.inkMuted, marginTop: -6, marginBottom: 10 }}>Enter a skill name to continue</div>
                 )}
 
                 {skillTypes.map(st => (

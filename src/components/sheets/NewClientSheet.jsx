@@ -252,13 +252,19 @@ export default function NewClientSheet({ onClose, onCreated }) {
               <button
                 type="button"
                 onClick={addTag}
+                disabled={!tagInput.trim() || tags.includes(tagInput.trim()) || SYSTEM_TAGS.includes(tagInput.trim())}
                 style={{
                   padding: '0 14px', borderRadius: 12, border: 'none',
-                  background: T.pink, color: 'white',
-                  fontFamily: T.font, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                  background: (!tagInput.trim() || tags.includes(tagInput.trim()) || SYSTEM_TAGS.includes(tagInput.trim())) ? T.cardBorder : T.pink,
+                  color: (!tagInput.trim() || tags.includes(tagInput.trim()) || SYSTEM_TAGS.includes(tagInput.trim())) ? T.inkMuted : 'white',
+                  fontFamily: T.font, fontSize: 12, fontWeight: 700,
+                  cursor: (!tagInput.trim() || tags.includes(tagInput.trim()) || SYSTEM_TAGS.includes(tagInput.trim())) ? 'default' : 'pointer',
                 }}
               >Add</button>
             </div>
+            {tagInput.trim() && (tags.includes(tagInput.trim()) || SYSTEM_TAGS.includes(tagInput.trim())) && (
+              <div style={{ fontSize: 11, color: T.inkMuted, marginTop: 4 }}>Already tagged.</div>
+            )}
           </div>
 
           <div style={{ borderTop: `1px solid ${T.cardBorder}`, paddingTop: 10, marginTop: 4 }}>

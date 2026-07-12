@@ -420,6 +420,14 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
           {bookErr && (
             <div style={{ paddingBottom: 8, color: '#EF4444', fontSize: 12, fontWeight: 500, textAlign: 'center' }}>{bookErr}</div>
           )}
+          {!bookErr && step === 1 && !clientId && (
+            <div style={{ paddingBottom: 8, color: T.inkMuted, fontSize: 12, fontWeight: 500, textAlign: 'center' }}>Select a client to continue</div>
+          )}
+          {!bookErr && step === 2 && (!serviceId || !duration || !time) && (
+            <div style={{ paddingBottom: 8, color: T.inkMuted, fontSize: 12, fontWeight: 500, textAlign: 'center' }}>
+              Set {[!serviceId && 'service', !duration && 'duration', !time && 'time'].filter(Boolean).join(', ')} to continue
+            </div>
+          )}
           <div style={{ display: 'flex', gap: 10 }}>
             {step > 1 && (
               <button type="button" onClick={() => setStep(step - 1)} style={{ flex: 1, background: 'transparent', border: `1.5px solid ${T.cardBorder}`, color: T.inkMuted, borderRadius: 12, padding: '12px 0', fontFamily: T.font, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Back</button>
@@ -661,6 +669,9 @@ function Step2What({
             />
           </div>
         </div>
+        {!time && (
+          <div style={{ fontSize: 10, color: T.inkMuted, marginTop: 4 }}>Set start time first</div>
+        )}
         {suggestedTime && !time && (
           <button
             onClick={() => setTime(suggestedTime)}

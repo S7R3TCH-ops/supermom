@@ -230,6 +230,7 @@ export default function AiChatSheet({ onClose, context = {} }) {
             onClick={send}
             disabled={!input.trim() || loading}
             aria-label="Send message"
+            title={!input.trim() && !loading ? 'Type a message first' : 'Send message'}
             style={{
               width: 44, height: 44, borderRadius: 14,
               border: 'none',

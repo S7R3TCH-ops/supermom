@@ -305,6 +305,9 @@ export default function Admin() {
                   Switch
                 </button>
               </div>
+              {!selectedBizId && (
+                <div style={{ fontSize: 10.5, color: 'var(--pink-label)', marginTop: 6 }}>Select a business first</div>
+              )}
             </div>
 
             <SectionLabel>Super Admin: Provisioning</SectionLabel>
@@ -321,6 +324,11 @@ export default function Admin() {
                 <button onClick={handleProvision} disabled={isProv || !provForm.biz || !provForm.email} style={{ padding: '12px', borderRadius: 12, background: 'var(--pink)', color: 'white', border: 'none', fontWeight: 700, fontSize: 13, cursor: isProv ? 'default' : 'pointer', opacity: (isProv || !provForm.biz || !provForm.email) ? 0.5 : 1 }}>
                   {isProv ? 'Provisioning…' : 'Create Business & Owner'}
                 </button>
+                {!isProv && (!provForm.biz || !provForm.email) && (
+                  <div style={{ fontSize: 10.5, color: 'var(--pink-label)', textAlign: 'center' }}>
+                    Business name and owner email are required
+                  </div>
+                )}
                 {provMsg && <div style={{ color: 'var(--pink-label)', fontSize: 11, padding: '4px 8px', textAlign: 'center' }}>{provMsg}</div>}
               </div>
             </div>

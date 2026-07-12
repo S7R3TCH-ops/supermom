@@ -275,13 +275,21 @@ export default function Settings() {
 
     setBusy(true);
     try {
+      const failedTables = [];
       for (const table of RESET_TABLES) {
         const { error: err } = await supabase.from(table).delete().eq('business_id', bid);
-        if (err) console.error(`Error deleting from ${table}:`, err);
+        if (err) {
+          console.error(`Error deleting from ${table}:`, err);
+          failedTables.push(table);
+        }
       }
-      toast.success('Data reset complete.');
       notifyDataChanged();
-      navigate('/');
+      if (failedTables.length > 0) {
+        toast.error(`Data reset incomplete — failed: ${failedTables.join(', ')}`);
+      } else {
+        toast.success('Data reset complete.');
+        navigate('/');
+      }
     } catch {
       toast.error('Data reset failed.');
     } finally {
@@ -623,6 +631,9 @@ export default function Settings() {
               <ToggleBtn show={showPw} onToggle={() => setShowPw(!showPw)} />
             </div>
             {pwError && <div style={{ fontSize: 11, color: '#FC4693' }}>{pwError}</div>}
+            {!pw && !pwBusy && (
+              <div style={{ fontSize: 10.5, color: T.inkMuted, marginTop: -6 }}>Enter a new password to continue</div>
+            )}
             <button type="submit" disabled={pwBusy || !pw} style={{ width: '100%', padding: '10px', borderRadius: 10, background: pwBusy || !pw ? T.surface : T.pink, color: pwBusy || !pw ? T.inkMuted : 'white', border: 'none', fontWeight: 700, fontSize: 12, cursor: pwBusy || !pw ? 'default' : 'pointer' }}>
               {pwBusy ? 'Updating...' : 'Update password'}
             </button>

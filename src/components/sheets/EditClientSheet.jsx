@@ -340,14 +340,20 @@ export default function EditClientSheet({ clientId, onClose }) {
                 <button
                   type="button"
                   onClick={addTag}
+                  disabled={!tagInput.trim() || tags.includes(tagInput.trim()) || SYSTEM_TAGS.includes(tagInput.trim())}
                   style={{
                     padding: '0 16px', borderRadius: 12, border: 'none',
-                    background: T.pink, color: 'white',
-                    fontFamily: T.font, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                    background: (!tagInput.trim() || tags.includes(tagInput.trim()) || SYSTEM_TAGS.includes(tagInput.trim())) ? T.cardBorder : T.pink,
+                    color: (!tagInput.trim() || tags.includes(tagInput.trim()) || SYSTEM_TAGS.includes(tagInput.trim())) ? T.inkMuted : 'white',
+                    fontFamily: T.font, fontSize: 12, fontWeight: 700,
+                    cursor: (!tagInput.trim() || tags.includes(tagInput.trim()) || SYSTEM_TAGS.includes(tagInput.trim())) ? 'default' : 'pointer',
                     minWidth: 60,
                   }}
                 >Add</button>
               </div>
+              {tagInput.trim() && (tags.includes(tagInput.trim()) || SYSTEM_TAGS.includes(tagInput.trim())) && (
+                <div style={{ fontSize: 11, color: T.inkMuted, marginTop: 4 }}>Already tagged.</div>
+              )}
             </div>
 
             {/* Intel section */}

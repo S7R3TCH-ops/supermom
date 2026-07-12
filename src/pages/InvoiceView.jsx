@@ -448,7 +448,7 @@ export default function InvoiceView() {
               padding: '7px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer',
             }}
           >
-            {settleState === 'saving' ? 'Working…' : confirmUndo ? 'Tap again to undo payment' : '↩ Undo Payment'}
+            {settleState === 'saving' ? 'Working…' : settleState === 'error' ? '✗ Failed — retry' : confirmUndo ? 'Tap again to undo payment' : '↩ Undo Payment'}
           </button>
         </div>
       )}

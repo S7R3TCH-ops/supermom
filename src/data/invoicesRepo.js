@@ -174,17 +174,19 @@ export async function settleInvoiceOutstanding(invoiceId, method = 'Cash', jobId
     if (jobErr) throw jobErr;
 
     // Flip that job's own invoice to Paid (the current invoice included).
-    const { data: link } = await supabase
+    const { data: link, error: linkErr } = await supabase
       .from('invoice_jobs')
       .select('invoice_id')
       .eq('job_id', jobId)
       .eq('business_id', businessId)
       .maybeSingle();
+    if (linkErr) throw linkErr;
     if (link?.invoice_id) {
-      await supabase.from('invoices')
+      const { error: flipErr } = await supabase.from('invoices')
         .update({ status: 'Paid' })
         .eq('id', link.invoice_id)
         .eq('business_id', businessId);
+      if (flipErr) throw flipErr;
     }
 
     amount += owing;
@@ -225,23 +227,28 @@ export async function voidInvoiceSettlement(invoiceId, jobId = null) {
 
   const affectedJobIds = [...new Set(pays.map(p => p.job_id))];
   for (const jid of affectedJobIds) {
-    const [{ data: job }, { data: remaining }] = await Promise.all([
+    const [{ data: job, error: jobErr }, { data: remaining, error: remainingErr }] = await Promise.all([
       supabase.from('jobs').select('*').eq('id', jid).eq('business_id', businessId).single(),
       supabase.from('payments').select('amount').eq('job_id', jid).eq('is_void', false),
     ]);
+    if (jobErr) throw jobErr;
+    if (remainingErr) throw remainingErr;
     if (!job) continue;
     const paid = (remaining ?? []).reduce((s, p) => s + Number(p.amount), 0);
     const total = Math.round(computeJobTotal(job) * 100) / 100;
     const status = paid >= total - 0.01 && paid > 0 ? 'Paid' : paid > 0 ? 'Partial' : '';
-    await supabase.from('jobs').update({ payment_status: status })
+    const { error: statusErr } = await supabase.from('jobs').update({ payment_status: status })
       .eq('id', jid).eq('business_id', businessId);
+    if (statusErr) throw statusErr;
 
-    const { data: link } = await supabase.from('invoice_jobs')
+    const { data: link, error: linkErr } = await supabase.from('invoice_jobs')
       .select('invoice_id').eq('job_id', jid).eq('business_id', businessId).maybeSingle();
+    if (linkErr) throw linkErr;
     if (link?.invoice_id) {
-      await supabase.from('invoices')
+      const { error: flipErr } = await supabase.from('invoices')
         .update({ status: status === 'Paid' ? 'Paid' : 'Draft' })
         .eq('id', link.invoice_id).eq('business_id', businessId);
+      if (flipErr) throw flipErr;
     }
   }
 
@@ -277,23 +284,26 @@ export async function addJobsToInvoice(invoiceId, extraJobIds) {
     if (existing?.invoice_id === invoiceId) continue; // already on this invoice
 
     if (existing) {
-      await supabase.from('invoice_jobs')
+      const { error: unlinkErr } = await supabase.from('invoice_jobs')
         .delete()
         .eq('job_id', jobId)
         .eq('business_id', businessId);
+      if (unlinkErr) throw unlinkErr;
 
       // Void old invoice if it now has no jobs
-      const { count } = await supabase
+      const { count, error: countErr } = await supabase
         .from('invoice_jobs')
         .select('id', { count: 'exact', head: true })
         .eq('invoice_id', existing.invoice_id)
         .eq('business_id', businessId);
+      if (countErr) throw countErr;
 
       if ((count ?? 0) === 0) {
-        await supabase.from('invoices')
+        const { error: voidErr } = await supabase.from('invoices')
           .update({ status: 'Void' })
           .eq('id', existing.invoice_id)
           .eq('business_id', businessId);
+        if (voidErr) throw voidErr;
       }
     }
 
@@ -304,20 +314,22 @@ export async function addJobsToInvoice(invoiceId, extraJobIds) {
   }
 
   // Recalculate combined total_amount across all linked jobs
-  const { data: allLinks } = await supabase
+  const { data: allLinks, error: allLinksErr } = await supabase
     .from('invoice_jobs')
     .select('jobs(*)')
     .eq('invoice_id', invoiceId)
     .eq('business_id', businessId);
+  if (allLinksErr) throw allLinksErr;
 
   const newTotal = Math.round(
     (allLinks ?? []).reduce((s, link) => s + computeJobFinancials(link.jobs, bizData).total, 0) * 100
   ) / 100;
 
-  await supabase.from('invoices')
+  const { error: totalErr } = await supabase.from('invoices')
     .update({ total_amount: newTotal })
     .eq('id', invoiceId)
     .eq('business_id', businessId);
+  if (totalErr) throw totalErr;
 
   return invoiceId;
 }

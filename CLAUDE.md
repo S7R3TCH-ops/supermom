@@ -150,13 +150,18 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 
 ---
 
-## Current version: 0.13.11 — Jul 11, 2026 (package.json synced)
+## Current version: 0.13.12 — Jul 11, 2026 (package.json synced)
 
 Sandra's business is live — data wiped and re-provisioned Jun 9. App in active use.
 
 **⚠️ Multi-client git discipline**: Always push local commits before starting an online Claude Code session; always pull before the online session writes code.
 
 ### Recent changes (full history in `docs/changelog/` + `git log`)
+- **v0.13.12 (Jul 11) — silent-failure fix batch, greenlit from the 2026-07-11 sweep (28 silent/6 partial sites, see `sweep-silent-failures-2026-07-11.md` in second-brain).** Three phases, all build/Vitest-gated:
+  1. **Repo layer** (root cause — `{ error }` was never read on secondary/cascade Supabase calls, so no caller-side try/catch could see them): `clientsRepo.hardDeleteClient`, `jobsRepo.hardDeleteJob`, `jobsRepo.revertJobToPreCompletion` (also fixes a read-failure wrongly voiding an invoice — the branch now throws instead of falling through), `jobsRepo.patchJobAiContext`, `invoicesRepo.settleInvoiceOutstanding`, `invoicesRepo.voidInvoiceSettlement`, `invoicesRepo.addJobsToInvoice` now check and throw on every step.
+  2. **Lying-success sites**: Settings "Reset all data" now aggregates per-table failures and fails the toast instead of always reporting success on a destructive 12-table delete; `PostJobSheet` bundle-payment empty catches now surface `toast.error`; `WorkerCatalogSheet` skill/pay-rate save no longer fires "Updated!" on a swallowed failure; `InvoiceView` Undo Payment button now renders its `error` state (same set-but-never-consumed shape as the v0.13.11 `mutErr` bug).
+  3. **Disabled-button batch** (11 sites) — reused existing reason-in-label/helper-text patterns, no new UI components: `NewJobSheet`/`JobDetailSheet` End-time inputs, `NewClientSheet`/`EditClientSheet` tag Add button, `JobDetailSheet` Cancel Booking reason, `WorkerCatalogSheet` skill-type Add/Save, `Admin` viewpoint Switch + Create Business & Owner, `AiChatSheet` Send (title tooltip), `Settings` Update password.
+  `GeofenceContext` auto clock-in/out deferred (workers feature barely used). No items skipped — all three phases completed as scoped in the sweep doc. Build + Vitest (29/29) pass after each phase. Not phone-tested (same fix-forward reasoning as v0.13.10/11 — no client-facing exposure, Sandra has manual fallback).
 - **v0.13.11 (Jul 11) — fix silent save failure on job-edit form.** `JobDetailSheet.jsx` `EditMode` was passed `mutErr` but never destructured it — save failures set the error state but nothing rendered, so a missing required field on Save looked like a no-op. Added required-field pre-checks (date/time/service) that jump focus to the bad field, wired the existing red-box error pattern (already used in `ReadMode` and every other sheet) into `EditMode`'s footer, added `toast.error` backstop in `saveEdit`'s catch block. Build + Vitest (29/29) pass. Scoped fix only — a full multi-agent audit of every button/workflow was considered and declined for now (see supermom project `decisions.md` in second-brain, 2026-07-11); a lower-severity twin of this bug exists in `NewJobSheet.jsx`'s step-2 "Next" button (disabled with no message) and is noted but not fixed.
 - **v0.13.10 (Jul 11) — merged `audit-fixes` to main: security hardening, router bump, theme.** Everything previously "deliberately deferred, still only on `audit-fixes`" now on main, not phone-tested at merge time (Joel's call — low blast radius, manual-scheduling fallback exists, fix-forward if issues surface):
   - **Bearer JWT requirement** on AI endpoints (`api/ai/chat.js`, `api/ai/[action].js`) + invoice email POST (SEC-2/SEC-4) — `api/_lib/authGuard.js`; client sends via `authHeaders()` from `src/lib/supabase.js`.

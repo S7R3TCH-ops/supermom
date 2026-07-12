@@ -375,8 +375,10 @@ export async function archiveClientJobs(clientId) {
 
 export async function hardDeleteJob(id) {
   const businessId = await getCurrentBusinessId();
-  await supabase.from('payments').delete().eq('job_id', id).eq('business_id', businessId);
-  await supabase.from('invoice_jobs').delete().eq('job_id', id).eq('business_id', businessId);
+  const { error: delPayErr } = await supabase.from('payments').delete().eq('job_id', id).eq('business_id', businessId);
+  if (delPayErr) throw delPayErr;
+  const { error: delLinkErr } = await supabase.from('invoice_jobs').delete().eq('job_id', id).eq('business_id', businessId);
+  if (delLinkErr) throw delLinkErr;
   const { error } = await supabase.from('jobs').delete().eq('id', id).eq('business_id', businessId);
   if (error) throw error;
 }
@@ -390,28 +392,36 @@ export async function revertJobToPreCompletion(id) {
   if (delPayErr) throw delPayErr;
 
   // 2. Find all invoices linked to this job and clean them up
-  const { data: links } = await supabase
+  // A failed read here must throw, not fall through to the Void branch below
+  // (an empty `links` from a failed read would wrongly look like "no invoices left").
+  const { data: links, error: linksErr } = await supabase
     .from('invoice_jobs').select('invoice_id').eq('job_id', id).eq('business_id', businessId);
+  if (linksErr) throw linksErr;
 
   for (const { invoice_id } of (links ?? [])) {
-    await supabase.from('invoice_jobs')
+    const { error: delInvoiceLinkErr } = await supabase.from('invoice_jobs')
       .delete().eq('invoice_id', invoice_id).eq('job_id', id).eq('business_id', businessId);
+    if (delInvoiceLinkErr) throw delInvoiceLinkErr;
 
-    const { data: remaining } = await supabase
+    const { data: remaining, error: remainingErr } = await supabase
       .from('invoice_jobs').select('job_id').eq('invoice_id', invoice_id).eq('business_id', businessId);
+    if (remainingErr) throw remainingErr;
 
     if (!remaining || remaining.length === 0) {
-      await supabase.from('invoices')
+      const { error: voidErr } = await supabase.from('invoices')
         .update({ status: 'Void', deleted_at: new Date().toISOString() })
         .eq('id', invoice_id).eq('business_id', businessId);
+      if (voidErr) throw voidErr;
     } else {
       const jobIds = remaining.map(r => r.job_id);
-      const { data: jobs } = await supabase
+      const { data: jobs, error: jobsErr } = await supabase
         .from('jobs').select('*').in('id', jobIds).eq('business_id', businessId);
+      if (jobsErr) throw jobsErr;
       const newTotal = (jobs ?? []).reduce((s, j) => s + computeJobFinancials(j).total, 0);
-      await supabase.from('invoices')
+      const { error: totalErr } = await supabase.from('invoices')
         .update({ total_amount: newTotal, status: 'Draft' })
         .eq('id', invoice_id).eq('business_id', businessId);
+      if (totalErr) throw totalErr;
     }
   }
 
@@ -633,20 +643,22 @@ export function findConflicts(allJobs, scheduledAtISO, durationMin, windowMinute
 // written concurrently by the GCal sync handler.
 export async function patchJobAiContext(id, contextPatch, columnPatch = {}) {
   const businessId = await getCurrentBusinessId();
-  const { data: current } = await supabase
+  const { data: current, error: readErr } = await supabase
     .from('jobs')
     .select('ai_context')
     .eq('id', id)
     .eq('business_id', businessId)
     .single();
+  if (readErr) throw readErr;
 
   const merged = { ...(current?.ai_context || {}), ...contextPatch };
 
-  await supabase
+  const { error } = await supabase
     .from('jobs')
     .update({ ai_context: merged, updated_at: new Date().toISOString(), ...columnPatch })
     .eq('id', id)
     .eq('business_id', businessId);
+  if (error) throw error;
 }
 
 // ---------- GCal Sync + Learning ----------

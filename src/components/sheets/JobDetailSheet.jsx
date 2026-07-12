@@ -605,6 +605,9 @@ function ReadMode({
                 className="sm-input"
                 style={{ width: '100%', background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 8, padding: '8px 10px', fontFamily: T.font, fontSize: 12.5, color: T.ink, resize: 'none', boxSizing: 'border-box' }}
               />
+              {cancelReason.trim().length < 3 && (
+                <div style={{ fontSize: 10.5, color: '#B45309', marginTop: 4 }}>Enter at least 3 characters to cancel</div>
+              )}
               <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                 <Btn onClick={() => { onSetShowCancelForm(false); onSetCancelReason(''); }} bg={T.card} border={`1px solid ${T.cardBorder}`} color={T.inkSub} T={T} style={{ flex: 1 }}>Never mind</Btn>
                 <Btn
@@ -783,6 +786,9 @@ function EditMode({ job, form, setForm, services, workers, business, T, mode, bu
               />
             </div>
           </div>
+          {!form.scheduled_time && (
+            <div style={{ fontSize: 9, color: T.inkMuted, marginTop: 4 }}>Set start time first</div>
+          )}
         </Field>
         <Field T={T} label="Service">
           <select ref={serviceRef} value={form.service_id || ''} onChange={onPickService} style={{ ...iStyle(T), width: '100%' }}>

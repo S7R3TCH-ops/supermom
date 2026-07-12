@@ -114,15 +114,19 @@ export async function softDeleteClient(id) {
 
 export async function hardDeleteClient(clientId) {
   const businessId = await getCurrentBusinessId();
-  const { data: jobs } = await supabase
+  const { data: jobs, error: jobsErr } = await supabase
     .from('jobs')
     .select('id')
     .eq('client_id', clientId)
     .eq('business_id', businessId);
+  if (jobsErr) throw jobsErr;
   for (const job of jobs ?? []) {
-    await supabase.from('payments').delete().eq('job_id', job.id).eq('business_id', businessId);
-    await supabase.from('invoice_jobs').delete().eq('job_id', job.id).eq('business_id', businessId);
-    await supabase.from('jobs').delete().eq('id', job.id).eq('business_id', businessId);
+    const { error: payErr } = await supabase.from('payments').delete().eq('job_id', job.id).eq('business_id', businessId);
+    if (payErr) throw payErr;
+    const { error: linkErr } = await supabase.from('invoice_jobs').delete().eq('job_id', job.id).eq('business_id', businessId);
+    if (linkErr) throw linkErr;
+    const { error: jobDelErr } = await supabase.from('jobs').delete().eq('id', job.id).eq('business_id', businessId);
+    if (jobDelErr) throw jobDelErr;
   }
   const { error } = await supabase
     .from('clients')

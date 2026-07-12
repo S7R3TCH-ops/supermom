@@ -1,4 +1,5 @@
 import { useMemo, useEffect, useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAppTheme } from '../context/AppThemeContext';
 import { Title, Subheading, Text, Caption, SectionLabel } from '../components/ui/typography';
@@ -30,6 +31,7 @@ import PaymentBreakdown from '../components/cards/PaymentBreakdown';
 const DEEP_ROSE = '#B5004E';
 
 export default function Home() {
+  const navigate = useNavigate();
   const themeCtx = useAppTheme();
   const jobsCtx = useJobs();
   const detailSheet = useJobDetailSheet();
@@ -714,6 +716,24 @@ export default function Home() {
                   )}
                 </>
               )}
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/calendar')}
+              aria-label="See full schedule"
+              style={{
+                cursor: 'pointer',
+                marginTop: 4,
+                padding: '4px 0 4px 12px',
+                background: 'none',
+                border: 'none',
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: '0.3px',
+                color: mode === 'dark' ? 'rgba(255,255,255,0.55)' : T.inkMuted,
+              }}
+            >
+              See full schedule →
             </button>
           </div>
         </div>

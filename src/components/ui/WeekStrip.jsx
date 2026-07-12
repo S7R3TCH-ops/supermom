@@ -129,7 +129,7 @@ export default function WeekStrip({
           key={d.toISOString()}
           role="button"
           aria-label={`${d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}${dots > 0 ? `, ${dots} job${dots > 1 ? 's' : ''}` : ''}`}
-          onClick={() => onDaySelect(d)}
+          onClick={() => onDaySelect(isSelected ? null : d)}
           style={{
             textAlign: 'center',
             padding: '4px 2px 5px',

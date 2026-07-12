@@ -136,8 +136,10 @@ export default function Calendar() {
   const { T, mode, privacyOn } = useAppTheme();
   useNow(); // subscription only — re-renders once/minute so NOW() reads stay fresh
   const [view, setView] = useState('Agenda');
-  const [selectedDay, setSelectedDay] = useState(() => NOW());
   const [weekStart, setWeekStart] = useState(() => startOfWeek(NOW()));
+  // Single source of truth for "which day is selected" — feeds both WeekStrip's
+  // highlight and the agenda list's filter, so they can't desync (they used to be
+  // two separate states; see decisions.md 2026-07-12).
   const [agendaDayFilter, setAgendaDayFilter] = useState(null);
   const { openJob } = useJobDetailSheet();
   const handleJobPress = useCallback((id) => openJob(id), [openJob]);
@@ -154,7 +156,6 @@ export default function Calendar() {
   const monthYear = weekDays[0].toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
   const handlePickDay = (d) => {
-    setSelectedDay(new Date(d));
     setAgendaDayFilter(new Date(d));
     setView('Agenda');
   };
@@ -164,10 +165,10 @@ export default function Calendar() {
   const handleToday = () => {
     const today = NOW();
     setWeekStart(startOfWeek(today));
-    setSelectedDay(today);
+    handlePickDay(today);
   };
   // Jump-to-date: routes through startOfWeek + handlePickDay so weekStart and
-  // selectedDay/agendaDayFilter stay in sync with WeekStrip's swipe state.
+  // agendaDayFilter stay in sync with WeekStrip's swipe state.
   const handleJumpToDate = (dateStr) => {
     if (!dateStr) return;
     const [y, mo, dy] = dateStr.split('-').map(Number);
@@ -321,11 +322,11 @@ export default function Calendar() {
         {/* 7-day strip — swipeable week carousel */}
         <WeekStrip
           weekStart={weekStart}
-          selectedDate={view !== 'Week' ? selectedDay : null}
+          selectedDate={agendaDayFilter}
           today={NOW()}
           allJobs={allJobs}
           onWeekChange={(delta) => setWeekStart(prev => addDays(prev, delta * 7))}
-          onDaySelect={(d) => { if (d) handlePickDay(d); }}
+          onDaySelect={(d) => (d ? handlePickDay(d) : setAgendaDayFilter(null))}
           T={T}
           mode={mode}
           variant="calendar"

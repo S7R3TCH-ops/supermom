@@ -155,7 +155,7 @@ export default function Admin() {
   const [pwSaved, setPwSaved] = useState(false);
   const [pwError, setPwError] = useState(null);
 
-  const [provForm, setProvForm] = useState({ biz: '', owner: '', email: '', pw: '' });
+  const [provForm, setProvForm] = useState({ biz: '', owner: '', email: '', pw: '', isTest: false });
   const [isProv, setIsProv] = useState(false);
   const [provMsg, setProvMsg] = useState('');
 
@@ -173,13 +173,18 @@ export default function Admin() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session?.access_token}`
         },
-        body: JSON.stringify({ businessName: provForm.biz, ownerName: provForm.owner, email: provForm.email, password: provForm.pw })
+        body: JSON.stringify({ businessName: provForm.biz, ownerName: provForm.owner, email: provForm.email, password: provForm.pw, isTest: provForm.isTest })
       });
-      const data = await res.json();
+      let data;
+      try {
+        data = await res.json();
+      } catch {
+        throw new Error(`Server error (${res.status} ${res.statusText || 'unreachable'})`);
+      }
       if (!res.ok) throw new Error(data.error);
       toast.success('Business provisioned!');
       setProvMsg('Successfully provisioned! ✓');
-      setProvForm({ biz: '', owner: '', email: '', pw: '' });
+      setProvForm({ biz: '', owner: '', email: '', pw: '', isTest: false });
     } catch (e) {
       toast.error(e.message);
       setProvMsg(`Error: ${e.message}`);
@@ -321,6 +326,10 @@ export default function Admin() {
                   <input type={showPw ? "text" : "password"} placeholder="Temp Password" value={provForm.pw} onChange={e => setProvForm(p => ({...p, pw: e.target.value}))} className="sm-input" style={{ width: '100%', padding: '10px', paddingRight: 36, borderRadius: 12, background: 'var(--plum-mid)', border: '1px solid var(--pink-mid)', color: 'white', fontSize: 13 }} />
                   <ToggleBtn show={showPw} onToggle={() => setShowPw(!showPw)} color="var(--pink-label)" />
                 </div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11.5, color: 'var(--pink-label)', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={provForm.isTest} onChange={e => setProvForm(p => ({...p, isTest: e.target.checked}))} />
+                  Test/QA business (excluded from daily briefings)
+                </label>
                 <button onClick={handleProvision} disabled={isProv || !provForm.biz || !provForm.email} style={{ padding: '12px', borderRadius: 12, background: 'var(--pink)', color: 'white', border: 'none', fontWeight: 700, fontSize: 13, cursor: isProv ? 'default' : 'pointer', opacity: (isProv || !provForm.biz || !provForm.email) ? 0.5 : 1 }}>
                   {isProv ? 'Provisioning…' : 'Create Business & Owner'}
                 </button>

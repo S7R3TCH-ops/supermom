@@ -380,6 +380,6 @@ export default async function handler(req, res) {
     return res.status(404).json({ error: `Unknown AI action: ${action}` });
   } catch (error) {
     console.error(`AI handler error [${action}]:`, error);
-    return res.status(500).json({ error: error.message });
+    return res.status(502).json({ error: 'AI feature is unavailable right now. Try again shortly.' });
   }
 }

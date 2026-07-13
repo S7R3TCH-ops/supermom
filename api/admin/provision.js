@@ -30,7 +30,7 @@ export default async function handler(req, res) {
       return res.status(403).json({ error: 'Forbidden: Only Super Admins can provision accounts.' });
     }
 
-    const { businessName, ownerName, email, password } = req.body;
+    const { businessName, ownerName, email, password, isTest } = req.body;
     if (!businessName || !ownerName || !email || !password) {
       return res.status(400).json({ error: 'Missing required fields (businessName, ownerName, email, password)' });
     }
@@ -73,9 +73,10 @@ export default async function handler(req, res) {
       name: businessName,
       owner_name: ownerName,
       email: email,
-      hourly_rate: 60, 
-      hst_rate: 0.13, 
+      hourly_rate: 60,
+      hst_rate: 0.13,
       tax_enabled: false,
+      is_test: !!isTest,
     }).select().single();
     if (bizErr) throw new Error(`Business creation failed: ${bizErr.message}`);
 

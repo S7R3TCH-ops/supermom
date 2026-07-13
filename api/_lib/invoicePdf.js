@@ -1,6 +1,6 @@
 import React from 'react';
 import { Document, Page, View, Text, Image, StyleSheet, renderToBuffer } from '@react-pdf/renderer';
-import { computeJobFinancials } from '../../src/lib/financialMath.js';
+import { computeJobFinancials } from '../../src/lib/financialMath.ts';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 

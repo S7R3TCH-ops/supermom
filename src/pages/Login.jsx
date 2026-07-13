@@ -30,8 +30,13 @@ export default function Login() {
     const addr = email.trim();
     if (!addr) { setErr('Enter your email above first, then tap Forgot password.'); return; }
     setBusy(true);
+    // In local dev, window.location.origin is localhost — a reset link pointing there
+    // is dead as soon as it's opened anywhere but this exact dev server (real incident,
+    // 2026-07-13: locked Joel out of his own admin login). Always redirect to the live
+    // site so the emailed link actually works wherever it's opened.
+    const redirectTo = import.meta.env.DEV ? 'https://supermom-v2.vercel.app/' : `${window.location.origin}/`;
     const { error } = await supabase.auth.resetPasswordForEmail(addr, {
-      redirectTo: `${window.location.origin}/`,
+      redirectTo,
     });
     setBusy(false);
     if (error) setErr(error.message);

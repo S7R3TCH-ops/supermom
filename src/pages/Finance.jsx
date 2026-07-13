@@ -690,7 +690,12 @@ export default function Finance() {
           {invoices && invoices.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {invoices.slice(0, 3).map(inv => (
-                <div key={inv.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: `1px solid ${T.cardBorder}` }}>
+                <button
+                  key={inv.id}
+                  type="button"
+                  onClick={() => navigate(`/i/${inv.id}`)}
+                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: `1px solid ${T.cardBorder}`, background: 'none', border: 'none', borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: T.cardBorder, width: '100%', cursor: 'pointer', textAlign: 'left' }}
+                >
                   <div>
                     <div style={{ fontSize: 12, fontWeight: 600, color: T.ink }}>INV-{inv.invoice_number}</div>
                     <div style={{ fontSize: 10, color: T.inkMuted }}>{new Date(inv.created_at).toLocaleDateString()}</div>
@@ -699,7 +704,7 @@ export default function Finance() {
                     <div style={{ fontSize: 12, fontWeight: 700, color: T.ink }}>${Number(inv.total_amount).toFixed(2)}</div>
                     <div style={{ fontSize: 9, color: inv.status === 'Paid' ? '#14532D' : '#FC4693', fontWeight: 700, background: inv.status === 'Paid' ? '#DCFCE7' : '#FFEFF4', padding: '2px 6px', borderRadius: 4, display: 'inline-block', letterSpacing: '0.4px' }}>{inv.status.toUpperCase()}</div>
                   </div>
-                </div>
+                </button>
               ))}
               <div style={{ marginTop: 8, fontSize: 10, color: T.inkMuted, textAlign: 'center', padding: '4px 0' }}>Showing {Math.min(invoices.length, 3)} of {invoices.length} invoice{invoices.length !== 1 ? 's' : ''}</div>
             </div>

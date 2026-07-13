@@ -220,7 +220,8 @@ async function runDailyBriefing({ req, toOverride, res }) {
   const { data: businesses, error: bizErr } = await sb
     .from('businesses')
     .select('id, owner_name, email')
-    .is('deleted_at', null);
+    .is('deleted_at', null)
+    .eq('is_test', false);
   if (bizErr) return res.status(500).json({ error: bizErr.message });
 
   const results = [];

@@ -39,6 +39,7 @@ CREATE TABLE public.businesses (
   }'::jsonb,
   created_at timestamp with time zone DEFAULT now(),
   deleted_at timestamp with time zone,
+  is_test boolean NOT NULL DEFAULT false,
   CONSTRAINT businesses_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.clients (

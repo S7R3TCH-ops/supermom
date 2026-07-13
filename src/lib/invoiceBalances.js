@@ -1,4 +1,4 @@
-import { computeJobFinancials } from './financialMath.js';
+import { computeJobFinancials } from './financialMath.ts';
 
 /**
  * Decorates a fetched invoice (with `clients`, `businesses`, `invoice_jobs.jobs` populated)

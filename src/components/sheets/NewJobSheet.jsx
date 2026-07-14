@@ -42,6 +42,16 @@ function addMinutes(hhmm, mins) {
   return fmtTime12(`${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`);
 }
 
+// Snap a HH:MM string to the nearest 30-minute mark
+function roundToHalfHour(hhmm) {
+  if (!hhmm) return hhmm;
+  const [h, m] = hhmm.split(':').map(Number);
+  const total = Math.round((h * 60 + m) / 30) * 30;
+  const rh = Math.floor(total / 60) % 24;
+  const rm = total % 60;
+  return `${String(rh).padStart(2, '0')}:${String(rm).padStart(2, '0')}`;
+}
+
 // Returns HH:MM string for use in <input type="time">
 function toHHMMStr(startHHMM, mins) {
   if (!startHHMM || !mins) return '';
@@ -238,6 +248,14 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
       setBookErr('Client and Service are required.');
       return;
     }
+    if (!date) {
+      setBookErr('Please select a date.');
+      return;
+    }
+    if (!time) {
+      setBookErr('Please select a start time.');
+      return;
+    }
     if (!duration) {
       setBookErr('Please set an estimated duration.');
       return;
@@ -423,9 +441,9 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
           {!bookErr && step === 1 && !clientId && (
             <div style={{ paddingBottom: 8, color: T.inkMuted, fontSize: 12, fontWeight: 500, textAlign: 'center' }}>Select a client to continue</div>
           )}
-          {!bookErr && step === 2 && (!serviceId || !duration || !time) && (
+          {!bookErr && step === 2 && (!serviceId || !date || !time || !duration) && (
             <div style={{ paddingBottom: 8, color: T.inkMuted, fontSize: 12, fontWeight: 500, textAlign: 'center' }}>
-              Set {[!serviceId && 'service', !duration && 'duration', !time && 'time'].filter(Boolean).join(', ')} to continue
+              Set {[!serviceId && 'service', !date && 'date', !time && 'time', !duration && 'duration'].filter(Boolean).join(', ')} to continue
             </div>
           )}
           <div style={{ display: 'flex', gap: 10 }}>
@@ -435,12 +453,12 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
             <button
               type="button"
               onClick={step === 1 ? (clientId ? () => setStep(2) : () => {}) : step === 2 ? () => setStep(3) : handleBook}
-              disabled={busy || (step === 1 && !clientId) || (step === 2 && (!serviceId || !duration || !time))}
+              disabled={busy || (step === 1 && !clientId) || (step === 2 && (!serviceId || !date || !time || !duration))}
               style={{
                 flex: 2, borderRadius: 12, padding: '12px 0', border: 'none',
                 fontFamily: T.font, fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                background: (busy || (step === 1 && !clientId) || (step === 2 && (!serviceId || !duration || !time))) ? T.pinkTint : T.pink,
-                color: (busy || (step === 1 && !clientId) || (step === 2 && (!serviceId || !duration || !time))) ? T.inkMuted : 'white',
+                background: (busy || (step === 1 && !clientId) || (step === 2 && (!serviceId || !date || !time || !duration))) ? T.pinkTint : T.pink,
+                color: (busy || (step === 1 && !clientId) || (step === 2 && (!serviceId || !date || !time || !duration))) ? T.inkMuted : 'white',
                 boxShadow: '0 4px 12px rgba(233,30,106,0.3)',
               }}
             >
@@ -652,17 +670,18 @@ function Step2What({
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 18px 1fr', alignItems: 'end', gap: 4 }}>
           <div>
             <div style={{ fontSize: 10, fontWeight: 600, color: T.inkMuted, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.4px' }}>Start</div>
-            <input type="time" value={time} onChange={e => setTime(e.target.value)} style={{ width: '100%', padding: '10px 8px', borderRadius: 12, background: T.card, border: `1.5px solid ${time ? T.cardBorder : T.pink}`, color: T.ink, fontSize: 14 }} />
+            <input type="time" step={1800} value={time} onChange={e => setTime(roundToHalfHour(e.target.value))} style={{ width: '100%', padding: '10px 8px', borderRadius: 12, background: T.card, border: `1.5px solid ${time ? T.cardBorder : T.pink}`, color: T.ink, fontSize: 14 }} />
           </div>
           <div style={{ textAlign: 'center', color: T.inkMuted, fontSize: 13, paddingBottom: 10 }}>→</div>
           <div>
             <div style={{ fontSize: 10, fontWeight: 600, color: T.inkMuted, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.4px' }}>End</div>
             <input
               type="time"
+              step={1800}
               value={toHHMMStr(time, duration)}
               disabled={!time}
               onChange={e => {
-                const mins = diffMinutes(time, e.target.value);
+                const mins = diffMinutes(time, roundToHalfHour(e.target.value));
                 if (mins != null) setDuration(mins);
               }}
               style={{ width: '100%', padding: '10px 8px', borderRadius: 12, background: T.card, border: `1.5px solid ${T.cardBorder}`, color: T.ink, fontSize: 14, opacity: time ? 1 : 0.4 }}

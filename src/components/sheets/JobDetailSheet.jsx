@@ -65,6 +65,13 @@ function diffMinutes(startHHMM, endHHMM) {
   const diff = (eh * 60 + em) - (sh * 60 + sm);
   return diff >= 15 ? diff : null;
 }
+function roundToHalfHour(hhmm) {
+  if (!hhmm) return hhmm;
+  const [h, m] = hhmm.split(':').map(Number);
+  const total = Math.round((h * 60 + m) / 30) * 30;
+  const rh = Math.floor(total / 60) % 24, rm = total % 60;
+  return `${String(rh).padStart(2, '0')}:${String(rm).padStart(2, '0')}`;
+}
 
 /* ============= ROOT COMPONENT ============= */
 export default function JobDetailSheet({ jobId, onClose }) {
@@ -769,17 +776,18 @@ function EditMode({ job, form, setForm, services, workers, business, T, mode, bu
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 18px 1fr', alignItems: 'end', gap: 4 }}>
             <div>
               <div style={{ fontSize: 9, fontWeight: 600, color: T.inkMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.4px' }}>Start</div>
-              <input ref={timeRef} type="time" value={form.scheduled_time} onChange={e => set('scheduled_time', e.target.value)} style={iStyle(T)} />
+              <input ref={timeRef} type="time" step={1800} value={form.scheduled_time} onChange={e => set('scheduled_time', roundToHalfHour(e.target.value))} style={iStyle(T)} />
             </div>
             <div style={{ textAlign: 'center', color: T.inkMuted, fontSize: 13, paddingBottom: 9 }}>→</div>
             <div>
               <div style={{ fontSize: 9, fontWeight: 600, color: T.inkMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.4px' }}>End</div>
               <input
                 type="time"
+                step={1800}
                 value={toHHMMStr(form.scheduled_time, Math.round(parseFloat(form.estimated_hours || 0) * 60))}
                 disabled={!form.scheduled_time}
                 onChange={e => {
-                  const mins = diffMinutes(form.scheduled_time, e.target.value);
+                  const mins = diffMinutes(form.scheduled_time, roundToHalfHour(e.target.value));
                   if (mins != null) { set('estimated_hours', (mins / 60).toFixed(2)); set('hoursTouched', true); }
                 }}
                 style={{ ...iStyle(T), opacity: form.scheduled_time ? 1 : 0.4 }}

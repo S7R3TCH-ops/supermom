@@ -31,9 +31,23 @@ export default function WeekStrip({
   const liveOffsetRef = useRef(0);
   const isSnappingRef = useRef(false);
 
+  // calendar-variant day-scrub state — the 21-day strip doubles as a continuous
+  // day picker; previewIndex is the ONLY gesture-local state, derived-not-duplicated
+  // from the same dx that drives liveOffset, so preview and transform can't drift apart.
+  const [previewIndex, setPreviewIndex] = useState(null);
+  const previewIndexRef = useRef(null);
+  const anchorContentXRef = useRef(0);
+  const cellPitchRef = useRef(0);
+  const suppressClickRef = useRef(false); // swallows the ghost click a touch-commit leaves behind
+
   const prevWeekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i - 7)), [weekStart]);
   const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
   const nextWeekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i + 7)), [weekStart]);
+  const flatDays = useMemo(() => [...prevWeekDays, ...weekDays, ...nextWeekDays], [prevWeekDays, weekDays, nextWeekDays]);
+  const flatDaysRef = useRef(flatDays);
+  flatDaysRef.current = flatDays;
+
+  const previewDay = variant === 'calendar' && previewIndex !== null ? flatDays[previewIndex] : null;
 
   const getJobsForDay = useCallback((d) => {
     return allJobs.filter(j => {
@@ -42,8 +56,24 @@ export default function WeekStrip({
     });
   }, [allJobs]);
 
+  // Computes the anchor day's index in flatDays and the content-space X the
+  // touch started at, given the touch's current clientX. Shared by touchstart
+  // and the decide-moment re-baseline so the two never disagree.
+  const primeCalendarAnchor = useCallback((clientX) => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    const panelWidth = containerRef.current?.offsetWidth ?? window.innerWidth;
+    cellPitchRef.current = panelWidth / 7;
+    anchorContentXRef.current = panelWidth + (clientX - (rect?.left ?? 0));
+    const anchorDay = selectedDate || today;
+    let anchorIndex = flatDaysRef.current.findIndex(d => sameDay(d, anchorDay));
+    if (anchorIndex === -1) anchorIndex = 10; // fallback: mid-current-week, shouldn't happen
+    previewIndexRef.current = anchorIndex;
+    setPreviewIndex(anchorIndex);
+  }, [selectedDate, today]);
+
   const handleTouchStart = useCallback((e) => {
     if (isSnappingRef.current) return;
+    suppressClickRef.current = false;
     touchRef.current = {
       startX: e.touches[0].clientX,
       startY: e.touches[0].clientY,
@@ -56,8 +86,9 @@ export default function WeekStrip({
   const handleTouchMove = useCallback((e) => {
     const t = touchRef.current;
     if (!t.active || t.scrolling || isSnappingRef.current) return;
+    if (e.touches.length > 1) return; // ignore multi-touch (pinch/zoom gestures)
 
-    const dx = e.touches[0].clientX - t.startX;
+    let dx = e.touches[0].clientX - t.startX;
     const dy = e.touches[0].clientY - t.startY;
 
     if (!t.decided) {
@@ -69,6 +100,11 @@ export default function WeekStrip({
       }
       if (Math.abs(dx) > 8) {
         t.decided = true;
+        // Re-baseline so the strip doesn't jump by the 8px decide-threshold on engage.
+        t.startX = e.touches[0].clientX;
+        t.startY = e.touches[0].clientY;
+        dx = 0;
+        if (variant === 'calendar') primeCalendarAnchor(t.startX);
       } else {
         return;
       }
@@ -76,12 +112,50 @@ export default function WeekStrip({
 
     liveOffsetRef.current = dx;
     setLiveOffset(dx);
-  }, []);
+
+    if (variant === 'calendar' && cellPitchRef.current > 0) {
+      const idx = Math.max(0, Math.min(20, Math.floor((anchorContentXRef.current - dx) / cellPitchRef.current)));
+      if (idx !== previewIndexRef.current) {
+        previewIndexRef.current = idx;
+        setPreviewIndex(idx);
+        triggerHaptic('light'); // detent feel per cell; silently no-ops on iOS Safari (no Vibration API)
+      }
+    }
+  }, [variant, primeCalendarAnchor]);
 
   const handleTouchEnd = useCallback((e) => {
     const t = touchRef.current;
     t.active = false;
     if (t.scrolling || isSnappingRef.current) return;
+
+    if (variant === 'calendar' && t.decided) {
+      const idx = previewIndexRef.current ?? 10;
+      const panelWidth = containerRef.current?.offsetWidth ?? window.innerWidth;
+      const weekDelta = Math.floor(idx / 7) - 1; // -1 prev / 0 current / +1 next
+      const committedDay = flatDaysRef.current[idx];
+
+      isSnappingRef.current = true;
+      setIsSnapping(true);
+      const snapTarget = -weekDelta * panelWidth;
+      setLiveOffset(snapTarget);
+      liveOffsetRef.current = snapTarget;
+      if (weekDelta !== 0) triggerHaptic('medium');
+      e.stopPropagation();
+
+      suppressClickRef.current = true;
+      onDaySelect(committedDay);
+
+      setTimeout(() => {
+        if (weekDelta !== 0) onWeekChange(weekDelta);
+        isSnappingRef.current = false;
+        setIsSnapping(false);
+        setLiveOffset(0);
+        liveOffsetRef.current = 0;
+        previewIndexRef.current = null;
+        setPreviewIndex(null); // by now selectedDate has caught up — no flicker
+      }, 380);
+      return;
+    }
 
     const off = liveOffsetRef.current;
     const THRESHOLD = 50;
@@ -116,11 +190,31 @@ export default function WeekStrip({
         setIsSnapping(false);
       }, 380);
     }
-  }, [onWeekChange]);
+  }, [onWeekChange, onDaySelect, variant]);
+
+  const handleTouchCancel = useCallback(() => {
+    // iOS fires this on notification pulls / system-gesture takeover mid-drag —
+    // without a handler the gesture sticks. Reset to committed state cleanly.
+    touchRef.current.active = false;
+    isSnappingRef.current = true;
+    setIsSnapping(true);
+    setLiveOffset(0);
+    liveOffsetRef.current = 0;
+    previewIndexRef.current = null;
+    setPreviewIndex(null);
+    setTimeout(() => {
+      isSnappingRef.current = false;
+      setIsSnapping(false);
+    }, 380);
+  }, []);
 
   const renderDayCell = useCallback((d) => {
     const isToday = sameDay(d, today);
-    const isSelected = !!selectedDate && sameDay(d, selectedDate);
+    // Calendar variant: while a scrub gesture is live, the previewed cell wins over
+    // the committed selection — that's the "highlight as it goes" behavior. Idle,
+    // it's just the committed selectedDate, same as before.
+    const highlightDay = variant === 'calendar' ? (previewDay || selectedDate) : selectedDate;
+    const isSelected = !!highlightDay && sameDay(d, highlightDay);
     const dots = Math.min(getJobsForDay(d).length, 3);
 
     if (variant === 'calendar') {
@@ -129,7 +223,10 @@ export default function WeekStrip({
           key={d.toISOString()}
           role="button"
           aria-label={`${d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}${dots > 0 ? `, ${dots} job${dots > 1 ? 's' : ''}` : ''}`}
-          onClick={() => onDaySelect(isSelected ? null : d)}
+          onClick={() => {
+            if (suppressClickRef.current) return; // swallow the click a touch-commit leaves behind
+            onDaySelect(isSelected ? null : d);
+          }}
           style={{
             textAlign: 'center',
             padding: '4px 2px 5px',
@@ -218,7 +315,7 @@ export default function WeekStrip({
         )}
       </div>
     );
-  }, [today, selectedDate, getJobsForDay, variant, mode, T, onDaySelect]);
+  }, [today, selectedDate, previewDay, getJobsForDay, variant, mode, T, onDaySelect]);
 
   const panelGridStyle = {
     width: '33.333%',
@@ -250,6 +347,7 @@ export default function WeekStrip({
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchCancel}
         style={{
           display: 'flex',
           width: '300%',

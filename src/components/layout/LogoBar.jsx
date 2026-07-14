@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { useViewpoint } from '../../context/ViewpointContext';
-import { useBusiness } from '../../data/useData';
+import { useBusiness, useAiEnabled } from '../../data/useData';
 import { AiChatSheetContext } from '../../context/AiChatSheetContext';
 
 export default function LogoBar() {
@@ -14,6 +14,7 @@ export default function LogoBar() {
   const { business } = useBusiness();
   const { isSuperAdmin, allBusinesses, viewingAsId, quickSwitch } = useViewpoint();
   const aiChat = useContext(AiChatSheetContext);
+  const aiEnabled = useAiEnabled();
   const lastTapRef = useRef(0);
   const [pickerOpen, setPickerOpen] = useState(false);
 
@@ -125,7 +126,7 @@ export default function LogoBar() {
       )}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-        {aiChat && (
+        {aiChat && aiEnabled && (
           <button
             type="button"
             onClick={() => aiChat.openChat()}

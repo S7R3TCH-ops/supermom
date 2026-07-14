@@ -153,14 +153,6 @@ export default function PostJobSheet({ jobId, onClose }) {
 
   async function handleLogPayment() {
     if (!job) return;
-    const jobDate = new Date(job.scheduled_date + 'T00:00:00');
-    const today = new Date();
-    today.setHours(0,0,0,0);
-
-    if (jobDate > today) {
-      if (!window.confirm("Roads? Where we're going, we don't need roads... but we do need the right date! Mark this future job as complete/paid anyway?")) return;
-    }
-
     const totalDuration = actualMinutes / 60;
 
     setBusy(true);

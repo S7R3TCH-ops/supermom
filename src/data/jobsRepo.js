@@ -7,6 +7,7 @@ import { supabase, authHeaders } from '../lib/supabase';
 import { getCurrentBusinessId } from './currentBusiness';
 import { generateInvoiceForJob } from './invoicesRepo';
 import { computeJobFinancials } from '../lib/financialMath';
+import { MONEY_FIELDS } from '../lib/jobDraftPolicy';
 import { composeTorontoISO as _composeTorontoISO } from '../lib/dateUtils';
 export { composeTorontoISO } from '../lib/dateUtils';
 
@@ -219,6 +220,12 @@ export async function updateJob(id, patch, seriesAction = 'this') {
       .single();
     if (error) throw error;
     assertWrote(data, 'updateJob:this');
+    // Backstop (jobDraftPolicy): a money edit can silently invalidate payment_status
+    // (e.g. rate change on a Paid job). Re-derive from the payments sum unless the
+    // caller set payment_status itself (recordPayment does — it already derived it).
+    if (!('payment_status' in cleanPatch) && MONEY_FIELDS.some(f => f in cleanPatch)) {
+      data.payment_status = await rederivePaymentStatus(id);
+    }
     const decorated = decorateJob(data);
     triggerGCalSync(id, 'upsert');
     return decorated;
@@ -440,6 +447,39 @@ export async function revertJobToPreCompletion(id) {
     .eq('id', id)
     .eq('business_id', businessId);
   if (error) throw error;
+}
+
+/**
+ * Re-derives payment_status by comparing the non-void payments sum against the
+ * job's recomputed total. The one source of truth for "is this job paid" —
+ * called by recordPayment's logic and by updateJob's money-edit backstop.
+ * Returns the derived status ('Paid' | 'Partial' | '').
+ */
+export async function rederivePaymentStatus(jobId) {
+  const businessId = await getCurrentBusinessId();
+
+  const [{ data: job, error: jErr }, { data: pays, error: pErr }, { data: biz, error: bErr }] = await Promise.all([
+    supabase.from('jobs').select('*').eq('id', jobId).eq('business_id', businessId).single(),
+    supabase.from('payments').select('amount').eq('job_id', jobId).eq('is_void', false),
+    supabase.from('businesses').select('hst_rate, tax_enabled, hourly_rate').eq('id', businessId).single(),
+  ]);
+  if (jErr) throw jErr;
+  if (pErr) throw pErr;
+  if (bErr) throw bErr;
+
+  const paid = (pays ?? []).reduce((s, p) => s + Number(p.amount), 0);
+  const total = computeJobFinancials(job, biz).total;
+  const status = paid >= total - 0.01 && paid > 0 ? 'Paid' : paid > 0 ? 'Partial' : '';
+
+  if (status !== job.payment_status) {
+    const { error } = await supabase
+      .from('jobs')
+      .update({ payment_status: status })
+      .eq('id', jobId)
+      .eq('business_id', businessId);
+    if (error) throw error;
+  }
+  return status;
 }
 
 // eslint-disable-next-line no-unused-vars

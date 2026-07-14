@@ -14,6 +14,7 @@ import NewClientSheet from './NewClientSheet';
 import { calculateEstimatedDuration } from '../../data/ai';
 import { fetchSmartDurationEstimate } from '../../data/ai';
 import { getWorkerLabel } from '../../lib/labels';
+import { buildFinancialPatch } from '../../lib/jobDraftPolicy';
 import { useKeyboardFocus } from '../../hooks/useKeyboardFocus';
 import GrabBar from '../ui/GrabBar';
 import FinancialMathBreakdown from '../ui/FinancialMathBreakdown';
@@ -278,13 +279,6 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
         : (Number(svc?.default_price) || 0);
       const serviceRate = customPrice !== null ? Number(customPrice) : defaultRate;
       const estimatedHours = Math.round((duration / 60) * 100) / 100;
-      const totalAmount = pricingType === 'Hourly'
-        ? serviceRate * estimatedHours
-        : serviceRate;
-
-      const validCosts = additionalCosts
-        .filter(c => parseFloat(c.amount) > 0)
-        .map(c => ({ amount: parseFloat(c.amount), description: c.description }));
 
       const payload = {
         client_id: clientId,
@@ -292,16 +286,16 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
         service_name: svc?.name,
         scheduled_date: date,
         scheduled_time: time,
-        estimated_hours: estimatedHours,
-        pricing_type: pricingType,
-        flat_rate: serviceRate,
-        total_amount: totalAmount,
         job_notes: bookingNotes,
-        additional_costs_json: validCosts,
-        additional_cost: validCosts.reduce((s, c) => s + c.amount, 0),
         worker_id: workerId || null,
         worker_pay: workerId && workerPay !== '' ? Number(workerPay) : null,
-        tax_enabled: taxEnabled,
+        ...buildFinancialPatch({
+          pricing_type: pricingType,
+          rate: serviceRate,
+          hours: estimatedHours,
+          additionalCosts,
+          taxEnabled,
+        }, business),
         ...(recurrence ? { ai_context: { recurrence_rule: recurrence } } : {}),
       };
       await createJob(payload);
@@ -742,6 +736,7 @@ function Step2What({
       {/* Additional Costs */}
       <div>
         <SectionLabel>Additional Costs</SectionLabel>
+        {serviceId ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {additionalCosts.map((c, i) => (
             <div key={i} style={{ display: 'flex', gap: 8 }}>
@@ -782,6 +777,9 @@ function Step2What({
             + Add another cost
           </button>
         </div>
+        ) : (
+          <div style={{ fontSize: 10, color: T.inkMuted }}>Pick a service first to add extra costs</div>
+        )}
       </div>
 
       {/* Live Financial Breakdown */}

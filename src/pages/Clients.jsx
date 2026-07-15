@@ -39,9 +39,14 @@ const ClientCard = memo(function ClientCard({ c, T, mode, onPress }) {
             <div style={{ fontFamily: T.serif, fontSize: 16, fontWeight: 500, letterSpacing: '-0.2px', color: T.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
             {c.vip && <span style={{ background: '#FCD34D', borderRadius: 4, padding: '2px 6px', fontFamily: T.font, fontSize: 10, fontWeight: 700, color: '#78350F', whiteSpace: 'nowrap' }}>VIP ★</span>}
           </div>
-          <div style={{ fontFamily: T.font, fontSize: 12, color: T.inkMuted, marginBottom: 5 }}>
+          <div style={{ fontFamily: T.font, fontSize: 12, color: T.inkMuted, marginBottom: 2 }}>
             {c.service !== '—' ? `${c.service} · Last: ${c.last}` : 'No jobs yet'}
           </div>
+          {c.stats?.jobsTotal > 0 && (
+            <div style={{ fontFamily: T.font, fontSize: 11, color: T.inkMuted, marginBottom: 5, display: 'flex', alignItems: 'center', gap: 4 }}>
+              {c.stats.jobsTotal} job{c.stats.jobsTotal === 1 ? '' : 's'} · <AmtCell amount={`$${c.stats.totalBilled.toFixed(0)}`} size={11} /> lifetime
+            </div>
+          )}
           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
             {c.tags.map(tag => {
               const isOverdue = tag.toLowerCase().includes('overdue');
@@ -146,31 +151,27 @@ export default function Clients() {
           <div style={{ fontFamily: T.serif, fontSize: 21, fontWeight: 500, letterSpacing: '-0.4px', color: isDark ? 'white' : T.ink }}>Your people.</div>
         </div>
 
+        {/* Pure stats display — NOT filter controls. The filter chip row below
+            already covers All/Owes $/VIP with counts; having both be clickable
+            with the same targets was confusing duplicate UI (Joel, 2026-07-15). */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: 12 }}>
           {[
-            { n: String(clients.length), l: 'Total',   f: 'All'    },
-            { n: privacyOn ? '•••' : `$${totalOwed.toFixed(0)}`, l: 'Owes $', f: 'Owes $' },
-            { n: String(vipCount),       l: 'VIP',     f: 'VIP'    },
-          ].map(s => {
-            const isActive = filter === s.f;
-            return (
-              <button
-                key={s.l}
-                type="button"
-                onClick={() => setFilter(s.f)}
-                aria-pressed={isActive}
-                style={{
-                  background: isActive ? T.pinkGlow : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.4)'),
-                  border: `1px solid ${isActive ? T.pink : (isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.05)')}`,
-                  borderRadius: 9, padding: '7px 5px', textAlign: 'center', cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                }}
-              >
-                <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 500, color: isActive ? T.pink : (isDark ? 'white' : T.ink), letterSpacing: '-0.3px' }}>{s.n}</div>
-                <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 600, color: isActive ? T.pink : (isDark ? 'rgba(255,255,255,0.55)' : T.inkMuted), letterSpacing: '0.4px', textTransform: 'uppercase', marginTop: 2 }}>{s.l}</div>
-              </button>
-            );
-          })}
+            { n: String(clients.length), l: 'Total'   },
+            { n: privacyOn ? '•••' : `$${totalOwed.toFixed(0)}`, l: 'Owes $' },
+            { n: String(vipCount),       l: 'VIP'     },
+          ].map(s => (
+            <div
+              key={s.l}
+              style={{
+                background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.4)',
+                border: `1px solid ${isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.05)'}`,
+                borderRadius: 9, padding: '7px 5px', textAlign: 'center',
+              }}
+            >
+              <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 500, color: isDark ? 'white' : T.ink, letterSpacing: '-0.3px' }}>{s.n}</div>
+              <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 600, color: isDark ? 'rgba(255,255,255,0.55)' : T.inkMuted, letterSpacing: '0.4px', textTransform: 'uppercase', marginTop: 2 }}>{s.l}</div>
+            </div>
+          ))}
         </div>
 
         <div style={{

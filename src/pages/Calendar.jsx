@@ -6,6 +6,7 @@ import { EmptySchedule } from '../components/ui/Illustrations';
 import OfflineMessage from '../components/ui/OfflineMessage';
 import WeekStrip from '../components/ui/WeekStrip';
 import { getNavigationUrl } from '../lib/maps';
+import { useDaySwipeGesture } from '../hooks/useDaySwipeGesture';
 
 // Real "now" — was previously a hard-coded prototype anchor.
 const NOW = () => new Date();
@@ -162,6 +163,16 @@ export default function Calendar() {
 
   const handlePrevWeek = () => setWeekStart(addDays(weekStart, -7));
   const handleNextWeek = () => setWeekStart(addDays(weekStart, 7));
+  // Day-swipe extension (agenda content area): steps the filtered day by one,
+  // routing through startOfWeek + handlePickDay same as jump-to-date so
+  // weekStart follows across a week boundary — keeps WeekStrip's highlight
+  // and the agenda list's filter in sync, same state both surfaces share.
+  const stepAgendaDay = useCallback((delta) => {
+    const base = agendaDayFilter || NOW();
+    const next = addDays(base, delta);
+    setWeekStart(startOfWeek(next));
+    handlePickDay(next);
+  }, [agendaDayFilter]);
   const handleToday = () => {
     const today = NOW();
     setWeekStart(startOfWeek(today));
@@ -351,6 +362,7 @@ export default function Calendar() {
           dayFilter={agendaDayFilter}
           onClearFilter={() => setAgendaDayFilter(null)}
           onSetFilter={(d) => setAgendaDayFilter(d)}
+          onSwipeDay={stepAgendaDay}
           weekStart={weekStart}
           loading={loading}
         />
@@ -361,7 +373,8 @@ export default function Calendar() {
 
 /* ------------------------------ AGENDA VIEW ------------------------------ */
 
-function AgendaView({ T, mode, privacyOn, allJobs, nextUpcoming, onJobPress, dayFilter, onClearFilter, onSetFilter, weekStart, loading }) {
+function AgendaView({ T, mode, privacyOn, allJobs, nextUpcoming, onJobPress, dayFilter, onClearFilter, onSetFilter, onSwipeDay, weekStart, loading }) {
+  const { containerRef, liveOffset, isSnapping, handlers } = useDaySwipeGesture(onSwipeDay);
   const grouped = useMemo(() => {
     const weekStartKey = torontoDateKey(weekStart);
     const weekEndKey   = torontoDateKey(addDays(weekStart, 6));
@@ -424,7 +437,20 @@ function AgendaView({ T, mode, privacyOn, allJobs, nextUpcoming, onJobPress, day
   }
 
   return (
-    <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '8px 13px 80px', contain: 'layout style paint' }}>
+    <div
+      ref={containerRef}
+      className="sm-scroll"
+      {...handlers}
+      style={{
+        flex: 1,
+        overflowY: 'auto',
+        padding: '8px 13px 80px',
+        contain: 'layout style paint',
+        transform: liveOffset ? `translateX(${liveOffset}px)` : undefined,
+        transition: isSnapping ? 'transform 0.38s cubic-bezier(0.2, 0.8, 0.2, 1)' : 'none',
+        touchAction: 'pan-y',
+      }}
+    >
       <div style={{ marginBottom: 10 }}>
         <button
           type="button"

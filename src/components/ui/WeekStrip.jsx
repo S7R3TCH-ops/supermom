@@ -1,5 +1,6 @@
 import { useState, useRef, useMemo, useCallback } from 'react';
 import { triggerHaptic } from '../../lib/haptics';
+import { decideSwipeAxis, resolveSwipeCommit } from '../../lib/daySwipeGesture';
 
 function addDays(d, n) {
   const x = new Date(d);
@@ -92,13 +93,14 @@ export default function WeekStrip({
     const dy = e.touches[0].clientY - t.startY;
 
     if (!t.decided) {
-      if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 8) {
+      const axis = decideSwipeAxis(dx, dy);
+      if (axis === 'vertical') {
         t.scrolling = true;
         liveOffsetRef.current = 0;
         setLiveOffset(0);
         return;
       }
-      if (Math.abs(dx) > 8) {
+      if (axis === 'horizontal') {
         t.decided = true;
         // Re-baseline so the strip doesn't jump by the 8px decide-threshold on engage.
         t.startX = e.touches[0].clientX;
@@ -158,11 +160,10 @@ export default function WeekStrip({
     }
 
     const off = liveOffsetRef.current;
-    const THRESHOLD = 50;
+    const { committed, delta } = resolveSwipeCommit(off); // drag left = next week (+1), drag right = prev week (-1)
 
-    if (Math.abs(off) > THRESHOLD) {
+    if (committed) {
       const panelWidth = containerRef.current?.offsetWidth ?? window.innerWidth;
-      const delta = off < 0 ? 1 : -1; // drag left = next week (+1), drag right = prev week (-1)
       const snapTarget = off < 0 ? -panelWidth : panelWidth;
 
       isSnappingRef.current = true;

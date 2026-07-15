@@ -99,7 +99,7 @@ export async function generateInvoiceForJob(jobId) {
  * Fetches an invoice and its associated job(s) and client data, decorated with
  * payment balances.
  *
- * Reads via the service-role JSON endpoint (api/invoice.js?format=json) rather
+ * Reads via the service-role JSON endpoint (api/invoice.ts?format=json) rather
  * than the browser anon Supabase client, so the public /i/:id route needs no
  * anon SELECT policies on invoices/clients/businesses/jobs (SEC-1).
  */

@@ -35,13 +35,16 @@ export default defineConfig({
 
   /* Configure projects for major browsers */
   projects: [
-    { name: 'setup', testMatch: /auth\.setup\.ts/ },
-    { name: 'setup-superadmin', testMatch: /superadmin\.setup\.ts/ },
+    // channel: 'chrome' uses the system-installed Chrome instead of Playwright's
+    // own bundled binary — the bundled download stalls in this sandboxed environment.
+    { name: 'setup', testMatch: /auth\.setup\.ts/, use: { channel: 'chrome' } },
+    { name: 'setup-superadmin', testMatch: /superadmin\.setup\.ts/, use: { channel: 'chrome' } },
 
     {
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
+        channel: 'chrome',
         storageState: 'playwright/.auth/user.json',
       },
       dependencies: ['setup'],
@@ -50,6 +53,7 @@ export default defineConfig({
       name: 'superadmin-chromium',
       use: {
         ...devices['Desktop Chrome'],
+        channel: 'chrome',
         storageState: 'playwright/.auth/superadmin.json',
       },
       dependencies: ['setup-superadmin'],

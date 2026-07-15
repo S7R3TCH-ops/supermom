@@ -152,7 +152,7 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 
 ---
 
-## Current version: 0.13.12 — Jul 11, 2026 (package.json synced)
+## Current version: 0.13.13 — Jul 13, 2026 (package.json synced)
 
 Sandra's business is live — data wiped and re-provisioned Jun 9. App in active use.
 
@@ -161,6 +161,14 @@ Sandra's business is live — data wiped and re-provisioned Jun 9. App in active
 ### Recent changes (full history in `docs/changelog/` + `git log`)
 - **(Jul 14) — WeekStrip continuous day-scrub gesture (calendar variant), phone-tested 2026-07-13.** Dragging the 21-day flat strip now previews and commits a day under the finger in real time instead of only snapping week-to-week: `previewIndex` (derived from the same `dx` driving the transform, never duplicated) tracks the cell under the touch, with per-cell haptic detents and a `touchcancel` handler (iOS fires this on notification-pull/system-gesture takeover mid-drag — previously left the gesture stuck). Ghost click after a touch-commit is swallowed via `suppressClickRef`. `playwright.config.ts` port bumped to 8080 to match the actual dev-server port; `index.css` `-webkit-fill-available` → `100dvh` (the old iOS-only fallback was overriding real dynamic-viewport support). New `tests/calendar-scrub.spec.ts` + `tests/qa-regression.spec.ts`. Build + Vitest 61/61.
 - **(Jul 14) — unified job field/validation model across New/Edit/Complete job sheets.** New `src/lib/jobDraftPolicy.js` (+32 Vitest tests): `deriveJobStage`, `getFieldPolicy`, `validateJobDraft`, `buildFinancialPatch`. **Single-writer rule: subtotal/hst_amount/total_amount only ever written from `buildFinancialPatch` (wraps `computeJobFinancials`) — no sheet hand-computes money columns anymore.** Hourly totals are hard-derived (rate × hours); EditMode's free-typed "Amount ($)" replaced by a single `form.rate` field ("Rate ($/hr)" for Hourly, "Amount ($)" for Flat) — this fixed a live bug where hourly `total_amount` could silently diverge from rate×hours, and a second one where Flat-amount edits never updated the live breakdown. Stage lock matrix: scheduled=open, prepaid/invoiced=warn card, Paid=override card + auto re-derive, Cancelled=locked (Edit already hidden). Repo backstops: `jobsRepo.rederivePaymentStatus(jobId)` (payments-sum vs recomputed total; `updateJob` auto-calls it when a money field changes without `payment_status` in the patch), `invoicesRepo.recalcInvoiceTotal(invoiceId)` (extracted from `addJobsToInvoice`; EditMode save resyncs the invoice). PostJobSheet: payment amount validated (>$0 when balance owed), overpay allowed + shown as tip note, already-Paid records can no longer log a duplicate full payment (amount default was `liveTotal` when balance hit 0). NewJobSheet: Additional Costs gated on service pick; booking now writes the full subtotal/hst/total triple (total_amount at booking is now tax-inclusive incl. costs — was pre-tax labor only). Build + Vitest 61/61. Not phone-tested.
+- **v0.13.13 (Jul 13) — invoice/PDF/email 500 fix (real production bug, was live since a TS migration), briefing test-account leak, AI error UX, admin password-reset incident fix.**
+  1. **Invoice view/PDF/email were completely broken in production** — commit `37a4784` (TS migration) renamed `src/lib/financialMath.js` → `.ts` but never updated two importers (`api/_lib/invoicePdf.js`, `src/lib/invoiceBalances.js`) that hardcoded the `.js` extension. `api/invoice.js` (every invoice view/PDF/email request) 500'd on load since that migration merged — any client viewing/downloading/emailing an invoice hit this. Fixed both imports to point at `.ts` explicitly (extensionless didn't resolve under Vercel's function bundler, unlike Vite's frontend bundler). Fully verified end-to-end: invoice page loads, `/api/invoice?...&format=pdf` returns a real 473KB 1-page PDF, and the actual Send Receipt email flow works.
+  2. **Finance page's "Formal Invoices" list had no click handler at all** (dead list) — unlike the identical list on `ClientProfile.jsx`. Wired up the same navigate-to-invoice behavior.
+  3. **`api/ai/chat.js` and `api/ai/[action].js` were forwarding raw Anthropic API error JSON straight into user-facing error messages** (e.g. the credit-balance-too-low 400 shown verbatim in the chat UI). Now return a generic "unavailable, try again" message; full error still logged server-side.
+  4. **New `businesses.is_test` column** (migration `20260713191258_add_is_test_to_businesses.sql`) + provisioning checkbox in `Admin.jsx`, filtered out of the daily briefing recipient query (`api/briefing/daily.js`) — stops QA/test accounts from being emailed as if they were real clients. ⚠️ Pending: run the migration + `UPDATE businesses SET is_test = true WHERE name = 'Bright Path Concierge (QA TEST)';` in Supabase SQL Editor.
+  5. **Real incident, root cause fixed:** `src/pages/Login.jsx` password-reset `redirectTo` used `window.location.origin` — a reset requested from local dev emailed a link pointing at `localhost`, dead everywhere else. This locked Joel out of his own admin login mid-session. Now always redirects to the production URL when requested from dev.
+  6. Also includes the 2026-07-12 provisioning error-handling fix (`Admin.jsx` `handleProvision` called `res.json()` unconditionally, crashed with "Unexpected end of JSON input" on non-JSON error responses — now wraps in try/catch).
+  Also found, not yet fixed: a live, unrestricted "Generate AI insights" button (`simulateAILearning` in `clientsRepo.js`) writes hardcoded fake data into real clients' profiles — no AI call, no gating. Needs a follow-up fix (gate to `is_test` or remove). Future-dated job completion bug (known, `useBackClose` race) reproduced again during this session's QA pass, now crashing the tab instead of silently no-op'ing — still needs a dedicated debugging session, not another guess. Build + Vitest (29/29) clean.
 - **v0.13.12 (Jul 11) — silent-failure fix batch, greenlit from the 2026-07-11 sweep (28 silent/6 partial sites, see `sweep-silent-failures-2026-07-11.md` in second-brain).** Three phases, all build/Vitest-gated:
   1. **Repo layer** (root cause — `{ error }` was never read on secondary/cascade Supabase calls, so no caller-side try/catch could see them): `clientsRepo.hardDeleteClient`, `jobsRepo.hardDeleteJob`, `jobsRepo.revertJobToPreCompletion` (also fixes a read-failure wrongly voiding an invoice — the branch now throws instead of falling through), `jobsRepo.patchJobAiContext`, `invoicesRepo.settleInvoiceOutstanding`, `invoicesRepo.voidInvoiceSettlement`, `invoicesRepo.addJobsToInvoice` now check and throw on every step.
   2. **Lying-success sites**: Settings "Reset all data" now aggregates per-table failures and fails the toast instead of always reporting success on a destructive 12-table delete; `PostJobSheet` bundle-payment empty catches now surface `toast.error`; `WorkerCatalogSheet` skill/pay-rate save no longer fires "Updated!" on a swallowed failure; `InvoiceView` Undo Payment button now renders its `error` state (same set-but-never-consumed shape as the v0.13.11 `mutErr` bug).
@@ -228,30 +236,33 @@ Sandra's business is live — data wiped and re-provisioned Jun 9. App in active
 
 0. **PRIORITY — phone-test the v0.13.10 merge** (JWT auth on AI/invoice endpoints, router bump 7.14.2→7.18.1, maps origin check, theme). Router bump is the main risk — watch sheet close + Android back button. Merged untested (Joel's call); fix-forward if issues surface.
 1. **Device verification** — v0.12.32–v0.12.68 not phone-tested. Test Home page + invoice flow on Pixel 10 Pro + Sandra's iPhone before next feature push. (v0.13.8 Go button fix already phone-tested and confirmed working on Pixel 10 Pro.)
+2. **Live, unrestricted "Generate AI insights" button fabricates fake client data** — `handleSimulateFuture` in `ClientProfile.jsx` calls `simulateAILearning` (`clientsRepo.js`), which writes a hardcoded template (fake session count, fake behavioral flags like "Gate code usually 1234") into a real client's `ai_context`, no AI call, no gating. Any user can trigger it on any real client. Fix: gate to `is_test` businesses only, or remove and wire the real `enrich-client` endpoint instead.
+3. **Future-dated job completion crashes the tab** — marking a job Complete/Paid via "Yes, continue" on a future date, previously a silent no-op, now reproduces as a full renderer crash (2026-07-13). Same root cause as before: likely a race in `useBackClose` between `JobDetailSheet` unmounting and `PostJobSheet` mounting. Two prior fix attempts reverted as unverified. Needs a dedicated debugging session, not another guess.
+4. **AI local-fallback gap** — `api/ai/[action].js`'s local-heuristic fallback (`estimate-duration`, `prep-note`) only triggers when no `ANTHROPIC_API_KEY` is set at all. With a key configured but zero credits (current state), it hard-fails instead of falling through to the same good local logic. ~20-line fix — wrap the Anthropic call in try/catch, fall through on any error. Makes AI features fully functional at $0 spend.
 
 > **Constraint**: Vercel at 9/12 serverless function slots. Defer any feature requiring a new function until we consolidate or upgrade to Pro.
 
 ### ✨ Next up (no new serverless functions needed)
 
-2. **Calendar week view** — proper rebuild (130 lines of parked code removed in v0.12.60; worth doing properly).
-3. **"Last job" quick-rebook** — from ClientProfile, 1-tap to duplicate the last job (same service/rate). Saves the 3-step booking flow.
-4. **Job templates** — Sandra books the same configs repeatedly. Save a job as a template; pre-fill NewJobSheet from it. Schema already supports it.
+5. **Calendar week view** — proper rebuild (130 lines of parked code removed in v0.12.60; worth doing properly).
+6. **"Last job" quick-rebook** — from ClientProfile, 1-tap to duplicate the last job (same service/rate). Saves the 3-step booking flow.
+7. **Job templates** — Sandra books the same configs repeatedly. Save a job as a template; pre-fill NewJobSheet from it. Schema already supports it.
 
 ### 🤖 AI features (deferred — needs serverless slots)
 
-5. **Voice scheduling** — `api/transcribe.js` exists. Flow: mic → transcribe → Claude parses intent → pre-fills NewJobSheet.
-6. **Smart scheduling suggestions** — given Sandra's calendar + drive times, Claude suggests optimal day/time for new bookings. All data already available.
-7. **Weekly AI debrief** — Sunday evening summary: revenue, hours, top clients, one pattern observation. Extend the daily briefing cron.
-8. **Auto-generate prep notes** — based on `ai_context`, pre-draft PrepNoteSheet content before Sandra opens it.
-9. **Invoice draft from voice** — 30-second post-job recording → Claude extracts service/duration/extras → pre-fills PostJobSheet.
+8. **Voice scheduling** — `api/transcribe.js` exists. Flow: mic → transcribe → Claude parses intent → pre-fills NewJobSheet.
+9. **Smart scheduling suggestions** — given Sandra's calendar + drive times, Claude suggests optimal day/time for new bookings. All data already available.
+10. **Weekly AI debrief** — Sunday evening summary: revenue, hours, top clients, one pattern observation. Extend the daily briefing cron.
+11. **Auto-generate prep notes** — based on `ai_context`, pre-draft PrepNoteSheet content before Sandra opens it.
+12. **Invoice draft from voice** — 30-second post-job recording → Claude extracts service/duration/extras → pre-fills PostJobSheet.
 
 ### 📱 Phase 2 features
 
-10. **Push notifications (iOS proper)** — SW setTimeout unreliable on iOS when backgrounded. Needs VAPID keys + `web-push` npm + server-triggered via Vercel cron. Android works today.
-11. **Custom domain email** — swap `nodemailer` → `resend`, from `invoices@supermomforhire.com`.
-12. **Automated post-job follow-up email** — 24h after complete, send "Thanks!" with invoice link. Toggle in Settings. Daily briefing cron infrastructure already exists.
-13. **Staff app access** — `person_type = 'staff'` tracked in DB. No app login yet.
+13. **Push notifications (iOS proper)** — SW setTimeout unreliable on iOS when backgrounded. Needs VAPID keys + `web-push` npm + server-triggered via Vercel cron. Android works today.
+14. **Custom domain email** — swap `nodemailer` → `resend`, from `invoices@supermomforhire.com`.
+15. **Automated post-job follow-up email** — 24h after complete, send "Thanks!" with invoice link. Toggle in Settings. Daily briefing cron infrastructure already exists.
+16. **Staff app access** — `person_type = 'staff'` tracked in DB. No app login yet.
 
 ### 🏢 Multi-tenant / future
 
-14. **Tenant onboarding wizard** — `scripts/provision-sandra.mjs` is the only path. Need self-serve "Set up your business" flow for growth.
+17. **Tenant onboarding wizard** — `scripts/provision-sandra.mjs` is the only path. Need self-serve "Set up your business" flow for growth.

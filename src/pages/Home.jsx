@@ -314,7 +314,7 @@ export default function Home() {
       const tot = computeJobTotal(j);
       const remaining = Math.max(0, tot - Math.min(paid, tot));
       const hoursOld = (now - j.end) / 3600000;
-      return { ...j, remaining, hoursOld };
+      return { ...j, paid: Math.min(paid, tot), remaining, hoursOld };
     }).sort((a, b) => b.hoursOld - a.hoursOld);
   }, [attentionItems, paymentMap, now]);
 
@@ -1159,26 +1159,9 @@ export default function Home() {
           </div>
         )}
 
-        {/* REST OF THIS WEEK — upcoming scheduled jobs */}
-        {restOfWeekJobs.length > 0 && (
-          <div style={{ marginBottom: 24 }}>
-            <SectionLabel style={{ color: T.inkSub, marginBottom: 8 }}>REST OF THIS WEEK</SectionLabel>
-            {restOfWeekJobs.map(j => (
-              <JobCard
-                key={j.id}
-                job={j}
-                T={T}
-                onClick={() => openJob(j.id)}
-                paid={paymentMap[j.id] || 0}
-                total={computeJobTotal(j)}
-                grandTotal={computeJobTotal(j)}
-                privacyOn={privacyOn}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* NEEDS ATTENTION — wrap-up jobs and outstanding payment jobs */}
+        {/* NEEDS ATTENTION — wrap-up jobs and outstanding payment jobs. Rendered
+            ahead of "Rest of this week" (Joel's call, 2026-07-15) — money owed
+            and jobs needing wrap-up shouldn't get buried under future scheduling. */}
         {owingJobs.length > 0 && (
           <div style={{ marginBottom: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 2px', marginBottom: 8 }}>
@@ -1259,6 +1242,11 @@ export default function Home() {
                         {j.service_name}
                       </div>
                     )}
+                    {isPartial && !privacyOn && (
+                      <div style={{ fontFamily: T.font, fontSize: 11, fontWeight: 600, color: cardAccentColor, marginBottom: 4 }}>
+                        ${j.paid.toFixed(0)} paid already
+                      </div>
+                    )}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <span style={{ fontFamily: T.font, fontSize: 11, color: cardMutedColor }}>{dateStr} · {timeRange}</span>
                       <span style={{ fontFamily: T.font, fontSize: 11, fontWeight: 600, color: cardAccentColor }}>{recencyText}</span>
@@ -1267,6 +1255,25 @@ export default function Home() {
                 );
               })}
             </div>
+          </div>
+        )}
+
+        {/* REST OF THIS WEEK — upcoming scheduled jobs */}
+        {restOfWeekJobs.length > 0 && (
+          <div style={{ marginBottom: 24 }}>
+            <SectionLabel style={{ color: T.inkSub, marginBottom: 8 }}>REST OF THIS WEEK</SectionLabel>
+            {restOfWeekJobs.map(j => (
+              <JobCard
+                key={j.id}
+                job={j}
+                T={T}
+                onClick={() => openJob(j.id)}
+                paid={paymentMap[j.id] || 0}
+                total={computeJobTotal(j)}
+                grandTotal={computeJobTotal(j)}
+                privacyOn={privacyOn}
+              />
+            ))}
           </div>
         )}
 

@@ -90,7 +90,8 @@ function fmtMoney(v) {
 }
 
 // Adapt display jobs (from useJobs) into the shape the views expect:
-// { ...job, client: { name, init, color, address }, service: { label }, start, end, color, paid }
+// { ...job, client: { name, init, color, address }, service: { label }, start, end, paid, isPartial, isUnpaidCompleted, isCancelled }
+// Card colors are derived at render time in AgendaCard from T.status.* (theme-aware), not baked in here.
 function enrichDisplayJobs(displayJobs, clientLookup) {
   return displayJobs
     .filter(j => j.status !== 'Deleted')
@@ -99,19 +100,15 @@ function enrichDisplayJobs(displayJobs, clientLookup) {
       const start = new Date(j.scheduled_at);
       const end = new Date(start.getTime() + (j.duration_est || 0) * 60000);
       const paid = j.payment_status === 'Paid';
+      const isPartial = j.status === 'Completed' && j.payment_status === 'Partial';
       const isUnpaidCompleted = j.status === 'Completed' && !paid;
       const isCancelled = j.status === 'Cancelled';
-
-      // High-glance coloring: Grey for Cancelled, Amber for Unpaid, Green for Paid, Pink for Scheduled
-      const color = isCancelled
-        ? '#9CA3AF'
-        : isUnpaidCompleted ? '#F59E0B' : paid ? '#22C55E' : '#FC4693';
 
       return {
         ...j,
         client: c ? { name: c.name, init: c.init, color: c.color, address: c.address } : null,
         service: { label: j.service_name || '—' },
-        start, end, color, paid, isUnpaidCompleted, isCancelled
+        start, end, paid, isPartial, isUnpaidCompleted, isCancelled
       };
     })
     .filter(j => !Number.isNaN(j.start.getTime()))
@@ -578,26 +575,30 @@ function AgendaView({ T, mode, privacyOn, allJobs, nextUpcoming, onJobPress, day
 
 const AgendaCard = memo(function AgendaCard({ T, mode, privacyOn, job, isNext, conflict, onPress }) {
   const paid = job.paid;
+  const isPartial = job.isPartial;
   const isUnpaidCompleted = job.isUnpaidCompleted;
   const isCancelled = job.isCancelled;
+
+  // Same T.status.* semantic tokens as Home's JobCard — Partial gets its own
+  // color instead of being lumped in with fully-Unpaid (was both amber #F59E0B).
+  const statusKey = isCancelled ? null
+    : isPartial ? 'partial'
+    : isUnpaidCompleted ? 'unpaid'
+    : paid ? 'paid'
+    : 'scheduled';
+  const S = statusKey ? T.status[statusKey] : null;
 
   const border = conflict
     ? '#F59E0B'
     : isCancelled
       ? '#D1D5DB'
-      : isUnpaidCompleted
-        ? '#F59E0B'
-        : (isNext ? '#FC4693' : (paid ? '#86EFAC' : T.cardBorder));
+      : (isNext ? '#FC4693' : S.border);
 
   const bg = isCancelled
     ? (mode === 'dark' ? 'rgba(156,163,175,0.08)' : '#F9FAFB')
-    : isUnpaidCompleted
-      ? (mode === 'dark' ? 'rgba(245,158,11,0.1)' : '#FEF3C7')
-      : paid
-        ? (mode === 'dark' ? 'rgba(34,197,94,0.08)' : '#F0FFF5')
-        : (isNext
-            ? (mode === 'dark' ? 'rgba(233,30,106,0.1)' : '#FFF0F7')
-            : T.card);
+    : isNext
+      ? (mode === 'dark' ? 'rgba(233,30,106,0.1)' : '#FFF0F7')
+      : S.bg;
 
   const badges = [];
   if (isCancelled) {
@@ -606,8 +607,10 @@ const AgendaCard = memo(function AgendaCard({ T, mode, privacyOn, job, isNext, c
     badges.push({ text: 'Next up', bg: '#FC4693', fg: 'white' });
   }
   if (!isCancelled) {
-    if (paid)   badges.push({ text: 'Paid ✓', bg: T.greenBg, fg: T.greenFg });
-    else if (isUnpaidCompleted) badges.push({ text: 'Unpaid', bg: '#F59E0B', fg: 'white' });
+    if (paid)   badges.push({ text: 'Paid ✓', bg: T.status.paid.pill, fg: T.status.paid.text });
+    else if (isPartial) badges.push({ text: 'Partial', bg: T.status.partial.pill, fg: T.status.partial.text });
+    else if (isUnpaidCompleted) badges.push({ text: 'Unpaid', bg: T.status.unpaid.pill, fg: T.status.unpaid.text });
+    else if (!isNext) badges.push({ text: 'Scheduled', bg: T.status.scheduled.pill, fg: T.status.scheduled.text });
   }
 
   if (job.status === 'Completed' && !job.actual_duration) {
@@ -673,10 +676,23 @@ const AgendaCard = memo(function AgendaCard({ T, mode, privacyOn, job, isNext, c
             </div>
           )}
         </div>
-        <div style={{ fontFamily: T.serif, fontSize: 16, fontWeight: 600, color: T.ink, fontVariantNumeric: 'tabular-nums', flexShrink: 0, textAlign: 'right' }}>
-          {privacyOn ? '•••' : fmtMoney(job.total)}
+        <div style={{ flexShrink: 0, textAlign: 'right' }}>
+          <div style={{ fontFamily: T.serif, fontSize: 16, fontWeight: 600, color: isUnpaidCompleted ? S.text : T.ink, fontVariantNumeric: 'tabular-nums' }}>
+            {privacyOn ? '•••' : isUnpaidCompleted ? fmtMoney(Math.max(0, (parseFloat(job.total) || 0) - (parseFloat(job.amount_paid) || 0))) : fmtMoney(job.total)}
+          </div>
+          {isUnpaidCompleted && (
+            <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 600, color: T.inkMuted, marginTop: 1 }}>
+              {isPartial ? 'owing' : 'unpaid'}
+            </div>
+          )}
         </div>
       </div>
+
+      {isPartial && !privacyOn && (
+        <div style={{ fontFamily: T.font, fontSize: 11, fontWeight: 600, color: S.text, marginTop: 4 }}>
+          {fmtMoney(parseFloat(job.amount_paid) || 0)} paid already
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 10, alignItems: 'center' }}>
         {badges.map((b, i) => (
@@ -696,7 +712,7 @@ const AgendaCard = memo(function AgendaCard({ T, mode, privacyOn, job, isNext, c
               marginLeft: badges.length > 0 ? 4 : 0, fontFamily: T.font, fontSize: 9, fontWeight: 700,
               letterSpacing: '0.4px', textTransform: 'uppercase',
               padding: '2px 9px', borderRadius: 5, cursor: 'pointer',
-              background: 'transparent', border: `1px solid ${border}`, color: job.color,
+              background: 'transparent', border: `1px solid ${border}`, color: border,
               minHeight: 24, display: 'flex', alignItems: 'center'
             }}
           >↗ Directions</button>

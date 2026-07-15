@@ -33,7 +33,7 @@ const LIGHT_PALETTE = {
   status: {
     scheduled: { border: '#1E40AF', bg: '#EFF6FF', pill: '#BFDBFE', text: '#1E3A8A' },
     attention:  { border: '#A16207', bg: '#FEFCE8', pill: '#FEF08A', text: '#713F12' },
-    unpaid:     { border: '#BE123C', bg: '#BE123C', pill: '#FECDD3', text: '#9F1239', fg: '#FFFFFF' },
+    unpaid:     { border: '#BE185D', bg: '#BE185D', pill: '#FBCFE8', text: '#831843', fg: '#FFFFFF' },
     overdue:    { border: '#991B1B', bg: '#991B1B', pill: '#FCA5A5', text: '#7F1D1D', fg: '#FFFFFF' },
     partial:    { border: '#9A3412', bg: '#9A3412', pill: '#FDBA74', text: '#7C2D12', fg: '#FFFFFF' },
     paid:       { border: '#15803D', bg: '#F0FDF4', pill: '#86EFAC', text: '#14532D' },
@@ -67,9 +67,9 @@ const DARK_PALETTE = {
   secLabel: 'rgba(255,112,166,0.85)',
   status: {
     scheduled: { border: '#3B82F6', bg: 'rgba(59,130,246,0.12)',  pill: 'rgba(59,130,246,0.25)',  text: '#93C5FD' },
-    attention:  { border: '#D97706', bg: 'rgba(217,119,6,0.15)',   pill: 'rgba(217,119,6,0.25)',   text: '#FCD34D' },
-    unpaid:     { border: '#F43F5E', bg: '#9F1239',  pill: 'rgba(244,63,94,0.25)',   text: '#FDA4AF', fg: '#FFFFFF' },
-    overdue:    { border: '#EF4444', bg: '#7F1D1D',  pill: 'rgba(239,68,68,0.30)',   text: '#FCA5A5', fg: '#FFFFFF' },
+    attention:  { border: '#EAB308', bg: 'rgba(234,179,8,0.15)',   pill: 'rgba(234,179,8,0.25)',   text: '#FDE047' },
+    unpaid:     { border: '#DB2777', bg: '#831843',  pill: 'rgba(219,39,119,0.25)',   text: '#F9A8D4', fg: '#FFFFFF' },
+    overdue:    { border: '#DC2626', bg: '#7F1D1D',  pill: 'rgba(220,38,38,0.30)',   text: '#FCA5A5', fg: '#FFFFFF' },
     partial:    { border: '#F97316', bg: '#7C2D12',  pill: 'rgba(249,115,22,0.25)',  text: '#FDBA74', fg: '#FFFFFF' },
     paid:       { border: '#22C55E', bg: 'rgba(34,197,94,0.10)',   pill: 'rgba(34,197,94,0.22)',   text: '#4ADE80' },
   },

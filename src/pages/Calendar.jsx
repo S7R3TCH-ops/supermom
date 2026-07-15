@@ -625,9 +625,16 @@ const AgendaCard = memo(function AgendaCard({ T, mode, privacyOn, job, isNext, c
   if (conflict) badges.push({ text: '⚠ Tight gap', bg: T.redBg, fg: T.errorFg });
 
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={() => onPress(job.id)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onPress(job.id);
+        }
+      }}
       aria-label={`View details for ${job.service?.label} with ${job.client?.name}`}
       style={{
         width: '100%',
@@ -701,7 +708,7 @@ const AgendaCard = memo(function AgendaCard({ T, mode, privacyOn, job, isNext, c
           Reason: {job.ai_context.cancellation_reason}
         </div>
       )}
-    </button>
+    </div>
   );
 });
 

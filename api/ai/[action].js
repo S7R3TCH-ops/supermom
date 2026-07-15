@@ -159,25 +159,29 @@ Return ONLY valid JSON (no markdown):
   return res.status(200).json({ ok: true });
 }
 
+async function localEstimateDuration(supabase, clientId, serviceName) {
+  try {
+    const { data: jobs } = await supabase.from('jobs').select('actual_duration').eq('client_id', clientId).eq('service_name', serviceName).eq('job_status', 'Completed').not('actual_duration', 'is', null).limit(3);
+    let duration_minutes = 120;
+    let reasoning = 'Based on default service duration.';
+    if (jobs?.length > 0) {
+      const avg = jobs.reduce((s, j) => s + Number(j.actual_duration), 0) / jobs.length;
+      duration_minutes = Math.round(avg * 60);
+      reasoning = `Based on average of last ${jobs.length} similar jobs.`;
+    }
+    return { duration_minutes, reasoning, isMock: true };
+  } catch (e) {
+    return { duration_minutes: 120, reasoning: 'Fallback default.', isMock: true };
+  }
+}
+
 async function estimateDuration(req, res, supabase, anthropic) {
   const { clientId, serviceName, businessProfile } = req.body;
   if (!clientId || !serviceName) return res.status(400).json({ error: 'Missing clientId or serviceName' });
 
   if (!anthropic) {
     console.warn('[estimate-duration] No ANTHROPIC_API_KEY found. Using local fallback.');
-    try {
-      const { data: jobs } = await supabase.from('jobs').select('actual_duration').eq('client_id', clientId).eq('service_name', serviceName).eq('job_status', 'Completed').not('actual_duration', 'is', null).limit(3);
-      let estimate = 120;
-      let reason = 'Based on default service duration.';
-      if (jobs?.length > 0) {
-        const avg = jobs.reduce((s, j) => s + Number(j.actual_duration), 0) / jobs.length;
-        estimate = Math.round(avg * 60);
-        reason = `Based on average of last ${jobs.length} similar jobs.`;
-      }
-      return res.status(200).json({ estimate, reason, isMock: true });
-    } catch (e) {
-      return res.status(200).json({ estimate: 120, reason: 'Fallback default.', isMock: true });
-    }
+    return res.status(200).json(await localEstimateDuration(supabase, clientId, serviceName));
   }
 
   const { data: client, error: clientErr } = await supabase
@@ -234,16 +238,35 @@ Generate an estimate in hours (decimal). Return ONLY a JSON object in this forma
   "reasoning": "string (one short, helpful sentence)"
 }`;
 
-  const response = await anthropic.messages.create({
-    model: 'claude-3-5-haiku-20241022',
-    max_tokens: 300,
-    messages: [{ role: 'user', content: prompt }],
-  });
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-3-5-haiku-20241022',
+      max_tokens: 300,
+      messages: [{ role: 'user', content: prompt }],
+    });
 
-  const content = response.content[0].text;
-  const jsonMatch = content.match(/\{[\s\S]*\}/);
-  const result = JSON.parse(jsonMatch ? jsonMatch[0] : content);
-  return res.status(200).json(result);
+    const content = response.content[0].text;
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    const result = JSON.parse(jsonMatch ? jsonMatch[0] : content);
+    return res.status(200).json(result);
+  } catch (e) {
+    console.warn('[estimate-duration] Anthropic call failed, using local fallback.', e.message);
+    return res.status(200).json(await localEstimateDuration(supabase, clientId, serviceName));
+  }
+}
+
+async function localPrepNote(supabase, clientId) {
+  try {
+    const { data: client } = await supabase.from('clients').select('first_name, notes, ai_context').eq('id', clientId).single();
+    const { data: jobs } = await supabase.from('jobs').select('service_name, scheduled_date').eq('client_id', clientId).eq('job_status', 'Completed').limit(3);
+    const name = client?.first_name || 'Client';
+    const lastJob = jobs?.[0];
+    const prefs = client?.ai_context?.prefs || client?.notes || 'no special requests';
+    const summary = `[Simulated] ${name} usually prefers a ${client?.ai_context?.style || 'professional'} approach. ${lastJob ? `Last time you handled a ${lastJob.service_name} for them on ${lastJob.scheduled_date}.` : 'This is a relatively new client relationship.'} Keep an eye out for their preference regarding ${prefs.toLowerCase().slice(0, 50)}...`;
+    return { summary, isMock: true };
+  } catch (e) {
+    return { summary: "Ready to help with your next session. Remember to check the client's specific preferences in their profile.", isMock: true };
+  }
 }
 
 async function prepNote(req, res, supabase, anthropic) {
@@ -252,17 +275,7 @@ async function prepNote(req, res, supabase, anthropic) {
 
   if (!anthropic) {
     console.warn('[prep-note] No ANTHROPIC_API_KEY found. Using simulated briefing fallback.');
-    try {
-      const { data: client } = await supabase.from('clients').select('first_name, notes, ai_context').eq('id', clientId).single();
-      const { data: jobs } = await supabase.from('jobs').select('service_name, scheduled_date').eq('client_id', clientId).eq('job_status', 'Completed').limit(3);
-      const name = client?.first_name || 'Client';
-      const lastJob = jobs?.[0];
-      const prefs = client?.ai_context?.prefs || client?.notes || 'no special requests';
-      const summary = `[Simulated] ${name} usually prefers a ${client?.ai_context?.style || 'professional'} approach. ${lastJob ? `Last time you handled a ${lastJob.service_name} for them on ${lastJob.scheduled_date}.` : 'This is a relatively new client relationship.'} Keep an eye out for their preference regarding ${prefs.toLowerCase().slice(0, 50)}...`;
-      return res.status(200).json({ summary, isMock: true });
-    } catch (e) {
-      return res.status(200).json({ summary: "Ready to help with your next session. Remember to check the client's specific preferences in their profile.", isMock: true });
-    }
+    return res.status(200).json(await localPrepNote(supabase, clientId));
   }
 
   const { data: client, error: clientErr } = await supabase
@@ -307,13 +320,18 @@ Style Guidance: Use a ${style} tone.
 
 Generate the briefing now. Focus on patterns, preferences, or things she should remember from last time. Keep it to 3-4 sentences.`;
 
-  const response = await anthropic.messages.create({
-    model: 'claude-3-5-haiku-20241022',
-    max_tokens: 300,
-    messages: [{ role: 'user', content: prompt }],
-  });
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-3-5-haiku-20241022',
+      max_tokens: 300,
+      messages: [{ role: 'user', content: prompt }],
+    });
 
-  return res.status(200).json({ summary: response.content[0].text });
+    return res.status(200).json({ summary: response.content[0].text });
+  } catch (e) {
+    console.warn('[prep-note] Anthropic call failed, using local fallback.', e.message);
+    return res.status(200).json(await localPrepNote(supabase, clientId));
+  }
 }
 
 async function transcribeVoiceNote(req, res, supabase) {

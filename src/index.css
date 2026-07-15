@@ -62,7 +62,7 @@ html {
   margin: 0;
   padding: 0;
   height: 100%;
-  height: -webkit-fill-available;
+  height: 100dvh;
   width: 100%;
 }
 
@@ -70,7 +70,7 @@ body, #root {
   margin: 0;
   padding: 0;
   height: 100%;
-  min-height: -webkit-fill-available;
+  min-height: 100dvh;
   width: 100%;
 }
 

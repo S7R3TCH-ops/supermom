@@ -5,6 +5,8 @@ import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useBackClose } from '../../hooks/useBackClose';
 import { useKeyboardFocus } from '../../hooks/useKeyboardFocus';
 import { fetchJobById, updateJob, softDeleteJob, cancelJob, hardDeleteJob, revertJobToPreCompletion } from '../../data/jobsRepo';
+import { recalcInvoiceTotal } from '../../data/invoicesRepo';
+import { deriveJobStage, getPolicyMessage, validateJobDraft, buildFinancialPatch } from '../../lib/jobDraftPolicy';
 import { useAuth } from '../../context/AuthContext';
 import { notifyDataChanged, useBusiness, useServices, useWorkers } from '../../data/useData';
 import { useToast } from '../../context/ToastContext';
@@ -64,6 +66,13 @@ function diffMinutes(startHHMM, endHHMM) {
   const [eh, em] = endHHMM.split(':').map(Number);
   const diff = (eh * 60 + em) - (sh * 60 + sm);
   return diff >= 15 ? diff : null;
+}
+function roundToHalfHour(hhmm) {
+  if (!hhmm) return hhmm;
+  const [h, m] = hhmm.split(':').map(Number);
+  const total = Math.round((h * 60 + m) / 30) * 30;
+  const rh = Math.floor(total / 60) % 24, rm = total % 60;
+  return `${String(rh).padStart(2, '0')}:${String(rm).padStart(2, '0')}`;
 }
 
 /* ============= ROOT COMPONENT ============= */
@@ -234,30 +243,34 @@ export default function JobDetailSheet({ jobId, onClose }) {
   async function saveEdit(action = 'this') {
     setBusy(true); setMutErr(null);
     try {
+      // Money columns (flat_rate/subtotal/hst_amount/total_amount…) come only from
+      // buildFinancialPatch — see jobDraftPolicy.js single-writer rule. Completed
+      // jobs bill actual_duration, so totals recompute against it, not est. hours.
+      const isCompleted = job.job_status === 'Completed';
       await updateJob(job.id, {
         scheduled_date:  form.scheduled_date,
         scheduled_time:  form.scheduled_time,
         service_name:    form.service_name,
         service_id:      form.service_id,
-        pricing_type:    form.pricing_type,
-        total_amount:    form.total_amount === '' ? null : Number(form.total_amount),
-        ...(form.pricing_type === 'Flat'
-          ? { flat_rate: form.total_amount === '' ? null : Number(form.total_amount), subtotal: form.total_amount === '' ? null : Number(form.total_amount) }
-          : { flat_rate: Number(form.hourly_rate) || null }),
-        estimated_hours: form.estimated_hours === '' ? null : Number(form.estimated_hours),
         job_notes:       form.job_notes || null,
-        additional_costs_json: (form.additional_costs_json || []).filter(c => parseFloat(c.amount) > 0),
-        additional_cost: (form.additional_costs_json || []).reduce((s, c) => s + (parseFloat(c.amount) || 0), 0),
         worker_id:       form.worker_id || null,
         worker_pay:      form.worker_id && form.worker_pay !== '' ? Number(form.worker_pay) : null,
         worker_paid:     form.worker_paid ?? false,
-        tax_enabled:     form.tax_enabled,
+        ...buildFinancialPatch({
+          pricing_type: form.pricing_type,
+          rate: form.rate,
+          hours: form.estimated_hours,
+          actualHours: isCompleted && Number(job.actual_duration) > 0 ? job.actual_duration : undefined,
+          additionalCosts: form.additional_costs_json,
+          taxEnabled: form.tax_enabled,
+        }, business),
         ai_context: {
           ...(job.ai_context || {}),
           payment_method:  form.payment_method,
           recurrence_rule: form.recurrence || null,
         },
       }, action);
+      if (invoiceId) await recalcInvoiceTotal(invoiceId);
       setShowSeriesPicker(false);
       showToast('Job updated');
     } catch (e) { setMutErr(e.message || String(e)); toast.error(e.message || String(e)); setBusy(false); }
@@ -281,20 +294,24 @@ export default function JobDetailSheet({ jobId, onClose }) {
   }
 
   function openEditMode() {
-    const storedTotal = Number(job.total_amount ?? job.flat_rate ?? 0);
+    // rate = the one money input: $/hr for Hourly, fee for Flat (both live in
+    // flat_rate — CLAUDE.md convention). Legacy hourly rows without flat_rate
+    // fall back to total ÷ hours, then the business default.
+    const pricingType = job.pricing_type || 'Flat';
     const estimatedHrs = Number(job.estimated_hours || 0);
-    const derivedRate = job.flat_rate
-      ? Number(job.flat_rate)
-      : (estimatedHrs > 0 ? Math.round(storedTotal / estimatedHrs) : Number(business?.hourly_rate || 60));
+    const legacyTotal = Number(job.subtotal ?? job.total_amount ?? 0);
+    const rate = pricingType === 'Hourly'
+      ? (Number(job.flat_rate)
+          || (estimatedHrs > 0 ? Math.round(legacyTotal / estimatedHrs) : Number(business?.hourly_rate || 60)))
+      : Number(job.flat_rate ?? job.subtotal ?? job.total_amount ?? 0);
     setForm({
       scheduled_date:  job.scheduled_date  || '',
       scheduled_time:  (job.scheduled_time || '').slice(0, 5),
       service_name:    job.service_name    || '',
       service_id:      job.service_id      || null,
-      pricing_type:    job.pricing_type    || 'Flat',
-      total_amount:    String(job.total_amount ?? job.flat_rate ?? ''),
+      pricing_type:    pricingType,
       estimated_hours: job.estimated_hours ? String(Math.round(Number(job.estimated_hours) * 100) / 100) : '',
-      hourly_rate:     String(derivedRate),
+      rate:            String(rate || ''),
       payment_method:  job.ai_context?.payment_method || 'Cash',
       recurrence:      job.ai_context?.recurrence_rule || null,
       job_notes:       job.job_notes || '',
@@ -310,6 +327,11 @@ export default function JobDetailSheet({ jobId, onClose }) {
   const isScheduled = job?.job_status === 'Scheduled';
   const isPaid      = job?.payment_status === 'Paid';
   const isCancelled = job?.job_status === 'Cancelled';
+
+  // Stage-based edit policy (jobDraftPolicy): warn on prepaid/invoiced jobs,
+  // explicit override on paid jobs, before money fields can be edited.
+  const { stage, hasInvoice, paidSum } = deriveJobStage(job || {}, jobPayments, invoiceId);
+  const policyMsg = job ? getPolicyMessage(stage, hasInvoice, paidSum) : null;
 
   return (
     <div
@@ -370,6 +392,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
             busy={busy} confirm={confirm} mutErr={mutErr}
             invoiceId={invoiceId}
             jobPayments={jobPayments}
+            policyMsg={policyMsg}
             scrollRef={swipeScrollRef}
             isAdmin={isAdmin}
             showCancelForm={showCancelForm}
@@ -423,7 +446,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
 /* ============= READ MODE ============= */
 function ReadMode({
   job, T, mode, business, isScheduled, isPaid, isCancelled,
-  busy, confirm, mutErr, invoiceId, jobPayments, scrollRef,
+  busy, confirm, mutErr, invoiceId, jobPayments, policyMsg, scrollRef,
   isAdmin,
   showCancelForm, cancelReason, cancelBusy,
   onSetShowCancelForm, onSetCancelReason, onHandleCancel,
@@ -433,7 +456,7 @@ function ReadMode({
   futureConfirmType, onFutureConfirmProceed, onFutureConfirmCancel,
 }) {
   const navigate = useNavigate();
-  const [showInvoiceWarn, setShowInvoiceWarn] = useState(false);
+  const [showEditWarn, setShowEditWarn] = useState(false);
   const statusC = STATUS_COLORS[job.job_status] || STATUS_COLORS.Scheduled;
   const payKey  = job.payment_status || '';
   const payC    = PAY_COLORS[payKey] || PAY_COLORS[''];
@@ -568,20 +591,20 @@ function ReadMode({
             </Btn>
           )}
           {!futureConfirmType && !isCancelled && (
-            showInvoiceWarn ? (
+            showEditWarn ? (
               <div style={{ padding: '12px', borderRadius: 12, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)' }}>
-                <div style={{ fontSize: 12.5, fontWeight: 600, color: T.ink, marginBottom: 10 }}>This job has an invoice. Editing the job may cause the invoice total to diverge.</div>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: T.ink, marginBottom: 10 }}>{policyMsg}</div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <Btn onClick={() => setShowInvoiceWarn(false)} bg={T.card} border={`1px solid ${T.cardBorder}`} color={T.inkSub} T={T} style={{ flex: 1 }}>Cancel</Btn>
+                  <Btn onClick={() => setShowEditWarn(false)} bg={T.card} border={`1px solid ${T.cardBorder}`} color={T.inkSub} T={T} style={{ flex: 1 }}>Cancel</Btn>
                   <Btn onClick={onEdit} bg="#B45309" color="white" T={T} style={{ flex: 1 }}>Edit anyway</Btn>
                 </div>
               </div>
             ) : (
               <Btn
-                onClick={invoiceId ? () => setShowInvoiceWarn(true) : onEdit}
+                onClick={policyMsg ? () => setShowEditWarn(true) : onEdit}
                 bg={T.card} border={`1.5px solid ${T.cardBorder}`} color={T.ink} T={T}
               >
-                Edit Job{invoiceId ? ' ⚠️' : ''}
+                Edit Job{policyMsg ? ' ⚠️' : ''}
               </Btn>
             )
           )}
@@ -712,12 +735,26 @@ function EditMode({ job, form, setForm, services, workers, business, T, mode, bu
   const dateRef = useRef(null);
   const timeRef = useRef(null);
   const serviceRef = useRef(null);
+  const rateRef = useRef(null);
+  const hoursRef = useRef(null);
   function set(k, v) { setForm(f => ({ ...f, [k]: v })); }
 
   function handleSaveClick() {
-    if (!form.scheduled_date) { setMutErr('Date is required.'); dateRef.current?.focus(); return; }
-    if (!form.scheduled_time) { setMutErr('Start time is required.'); timeRef.current?.focus(); return; }
-    if (!form.service_id) { setMutErr('Service is required.'); serviceRef.current?.focus(); return; }
+    const { ok, errors } = validateJobDraft({
+      client_id: job.client_id,
+      service_id: form.service_id,
+      scheduled_date: form.scheduled_date,
+      scheduled_time: form.scheduled_time,
+      hours: form.estimated_hours,
+      rate: form.rate,
+      additionalCosts: form.additional_costs_json,
+    });
+    if (!ok) {
+      const [field, msg] = Object.entries(errors)[0];
+      setMutErr(msg);
+      ({ scheduled_date: dateRef, scheduled_time: timeRef, service_id: serviceRef, hours: hoursRef, rate: rateRef })[field]?.current?.focus();
+      return;
+    }
     setMutErr(null);
     onSave();
   }
@@ -733,7 +770,7 @@ function EditMode({ job, form, setForm, services, workers, business, T, mode, bu
       : svc.default_price;
 
     set('pricing_type', svc.pricing_type || 'Flat');
-    if (svc.pricing_type === 'Flat') set('total_amount', String(resolvedPrice || ''));
+    set('rate', String(resolvedPrice || ''));
     if (!form.hoursTouched) set('estimated_hours', (Number(svc.default_duration || 120) / 60).toFixed(1));
 
     // Re-auto-fill worker pay when service changes and a worker is assigned
@@ -749,9 +786,19 @@ function EditMode({ job, form, setForm, services, workers, business, T, mode, bu
     }
   }
 
-  const liveHourlyRate = parseFloat(form.hourly_rate) || 0;
-  const liveHrs = parseFloat(form.estimated_hours) || 0;
-  const liveMathTotal = liveHourlyRate * liveHrs;
+  // Live breakdown mirrors exactly what saveEdit will write: completed jobs
+  // bill actual_duration, and the single `rate` field is $/hr or flat fee.
+  const isHourly = form.pricing_type === 'Hourly';
+  const liveForm = {
+    pricing_type: form.pricing_type,
+    estimated_hours: (job.job_status === 'Completed' && Number(job.actual_duration) > 0)
+      ? job.actual_duration
+      : form.estimated_hours,
+    hourly_rate: isHourly ? form.rate : undefined,
+    flat_rate: form.rate,
+    additional_costs_json: form.additional_costs_json || [],
+    tax_enabled: form.tax_enabled,
+  };
 
   return (
     <>
@@ -769,17 +816,18 @@ function EditMode({ job, form, setForm, services, workers, business, T, mode, bu
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 18px 1fr', alignItems: 'end', gap: 4 }}>
             <div>
               <div style={{ fontSize: 9, fontWeight: 600, color: T.inkMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.4px' }}>Start</div>
-              <input ref={timeRef} type="time" value={form.scheduled_time} onChange={e => set('scheduled_time', e.target.value)} style={iStyle(T)} />
+              <input ref={timeRef} type="time" step={1800} value={form.scheduled_time} onChange={e => set('scheduled_time', roundToHalfHour(e.target.value))} style={iStyle(T)} />
             </div>
             <div style={{ textAlign: 'center', color: T.inkMuted, fontSize: 13, paddingBottom: 9 }}>→</div>
             <div>
               <div style={{ fontSize: 9, fontWeight: 600, color: T.inkMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.4px' }}>End</div>
               <input
                 type="time"
+                step={1800}
                 value={toHHMMStr(form.scheduled_time, Math.round(parseFloat(form.estimated_hours || 0) * 60))}
                 disabled={!form.scheduled_time}
                 onChange={e => {
-                  const mins = diffMinutes(form.scheduled_time, e.target.value);
+                  const mins = diffMinutes(form.scheduled_time, roundToHalfHour(e.target.value));
                   if (mins != null) { set('estimated_hours', (mins / 60).toFixed(2)); set('hoursTouched', true); }
                 }}
                 style={{ ...iStyle(T), opacity: form.scheduled_time ? 1 : 0.4 }}
@@ -799,19 +847,24 @@ function EditMode({ job, form, setForm, services, workers, business, T, mode, bu
         <SectionDivider label="Financials" T={T} />
         <Field T={T} label="Pricing">
           <div style={{ display: 'flex', gap: 6 }}>
-            {['Flat', 'Hourly'].map(p => <button key={p} type="button" onClick={() => {
-              set('pricing_type', p);
-              if (p === 'Hourly' && liveHourlyRate > 0 && liveHrs > 0) set('total_amount', liveMathTotal.toFixed(0));
-            }} style={{ flex: 1, padding: '9px 0', borderRadius: 8, background: form.pricing_type === p ? T.pink : T.card, border: `1.5px solid ${form.pricing_type === p ? T.pink : T.cardBorder}`, color: form.pricing_type === p ? 'white' : T.inkSub, cursor: 'pointer' }}>{p}</button>)}
+            {['Flat', 'Hourly'].map(p => <button key={p} type="button" onClick={() => set('pricing_type', p)} style={{ flex: 1, padding: '9px 0', borderRadius: 8, background: form.pricing_type === p ? T.pink : T.card, border: `1.5px solid ${form.pricing_type === p ? T.pink : T.cardBorder}`, color: form.pricing_type === p ? 'white' : T.inkSub, cursor: 'pointer' }}>{p}</button>)}
           </div>
         </Field>
-        <Field T={T} label="Amount ($)"><input type="number" value={form.total_amount} onChange={e => set('total_amount', e.target.value)} onFocus={e => e.target.select()} style={{ ...iStyle(T), width: '100%' }} /></Field>
-        <Field T={T} label="Est. hours"><input type="number" value={form.estimated_hours} onChange={e => {
+        {/* Hourly totals are derived (rate × hours) — no free-typed grand total. */}
+        <Field T={T} label={isHourly ? 'Rate ($/hr)' : 'Amount ($)'}>
+          <input ref={rateRef} type="number" value={form.rate} onChange={e => set('rate', e.target.value)} onFocus={e => e.target.select()} style={{ ...iStyle(T), width: '100%' }} />
+        </Field>
+        <Field T={T} label="Est. hours"><input ref={hoursRef} type="number" value={form.estimated_hours} onChange={e => {
           set('estimated_hours', e.target.value);
           set('hoursTouched', true);
         }} onFocus={e => e.target.select()} style={{ ...iStyle(T), width: '100%' }} /></Field>
+        {job.job_status === 'Completed' && Number(job.actual_duration) > 0 && isHourly && (
+          <div style={{ fontSize: 10, color: T.inkMuted, marginTop: -8, marginBottom: 14 }}>
+            Completed job — total is billed on actual time ({Number(job.actual_duration)} hrs), not the estimate.
+          </div>
+        )}
 
-        <FinancialMathBreakdown job={job} business={business} liveForm={form} T={T} mode={mode} />
+        <FinancialMathBreakdown job={job} business={business} liveForm={liveForm} T={T} mode={mode} />
 
         <Field T={T} label="Additional Costs">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

@@ -6,7 +6,7 @@ import { useNewClientSheet } from '../../context/NewClientSheetContext';
 import { triggerHaptic } from '../../lib/haptics';
 
 const NAV_ITEMS = [
-  { to: '/',         k: 'home',     icon: '⌂', label: 'Week' },
+  { to: '/',         k: 'home',     icon: '⌂', label: 'Home' },
   { to: '/calendar', k: 'schedule', icon: '◫', label: 'Schedule' },
   { to: '/clients',  k: 'clients',  icon: '◉', label: 'Clients' },
   { to: '/finance',  k: 'finance',  icon: '$',  label: 'Finance' },

@@ -150,6 +150,19 @@ export function useBusiness() {
   return { business: data ?? null, loading, error, refresh: refetch, update };
 }
 
+export function useAiEnabled() {
+  const { data } = useQuery({
+    queryKey: ['ai-enabled'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('app_settings').select('ai_enabled').eq('id', 1).single();
+      if (error) return false;
+      return !!data.ai_enabled;
+    },
+    staleTime: 60_000,
+  });
+  return data ?? false;
+}
+
 export function useInvoices() {
   const { data, error, isFetching: loading, refetch } = useQuery({
     queryKey: ['invoices'],

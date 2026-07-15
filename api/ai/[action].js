@@ -371,6 +371,10 @@ export default async function handler(req, res) {
     if (!ok) return res.status(403).json({ error: 'Forbidden: client not in your business' });
   }
 
+  const { data: settings, error: settingsErr } = await supabase.from('app_settings').select('ai_enabled').eq('id', 1).single();
+  if (settingsErr) return res.status(500).json({ error: 'Could not check AI settings' });
+  if (!settings.ai_enabled) return res.status(503).json({ error: 'AI features are currently turned off.' });
+
   try {
     if (action === 'enrich-client') return await enrichClient(req, res, supabase, anthropic);
     if (action === 'estimate-duration') return await estimateDuration(req, res, supabase, anthropic);

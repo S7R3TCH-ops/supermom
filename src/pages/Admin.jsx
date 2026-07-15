@@ -67,6 +67,8 @@ export default function Admin() {
   const [errorLogs, setErrorLogs] = useState([]);
   const [errorLogsLoading, setErrorLogsLoading] = useState(true);
   const [expandedErrorId, setExpandedErrorId] = useState(null);
+  const [aiEnabled, setAiEnabled] = useState(null);
+  const [aiToggleBusy, setAiToggleBusy] = useState(false);
 
   useEffect(() => {
     if (!isSuperAdmin) return;
@@ -77,6 +79,36 @@ export default function Admin() {
       .then(({ data }) => setErrorLogs(data || []))
       .finally(() => setErrorLogsLoading(false));
   }, [isSuperAdmin]);
+
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+    (async () => {
+      try {
+        const res = await fetch('/api/admin/ai-toggle', { headers: await authHeaders() });
+        const data = await res.json();
+        if (res.ok) setAiEnabled(data.ai_enabled);
+      } catch { /* leave as null — toggle just won't render a known state */ }
+    })();
+  }, [isSuperAdmin]);
+
+  const handleAiToggle = async () => {
+    setAiToggleBusy(true);
+    try {
+      const res = await fetch('/api/admin/ai-toggle', {
+        method: 'POST',
+        headers: await authHeaders(),
+        body: JSON.stringify({ enabled: !aiEnabled }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to update AI setting');
+      setAiEnabled(data.ai_enabled);
+      toast.success(data.ai_enabled ? 'AI features enabled for all users.' : 'AI features disabled for all users.');
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setAiToggleBusy(false);
+    }
+  };
 
   // Clear pending style when business data actually updates to match - adjusting state during render
   if (pendingStyle && business?.ai_profile?.style === pendingStyle) {
@@ -443,6 +475,32 @@ export default function Admin() {
                   })}
                 </div>
               )}
+            </div>
+
+            <SectionLabel>Super Admin: AI Features</SectionLabel>
+            <div style={{ background: 'var(--plum-dark)', border: '1.5px solid var(--pink-mid)', borderRadius: 16, padding: '14px', marginBottom: 20 }}>
+              <div style={{ fontSize: 11, color: 'var(--pink-label)', marginBottom: 12, fontWeight: 600 }}>
+                Global switch for all AI features (chat assistant, duration estimate, prep notes) — applies to every business, every user.
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '12px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)' }}>
+                <div style={{ color: 'white', fontSize: 13, fontWeight: 600 }}>
+                  {aiEnabled === null ? 'Loading…' : aiEnabled ? 'AI features: ON' : 'AI features: OFF'}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAiToggle}
+                  disabled={aiEnabled === null || aiToggleBusy}
+                  style={{
+                    background: aiEnabled ? 'var(--pink)' : 'rgba(255,255,255,0.1)',
+                    border: aiEnabled ? 'none' : '1px solid rgba(255,255,255,0.2)',
+                    color: 'white', padding: '8px 16px', borderRadius: 10, fontSize: 12, fontWeight: 700,
+                    cursor: (aiEnabled === null || aiToggleBusy) ? 'default' : 'pointer',
+                    opacity: (aiEnabled === null || aiToggleBusy) ? 0.5 : 1,
+                  }}
+                >
+                  {aiToggleBusy ? 'Saving…' : aiEnabled ? 'Turn off' : 'Turn on'}
+                </button>
+              </div>
             </div>
           </>
         )}

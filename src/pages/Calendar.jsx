@@ -136,8 +136,10 @@ export default function Calendar() {
   const { T, mode, privacyOn } = useAppTheme();
   useNow(); // subscription only — re-renders once/minute so NOW() reads stay fresh
   const [view, setView] = useState('Agenda');
-  const [selectedDay, setSelectedDay] = useState(() => NOW());
   const [weekStart, setWeekStart] = useState(() => startOfWeek(NOW()));
+  // Single source of truth for "which day is selected" — feeds both WeekStrip's
+  // highlight and the agenda list's filter, so they can't desync (they used to be
+  // two separate states; see decisions.md 2026-07-12).
   const [agendaDayFilter, setAgendaDayFilter] = useState(null);
   const { openJob } = useJobDetailSheet();
   const handleJobPress = useCallback((id) => openJob(id), [openJob]);
@@ -154,7 +156,6 @@ export default function Calendar() {
   const monthYear = weekDays[0].toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
   const handlePickDay = (d) => {
-    setSelectedDay(new Date(d));
     setAgendaDayFilter(new Date(d));
     setView('Agenda');
   };
@@ -164,7 +165,17 @@ export default function Calendar() {
   const handleToday = () => {
     const today = NOW();
     setWeekStart(startOfWeek(today));
-    setSelectedDay(today);
+    handlePickDay(today);
+  };
+  // Jump-to-date: routes through startOfWeek + handlePickDay so weekStart and
+  // agendaDayFilter stay in sync with WeekStrip's swipe state.
+  const handleJumpToDate = (dateStr) => {
+    if (!dateStr) return;
+    const [y, mo, dy] = dateStr.split('-').map(Number);
+    // Anchor at 17:00 UTC to match startOfWeek/torontoDateKey's Toronto-noon convention.
+    const picked = new Date(Date.UTC(y, mo - 1, dy, 17));
+    setWeekStart(startOfWeek(picked));
+    handlePickDay(picked);
   };
 
   // Shared nav button style — 44×44px hit area, 22×22px visual
@@ -226,6 +237,9 @@ export default function Calendar() {
               <span style={navBtnInner}>‹</span>
             </button>
             <div>
+              <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.6px', textTransform: 'uppercase', color: mode === 'dark' ? 'rgba(255,255,255,0.5)' : T.inkMuted, opacity: 0.75 }}>
+                Schedule
+              </div>
               <div style={{ fontFamily: T.serif, fontSize: 17, fontWeight: 500, letterSpacing: '-0.4px', color: mode === 'dark' ? 'white' : T.ink }}>{monthYear}</div>
               <div style={{ fontFamily: T.font, fontSize: 10, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', color: mode === 'dark' ? 'rgba(255,255,255,0.75)' : T.inkMuted, marginTop: 1 }}>
                 {weekRangeLabel(weekStart)}
@@ -259,9 +273,48 @@ export default function Calendar() {
                 cursor: 'pointer',
               }}
             >Today</button>
+            <label
+              aria-label="Jump to date"
+              style={{
+                background: mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.4)',
+                border: `1px solid ${mode === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.05)'}`,
+                borderRadius: 6,
+                minHeight: 44,
+                minWidth: 44,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: mode === 'dark' ? 'white' : T.ink,
+                cursor: 'pointer',
+                position: 'relative',
+                flexShrink: 0,
+              }}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+              <input
+                type="date"
+                onChange={(e) => handleJumpToDate(e.target.value)}
+                aria-label="Jump to date"
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  opacity: 0,
+                  cursor: 'pointer',
+                  width: '100%',
+                  height: '100%',
+                  border: 'none',
+                  padding: 0,
+                }}
+              />
+            </label>
             <div style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.28)', borderRadius: 20, padding: '3px 9px', display: 'flex', alignItems: 'center', gap: 4 }}>
               <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#22C55E' }} />
-              <span style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, color: '#4ADE80', letterSpacing: '0.4px' }}>GCAL</span>
+              <span style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, color: '#4ADE80', letterSpacing: '0.4px' }}>Synced</span>
             </div>
           </div>
         </div>
@@ -269,11 +322,11 @@ export default function Calendar() {
         {/* 7-day strip — swipeable week carousel */}
         <WeekStrip
           weekStart={weekStart}
-          selectedDate={view !== 'Week' ? selectedDay : null}
+          selectedDate={agendaDayFilter}
           today={NOW()}
           allJobs={allJobs}
           onWeekChange={(delta) => setWeekStart(prev => addDays(prev, delta * 7))}
-          onDaySelect={(d) => { if (d) handlePickDay(d); }}
+          onDaySelect={(d) => (d ? handlePickDay(d) : setAgendaDayFilter(null))}
           T={T}
           mode={mode}
           variant="calendar"
@@ -543,7 +596,7 @@ const AgendaCard = memo(function AgendaCard({ T, mode, privacyOn, job, isNext, c
     };
     if (rMap[job.recurrence_rule]) badges.push(rMap[job.recurrence_rule]);
   }
-  if (conflict) badges.push({ text: '⚠ <1hr gap', bg: T.redBg, fg: T.errorFg });
+  if (conflict) badges.push({ text: '⚠ Tight gap', bg: T.redBg, fg: T.errorFg });
 
   return (
     <button

@@ -8,7 +8,7 @@ import { useToast } from '../context/ToastContext';
 import AmtCell from '../components/ui/AmtCell';
 import { Title, Subheading, Text, Caption, SectionLabel } from '../components/ui/typography';
 import { useClient, useClientInvoices, notifyDataChanged } from '../data/useData';
-import { simulateAILearning, updateClient, softDeleteClient, hardDeleteClient } from '../data/clientsRepo';
+import { updateClient, softDeleteClient, hardDeleteClient } from '../data/clientsRepo';
 import { archiveClientJobs } from '../data/jobsRepo';
 import { useAuth } from '../context/AuthContext';
 import { EmptyActivity, EmptySchedule } from '../components/ui/Illustrations';
@@ -42,20 +42,6 @@ export default function ClientProfile() {
   const [archiveBusy, setArchiveBusy] = useState(false);
   const [hardDeleteConfirm, setHardDeleteConfirm] = useState(false);
   const [hardDeleteBusy, setHardDeleteBusy] = useState(false);
-
-  const handleSimulateFuture = async () => {
-    setIsSavingAi(true);
-    try {
-      await simulateAILearning(id, client.name);
-      await refresh();
-      notifyDataChanged();
-    } catch (err) {
-      console.error('Simulation failed:', err);
-      toast.error('Simulation failed. Please try again.');
-    } finally {
-      setIsSavingAi(false);
-    }
-  };
 
   const handleEditIntel = () => {
     setIntelDraft({
@@ -324,20 +310,6 @@ export default function ClientProfile() {
               textTransform: 'uppercase', color: '#FF78B0',
             }}>✦ What I know</Caption>
             <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-              {!client.aiContext.learned && !isEditingIntel && (
-                <button
-                  onClick={handleSimulateFuture}
-                  disabled={isSavingAi}
-                  style={{
-                    background: 'var(--grad-pink)', border: 'none', borderRadius: 8, padding: '4px 10px',
-                    fontFamily: T.font, fontSize: 9, fontWeight: 700, color: 'white', cursor: 'pointer',
-                    boxShadow: '0 4px 10px rgba(233,30,106,0.2)'
-                  }}
-                  title="Generate AI insights from past jobs"
-                >
-                  AI insights ✦
-                </button>
-              )}
               {!isEditingIntel ? (
                 <button
                   onClick={handleEditIntel}

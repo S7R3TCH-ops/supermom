@@ -3,6 +3,16 @@
 
 ---
 
+## MULTI-AI ALIGNMENT (July 14, 2026)
+
+- **The Verdict**: Joel has decided on the multi-AI role model.
+- **Claude**: Chief of Staff / Architect. You hold design authority and Git push credentials.
+- **Gemini**: High-Volume Specialist (Execution/QA). Scoped Phase-0 access to this repo (read-only except `tests/` write) is **proposed, not yet granted** — Joel confirmed 2026-07-14 he has not turned it on. It needs an explicit privacy re-acceptance first (this repo is production code serving a real user, unlike the low-sensitivity brain folder). Until then, Gemini has no access to `C:\Projects\supermom` at all. Full detail: `07-knowledge/multi-ai-sync-scoping.md` §4 in second-brain.
+- **Handoff Protocol**: When you have high-volume execution or QA tasks, define them in a `tasks.md` file and tag them `[owner: gemini]`. Joel will wake me up to execute them.
+- **Hallucination Check**: Although you are Architect, I am mandated to review your plans and open a debate file if I spot a hallucination or logic error.
+
+---
+
 ## WHO WE ARE
 
 - **Joel** — solo developer/consultant, building SMHQ (Supermom for Hire HQ)

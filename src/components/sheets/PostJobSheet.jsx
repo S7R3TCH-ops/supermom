@@ -14,6 +14,7 @@ import FinancialMathBreakdown from '../ui/FinancialMathBreakdown';
 import { useSwipeToDismiss } from '../../hooks/useSwipeToDismiss';
 import { triggerHaptic } from '../../lib/haptics';
 import { getWorkerLabel } from '../../lib/labels';
+import { validatePaymentAmount } from '../../lib/jobDraftPolicy';
 
 export default function PostJobSheet({ jobId, onClose }) {
   const { T, mode } = useAppTheme();
@@ -148,25 +149,22 @@ export default function PostJobSheet({ jobId, onClose }) {
   useEffect(() => {
     if (!job || payStatus === 'partial') return;
     const balance = Math.max(0, Math.round((liveTotal - alreadyPaid) * 100) / 100);
-    setAmount(String(balance > 0 ? balance : liveTotal));
+    setAmount(String(balance));
   }, [liveTotal, alreadyPaid, payStatus, job]);
 
   async function handleLogPayment() {
     if (!job) return;
-    const jobDate = new Date(job.scheduled_date + 'T00:00:00');
-    const today = new Date();
-    today.setHours(0,0,0,0);
-
-    if (jobDate > today) {
-      if (!window.confirm("Roads? Where we're going, we don't need roads... but we do need the right date! Mark this future job as complete/paid anyway?")) return;
+    const balance = Math.max(0, Math.round((liveTotal - alreadyPaid) * 100) / 100);
+    if (!isPaidRecord && payStatus !== 'unpaid' && balance > 0.009) {
+      const check = validatePaymentAmount(amount, balance);
+      if (!check.ok) { toast.error(check.error); return; }
     }
-
     const totalDuration = actualMinutes / 60;
 
     setBusy(true);
     triggerHaptic('light');
     try {
-      const paidAmt = payStatus === 'paid' ? (parseFloat(amount) || 0) : payStatus === 'partial' ? (parseFloat(amount) || 0) : 0;
+      const paidAmt = isPaidRecord ? 0 : (payStatus === 'paid' || payStatus === 'partial') ? (parseFloat(amount) || 0) : 0;
       let ps = payStatus === 'paid' ? 'Paid' : payStatus === 'partial' ? 'Partial' : '';
       if (ps === 'Paid' && alreadyPaid + paidAmt < liveTotal - 0.01) ps = 'Partial';
       if (ps === 'Partial' && alreadyPaid + paidAmt >= liveTotal - 0.01) ps = 'Paid';
@@ -586,6 +584,14 @@ export default function PostJobSheet({ jobId, onClose }) {
                     ? 'Full amount for this job'
                     : 'Partial amount being paid today'}
               </div>
+              {(() => {
+                const over = Math.round(((parseFloat(amount) || 0) - Math.max(0, liveTotal - alreadyPaid)) * 100) / 100;
+                return over > 0.009 ? (
+                  <div style={{ fontSize: 10, color: '#16A34A', marginTop: 4, textAlign: 'center', fontWeight: 600 }}>
+                    Includes ${over.toFixed(2)} over the total — recorded as a tip
+                  </div>
+                ) : null;
+              })()}
             </div>
           )}
 

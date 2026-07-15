@@ -314,24 +314,44 @@ export async function addJobsToInvoice(invoiceId, extraJobIds) {
   }
 
   // Recalculate combined total_amount across all linked jobs
+  await recalcInvoiceTotal(invoiceId, businessId, bizData);
+
+  return invoiceId;
+}
+
+/**
+ * Recomputes an invoice's total_amount from all its linked jobs.
+ * Called after any operation that changes what a linked job is worth —
+ * adding/removing jobs, or editing a job's money fields (jobDraftPolicy resync).
+ */
+export async function recalcInvoiceTotal(invoiceId, businessId = null, bizData = null) {
+  const bid = businessId ?? await getCurrentBusinessId();
+  let biz = bizData;
+  if (!biz) {
+    const { data, error } = await supabase
+      .from('businesses').select('*').eq('id', bid).single();
+    if (error) throw error;
+    biz = data;
+  }
+
   const { data: allLinks, error: allLinksErr } = await supabase
     .from('invoice_jobs')
     .select('jobs(*)')
     .eq('invoice_id', invoiceId)
-    .eq('business_id', businessId);
+    .eq('business_id', bid);
   if (allLinksErr) throw allLinksErr;
 
   const newTotal = Math.round(
-    (allLinks ?? []).reduce((s, link) => s + computeJobFinancials(link.jobs, bizData).total, 0) * 100
+    (allLinks ?? []).reduce((s, link) => s + computeJobFinancials(link.jobs, biz).total, 0) * 100
   ) / 100;
 
   const { error: totalErr } = await supabase.from('invoices')
     .update({ total_amount: newTotal })
     .eq('id', invoiceId)
-    .eq('business_id', businessId);
+    .eq('business_id', bid);
   if (totalErr) throw totalErr;
 
-  return invoiceId;
+  return newTotal;
 }
 
 /**

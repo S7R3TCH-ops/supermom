@@ -1,6 +1,12 @@
 -- WARNING: This schema is for context only and is not meant to be run.
 -- Table order and constraints may not be valid for execution.
 
+CREATE TABLE public.app_settings (
+  id int NOT NULL DEFAULT 1,
+  ai_enabled boolean NOT NULL DEFAULT false,
+  CONSTRAINT app_settings_pkey PRIMARY KEY (id),
+  CONSTRAINT app_settings_singleton CHECK (id = 1)
+);
 CREATE TABLE public.audit_log (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   business_id uuid NOT NULL,

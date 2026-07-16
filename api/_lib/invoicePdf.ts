@@ -10,6 +10,20 @@ function formatDate(dateStr) {
   return `${MONTHS[parseInt(m, 10) - 1]} ${parseInt(d, 10)}, ${y}`;
 }
 
+// "9:00 AM – 12:30 PM" from a job's scheduled_time + duration (hours).
+// Mirrors formatJobTime in src/pages/InvoiceView.jsx — keep both in sync.
+function formatJobTime(job) {
+  const t = job?.scheduled_time;
+  if (!t || typeof t !== 'string') return '';
+  const [hh, mm] = t.split(':').map(Number);
+  if (Number.isNaN(hh) || Number.isNaN(mm)) return '';
+  const fmt = (h, m) => `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
+  const hours = Number(job.actual_duration ?? job.estimated_hours ?? 0);
+  if (!hours || hours <= 0) return fmt(hh, mm);
+  const endTotal = hh * 60 + mm + Math.round(hours * 60);
+  return `${fmt(hh, mm)} – ${fmt(Math.floor(endTotal / 60) % 24, endTotal % 60)}`;
+}
+
 const CREAM   = '#EAE2D8';
 const FAINT   = '#F5F1EC';
 const PINK    = '#FC4693';
@@ -139,20 +153,8 @@ function InvoiceDocument({ invoice }) {
     ),
   );
 
-  const paymentsBlock = invoice.payments?.length > 0
-    ? V({ style: s.paymentsWrap, key: 'payments' },
-        V({ style: s.paymentsHeaderRow },
-          T({ style: s.paymentsHeaderText }, 'Payments Received'),
-          T({ style: s.paymentsHeaderText }, 'Amount'),
-        ),
-        ...invoice.payments.map((p, i) =>
-          V({ key: p.id ?? `pmt-${i}`, style: s.paymentRow },
-            T({ style: s.paymentDate }, formatDate(p.payment_date)),
-            T({ style: s.paymentAmt  }, `+$${Number(p.amount).toFixed(2)}`),
-          )
-        ),
-      )
-    : null;
+  // (A second "Payments Received" block used to be built here but was never
+  // rendered — the totals row below has its own inline payments column.)
 
   const balanceRow = (invoice.payments?.length > 0 && !invoice.isPaidInFull)
     ? V({ style: s.balanceWrap, key: 'balance' },
@@ -224,7 +226,10 @@ function InvoiceDocument({ invoice }) {
         const f = allF[idx];
         return [
           V({ key: `job-${job.id}`, style: s.tableRow },
-            V({ style: s.cDate  }, T({ style: s.tdMuted  }, job.scheduled_date ? formatDate(job.scheduled_date) : '—')),
+            V({ style: s.cDate  },
+              T({ style: s.tdMuted }, job.scheduled_date ? formatDate(job.scheduled_date) : '—'),
+              formatJobTime(job) ? T({ style: { fontSize: 7.5, color: LIGHT, marginTop: 1 } }, formatJobTime(job)) : null,
+            ),
             V({ style: s.cDesc },
               T({ style: { fontSize: 10, color: INK } }, job.service_name || 'Professional Services'),
               !f.isHourly ? T({ style: { fontSize: 7, color: LIGHT, marginTop: 2 } }, 'Flat rate') : null,
@@ -262,7 +267,10 @@ function InvoiceDocument({ invoice }) {
                   ? `${formatDate(p.payment_date)} · ${p.payment_method}`
                   : formatDate(p.payment_date);
                 return V({ key: p.id ?? `pmt-${i}`, style: { marginBottom: 6 } },
-                  relatedJob ? T({ style: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: INK, marginBottom: 1 } }, relatedJob.service_name || 'Professional Services') : null,
+                  relatedJob ? T({ style: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: INK, marginBottom: 1 } },
+                    relatedJob.service_name || 'Professional Services',
+                    relatedJob.scheduled_date ? T({ style: { fontFamily: 'Helvetica', color: LIGHT } }, ` · ${formatDate(relatedJob.scheduled_date)}`) : null,
+                  ) : null,
                   V({ style: { flexDirection: 'row', justifyContent: 'space-between' } },
                     T({ style: { fontSize: 8, color: MUTED } }, dateLine),
                     T({ style: { fontSize: 9, fontFamily: 'Helvetica-Bold', color: PAID } }, `$${Number(p.amount).toFixed(2)}`),

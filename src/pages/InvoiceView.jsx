@@ -14,6 +14,21 @@ function formatDate(dateStr) {
   return `${MONTHS[parseInt(m, 10) - 1]} ${parseInt(d, 10)}, ${y}`;
 }
 
+// "9:00 AM – 12:30 PM" from a job's scheduled_time + duration (hours).
+// Same-named jobs on the same date stay distinguishable on the document.
+// Mirrored in api/_lib/invoicePdf.ts — keep both in sync.
+function formatJobTime(job) {
+  const t = job?.scheduled_time;
+  if (!t || typeof t !== 'string') return '';
+  const [hh, mm] = t.split(':').map(Number);
+  if (Number.isNaN(hh) || Number.isNaN(mm)) return '';
+  const fmt = (h, m) => `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
+  const hours = Number(job.actual_duration ?? job.estimated_hours ?? 0);
+  if (!hours || hours <= 0) return fmt(hh, mm);
+  const endTotal = hh * 60 + mm + Math.round(hours * 60);
+  return `${fmt(hh, mm)} – ${fmt(Math.floor(endTotal / 60) % 24, endTotal % 60)}`;
+}
+
 const LABEL = { fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 8 };
 
 export default function InvoiceView() {
@@ -526,6 +541,9 @@ export default function InvoiceView() {
                     <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
                       <td style={{ padding: '8px 14px', color: '#555', verticalAlign: 'top', whiteSpace: 'nowrap' }}>
                         {j.scheduled_date ? formatDate(j.scheduled_date) : '—'}
+                        {formatJobTime(j) && (
+                          <div style={{ fontSize: 11, color: '#999', marginTop: 1 }}>{formatJobTime(j)}</div>
+                        )}
                       </td>
                       <td style={{ padding: '8px 14px', verticalAlign: 'top' }}>
                         <div>{j.service_name || 'Professional Services'}</div>
@@ -575,6 +593,9 @@ export default function InvoiceView() {
                     {relatedJob && (
                       <div style={{ fontSize: 11, color: '#333', fontWeight: 500, marginBottom: 1 }}>
                         {relatedJob.service_name || 'Professional Services'}
+                        {relatedJob.scheduled_date && (
+                          <span style={{ color: '#999', fontWeight: 400 }}> · {formatDate(relatedJob.scheduled_date)}</span>
+                        )}
                       </div>
                     )}
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12 }}>

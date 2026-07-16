@@ -4,10 +4,15 @@ import { useAppTheme } from '../context/AppThemeContext';
 import { useJobDetailSheet } from '../context/JobDetailSheetContext';
 import { useSearchJobs } from '../data/useData';
 
-function fmtDate(s) {
-  if (!s) return '—';
+// Month/day/year parts for the date chip. The old fmtDate returned
+// "Mon, Jul 14" and the chip split on spaces — rendering "MON," + "Jul"
+// and dropping the day number entirely.
+function dateParts(s) {
+  if (!s) return { mon: '—', day: '', yr: null };
   const [y, m, d] = s.split('-').map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  const dt = new Date(y, m - 1, d);
+  if (Number.isNaN(dt.getTime())) return { mon: '—', day: '', yr: null };
+  return { mon: dt.toLocaleDateString('en-US', { month: 'short' }), day: String(d), yr: y };
 }
 
 export default function Search() {
@@ -126,7 +131,9 @@ export default function Search() {
               {results.length} result{results.length !== 1 ? 's' : ''}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {results.map(j => (
+              {results.map(j => {
+                const dp = dateParts(j.scheduled_date);
+                return (
                 <button
                   key={j.id}
                   type="button"
@@ -143,11 +150,16 @@ export default function Search() {
                     background: T.cardBorder, borderRadius: 10, padding: '6px 0',
                   }}>
                     <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 900, color: T.inkSub, textTransform: 'uppercase', lineHeight: 1 }}>
-                      {fmtDate(j.scheduled_date).split(' ')[0]}
+                      {dp.mon}
                     </div>
                     <div style={{ fontFamily: T.serif, fontSize: 15, fontWeight: 700, color: T.inkSub, marginTop: 1 }}>
-                      {fmtDate(j.scheduled_date).split(' ')[1]}
+                      {dp.day}
                     </div>
+                    {dp.yr != null && dp.yr !== new Date().getFullYear() && (
+                      <div style={{ fontFamily: T.font, fontSize: 8.5, fontWeight: 700, color: T.inkMuted, marginTop: 1 }}>
+                        {dp.yr}
+                      </div>
+                    )}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontFamily: T.serif, fontSize: 13.5, fontWeight: 500, color: T.ink, letterSpacing: '-0.2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -165,7 +177,8 @@ export default function Search() {
                     flexShrink: 0,
                   }}>{j.job_status || 'Scheduled'}</span>
                 </button>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

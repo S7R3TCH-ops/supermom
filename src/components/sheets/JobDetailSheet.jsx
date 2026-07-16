@@ -6,7 +6,7 @@ import { useBackClose } from '../../hooks/useBackClose';
 import { useKeyboardFocus } from '../../hooks/useKeyboardFocus';
 import { fetchJobById, updateJob, softDeleteJob, cancelJob, hardDeleteJob, revertJobToPreCompletion } from '../../data/jobsRepo';
 import { recalcInvoiceTotal } from '../../data/invoicesRepo';
-import { deriveJobStage, getPolicyMessage, validateJobDraft, buildFinancialPatch } from '../../lib/jobDraftPolicy';
+import { deriveJobStage, getPolicyMessage, validateJobDraft, buildFinancialPatch, isHoursLocked, resolveBillableHours } from '../../lib/jobDraftPolicy';
 import { useAuth } from '../../context/AuthContext';
 import { notifyDataChanged, useBusiness, useServices, useWorkers } from '../../data/useData';
 import { useToast } from '../../context/ToastContext';
@@ -244,9 +244,15 @@ export default function JobDetailSheet({ jobId, onClose }) {
     setBusy(true); setMutErr(null);
     try {
       // Money columns (flat_rate/subtotal/hst_amount/total_amount…) come only from
-      // buildFinancialPatch — see jobDraftPolicy.js single-writer rule. Completed
-      // jobs bill actual_duration, so totals recompute against it, not est. hours.
+      // buildFinancialPatch — see jobDraftPolicy.js single-writer rule. Hours are
+      // locked to the original actual_duration only once the job is Paid in full
+      // (isHoursLocked/resolveBillableHours) — completed-but-owing jobs stay
+      // editable so a correction actually updates what's billed, and that
+      // correction is written to actual_duration itself so every other screen
+      // that reads it (Home, Finance, invoices…) shows the same number (Joel, 2026-07-16).
       const isCompleted = job.job_status === 'Completed';
+      const hoursLocked = isHoursLocked(stage);
+      const billableHours = resolveBillableHours(stage, job, form.estimated_hours);
       await updateJob(job.id, {
         scheduled_date:  form.scheduled_date,
         scheduled_time:  form.scheduled_time,
@@ -256,11 +262,12 @@ export default function JobDetailSheet({ jobId, onClose }) {
         worker_id:       form.worker_id || null,
         worker_pay:      form.worker_id && form.worker_pay !== '' ? Number(form.worker_pay) : null,
         worker_paid:     form.worker_paid ?? false,
+        actual_duration: (isCompleted && !hoursLocked) ? billableHours : undefined,
         ...buildFinancialPatch({
           pricing_type: form.pricing_type,
           rate: form.rate,
           hours: form.estimated_hours,
-          actualHours: isCompleted && Number(job.actual_duration) > 0 ? job.actual_duration : undefined,
+          actualHours: hoursLocked ? billableHours : undefined,
           additionalCosts: form.additional_costs_json,
           taxEnabled: form.tax_enabled,
         }, business),
@@ -429,6 +436,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
         {!loading && job && editMode && (
           <EditMode
             job={job}
+            stage={stage}
             form={form} setForm={setForm} services={services} workers={workers} business={business}
             T={T} mode={mode} busy={busy} mutErr={mutErr} setMutErr={setMutErr}
             showSeriesPicker={showSeriesPicker} onSeriesChoice={onSeriesChoice}
@@ -732,7 +740,7 @@ function ReadMode({
 }
 
 /* ============= EDIT MODE ============= */
-function EditMode({ job, form, setForm, services, workers, business, T, mode, busy, mutErr, setMutErr, showSeriesPicker, onSeriesChoice, onSave, onCancelEdit, isKeyboardFocused }) {
+function EditMode({ job, stage, form, setForm, services, workers, business, T, mode, busy, mutErr, setMutErr, showSeriesPicker, onSeriesChoice, onSave, onCancelEdit, isKeyboardFocused }) {
   const dateRef = useRef(null);
   const timeRef = useRef(null);
   const serviceRef = useRef(null);
@@ -787,14 +795,14 @@ function EditMode({ job, form, setForm, services, workers, business, T, mode, bu
     }
   }
 
-  // Live breakdown mirrors exactly what saveEdit will write: completed jobs
-  // bill actual_duration, and the single `rate` field is $/hr or flat fee.
+  // Live breakdown mirrors exactly what saveEdit will write: hours are locked
+  // to the original actual_duration only once the job is Paid in full — see
+  // isHoursLocked/resolveBillableHours (jobDraftPolicy.js).
   const isHourly = form.pricing_type === 'Hourly';
+  const hoursLocked = isHoursLocked(stage);
   const liveForm = {
     pricing_type: form.pricing_type,
-    estimated_hours: (job.job_status === 'Completed' && Number(job.actual_duration) > 0)
-      ? job.actual_duration
-      : form.estimated_hours,
+    estimated_hours: resolveBillableHours(stage, job, form.estimated_hours),
     hourly_rate: isHourly ? form.rate : undefined,
     flat_rate: form.rate,
     additional_costs_json: form.additional_costs_json || [],
@@ -855,13 +863,13 @@ function EditMode({ job, form, setForm, services, workers, business, T, mode, bu
         <Field T={T} label={isHourly ? 'Rate ($/hr)' : 'Amount ($)'}>
           <input ref={rateRef} type="number" value={form.rate} onChange={e => set('rate', e.target.value)} onFocus={e => e.target.select()} style={{ ...iStyle(T), width: '100%' }} />
         </Field>
-        <Field T={T} label="Est. hours"><input ref={hoursRef} type="number" value={form.estimated_hours} onChange={e => {
+        <Field T={T} label="Est. hours"><input ref={hoursRef} type="number" disabled={hoursLocked} value={form.estimated_hours} onChange={e => {
           set('estimated_hours', e.target.value);
           set('hoursTouched', true);
-        }} onFocus={e => e.target.select()} style={{ ...iStyle(T), width: '100%' }} /></Field>
-        {job.job_status === 'Completed' && Number(job.actual_duration) > 0 && isHourly && (
+        }} onFocus={e => e.target.select()} style={{ ...iStyle(T), width: '100%', opacity: hoursLocked ? 0.55 : 1, cursor: hoursLocked ? 'not-allowed' : 'text' }} /></Field>
+        {hoursLocked && (
           <div style={{ fontSize: 10, color: T.inkMuted, marginTop: -8, marginBottom: 14 }}>
-            Completed job — total is billed on actual time ({Number(job.actual_duration)} hrs), not the estimate.
+            🔒 Locked — this job is paid in full, so hours can't be changed.
           </div>
         )}
 

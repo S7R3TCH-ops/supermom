@@ -7,6 +7,8 @@ import {
   validatePaymentAmount,
   buildFinancialPatch,
   MONEY_FIELDS,
+  isHoursLocked,
+  resolveBillableHours,
 } from './jobDraftPolicy';
 
 describe('deriveJobStage', () => {
@@ -157,6 +159,36 @@ describe('validatePaymentAmount', () => {
   it('no overpay flag at or below the balance', () => {
     expect(validatePaymentAmount(100, 100).overpay).toBe(0);
     expect(validatePaymentAmount(40, 100).overpay).toBe(0);
+  });
+});
+
+describe('isHoursLocked / resolveBillableHours (post-completion hours edit, Joel 2026-07-16)', () => {
+  it('is not locked while completed but not yet paid — hours edits should move the total', () => {
+    expect(isHoursLocked('completed_owing')).toBe(false);
+  });
+
+  it('is not locked while merely scheduled', () => {
+    expect(isHoursLocked('scheduled')).toBe(false);
+  });
+
+  it('locks only once the job is paid in full', () => {
+    expect(isHoursLocked('paid')).toBe(true);
+  });
+
+  it('completed but not paid: bills the live-edited hours, not the original actual_duration', () => {
+    expect(resolveBillableHours('completed_owing', { actual_duration: 2 }, 5)).toBe(5);
+  });
+
+  it('paid in full: locks to the original actual_duration, ignoring further edits', () => {
+    expect(resolveBillableHours('paid', { actual_duration: 2 }, 5)).toBe(2);
+  });
+
+  it('paid but actual_duration was never recorded: falls back to the live-edited hours', () => {
+    expect(resolveBillableHours('paid', { actual_duration: 0 }, 5)).toBe(5);
+  });
+
+  it('unwraps a display-object .raw like deriveJobStage does', () => {
+    expect(resolveBillableHours('paid', { raw: { actual_duration: 2 } }, 5)).toBe(2);
   });
 });
 

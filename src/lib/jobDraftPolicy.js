@@ -127,6 +127,30 @@ function round2(n) {
 }
 
 /**
+ * Whether a job's billable hours are locked to what was already recorded.
+ * Locked only once fully Paid — completed-but-owing jobs stay editable so a
+ * correction (e.g. "actually 3hrs not 2") updates what's billed (Joel, 2026-07-16:
+ * previously this silently keyed off job_status === 'Completed', which froze the
+ * total even before payment and discarded the edit on save).
+ */
+export function isHoursLocked(stage) {
+  return stage === 'paid';
+}
+
+/**
+ * Resolves which hours value should bill the total while editing a job.
+ * Falls back to the live-edited value whenever not locked, or when locked but
+ * no actual_duration was ever recorded (nothing to lock to).
+ */
+export function resolveBillableHours(stage, job, formHours) {
+  const src = job?.raw ?? job ?? {};
+  if (isHoursLocked(stage) && Number(src.actual_duration) > 0) {
+    return Number(src.actual_duration);
+  }
+  return Number(formHours) || 0;
+}
+
+/**
  * Builds the complete financial write-set for a job from form values.
  * draft: {
  *   pricing_type: 'Hourly' | 'Flat',

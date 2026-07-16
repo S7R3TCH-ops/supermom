@@ -165,7 +165,8 @@
 
 ## PREFERENCES & RULES FOR THIS AI
 
-- Don't make assumptions — ask clarifying questions
+- **Don't make assumptions — always ask.** We require 95% confidence before executing. Never assume. Always tell Joel explicitly what you need him to do, even if you think he knows. He will flag if it's redundant.
+- **Environment specific tasks:** If a task requires a terminal/CLI environment instead of the IDE interface, you MUST explicitly instruct Joel to do it in the CLI.
 - **Always give step-by-step instructions** for any multi-step task — one action per step, never collapse
 - Surface better options BEFORE doing it the asked way
 - Keep a visible Parked List and surface it when topics get dropped

@@ -235,6 +235,7 @@ const TrendChart = memo(function TrendChart({ data, T, mode, idPrefix = 'fc' }) 
 const TransactionRow = memo(function TransactionRow({ tx, T, privacyOn, onPress }) {
   const isJob = tx.type === 'job';
   const isWorkerCost = tx.type === 'worker_cost';
+  const isCost = tx.type === 'expense' || isWorkerCost;
   const tappable = isJob && tx.status !== 'Cancelled';
 
   const pillKey = isJob
@@ -273,7 +274,12 @@ const TransactionRow = memo(function TransactionRow({ tx, T, privacyOn, onPress 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontFamily: T.serif, fontSize: 12.5, fontWeight: 500, color: T.ink, letterSpacing: '-0.2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tx.label}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 1 }}>
-          <span style={{ fontSize: 10, color: T.inkMuted, fontWeight: 500 }}>{tx.dateBrief}</span>
+          <span style={{
+            fontSize: 10, color: T.inkMuted, fontWeight: 500,
+            minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
+            {tx.dateBrief}{tx.service ? ` · ${tx.service}` : ''}
+          </span>
           {pill && (
             <span style={{ fontSize: 8.5, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: pill.bg, color: pill.color, textTransform: 'uppercase' }}>
               {pill.label}
@@ -287,10 +293,14 @@ const TransactionRow = memo(function TransactionRow({ tx, T, privacyOn, onPress 
         </div>
       </div>
       <div style={{ textAlign: 'right' }}>
-        <AmtCell amount={tx.amount} T={T} privacyOn={privacyOn} style={{ fontSize: 14, fontWeight: 600, color: (tx.type === 'expense' || tx.type === 'worker_cost') ? T.errorFg : T.ink }} />
+        <AmtCell
+          amount={`${isCost ? '-' : ''}$${Number(tx.amount || 0).toFixed(0)}`}
+          size={14}
+          color={isCost ? T.errorFg : T.ink}
+        />
         {tx.isPartial && !privacyOn && (
           <div style={{ fontSize: 9, color: T.inkMuted, fontWeight: 500, marginTop: 1 }}>
-            of ${tx.total}
+            of ${Number(tx.total || 0).toFixed(0)}
           </div>
         )}
       </div>
@@ -310,6 +320,7 @@ export default function Finance() {
   const { business } = useBusiness();
   const [period, setPeriod] = useState('Month');
   const [showNewExpense, setShowNewExpense] = useState(false);
+  const [showAllInvoices, setShowAllInvoices] = useState(false);
   const [showTaxReady, setShowTaxReady] = useState(false);
   const [showMileage, setShowMileage] = useState(false);
   const [showYoY, setShowYoY] = useState(false);
@@ -433,6 +444,8 @@ export default function Finance() {
   }, [completedPeriodJobs, mileageEnabled, craRate]);
 
   const transactions = useMemo(() => {
+    // "All" spans multiple years — include the year so "Mar 12" is never ambiguous
+    const dateFmt = { month: 'short', day: 'numeric', ...(period === 'All' ? { year: 'numeric' } : {}) };
     const jobTx = periodJobs.map(j => {
       const computed = computeJobFinancials(j);
       const sub = computed.subtotal + computed.additionalTotal;
@@ -440,10 +453,11 @@ export default function Finance() {
         type: 'job',
         rawId: j.id,
         label: j.client_name,
+        service: j.raw?.service_name || j.service_name || '',
         amount: sub,
         total: computed.total,
         _date: parseDate(j.scheduled_at) || new Date(0),
-        dateBrief: (parseDate(j.scheduled_at) || new Date()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        dateBrief: (parseDate(j.scheduled_at) || new Date()).toLocaleDateString('en-US', dateFmt),
         status: j.status,
         isPaid: j.payment_status === 'Paid',
         isPartial: j.payment_status === 'Partial',
@@ -457,7 +471,7 @@ export default function Finance() {
       label: e.description || e.category || 'Expense',
       amount: Number(e.amount || 0),
       _date: parseDate(e.expense_date || e.created_at) || new Date(0),
-      dateBrief: (parseDate(e.expense_date || e.created_at) || new Date()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      dateBrief: (parseDate(e.expense_date || e.created_at) || new Date()).toLocaleDateString('en-US', dateFmt),
       icon: '💸',
       color: '#6B7280',
     }));
@@ -465,15 +479,16 @@ export default function Finance() {
       type: 'worker_cost',
       rawId: w.id,
       label: `${w.worker_name || 'Worker'} — ${w.client_name}`,
+      service: w.service_name || '',
       amount: w.amount,
       workerPaid: w.worker_paid,
       _date: parseDate(w.scheduled_at) || new Date(0),
-      dateBrief: (parseDate(w.scheduled_at) || new Date()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      dateBrief: (parseDate(w.scheduled_at) || new Date()).toLocaleDateString('en-US', dateFmt),
       icon: '👷',
       color: T.amberFg,
     }));
     return [...jobTx, ...expTx, ...workerTx].sort((a, b) => b._date - a._date);
-  }, [periodJobs, periodExpenses, workerCostItems, T]);
+  }, [periodJobs, periodExpenses, workerCostItems, T, period]);
 
   const periodLabel = useMemo(() => ({
     Week: 'This Week', Month: 'This Month', Year: 'This Year', All: 'All Time',
@@ -536,24 +551,35 @@ export default function Finance() {
           textTransform: 'uppercase', color: mode === 'dark' ? '#FF78B0' : T.pink, marginBottom: 8,
           position: 'relative',
         }}>✦ Financial Command</div>
-        <div style={{ fontSize: 10.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: mode === 'dark' ? 'rgba(255,255,255,0.5)' : T.inkMuted, marginBottom: 4, position: 'relative' }}>
-          {periodLabel}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 3, position: 'relative' }}>
-          <span style={{ fontFamily: T.serif, fontSize: 38, fontWeight: 500, color: mode === 'dark' ? 'white' : T.ink, letterSpacing: '-1.5px', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
-            {privacyOn ? '•••' : `$${stats.revenue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
-          </span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, position: 'relative', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 10, color: mode === 'dark' ? 'rgba(255,255,255,0.45)' : T.inkMuted, fontWeight: 500 }}>
-            {completedPeriodJobs.length} job{completedPeriodJobs.length !== 1 ? 's' : ''}
-          </span>
-          {stats.profit !== stats.revenue && (
-            <span style={{ fontSize: 10, color: stats.profit >= 0 ? T.greenFg : T.errorFg, fontWeight: 600 }}>
-              {privacyOn ? '•••' : `You cleared $${Math.abs(stats.profit).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })} after expenses`}
+        {/* The hero IS the revenue display — tappable drill-in. The old "Total Revenue"
+            stat card duplicated this exact number + job count one viewport lower. */}
+        <button
+          type="button"
+          onClick={() => handleStatClick('revenue')}
+          aria-label={`Revenue ${periodLabel}: ${privacyOn ? 'hidden' : '$' + stats.revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}. View details`}
+          style={{
+            display: 'block', width: '100%', textAlign: 'left', position: 'relative',
+            background: 'transparent', border: 'none', padding: 0, cursor: 'pointer',
+            fontFamily: T.font, WebkitTapHighlightColor: 'transparent',
+          }}
+        >
+          <div style={{ fontSize: 10.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: mode === 'dark' ? 'rgba(255,255,255,0.5)' : T.inkMuted, marginBottom: 4 }}>
+            Revenue · {periodLabel}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
+            <span style={{ fontFamily: T.serif, fontSize: 38, fontWeight: 500, color: mode === 'dark' ? 'white' : T.ink, letterSpacing: '-1.5px', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
+              {privacyOn ? '•••' : `$${stats.revenue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
             </span>
-          )}
-        </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 4 }}>
+            <span style={{ fontSize: 10, color: mode === 'dark' ? 'rgba(255,255,255,0.45)' : T.inkMuted, fontWeight: 500 }}>
+              {completedPeriodJobs.length} job{completedPeriodJobs.length !== 1 ? 's' : ''}
+            </span>
+            <span style={{ fontSize: 9, color: mode === 'dark' ? '#FF78B0' : T.pink, fontWeight: 700, opacity: 0.8, letterSpacing: '0.4px' }}>
+              VIEW ›
+            </span>
+          </div>
+        </button>
       </div>
 
       <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '16px 14px' }}>
@@ -576,31 +602,14 @@ export default function Finance() {
           ))}
         </div>
 
-        {/* Stats Grid */}
+        {/* Stats Grid — revenue lives in the hero above (was duplicated here);
+            HST moved into the grid from a one-off full-width row */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
-          <StatCard T={T} mode={mode} label="Total Revenue" value={stats.revenue} color={T.pink} privacyOn={privacyOn} onClick={() => handleStatClick('revenue')} count={revenueItems.length} />
-          <StatCard T={T} mode={mode} label="Expenses" value={stats.expenses} color="#6B7280" privacyOn={privacyOn} onClick={() => handleStatClick('expenses')} count={periodExpenses.length} />
+          <StatCard T={T} mode={mode} label="Expenses" value={stats.expenses} color="#6B7280" privacyOn={privacyOn} onClick={() => handleStatClick('expenses')} count={periodExpenses.length} countNoun="expense" />
           <StatCard T={T} mode={mode} label="Outstanding" value={stats.outstanding} color={T.amberFg} privacyOn={privacyOn} onClick={() => handleStatClick('outstanding')} count={outstandingItems.length} />
           <StatCard T={T} mode={mode} label="Profit" value={stats.profit} color={T.greenFg} privacyOn={privacyOn} onClick={() => handleStatClick('profit')} workerCosts={stats.workerCosts} />
+          <StatCard T={T} mode={mode} label="HST Collected" value={hstCollected} color={T.inkSub} privacyOn={privacyOn} onClick={() => handleStatClick('hst')} />
         </div>
-
-        {hstCollected > 0 && (
-          <button
-            type="button"
-            onClick={() => handleStatClick('hst')}
-            style={{
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              width: '100%', background: T.card, border: `1.5px solid ${T.cardBorder}`,
-              borderRadius: 12, padding: '10px 14px', marginBottom: 16,
-              cursor: 'pointer', fontFamily: T.font, textAlign: 'left',
-            }}
-          >
-            <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: T.inkMuted }}>HST Collected</span>
-            <span style={{ fontSize: 14, fontWeight: 700, color: T.inkSub, fontVariantNumeric: 'tabular-nums' }}>
-              {privacyOn ? '•••' : `$${Math.round(hstCollected).toLocaleString('en-CA')}`}
-            </span>
-          </button>
-        )}
 
         {/* Trend Chart */}
         <div style={{ background: T.card, border: `1.5px solid ${T.cardBorder}`, borderRadius: 16, padding: '14px 14px 10px', marginBottom: 16 }}>
@@ -689,24 +698,39 @@ export default function Finance() {
         <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 16, padding: 14, marginBottom: 24 }}>
           {invoices && invoices.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {invoices.slice(0, 3).map(inv => (
+              {(showAllInvoices ? invoices : invoices.slice(0, 3)).map(inv => {
+                const clientName = inv.clients
+                  ? [inv.clients.first_name, inv.clients.last_name].filter(Boolean).join(' ')
+                  : '';
+                return (
+                  <button
+                    key={inv.id}
+                    type="button"
+                    onClick={() => navigate(`/i/${inv.id}`)}
+                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', background: 'none', border: 'none', borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: T.cardBorder, width: '100%', cursor: 'pointer', textAlign: 'left' }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: T.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        INV-{inv.invoice_number}{clientName ? ` · ${clientName}` : ''}
+                      </div>
+                      <div style={{ fontSize: 10, color: T.inkMuted }}>{new Date(inv.created_at).toLocaleDateString()}</div>
+                    </div>
+                    <div style={{ textAlign: 'right', flexShrink: 0, paddingLeft: 8 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: T.ink }}>${Number(inv.total_amount).toFixed(2)}</div>
+                      <div style={{ fontSize: 9, color: inv.status === 'Paid' ? '#14532D' : '#FC4693', fontWeight: 700, background: inv.status === 'Paid' ? '#DCFCE7' : '#FFEFF4', padding: '2px 6px', borderRadius: 4, display: 'inline-block', letterSpacing: '0.4px' }}>{inv.status.toUpperCase()}</div>
+                    </div>
+                  </button>
+                );
+              })}
+              {invoices.length > 3 && (
                 <button
-                  key={inv.id}
                   type="button"
-                  onClick={() => navigate(`/i/${inv.id}`)}
-                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: `1px solid ${T.cardBorder}`, background: 'none', border: 'none', borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: T.cardBorder, width: '100%', cursor: 'pointer', textAlign: 'left' }}
+                  onClick={() => setShowAllInvoices(v => !v)}
+                  style={{ marginTop: 4, fontSize: 10, fontWeight: 700, color: T.pink, textAlign: 'center', padding: '6px 0', background: 'none', border: 'none', cursor: 'pointer' }}
                 >
-                  <div>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: T.ink }}>INV-{inv.invoice_number}</div>
-                    <div style={{ fontSize: 10, color: T.inkMuted }}>{new Date(inv.created_at).toLocaleDateString()}</div>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: T.ink }}>${Number(inv.total_amount).toFixed(2)}</div>
-                    <div style={{ fontSize: 9, color: inv.status === 'Paid' ? '#14532D' : '#FC4693', fontWeight: 700, background: inv.status === 'Paid' ? '#DCFCE7' : '#FFEFF4', padding: '2px 6px', borderRadius: 4, display: 'inline-block', letterSpacing: '0.4px' }}>{inv.status.toUpperCase()}</div>
-                  </div>
+                  {showAllInvoices ? 'Show fewer' : `Show all ${invoices.length} invoices`}
                 </button>
-              ))}
-              <div style={{ marginTop: 8, fontSize: 10, color: T.inkMuted, textAlign: 'center', padding: '4px 0' }}>Showing {Math.min(invoices.length, 3)} of {invoices.length} invoice{invoices.length !== 1 ? 's' : ''}</div>
+              )}
             </div>
           ) : (
             <div style={{ textAlign: 'center', padding: '20px 0' }}>
@@ -880,7 +904,7 @@ function FinanceSkeleton({ T }) {
   );
 }
 
-function StatCard({ T, label, value, color, privacyOn, onClick, count, workerCosts }) {
+function StatCard({ T, label, value, color, privacyOn, onClick, count, countNoun = 'job', workerCosts }) {
   const isNeg = value < 0;
   return (
     <button
@@ -905,7 +929,7 @@ function StatCard({ T, label, value, color, privacyOn, onClick, count, workerCos
       </div>
       {count !== undefined && (
         <div style={{ fontSize: 9, color: T.inkMuted, marginTop: 4, fontWeight: 500 }}>
-          {count} job{count !== 1 ? 's' : ''}
+          {count} {countNoun}{count !== 1 ? 's' : ''}
         </div>
       )}
       {workerCosts > 0 && (

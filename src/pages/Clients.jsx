@@ -1,6 +1,7 @@
 import { memo, useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppTheme } from '../context/AppThemeContext';
+import { useNewJobSheet } from '../context/NewJobSheetContext';
 import AmtCell from '../components/ui/AmtCell';
 import { useClients } from '../data/useData';
 import OfflineMessage from '../components/ui/OfflineMessage';
@@ -8,7 +9,7 @@ import { EmptyClients, NoResults } from '../components/ui/Illustrations';
 
 const filters = ['All', 'Owes $', 'VIP', 'Active', 'Leads'];
 
-const ClientCard = memo(function ClientCard({ c, T, mode, onPress }) {
+const ClientCard = memo(function ClientCard({ c, T, mode, onPress, onBook }) {
   const [focused, setFocused] = useState(false);
   return (
     <div
@@ -48,7 +49,8 @@ const ClientCard = memo(function ClientCard({ c, T, mode, onPress }) {
             </div>
           )}
           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-            {c.tags.map(tag => {
+            {/* VIP is already badged next to the name above — don't repeat it as a tag chip */}
+            {c.tags.filter(tag => !tag.toLowerCase().includes('vip')).map(tag => {
               const isOverdue = tag.toLowerCase().includes('overdue');
               const isLead = tag === 'Lead';
               return (
@@ -73,7 +75,8 @@ const ClientCard = memo(function ClientCard({ c, T, mode, onPress }) {
           {c.tags.includes('Lead') && (
             <button
               type="button"
-              onClick={(e) => { e.stopPropagation(); onPress(c.id); }}
+              aria-label={`Book a job for ${c.name}`}
+              onClick={(e) => { e.stopPropagation(); onBook(c.id); }}
               style={{
                 background: T.pink, color: 'white', border: 'none', borderRadius: 6,
                 padding: '6px 10px', fontFamily: T.font, fontSize: 10, fontWeight: 700,
@@ -94,6 +97,7 @@ export default function Clients() {
   const [searchFocused, setSearchFocused] = useState(false);
   const navigate = useNavigate();
   const { clients, loading, error, refresh: refetchClients } = useClients();
+  const { openFor: openNewJobFor } = useNewJobSheet();
   const handleClientPress = useCallback((id) => navigate(`/clients/${id}`), [navigate]);
 
   const filtered = useMemo(() => {
@@ -267,7 +271,7 @@ export default function Clients() {
       {/* Client list */}
       <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '4px 13px 80px', contain: 'layout style paint' }}>
         {filtered.map((c, i) => (
-          <ClientCard key={c.id || i} c={c} T={T} mode={mode} onPress={handleClientPress} />
+          <ClientCard key={c.id || i} c={c} T={T} mode={mode} onPress={handleClientPress} onBook={openNewJobFor} />
         ))}
       </div>
     </div>

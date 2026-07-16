@@ -280,14 +280,18 @@ export default function ClientProfile() {
               padding: '11px 0', fontFamily: T.font, fontSize: 13, fontWeight: 700, color: 'white',
               cursor: 'pointer', letterSpacing: '0.2px',
             }}>Book Job</button>
-          <button style={{
-            flex: 1, 
-            background: mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(233,30,106,0.08)', 
-            border: `1px solid ${mode === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(233,30,106,0.2)'}`,
-            borderRadius: 12, padding: '11px 0',
-            fontFamily: T.font, fontSize: 13, fontWeight: 600, 
-            color: mode === 'dark' ? 'white' : T.pink, cursor: 'pointer',
-          }}>Message</button>
+          {/* Only render when we can actually message — a dead button is worse than no button */}
+          {client.phone && (
+            <a href={`sms:${client.phone}`} style={{
+              flex: 1,
+              background: mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(233,30,106,0.08)',
+              border: `1px solid ${mode === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(233,30,106,0.2)'}`,
+              borderRadius: 12, padding: '11px 0',
+              fontFamily: T.font, fontSize: 13, fontWeight: 600,
+              color: mode === 'dark' ? 'white' : T.pink, cursor: 'pointer',
+              textDecoration: 'none', textAlign: 'center', display: 'block',
+            }}>Message</a>
+          )}
         </div>
       </div>
 

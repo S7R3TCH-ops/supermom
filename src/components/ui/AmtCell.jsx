@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAppTheme } from '../../context/AppThemeContext';
 
-export default function AmtCell({ amount, size = 14 }) {
+export default function AmtCell({ amount, size = 14, color }) {
   const { T, privacyOn } = useAppTheme();
   const [show, setShow] = useState(false);
 
@@ -9,7 +9,7 @@ export default function AmtCell({ amount, size = 14 }) {
     return (
       <span style={{
         fontFamily: T.serif, fontSize: size, fontWeight: 500,
-        letterSpacing: '-0.3px', color: T.ink,
+        letterSpacing: '-0.3px', color: color || T.ink,
       }}>{amount}</span>
     );
   }

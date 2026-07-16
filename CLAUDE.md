@@ -6,6 +6,7 @@
 > **Drift check (every session)**: Run `git log --oneline -10` and verify recent changes are documented here.
 > **Second-brain sync (every session, mandatory)**: This repo is tracked in `C:\Projects\second-brain\03-projects\active\supermom\`. Whether this session is running here directly (CLI or Antigravity) or was routed from second-brain, before ending the session update that project's `status.md` (current state) and `tasks.md` (next actions) to match what actually happened — same as if the session had been rooted in second-brain. Don't rely on this repo's own docs (this file, `HANDOFF_NEW_SESSION.md`) as the cross-session source of truth for planning/priorities; second-brain's `status.md`/`tasks.md` are. If you can't reach that folder from this session, say so explicitly instead of silently skipping the update.
 > **Gemini handoff routing (standing rule, added 2026-07-15)**: When Joel says "execute the instructions/plan Gemini brainstormed" (or equivalent — no file path given), auto-look in `C:\Projects\second-brain\00-inbox\gemini\`, take the most recently modified `.md` file, read it, and execute — don't ask Joel for the path.
+> **Gemini Phase-0 scoped access (2026-07-16)**: Gemini/Antigravity now has scoped access to this repo — read-most, write limited to `tests/` only, no git ops. Rules live in this repo's own `GEMINI.md`. Full reasoning: `second-brain/decisions.md` 2026-07-16.
 
 ---
 

@@ -54,7 +54,7 @@ function JobRow({ item, T, privacyOn, onTap }) {
         <div style={{ fontSize: 15, fontWeight: 700, color: T.ink, fontVariantNumeric: 'tabular-nums' }}>
           {privacyOn ? '•••' : `$${Number(total).toFixed(0)}`}
         </div>
-        <div style={{ fontSize: 9, fontWeight: 700, color: item.payment_status === 'Paid' ? '#22C55E' : item.payment_status === 'Partial' ? '#F59E0B' : '#FC4693', textTransform: 'uppercase', marginTop: 2 }}>
+        <div style={{ fontSize: 9, fontWeight: 700, color: item.payment_status === 'Paid' ? T.greenFg : item.payment_status === 'Partial' ? T.amberFg : T.errorFg, textTransform: 'uppercase', marginTop: 2 }}>
           {item.payment_status === 'Paid' ? 'Paid ✓' : item.payment_status === 'Partial' ? 'Partial' : 'Unpaid'}
         </div>
       </div>
@@ -106,7 +106,7 @@ function ExpenseRow({ item, T, privacyOn }) {
           {item.description && item.category && item.description !== item.category ? ` · ${item.description}` : ''}
         </div>
       </div>
-      <div style={{ fontSize: 14, fontWeight: 700, color: '#EF4444', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
+      <div style={{ fontSize: 14, fontWeight: 700, color: T.errorFg, flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
         {privacyOn ? '•••' : `-$${Number(item.amount || 0).toFixed(0)}`}
       </div>
     </div>
@@ -136,7 +136,7 @@ export default function FinanceDetailSheet({ title, items, type, onClose }) {
       const expenses = items.filter(i => i._itemType === 'expense').reduce((s, i) => s + Number(i.amount || 0), 0);
       const workerCosts = items.filter(i => i._itemType === 'worker_cost').reduce((s, i) => s + Number(i.amount || 0), 0);
       const net = revenue - expenses - workerCosts;
-      return { revenue, expenses, workerCosts, net, color: net >= 0 ? '#10B981' : '#EF4444' };
+      return { revenue, expenses, workerCosts, net, color: net >= 0 ? T.greenFg : T.errorFg };
     }
     return { line: `${items.length} item${items.length !== 1 ? 's' : ''}`, total: 0, color: T.pink };
   })();
@@ -170,14 +170,14 @@ export default function FinanceDetailSheet({ title, items, type, onClose }) {
 
             {type === 'profit' ? (
               <div style={{ display: 'flex', gap: 12, marginTop: 6, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 10.5, fontWeight: 700, color: '#10B981' }}>
+                <span style={{ fontSize: 10.5, fontWeight: 700, color: T.greenFg }}>
                   {privacyOn ? '•••' : `+$${summary.revenue?.toFixed(0)}`} revenue
                 </span>
-                <span style={{ fontSize: 10.5, fontWeight: 700, color: '#EF4444' }}>
+                <span style={{ fontSize: 10.5, fontWeight: 700, color: T.errorFg }}>
                   {privacyOn ? '•••' : `-$${summary.expenses?.toFixed(0)}`} expenses
                 </span>
                 {summary.workerCosts > 0 && (
-                  <span style={{ fontSize: 10.5, fontWeight: 700, color: '#F59E0B' }}>
+                  <span style={{ fontSize: 10.5, fontWeight: 700, color: T.amberFg }}>
                     {privacyOn ? '•••' : `-$${summary.workerCosts?.toFixed(0)}`} worker
                   </span>
                 )}
@@ -242,7 +242,7 @@ export default function FinanceDetailSheet({ title, items, type, onClose }) {
               {/* Worker Costs section */}
               {items.filter(i => i._itemType === 'worker_cost').length > 0 && (
                 <>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: '#F59E0B', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8, marginTop: items.filter(i => i._itemType === 'revenue').length > 0 ? 18 : 0 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: T.amberFg, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8, marginTop: items.filter(i => i._itemType === 'revenue').length > 0 ? 18 : 0 }}>
                     Worker Costs ({items.filter(i => i._itemType === 'worker_cost').length})
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
@@ -255,7 +255,7 @@ export default function FinanceDetailSheet({ title, items, type, onClose }) {
               {/* Expenses section */}
               {items.filter(i => i._itemType === 'expense').length > 0 && (
                 <>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: '#EF4444', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: T.errorFg, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>
                     Expenses ({items.filter(i => i._itemType === 'expense').length})
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

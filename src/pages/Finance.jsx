@@ -287,7 +287,7 @@ const TransactionRow = memo(function TransactionRow({ tx, T, privacyOn, onPress 
         </div>
       </div>
       <div style={{ textAlign: 'right' }}>
-        <AmtCell amount={tx.amount} T={T} privacyOn={privacyOn} style={{ fontSize: 14, fontWeight: 600, color: (tx.type === 'expense' || tx.type === 'worker_cost') ? '#EF4444' : T.ink }} />
+        <AmtCell amount={tx.amount} T={T} privacyOn={privacyOn} style={{ fontSize: 14, fontWeight: 600, color: (tx.type === 'expense' || tx.type === 'worker_cost') ? T.errorFg : T.ink }} />
         {tx.isPartial && !privacyOn && (
           <div style={{ fontSize: 9, color: T.inkMuted, fontWeight: 500, marginTop: 1 }}>
             of ${tx.total}
@@ -470,10 +470,10 @@ export default function Finance() {
       _date: parseDate(w.scheduled_at) || new Date(0),
       dateBrief: (parseDate(w.scheduled_at) || new Date()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
       icon: '👷',
-      color: '#F59E0B',
+      color: T.amberFg,
     }));
     return [...jobTx, ...expTx, ...workerTx].sort((a, b) => b._date - a._date);
-  }, [periodJobs, periodExpenses, workerCostItems]);
+  }, [periodJobs, periodExpenses, workerCostItems, T]);
 
   const periodLabel = useMemo(() => ({
     Week: 'This Week', Month: 'This Month', Year: 'This Year', All: 'All Time',
@@ -549,7 +549,7 @@ export default function Finance() {
             {completedPeriodJobs.length} job{completedPeriodJobs.length !== 1 ? 's' : ''}
           </span>
           {stats.profit !== stats.revenue && (
-            <span style={{ fontSize: 10, color: stats.profit >= 0 ? (mode === 'dark' ? '#86EFAC' : '#16A34A') : '#EF4444', fontWeight: 600 }}>
+            <span style={{ fontSize: 10, color: stats.profit >= 0 ? T.greenFg : T.errorFg, fontWeight: 600 }}>
               {privacyOn ? '•••' : `You cleared $${Math.abs(stats.profit).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })} after expenses`}
             </span>
           )}
@@ -580,8 +580,8 @@ export default function Finance() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
           <StatCard T={T} mode={mode} label="Total Revenue" value={stats.revenue} color={T.pink} privacyOn={privacyOn} onClick={() => handleStatClick('revenue')} count={revenueItems.length} />
           <StatCard T={T} mode={mode} label="Expenses" value={stats.expenses} color="#6B7280" privacyOn={privacyOn} onClick={() => handleStatClick('expenses')} count={periodExpenses.length} />
-          <StatCard T={T} mode={mode} label="Outstanding" value={stats.outstanding} color="#F59E0B" privacyOn={privacyOn} onClick={() => handleStatClick('outstanding')} count={outstandingItems.length} />
-          <StatCard T={T} mode={mode} label="Profit" value={stats.profit} color="#10B981" privacyOn={privacyOn} onClick={() => handleStatClick('profit')} workerCosts={stats.workerCosts} />
+          <StatCard T={T} mode={mode} label="Outstanding" value={stats.outstanding} color={T.amberFg} privacyOn={privacyOn} onClick={() => handleStatClick('outstanding')} count={outstandingItems.length} />
+          <StatCard T={T} mode={mode} label="Profit" value={stats.profit} color={T.greenFg} privacyOn={privacyOn} onClick={() => handleStatClick('profit')} workerCosts={stats.workerCosts} />
         </div>
 
         {hstCollected > 0 && (
@@ -898,8 +898,8 @@ function StatCard({ T, label, value, color, privacyOn, onClick, count, workerCos
     >
       <div style={{ fontSize: 10, color: T.inkMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 6 }}>{label}</div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
-        <span style={{ fontSize: 14, fontWeight: 700, color: isNeg ? '#EF4444' : color }}>$</span>
-        <span style={{ fontSize: 22, fontWeight: 500, color: isNeg ? '#EF4444' : T.ink, fontFamily: T.serif, fontVariantNumeric: 'tabular-nums' }}>
+        <span style={{ fontSize: 14, fontWeight: 700, color: isNeg ? T.errorFg : color }}>$</span>
+        <span style={{ fontSize: 22, fontWeight: 500, color: isNeg ? T.errorFg : T.ink, fontFamily: T.serif, fontVariantNumeric: 'tabular-nums' }}>
           {privacyOn ? '•••' : Math.abs(value).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
         </span>
       </div>

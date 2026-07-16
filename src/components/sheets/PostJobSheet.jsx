@@ -313,7 +313,7 @@ export default function PostJobSheet({ jobId, onClose }) {
         {loading ? (
           <div style={{ padding: 40, textAlign: 'center', color: T.inkMuted }}>Initializing...</div>
         ) : fetchErr ? (
-          <div style={{ padding: 40, textAlign: 'center', color: '#EF4444' }}>{fetchErr}</div>
+          <div style={{ padding: 40, textAlign: 'center', color: T.errorFg }}>{fetchErr}</div>
         ) : isChecking ? (
           /* ── Checking outstanding jobs ── */
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '32px 24px', gap: 16, textAlign: 'center' }}>
@@ -456,7 +456,7 @@ export default function PostJobSheet({ jobId, onClose }) {
                   onClick={() => { window.open(`/i/${invoiceId}`, '_blank'); onClose(); }}
                   style={{ width: '100%', padding: '14px', borderRadius: 12, background: T.pink, color: 'white', border: 'none', fontFamily: T.font, fontSize: 14, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 12px rgba(233,30,106,0.3)' }}
                 >
-                  {savedPs === 'Paid' ? 'Send Receipt' : 'Send Invoice'}
+                  {savedPs === 'Paid' ? 'Review & Send Receipt' : 'Review & Send Invoice'}
                 </button>
                 <button
                   type="button"
@@ -567,7 +567,18 @@ export default function PostJobSheet({ jobId, onClose }) {
                   type="number"
                   className="sm-input"
                   value={amount}
-                  onChange={e => setAmount(e.target.value)}
+                  onChange={e => {
+                    const v = e.target.value;
+                    setAmount(v);
+                    // Typing less than the owed balance while the toggle still says
+                    // "Paid" silently mismatched the visible status from what would
+                    // actually be logged — auto-switch the toggle so it's honest
+                    // about what's about to save (Joel, 2026-07-15).
+                    const balance = Math.max(0, liveTotal - alreadyPaid);
+                    if (payStatus === 'paid' && balance > 0.009 && (parseFloat(v) || 0) < balance - 0.009) {
+                      setPayStatus('partial');
+                    }
+                  }}
                   onFocus={e => e.target.select()}
                   placeholder={alreadyPaid > 0 ? `Remaining: $${Math.max(0, liveTotal - alreadyPaid).toFixed(2)}` : '0.00'}
                   style={{
@@ -629,7 +640,7 @@ export default function PostJobSheet({ jobId, onClose }) {
                   style={{ flex: 1, padding: '10px 12px', borderRadius: 10, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.ink, fontSize: 13 }}
                 />
                 {costs.length > 1 && (
-                  <button type="button" onClick={() => setCosts(costs.filter((_, idx) => idx !== i))} aria-label="Remove cost" style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 24, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>×</button>
+                  <button type="button" onClick={() => setCosts(costs.filter((_, idx) => idx !== i))} aria-label="Remove cost" style={{ background: 'none', border: 'none', color: T.errorFg, fontSize: 24, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>×</button>
                 )}
               </div>
             ))}
@@ -656,11 +667,11 @@ export default function PostJobSheet({ jobId, onClose }) {
                 type="button"
                 onClick={() => setWorkerPaid(p => !p)}
                 style={{
-                  background: workerPaid ? 'rgba(34,197,94,0.15)' : 'rgba(245,158,11,0.12)',
-                  border: `1.5px solid ${workerPaid ? '#22C55E' : '#F59E0B'}`,
+                  background: workerPaid ? T.greenBg : T.amberBg,
+                  border: `1.5px solid ${workerPaid ? T.greenFg : T.amberFg}`,
                   borderRadius: 8, padding: '5px 12px', cursor: 'pointer',
                   fontFamily: T.font, fontSize: 11, fontWeight: 700,
-                  color: workerPaid ? '#16A34A' : '#B45309',
+                  color: workerPaid ? T.greenFg : T.amberFg,
                   minHeight: 32,
                 }}
               >

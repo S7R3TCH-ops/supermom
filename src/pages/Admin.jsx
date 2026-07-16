@@ -321,7 +321,7 @@ export default function Admin() {
                   onChange={e => setSelectedBizId(e.target.value)}
                   className="sm-input"
                   style={{
-                    flex: 1, padding: '10px', borderRadius: 12, background: 'var(--plum-mid)',
+                    flex: 1, minWidth: 0, padding: '10px', borderRadius: 12, background: 'var(--plum-mid)',
                     border: '1px solid var(--pink-mid)', color: 'white', fontSize: 13,
                   }}
                 >
@@ -334,7 +334,7 @@ export default function Admin() {
                   onClick={handleSwitch}
                   disabled={!selectedBizId}
                   style={{
-                    padding: '0 16px', borderRadius: 12, background: 'var(--pink)',
+                    flexShrink: 0, padding: '0 16px', borderRadius: 12, background: 'var(--pink)',
                     color: 'white', border: 'none', fontWeight: 700, fontSize: 12,
                     cursor: selectedBizId ? 'pointer' : 'default', opacity: selectedBizId ? 1 : 0.5
                   }}
@@ -444,7 +444,7 @@ export default function Admin() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 340, overflowY: 'auto' }}>
                   {errorLogs.map(e => {
                     const isOpen = expandedErrorId === e.id;
-                    const sevColor = e.severity === 'critical' ? '#DC2626' : e.severity === 'warning' ? '#F59E0B' : 'var(--pink)';
+                    const sevColor = e.severity === 'critical' ? '#EF4444' : e.severity === 'warning' ? '#FBBF24' : 'var(--pink)';
                     return (
                       <div key={e.id} style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)', padding: '10px 12px' }}>
                         <div

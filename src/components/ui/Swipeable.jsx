@@ -83,7 +83,7 @@ export default function Swipeable({ children, onDelete, onAction, actionLabel = 
       {onDelete && (
         <div style={{
           position: 'absolute', inset: 0,
-          background: '#EF4444',
+          background: T.errorFg,
           display: 'flex', justifyContent: 'flex-end', alignItems: 'center',
           paddingRight: 24, borderRadius: 12,
           opacity: offsetX < 0 ? 1 : 0,

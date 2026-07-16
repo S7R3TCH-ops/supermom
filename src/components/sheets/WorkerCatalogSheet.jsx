@@ -333,7 +333,7 @@ export default function WorkerCatalogSheet({ isOpen, onClose }) {
                   </div>
                 )}
               </div>
-              {err && <div style={{ marginTop: 8, fontSize: 11, color: '#EF4444', fontFamily: T.font }}>{err}</div>}
+              {err && <div style={{ marginTop: 8, fontSize: 11, color: T.errorFg, fontFamily: T.font }}>{err}</div>}
               <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
                 <button onClick={cancelEdit} style={{ flex: 1, padding: '10px', borderRadius: 10, background: 'transparent', border: `1.5px solid ${T.cardBorder}`, color: T.inkMuted, fontFamily: T.font, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
                 <button onClick={handleSave} disabled={busy} style={{ flex: 2, padding: '10px', borderRadius: 10, background: busy ? T.pinkTint : T.pink, border: 'none', color: 'white', fontFamily: T.font, fontSize: 12, fontWeight: 700, cursor: busy ? 'default' : 'pointer' }}>
@@ -379,7 +379,7 @@ export default function WorkerCatalogSheet({ isOpen, onClose }) {
                 </div>
                 <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                   <button onClick={() => startEdit(w)} style={{ padding: '6px 12px', borderRadius: 8, background: 'transparent', border: `1.5px solid ${T.cardBorder}`, color: T.inkMuted, fontFamily: T.font, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Edit</button>
-                  <button onClick={() => handleArchive(w.id, w.name)} style={{ padding: '6px 10px', borderRadius: 8, background: 'transparent', border: '1.5px solid #EF4444', color: '#EF4444', fontFamily: T.font, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Archive</button>
+                  <button onClick={() => handleArchive(w.id, w.name)} style={{ padding: '6px 10px', borderRadius: 8, background: 'transparent', border: `1.5px solid ${T.errorFg}`, color: T.errorFg, fontFamily: T.font, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Archive</button>
                 </div>
               </div>
             </div>
@@ -437,7 +437,7 @@ export default function WorkerCatalogSheet({ isOpen, onClose }) {
                     <span style={{ fontFamily: T.font, fontSize: 12.5, color: T.ink }}>{st.name}</span>
                     <div style={{ display: 'flex', gap: 6 }}>
                       <button onClick={() => { setEditingSkillType(st.id); setSkillTypeForm(st.name); }} style={{ padding: '4px 10px', borderRadius: 6, background: 'transparent', border: `1px solid ${T.cardBorder}`, color: T.inkMuted, fontFamily: T.font, fontSize: 10.5, cursor: 'pointer' }}>Rename</button>
-                      <button onClick={() => handleDeleteSkillType(st.id, st.name)} style={{ padding: '4px 8px', borderRadius: 6, background: 'transparent', border: '1px solid #EF4444', color: '#EF4444', fontFamily: T.font, fontSize: 10.5, cursor: 'pointer' }}>Delete</button>
+                      <button onClick={() => handleDeleteSkillType(st.id, st.name)} style={{ padding: '4px 8px', borderRadius: 6, background: 'transparent', border: `1px solid ${T.errorFg}`, color: T.errorFg, fontFamily: T.font, fontSize: 10.5, cursor: 'pointer' }}>Delete</button>
                     </div>
                   </div>
                 ))}

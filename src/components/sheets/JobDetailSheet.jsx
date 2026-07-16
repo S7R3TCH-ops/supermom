@@ -31,7 +31,7 @@ const STATUS_COLORS = {
 const PAY_COLORS = {
   Paid:    { bg: 'rgba(34,197,94,0.12)',   color: '#22C55E', border: 'rgba(34,197,94,0.25)'  },
   Partial: { bg: 'rgba(245,158,11,0.12)', color: '#F59E0B', border: 'rgba(245,158,11,0.25)' },
-  '':      { bg: 'rgba(233,30,106,0.12)', color: '#FC4693', border: 'rgba(233,30,106,0.25)' },
+  '':      { bg: 'rgba(239,68,68,0.12)',  color: '#EF4444', border: 'rgba(239,68,68,0.25)'  },
 };
 
 function fmtDate(s) {
@@ -289,6 +289,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
   }
 
   function onSeriesChoice(action) {
+    if (action === null) { setShowSeriesPicker(false); setPendingAction(null); return; }
     if (pendingAction === 'save') saveEdit(action);
     else if (pendingAction === 'delete') deleteJob(action);
   }
@@ -372,7 +373,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
         {!loading && error && !job && (
           <div style={{ padding: 32, textAlign: 'center' }}>
             <div style={{ fontSize: 22, marginBottom: 10 }}>😬</div>
-            <div style={{ fontFamily: T.font, fontSize: 13, color: '#EF4444', fontWeight: 600 }}>Couldn't load job details</div>
+            <div style={{ fontFamily: T.font, fontSize: 13, color: T.errorFg, fontWeight: 600 }}>Couldn't load job details</div>
             <div style={{ fontFamily: T.font, fontSize: 11, color: T.inkMuted, marginTop: 6 }}>{error}</div>
           </div>
         )}
@@ -612,7 +613,7 @@ function ReadMode({
           {!futureConfirmType && isScheduled && !showCancelForm && (
             <button
               onClick={() => onSetShowCancelForm(true)}
-              style={{ background: 'transparent', border: 'none', fontSize: 12.5, color: '#F59E0B', padding: '4px 0', cursor: 'pointer', fontFamily: T.font, fontWeight: 600 }}
+              style={{ background: 'transparent', border: 'none', fontSize: 12.5, color: T.amberFg, padding: '4px 0', cursor: 'pointer', fontFamily: T.font, fontWeight: 600 }}
             >
               Cancel Booking
             </button>
@@ -889,7 +890,7 @@ function EditMode({ job, form, setForm, services, workers, business, T, mode, bu
                 />
                 <button
                   onClick={() => set('additional_costs_json', form.additional_costs_json.filter((_, j) => j !== i))}
-                  style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 18, cursor: 'pointer', flexShrink: 0 }}
+                  style={{ background: 'none', border: 'none', color: T.errorFg, fontSize: 18, cursor: 'pointer', flexShrink: 0 }}
                 >×</button>
               </div>
             ))}
@@ -956,11 +957,11 @@ function EditMode({ job, form, setForm, services, workers, business, T, mode, bu
             <button
               onClick={() => set('worker_paid', !form.worker_paid)}
               style={{
-                background: form.worker_paid ? 'rgba(34,197,94,0.15)' : 'rgba(245,158,11,0.12)',
-                border: `1.5px solid ${form.worker_paid ? '#22C55E' : '#F59E0B'}`,
+                background: form.worker_paid ? T.greenBg : T.amberBg,
+                border: `1.5px solid ${form.worker_paid ? T.greenFg : T.amberFg}`,
                 borderRadius: 8, padding: '8px 16px', cursor: 'pointer',
                 fontFamily: T.font, fontSize: 12, fontWeight: 700,
-                color: form.worker_paid ? '#16A34A' : '#B45309',
+                color: form.worker_paid ? T.greenFg : T.amberFg,
               }}
             >
               {form.worker_paid ? 'Paid ✓' : 'Not Yet Paid'}
@@ -983,15 +984,22 @@ function EditMode({ job, form, setForm, services, workers, business, T, mode, bu
             </div>
           </Field>
         )}
-        <SeriesPicker show={showSeriesPicker} onChoice={onSeriesChoice} onCancel={() => onSeriesChoice(null)} busy={busy} T={T} mode={mode} />
         {isKeyboardFocused && <div style={{ height: 260 }} aria-hidden="true" />}
       </div>
       <div style={{ padding: '10px 14px 28px', borderTop: `1px solid ${T.cardBorder}`, display: 'flex', flexDirection: 'column', gap: 8 }}>
         {mutErr && <div style={{ padding: '9px 11px', borderRadius: 8, background: T.redBg, border: `1px solid ${T.redBorder}`, fontSize: 12, color: T.ink }}>{mutErr}</div>}
-        <div style={{ display: 'flex', gap: 8 }}>
-          <Btn onClick={onCancelEdit} bg={T.card} border={`1.5px solid ${T.cardBorder}`} color={T.inkSub} T={T} style={{ flex: 1 }}>Cancel</Btn>
-          <Btn onClick={handleSaveClick} disabled={busy} bg="#FC4693" color="white" T={T} style={{ flex: 2 }}>{busy ? 'Saving…' : 'Save'}</Btn>
-        </div>
+        {/* Rendered in the fixed footer (not the scrollable area above) so it's
+            always visible right where the user just tapped Save — it used to
+            render near the HST toggle field, off-screen below a long scroll,
+            looking like Save silently did nothing (Joel, 2026-07-15). */}
+        {showSeriesPicker ? (
+          <SeriesPicker show={showSeriesPicker} onChoice={onSeriesChoice} onCancel={() => onSeriesChoice(null)} busy={busy} T={T} mode={mode} />
+        ) : (
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Btn onClick={onCancelEdit} bg={T.card} border={`1.5px solid ${T.cardBorder}`} color={T.inkSub} T={T} style={{ flex: 1 }}>Cancel</Btn>
+            <Btn onClick={handleSaveClick} disabled={busy} bg="#FC4693" color="white" T={T} style={{ flex: 2 }}>{busy ? 'Saving…' : 'Save'}</Btn>
+          </div>
+        )}
       </div>
     </>
   );
@@ -1006,45 +1014,46 @@ function iStyle(T) { return { background: T.card, border: `1.5px solid ${T.cardB
 function SectionDivider({ label, T }) {
   return <div style={{ fontFamily: T.serif, fontSize: 10, fontWeight: 600, letterSpacing: '0.7px', textTransform: 'uppercase', color: T.inkMuted, margin: '20px 0 8px', paddingBottom: 6, borderBottom: `1px solid ${T.cardBorder}` }}>{label}</div>;
 }
-function SeriesPicker({ show, onChoice, busy, T, mode }) { 
-  if (!show) return null; 
+function SeriesPicker({ show, onChoice, onCancel, busy, T, mode }) {
+  if (!show) return null;
   return (
-    <div style={{ 
-      background: T.hero, 
-      borderRadius: 16, 
-      padding: '14px', 
-      border: `1.5px solid ${mode === 'dark' ? 'rgba(233,30,106,0.35)' : 'rgba(233,30,106,0.15)'}` 
+    <div style={{
+      background: T.hero,
+      borderRadius: 16,
+      padding: '14px',
+      border: `1.5px solid ${mode === 'dark' ? 'rgba(233,30,106,0.35)' : 'rgba(233,30,106,0.15)'}`
     }}>
-      <div style={{ fontSize: 16, color: mode === 'dark' ? 'white' : T.ink, marginBottom: 12 }}>Apply changes to...</div>
+      <div style={{ fontSize: 16, color: mode === 'dark' ? 'white' : T.ink, marginBottom: 12 }}>This is a recurring job — apply changes to...</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
         <SeriesBtn onClick={() => onChoice('this')} disabled={busy} T={T} mode={mode}>Just this visit</SeriesBtn>
         <SeriesBtn onClick={() => onChoice('future')} disabled={busy} T={T} mode={mode}>This and future</SeriesBtn>
         <SeriesBtn onClick={() => onChoice('all')} disabled={busy} T={T} mode={mode}>All in series</SeriesBtn>
+        {onCancel && <SeriesBtn onClick={onCancel} disabled={busy} T={T} mode={mode} muted>Cancel</SeriesBtn>}
       </div>
     </div>
-  ); 
+  );
 }
 
-function SeriesBtn({ onClick, disabled, children, T, mode }) { 
+function SeriesBtn({ onClick, disabled, children, T, mode, muted }) {
   return (
-    <button 
-      onClick={onClick} 
-      disabled={disabled} 
-      style={{ 
-        width: '100%', 
-        background: mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.4)', 
-        border: `1px solid ${mode === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.05)'}`, 
-        borderRadius: 10, 
-        padding: '10px', 
-        color: mode === 'dark' ? 'white' : T.ink, 
-        fontSize: 12.5, 
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        width: '100%',
+        background: muted ? 'transparent' : (mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.4)'),
+        border: muted ? 'none' : `1px solid ${mode === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.05)'}`,
+        borderRadius: 10,
+        padding: '10px',
+        color: muted ? T.inkMuted : (mode === 'dark' ? 'white' : T.ink),
+        fontSize: 12.5,
         fontWeight: 600,
         cursor: disabled ? 'default' : 'pointer'
       }}
     >
       {children}
     </button>
-  ); 
+  );
 }
 
 function PrepNoteCard({ job, T, business, onDeepPrep, mode }) {

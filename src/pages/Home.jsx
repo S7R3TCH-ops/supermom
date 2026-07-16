@@ -703,19 +703,20 @@ export default function Home() {
               <div style={{ fontSize: 10, fontWeight: 700, color: mode === 'dark' ? T.pinkLabel : T.pink, textTransform: 'uppercase', letterSpacing: '0.6px', marginTop: 3 }}>
                 This Week
               </div>
-              {displayRevenue > 0 && (
-                <>
-                  {collectedThisWeek > 0 && (
-                    <div style={{ fontSize: 10, fontWeight: 700, color: '#16A34A', marginTop: 3, letterSpacing: '0.3px' }}>
-                      {privacyOn ? '•••' : (
-                        collectedThisWeek >= displayRevenue
-                          ? '✓ all collected'
-                          : `$${Math.round(collectedThisWeek).toLocaleString('en-CA')} collected`
-                      )}
-                    </div>
-                  )}
-                </>
-              )}
+              {/* Fixed-height slot (not conditionally-rendered) so "See full schedule"
+                  below doesn't reflow up/down as this line appears/disappears
+                  (Joel, 2026-07-15). */}
+              <div style={{ minHeight: 16, marginTop: 3 }}>
+                {displayRevenue > 0 && collectedThisWeek > 0 && (
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#16A34A', letterSpacing: '0.3px' }}>
+                    {privacyOn ? '•••' : (
+                      collectedThisWeek >= displayRevenue
+                        ? '✓ all collected'
+                        : `$${Math.round(collectedThisWeek).toLocaleString('en-CA')} collected`
+                    )}
+                  </div>
+                )}
+              </div>
             </button>
             <button
               type="button"
@@ -879,7 +880,7 @@ export default function Home() {
                 const gapMin = Math.round((next.start - activeJob.end) / 60000);
                 const driveMin = Math.round(driveValue / 60);
                 const isTight = driveMin > 0 && gapMin < driveMin + 15;
-                const urgentColor = leaveBy?.urgent ? '#DC2626' : isTight ? '#F59E0B' : '#16A34A';
+                const urgentColor = leaveBy?.urgent ? T.errorFg : isTight ? T.amberFg : T.greenFg;
                 return (
                   <div style={{
                     margin: '10px 0 0',
@@ -965,7 +966,7 @@ export default function Home() {
                         ? `${startFmt.time} – ${endFmt.time}${endFmt.period}`
                         : `${startFmt.time}${startFmt.period} – ${endFmt.time}${endFmt.period}`;
                       const minsToStart = Math.round((next.start - now) / 60000);
-                      const timingColor = isNowWindow ? '#FC4693' : minsToStart <= 15 ? '#EF4444' : minsToStart <= 60 ? '#F59E0B' : '#16A34A';
+                      const timingColor = isNowWindow ? '#FC4693' : minsToStart <= 15 ? T.errorFg : minsToStart <= 60 ? T.amberFg : T.greenFg;
                       const timingLabel = isNowWindow ? '🔴 Happening now' : minsToStart > 0 ? `Starts in ${fmtDuration(minsToStart)}` : null;
                       return (
                         <>
@@ -1147,7 +1148,7 @@ export default function Home() {
                   {leaveBy && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: -4, marginBottom: 8, paddingLeft: 16 }}>
                       <span style={{ fontSize: 10 }}>{leaveBy.urgent ? '⚠️' : '🚗'}</span>
-                      <span style={{ fontSize: 10, fontWeight: leaveBy.urgent ? 800 : 600, color: leaveBy.urgent ? '#DC2626' : T.inkMuted }}>
+                      <span style={{ fontSize: 10, fontWeight: leaveBy.urgent ? 800 : 600, color: leaveBy.urgent ? T.errorFg : T.inkMuted }}>
                         {leaveBy.text}
                         {!leaveBy.urgent && <span style={{ fontWeight: 400, marginLeft: 4, opacity: 0.7 }}>· {locDrive.duration} away</span>}
                       </span>

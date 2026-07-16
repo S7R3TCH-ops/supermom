@@ -483,21 +483,21 @@ function AgendaView({ T, mode, privacyOn, allJobs, nextUpcoming, onJobPress, day
             marginBottom: 10,
             padding: '9px 12px',
             borderRadius: 10,
-            background: mode === 'dark' ? 'rgba(245,158,11,0.1)' : '#FFFBEB',
-            border: `1.5px solid #F59E0B`,
+            background: T.amberBg,
+            border: `1.5px solid ${T.amberBorder}`,
             display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
           }}
         >
           <span style={{ fontSize: 14, lineHeight: 1 }}>⚠️</span>
           <div style={{ flex: 1 }}>
-            <span style={{ fontFamily: T.font, fontSize: 11, fontWeight: 700, color: '#B45309' }}>
+            <span style={{ fontFamily: T.font, fontSize: 11, fontWeight: 700, color: T.amberFg }}>
               {allWeekConflicts.length} job {allWeekConflicts.length === 1 ? 'overlap' : 'overlaps'} this week
             </span>
-            <span style={{ fontFamily: T.font, fontSize: 10, color: '#92400E', marginLeft: 4, opacity: 0.8 }}>
+            <span style={{ fontFamily: T.font, fontSize: 10, color: T.amberFg, marginLeft: 4, opacity: 0.8 }}>
               · tap to review
             </span>
           </div>
-          <span style={{ fontFamily: T.font, fontSize: 11, fontWeight: 700, color: '#F59E0B' }}>›</span>
+          <span style={{ fontFamily: T.font, fontSize: 11, fontWeight: 700, color: T.amberFg }}>›</span>
         </button>
       )}
 
@@ -589,7 +589,7 @@ const AgendaCard = memo(function AgendaCard({ T, mode, privacyOn, job, isNext, c
   const S = statusKey ? T.status[statusKey] : null;
 
   const border = conflict
-    ? '#F59E0B'
+    ? T.amberBorder
     : isCancelled
       ? '#D1D5DB'
       : (isNext ? '#FC4693' : S.border);

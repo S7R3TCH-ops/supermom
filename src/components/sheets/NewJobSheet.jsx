@@ -430,7 +430,7 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
         {/* Footer */}
         <div style={{ padding: '10px 18px 18px', borderTop: `1px solid ${T.cardBorder}`, background: T.bg }}>
           {bookErr && (
-            <div style={{ paddingBottom: 8, color: '#EF4444', fontSize: 12, fontWeight: 500, textAlign: 'center' }}>{bookErr}</div>
+            <div style={{ paddingBottom: 8, color: T.errorFg, fontSize: 12, fontWeight: 500, textAlign: 'center' }}>{bookErr}</div>
           )}
           {!bookErr && step === 1 && !clientId && (
             <div style={{ paddingBottom: 8, color: T.inkMuted, fontSize: 12, fontWeight: 500, textAlign: 'center' }}>Select a client to continue</div>
@@ -765,7 +765,7 @@ function Step2What({
                 style={{ flex: 1, padding: '10px 12px', borderRadius: 10, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.ink, fontSize: 13 }}
               />
               {additionalCosts.length > 1 && (
-                <button onClick={() => setAdditionalCosts(additionalCosts.filter((_, idx) => idx !== i))} style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 18, cursor: 'pointer' }}>×</button>
+                <button onClick={() => setAdditionalCosts(additionalCosts.filter((_, idx) => idx !== i))} style={{ background: 'none', border: 'none', color: T.errorFg, fontSize: 18, cursor: 'pointer' }}>×</button>
               )}
             </div>
           ))}
@@ -1010,7 +1010,7 @@ function Step3Review({
       {isPastBooking && (
         <div style={{
           padding: '14px', borderRadius: 16, background: T.redBg,
-          border: '1.5px solid #EF4444', display: 'flex', flexDirection: 'column', gap: 8
+          border: `1.5px solid ${T.errorFg}`, display: 'flex', flexDirection: 'column', gap: 8
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 18 }}>⏪</span>
@@ -1022,15 +1022,15 @@ function Step3Review({
           <label style={{
             display: 'flex', alignItems: 'center', gap: 10, marginTop: 4,
             padding: '10px', background: T.card, borderRadius: 10, cursor: 'pointer',
-            border: `1px solid ${pastConfirmed ? '#EF4444' : T.redBorder}`
+            border: `1px solid ${pastConfirmed ? T.errorFg : T.redBorder}`
           }}>
             <input
               type="checkbox"
               checked={pastConfirmed}
               onChange={e => setPastConfirmed(e.target.checked)}
-              style={{ width: 18, height: 18, accentColor: '#EF4444' }}
+              style={{ width: 18, height: 18, accentColor: T.errorFg }}
             />
-            <span style={{ fontSize: 12, fontWeight: 600, color: '#991B1B' }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: T.errorFg }}>
               Yes, I know — book it anyway.
             </span>
           </label>

@@ -357,7 +357,7 @@ export default function Settings() {
       <div style={{ fontSize: 13, color: T.inkMuted, maxWidth: 280 }}>
         This account isn't linked to a business. Ask your admin to provision it via the Admin panel.
       </div>
-      {bizError && <div style={{ fontSize: 11, color: '#EF4444', marginTop: 8 }}>Contact support if this persists.</div>}
+      {bizError && <div style={{ fontSize: 11, color: T.errorFg, marginTop: 8 }}>Contact support if this persists.</div>}
     </div>
   );
 
@@ -534,13 +534,13 @@ export default function Settings() {
         </div>
 
         <SectionLabel>Integrations</SectionLabel>
-        <div style={{ ...cardStyle, borderColor: gcalExpired ? '#F59E0B' : T.cardBorder }}>
+        <div style={{ ...cardStyle, borderColor: gcalExpired ? T.amberFg : T.cardBorder }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <div style={{ width: 32, height: 32, borderRadius: 8, background: T.surface, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>📅</div>
               <div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: T.ink }}>Google Calendar</div>
-                <div style={{ fontSize: 10, fontWeight: 600, color: gcalExpired ? '#B45309' : gcalOn ? '#10B981' : T.inkMuted }}>
+                <div style={{ fontSize: 10, fontWeight: 600, color: gcalExpired ? T.amberFg : gcalOn ? T.greenFg : T.inkMuted }}>
                   {gcalExpired ? '⚠ Token expired — reconnect below' : gcalOn ? 'Connected' : 'Not connected'}
                 </div>
               </div>
@@ -549,8 +549,8 @@ export default function Settings() {
               type="button"
               onClick={() => window.location.href = `/api/auth/google/login?business_id=${gcalBusinessId}`}
               style={{
-                background: gcalExpired ? '#F59E0B' : 'transparent',
-                border: `1.5px solid ${gcalExpired ? '#F59E0B' : T.cardBorder}`,
+                background: gcalExpired ? T.amberFg : 'transparent',
+                border: `1.5px solid ${gcalExpired ? T.amberFg : T.cardBorder}`,
                 borderRadius: 8, padding: '6px 12px',
                 fontSize: 11, fontWeight: 700,
                 color: gcalExpired ? 'white' : T.pink,
@@ -652,24 +652,24 @@ export default function Settings() {
         </div>
 
         {/* Danger zone */}
-        <div style={{ borderTop: `2px solid #FCA5A5`, paddingTop: 16, paddingBottom: 40 }}>
+        <div style={{ borderTop: `2px solid ${T.redBorder}`, paddingTop: 16, paddingBottom: 40 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={T.errorFg} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
               <line x1="12" y1="9" x2="12" y2="13" />
               <line x1="12" y1="17" x2="12.01" y2="17" />
             </svg>
-            <span style={{ fontSize: 9, fontWeight: 800, color: '#EF4444', textTransform: 'uppercase', letterSpacing: '1px' }}>Danger zone</span>
+            <span style={{ fontSize: 9, fontWeight: 800, color: T.errorFg, textTransform: 'uppercase', letterSpacing: '1px' }}>Danger zone</span>
           </div>
           <div style={{
-            background: 'rgba(239,68,68,0.04)',
+            background: T.redBg,
             borderRadius: 'var(--r-card)',
-            border: '1.5px solid #FCA5A5',
+            border: `1.5px solid ${T.redBorder}`,
             padding: 16,
           }}>
             {resetConfirm ? (
               <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#B91C1C', marginBottom: 6 }}>Delete everything?</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: T.errorFg, marginBottom: 6 }}>Delete everything?</div>
                 <div style={{ fontSize: 12, color: T.inkMid, marginBottom: 14 }}>
                   This permanently deletes all clients, jobs, and expenses. It cannot be undone.
                 </div>
@@ -685,7 +685,7 @@ export default function Settings() {
                     type="button"
                     onClick={handleResetData}
                     disabled={busy}
-                    style={{ flex: 1, padding: '10px', borderRadius: 10, background: '#EF4444', color: 'white', border: 'none', fontWeight: 700, fontSize: 12, cursor: busy ? 'default' : 'pointer' }}
+                    style={{ flex: 1, padding: '10px', borderRadius: 10, background: T.errorFg, color: 'white', border: 'none', fontWeight: 700, fontSize: 12, cursor: busy ? 'default' : 'pointer' }}
                   >
                     {busy ? 'Deleting...' : 'Yes, delete everything'}
                   </button>
@@ -696,7 +696,7 @@ export default function Settings() {
                 <button
                   type="button"
                   onClick={() => setResetConfirm(true)}
-                  style={{ width: '100%', background: 'transparent', border: '1.5px solid #EF4444', color: '#EF4444', padding: '12px', borderRadius: 10, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                  style={{ width: '100%', background: 'transparent', border: `1.5px solid ${T.errorFg}`, color: T.errorFg, padding: '12px', borderRadius: 10, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
                 >
                   Reset all data
                 </button>

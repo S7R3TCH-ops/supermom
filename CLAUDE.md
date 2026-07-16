@@ -157,6 +157,8 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 
 Sandra's business is live — data wiped and re-provisioned Jun 9. App in active use.
 
+**Deploy status: v0.13.19 is LIVE in production** (deployed `dpl_D3j6b6pbd5QxapSU2yq4AChvmhvR`, verified clean — home page + invoice API both 200, no error logs in the 5 min after deploy). This is the full 17-item punch-list session (Jul 15): agenda-swipe extension, the real invoice-500 outage fix, Home/Schedule/Clients redesign, payment-status/recurring-save bug fixes, and the dark-mode palette coherence sweep. Verification going forward is Joel + Sandra testing the live app directly — nothing pending on the code side except the items in Open Items below.
+
 **⚠️ Multi-client git discipline**: Always push local commits before starting an online Claude Code session; always pull before the online session writes code.
 
 ### Recent changes (full history in `docs/changelog/` + `git log`)
@@ -253,27 +255,24 @@ Sandra's business is live — data wiped and re-provisioned Jun 9. App in active
 
 ### 🔴 Bugs / Active issues
 
-0. **PRIORITY — phone-test the v0.13.10 merge** (JWT auth on AI/invoice endpoints, router bump 7.14.2→7.18.1, maps origin check, theme). Router bump is the main risk — watch sheet close + Android back button. Merged untested (Joel's call); fix-forward if issues surface.
-1. **Device verification** — v0.12.32–v0.12.68 not phone-tested. Test Home page + invoice flow on Pixel 10 Pro + Sandra's iPhone before next feature push. (v0.13.8 Go button fix already phone-tested and confirmed working on Pixel 10 Pro.)
-2. **Live, unrestricted "Generate AI insights" button fabricates fake client data** — `handleSimulateFuture` in `ClientProfile.jsx` calls `simulateAILearning` (`clientsRepo.js`), which writes a hardcoded template (fake session count, fake behavioral flags like "Gate code usually 1234") into a real client's `ai_context`, no AI call, no gating. Any user can trigger it on any real client. Fix: gate to `is_test` businesses only, or remove and wire the real `enrich-client` endpoint instead.
-3. **Future-dated job completion crashes the tab** — marking a job Complete/Paid via "Yes, continue" on a future date, previously a silent no-op, now reproduces as a full renderer crash (2026-07-13). Same root cause as before: likely a race in `useBackClose` between `JobDetailSheet` unmounting and `PostJobSheet` mounting. Two prior fix attempts reverted as unverified. Needs a dedicated debugging session, not another guess.
-4. **AI local-fallback gap** — `api/ai/[action].js`'s local-heuristic fallback (`estimate-duration`, `prep-note`) only triggers when no `ANTHROPIC_API_KEY` is set at all. With a key configured but zero credits (current state), it hard-fails instead of falling through to the same good local logic. ~20-line fix — wrap the Anthropic call in try/catch, fall through on any error. Makes AI features fully functional at $0 spend.
+1. **Device verification** — v0.12.32–v0.12.68 not phone-tested. Test Home page + invoice flow on Pixel 10 Pro + Sandra's iPhone before next feature push. (v0.13.8 Go button fix, v0.13.14 agenda-swipe, and v0.13.10's router bump have since been phone-tested/live-tested; this item covers the older pre-v0.13 range specifically.)
+2. **Recurring-job delete flow has the same off-screen-picker bug the edit flow had** (found 2026-07-15, fixed for edit in v0.13.19, not yet fixed for delete) — `initiateDelete` in `JobDetailSheet.jsx`'s `ReadMode` sets `showSeriesPicker` but `ReadMode` has no `SeriesPicker` render site at all. Needs the same fix (render in the fixed footer) applied to `ReadMode`'s `!confirm && (...)` block.
 
 > **Constraint**: Vercel at 9/12 serverless function slots. Defer any feature requiring a new function until we consolidate or upgrade to Pro.
 
 ### ✨ Next up (no new serverless functions needed)
 
-5. **Calendar week view** — proper rebuild (130 lines of parked code removed in v0.12.60; worth doing properly).
-6. **"Last job" quick-rebook** — from ClientProfile, 1-tap to duplicate the last job (same service/rate). Saves the 3-step booking flow.
-7. **Job templates** — Sandra books the same configs repeatedly. Save a job as a template; pre-fill NewJobSheet from it. Schema already supports it.
+3. **Calendar week view** — proper rebuild (130 lines of parked code removed in v0.12.60; worth doing properly).
+4. **"Last job" quick-rebook** — from ClientProfile, 1-tap to duplicate the last job (same service/rate). Saves the 3-step booking flow.
+5. **Job templates** — Sandra books the same configs repeatedly. Save a job as a template; pre-fill NewJobSheet from it. Schema already supports it.
 
 ### 🤖 AI features (deferred — needs serverless slots)
 
-8. **Voice scheduling** — `api/transcribe.js` exists. Flow: mic → transcribe → Claude parses intent → pre-fills NewJobSheet.
-9. **Smart scheduling suggestions** — given Sandra's calendar + drive times, Claude suggests optimal day/time for new bookings. All data already available.
-10. **Weekly AI debrief** — Sunday evening summary: revenue, hours, top clients, one pattern observation. Extend the daily briefing cron.
-11. **Auto-generate prep notes** — based on `ai_context`, pre-draft PrepNoteSheet content before Sandra opens it.
-12. **Invoice draft from voice** — 30-second post-job recording → Claude extracts service/duration/extras → pre-fills PostJobSheet.
+6. **Voice scheduling** — `api/transcribe.js` exists. Flow: mic → transcribe → Claude parses intent → pre-fills NewJobSheet.
+7. **Smart scheduling suggestions** — given Sandra's calendar + drive times, Claude suggests optimal day/time for new bookings. All data already available.
+8. **Weekly AI debrief** — Sunday evening summary: revenue, hours, top clients, one pattern observation. Extend the daily briefing cron.
+9. **Auto-generate prep notes** — based on `ai_context`, pre-draft PrepNoteSheet content before Sandra opens it.
+10. **Invoice draft from voice** — 30-second post-job recording → Claude extracts service/duration/extras → pre-fills PostJobSheet.
 
 ### 📱 Phase 2 features
 

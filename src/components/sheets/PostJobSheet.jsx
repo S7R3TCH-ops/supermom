@@ -4,7 +4,8 @@ import { SectionLabel } from '../ui/typography';
 import { fetchJobById, recordPayment, fetchOutstandingJobsForClient } from '../../data/jobsRepo';
 import { addJobsToInvoice, settleInvoiceOutstanding } from '../../data/invoicesRepo';
 import { computeJobTotal } from '../../lib/financialMath';
-import { notifyDataChanged, useBusiness } from '../../data/useData';
+import { useBusiness } from '../../data/useData';
+import { notifyDataChangedNow } from '../../data/events';
 import { useToast } from '../../context/ToastContext';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useBackClose } from '../../hooks/useBackClose';
@@ -180,7 +181,7 @@ export default function PostJobSheet({ jobId, onClose }) {
         .maybeSingle();
       if (data) setInvoiceId(data.invoice_id);
 
-      notifyDataChanged();
+      notifyDataChangedNow();
       setSavedPs(ps);
       setPhase('checking');
       triggerHaptic('success');
@@ -394,7 +395,7 @@ export default function PostJobSheet({ jobId, onClose }) {
                     } else {
                       await settleInvoiceOutstanding(invoiceId, method, ids);
                     }
-                    notifyDataChanged();
+                    notifyDataChangedNow();
                   } catch (err) {
                     toast.error(err.message || 'Failed to mark bundled jobs paid.');
                   }

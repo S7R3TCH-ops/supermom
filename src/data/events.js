@@ -10,3 +10,13 @@ export function notifyDataChanged() {
     queryClient.invalidateQueries();
   }, 300);
 }
+
+// Skips the debounce for call sites where a sheet is about to close and
+// navigate away — the 300ms window can otherwise race a fast close/nav,
+// leaving the destination screen showing pre-mutation cached data until
+// something else happens to trigger a refetch.
+export function notifyDataChangedNow() {
+  clearTimeout(_debounceTimer);
+  window.dispatchEvent(new Event(CHANGE_EVENT));
+  queryClient.invalidateQueries();
+}

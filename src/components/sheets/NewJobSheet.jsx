@@ -18,7 +18,6 @@ import { buildFinancialPatch } from '../../lib/jobDraftPolicy';
 import { useKeyboardFocus } from '../../hooks/useKeyboardFocus';
 import GrabBar from '../ui/GrabBar';
 import FinancialMathBreakdown from '../ui/FinancialMathBreakdown';
-import { useSwipeToDismiss } from '../../hooks/useSwipeToDismiss';
 
 function todayISODate() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Toronto' }).format(new Date());
@@ -84,7 +83,6 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
   useBackClose(true, onClose);
   const hasPrefill = (!!prefillClientId && prefillClientId !== 'null') || !!prefillData;
   const [step, setStep] = useState(() => hasPrefill ? 2 : 1);
-  const { panelRef: swipePanelRef, scrollRef: swipeScrollRef, handlers: swipeHandlers } = useSwipeToDismiss(onClose);
 
   // Fetch clients + jobs + workers on mount
   const [clientRows, setClientRows] = useState([]);
@@ -321,7 +319,7 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
         @keyframes njFade { from { opacity: 0; } to { opacity: 1; } }
         @keyframes njSlide { from { transform: translateY(100%); } to { transform: translateY(0); } }
       `}</style>
-      <div ref={swipePanelRef} {...swipeHandlers} style={{
+      <div style={{
         background: T.bg, width: '100%', maxWidth: 500, margin: '0 auto',
         height: '92svh', borderTopLeftRadius: 28, borderTopRightRadius: 28,
         display: 'flex', flexDirection: 'column', overflow: 'hidden',
@@ -351,7 +349,7 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
           </button>
         </div>
 
-        <div ref={swipeScrollRef} className="sm-scroll" style={{ 
+        <div className="sm-scroll" style={{
           flex: 1, 
           overflowY: 'auto', 
           padding: `20px 20px ${isKeyboardFocused ? '140px' : '20px'}`,

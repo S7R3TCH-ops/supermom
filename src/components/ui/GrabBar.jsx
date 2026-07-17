@@ -10,7 +10,7 @@ export default function GrabBar({ onDismiss }) {
     if (startY.current === null) return;
     const dy = e.changedTouches[0].clientY - startY.current;
     startY.current = null;
-    if (dy > 80 && onDismiss) onDismiss();
+    if (dy > 90 && onDismiss) onDismiss();
   };
 
   return (

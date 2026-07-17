@@ -11,7 +11,6 @@ import { useBackClose } from '../../hooks/useBackClose';
 import { supabase } from '../../lib/supabase';
 import GrabBar from '../ui/GrabBar';
 import FinancialMathBreakdown from '../ui/FinancialMathBreakdown';
-import { useSwipeToDismiss } from '../../hooks/useSwipeToDismiss';
 import { triggerHaptic } from '../../lib/haptics';
 import { getWorkerLabel } from '../../lib/labels';
 import { validatePaymentAmount } from '../../lib/jobDraftPolicy';
@@ -44,7 +43,6 @@ export default function PostJobSheet({ jobId, onClose }) {
   const [costs, setCosts] = useState([{ amount: '', description: '' }]);
   const [workerPaid, setWorkerPaid] = useState(false);
   const [taxEnabled, setTaxEnabled] = useState(false);
-  const { panelRef: swipePanelRef, scrollRef: swipeScrollRef, handlers: swipeHandlers } = useSwipeToDismiss(onClose);
 
   // Derived state defined early to satisfy linter and simplify logic
   // Use flat_rate (pre-tax base set at booking) or subtotal DB column (pre-tax base written by recordPayment).
@@ -235,7 +233,7 @@ export default function PostJobSheet({ jobId, onClose }) {
         @keyframes pjFade { from { opacity: 0; } to { opacity: 1; } }
         @keyframes pjSlide { from { transform: translateY(100%); } to { transform: translateY(0); } }
       `}</style>
-      <div ref={swipePanelRef} {...swipeHandlers} style={{
+      <div style={{
         background: T.bg, width: '100%', maxWidth: 500, margin: '0 auto',
         height: '92svh', borderTopLeftRadius: 28, borderTopRightRadius: 28,
         display: 'flex', flexDirection: 'column', overflow: 'hidden',
@@ -478,7 +476,7 @@ export default function PostJobSheet({ jobId, onClose }) {
           </div>
         ) : (
           <>
-          <div ref={swipeScrollRef} className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+          <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           

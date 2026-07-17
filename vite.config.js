@@ -16,7 +16,7 @@ export default defineConfig({
         short_name: 'Supermom',
         description: 'Operations app for Sandra\'s personal-life-operations business',
         theme_color: '#1C1C1E',
-        background_color: '#FFF9F5',
+        background_color: '#FFEFF4',
         display: 'standalone',
         orientation: 'portrait',
         scope: '/',

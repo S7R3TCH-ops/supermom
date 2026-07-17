@@ -20,7 +20,6 @@ import { queryClient } from '../../lib/queryClient';
 import { supabase } from '../../lib/supabase';
 import GrabBar from '../ui/GrabBar';
 import FinancialMathBreakdown from '../ui/FinancialMathBreakdown';
-import { useSwipeToDismiss } from '../../hooks/useSwipeToDismiss';
 import { triggerHaptic } from '../../lib/haptics';
 
 const STATUS_COLORS = {
@@ -105,7 +104,6 @@ export default function JobDetailSheet({ jobId, onClose }) {
   const [showCancelForm, setShowCancelForm] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [cancelBusy, setCancelBusy] = useState(false);
-  const { panelRef: swipePanelRef, scrollRef: swipeScrollRef, handlers: swipeHandlers } = useSwipeToDismiss(onClose);
 
   if (jobId !== prevJobId) {
     setPrevJobId(jobId);
@@ -361,9 +359,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
       `}</style>
 
       <div
-        ref={swipePanelRef}
         onClick={e => e.stopPropagation()}
-        {...swipeHandlers}
         style={{
           background: T.bg, color: T.ink,
           borderRadius: '18px 18px 0 0',
@@ -401,7 +397,6 @@ export default function JobDetailSheet({ jobId, onClose }) {
             invoiceId={invoiceId}
             jobPayments={jobPayments}
             policyMsg={policyMsg}
-            scrollRef={swipeScrollRef}
             isAdmin={isAdmin}
             showCancelForm={showCancelForm}
             cancelReason={cancelReason}

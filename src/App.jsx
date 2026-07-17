@@ -77,7 +77,7 @@ class ErrorBoundary extends Component {
       return (
         <div style={{
           padding: '40px 20px', textAlign: 'center', background: '#04010C', color: '#fff',
-          height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center'
+          height: 'var(--app-height, 100dvh)', display: 'flex', flexDirection: 'column', justifyContent: 'center'
         }}>
           <div style={{ fontSize: 40, marginBottom: 20 }}>👩‍🔧</div>
           <h2 style={{ fontFamily: 'serif', fontSize: 24, marginBottom: 10 }}>Ouch! Something went wrong.</h2>
@@ -224,7 +224,7 @@ function AuthedShell() {
     <ErrorBoundary>
       <div style={{
         display: 'flex', flexDirection: 'column',
-        height: '100dvh', width: '100%',
+        height: 'var(--app-height, 100dvh)', width: '100%',
         background: T.bg, color: T.ink, overflow: 'hidden',
       }}>
         {showWarning && (
@@ -291,7 +291,7 @@ function LoginShell() {
     <ErrorBoundary>
       <div style={{
         display: 'flex', flexDirection: 'column',
-        height: '100dvh', width: '100%',
+        height: 'var(--app-height, 100dvh)', width: '100%',
         background: T.bg, color: T.ink, overflow: 'hidden',
       }}>
         <LogoBar />
@@ -364,7 +364,7 @@ function SetNewPasswordShell() {
   return (
     <div style={{
       display: 'flex', flexDirection: 'column',
-      height: '100dvh', width: '100%',
+      height: 'var(--app-height, 100dvh)', width: '100%',
       background: T.bg, color: T.ink, overflow: 'hidden',
     }}>
       <LogoBar />
@@ -445,7 +445,7 @@ function Gate() {
   if (loading) {
     return (
       <div style={{
-        height: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        height: 'var(--app-height, 100dvh)', display: 'flex', alignItems: 'center', justifyContent: 'center',
         background: T.bg, color: T.inkSub, font: `14px/1 ${T.font}`,
       }}>Loading…</div>
     );

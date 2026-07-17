@@ -162,7 +162,7 @@ async function handleEmail(req, res) {
   // only the invoice's own business (or a super admin) may trigger it.
   // GET download stays public — shareable-by-design.
   const auth = await requireUser(req, sb);
-  if (auth.error) return res.status(auth.error.status).json({ error: auth.error.message });
+  if ('error' in auth) return res.status(auth.error.status).json({ error: auth.error.message });
 
   const { data: invoiceData } = await sb
     .from('invoices')
@@ -227,16 +227,17 @@ async function handleEmail(req, res) {
 
     return res.status(200).json({ ok: true, isReceipt });
   } catch (err) {
-    console.error('[invoice/email] Send error:', err);
+    const error = err instanceof Error ? err : new Error(String(err));
+    console.error('[invoice/email] Send error:', error);
     await logServerError({
       severity: 'error',
       message: `Invoice email send failed for invoice ${invoiceNumber}`,
-      stack: err.stack,
+      stack: error.stack,
       context: { invoiceId, invoiceNumber, clientEmail },
       businessId: invoiceData?.business_id ?? null,
       alert: true,
     });
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: error.message });
   }
 }
 

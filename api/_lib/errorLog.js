@@ -16,6 +16,15 @@ function makeServiceClient() {
   );
 }
 
+/**
+ * @param {object} params
+ * @param {string} [params.severity]
+ * @param {string} params.message
+ * @param {string|null} [params.stack]
+ * @param {object|null} [params.context]
+ * @param {string|null} [params.businessId]
+ * @param {boolean} [params.alert]
+ */
 export async function logServerError({
   severity = 'error',
   message,

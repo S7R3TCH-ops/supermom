@@ -125,7 +125,7 @@ const s = StyleSheet.create({
   thankYou:     { fontSize: 11, color: '#666', fontFamily: 'Helvetica-Oblique', textAlign: 'center', marginTop: 4 },
 });
 
-function el(type, props, ...children) {
+function el(type: any, props: any, ...children: any[]) {
   return React.createElement(type, props, ...children);
 }
 const V = (props, ...children) => el(View, props, ...children);
@@ -352,5 +352,9 @@ function InvoiceDocument({ invoice }) {
 }
 
 export async function buildInvoicePdfBuffer(invoice) {
-  return await renderToBuffer(el(InvoiceDocument, { invoice }));
+  // The custom `el()` helper's return type doesn't line up with react-pdf's
+  // strict `ReactElement<DocumentProps>` expectation at this one boundary
+  // (works fine everywhere else `el()` is used in this file) — narrow cast
+  // right at the seam rather than loosening el()'s typing generally.
+  return await renderToBuffer(el(InvoiceDocument, { invoice }) as any);
 }

@@ -62,6 +62,7 @@ html {
   margin: 0;
   padding: 0;
   width: 100%;
+  background-color: var(--bg);
   /* Layered fallbacks: last supported wins. --app-height (set by main.jsx)
      is the JS-corrected real visible area for browsers where dvh misreports. */
   height: 100vh;

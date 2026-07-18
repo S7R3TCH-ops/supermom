@@ -3,21 +3,14 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
 import { installGlobalErrorTracking } from './lib/errorTracking.js'
+import { installAppHeight } from './lib/appHeight.js'
 
 installGlobalErrorTracking()
 
-// Robust viewport height across devices/nav modes. dvh misreports on some
-// browsers (older iOS standalone, Android chrome transitions); this pins
-// --app-height to the actual visible area (visualViewport when available) and
-// keeps it correct through rotation, keyboard, and nav-bar show/hide.
-function setAppHeight() {
-  const h = window.visualViewport?.height ?? window.innerHeight
-  document.documentElement.style.setProperty('--app-height', `${h}px`)
-}
-setAppHeight()
-window.addEventListener('resize', setAppHeight)
-window.addEventListener('orientationchange', setAppHeight)
-window.visualViewport?.addEventListener('resize', setAppHeight)
+// Robust viewport height across devices/nav modes — pins --app-height to the
+// real visible area and re-reads at the cold-launch settle points iOS standalone
+// PWA honors (it settles its final size without firing resize). See appHeight.js.
+installAppHeight()
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

@@ -31,8 +31,12 @@ Full read access to this repo, **except**:
 
 ## WRITE SURFACE — hard rule
 
-You may write **only** to files inside `tests/`. No modifications to `src/`,
-`api/`, config files, `package.json`, migrations, or anything outside `tests/`.
+You may write **only** to files inside `tests/` and the specific codebase files authorized by Joel for the 2026-07-18 UI fixes plan:
+- `src/pages/Clients.jsx`
+- `src/pages/Home.jsx`
+- `src/pages/InvoiceView.jsx`
+
+No modifications to other files in `src/`, `api/`, config files, `package.json`, migrations, or anything else outside `tests/`.
 
 ## GIT — hard rule
 

@@ -221,18 +221,20 @@ export default function Clients() {
             <button key={f} type="button" onClick={() => setFilter(f)} aria-pressed={active} style={{
               background: active ? '#FC4693' : T.card,
               border: `1px solid ${active ? '#FC4693' : T.cardBorder}`,
-              borderRadius: 20, padding: '5px 12px', whiteSpace: 'nowrap',
+              borderRadius: 20, padding: '0 10px', whiteSpace: 'nowrap',
               fontFamily: T.font, fontSize: 10.5, fontWeight: 600,
               color: active ? 'white' : T.inkMuted, cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: 5,
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              height: 26,
             }}>
               {f}
               {count > 0 && (
                 <span style={{
                   background: active ? 'rgba(255,255,255,0.25)' : T.pinkTint,
                   color: active ? 'white' : T.pink,
-                  borderRadius: 10, padding: '0px 5px',
-                  fontSize: 9.5, fontWeight: 700, lineHeight: '16px',
+                  borderRadius: 8, padding: '0 5px',
+                  fontSize: 9, fontWeight: 700, height: 14,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 }}>{count}</span>
               )}
             </button>

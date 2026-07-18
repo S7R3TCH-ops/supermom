@@ -5,6 +5,7 @@ import { computeJobFinancials } from '../lib/financialMath';
 import { useAuth } from '../context/AuthContext';
 import { getCurrentBusinessId } from '../data/currentBusiness';
 import { authHeaders } from '../lib/supabase';
+import { notifyDataChanged } from '../data/useData';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
@@ -162,6 +163,7 @@ export default function InvoiceView() {
     try {
       await addJobsToInvoice(id, [...addJobIds]);
       await reload();
+      notifyDataChanged();
       setAddState('idle');
     } catch (e) {
       console.error('Add jobs error:', e);
@@ -179,6 +181,7 @@ export default function InvoiceView() {
     try {
       await settleInvoiceOutstanding(id, method, [...selectedIds]);
       await reload();
+      notifyDataChanged();
       setSettleState('idle');
     } catch (e) {
       console.error('Settle error:', e);
@@ -198,6 +201,7 @@ export default function InvoiceView() {
     try {
       await voidInvoiceSettlement(id);
       await reload();
+      notifyDataChanged();
       setSettleState('idle');
     } catch (e) {
       console.error('Undo error:', e);
@@ -229,6 +233,7 @@ export default function InvoiceView() {
       const data = await res.json();
       if (data.isReceipt) setReceiptSentAt(new Date().toISOString());
       else setInvoiceSentAt(new Date().toISOString());
+      notifyDataChanged();
       setEmailState('sent');
       setTimeout(() => setEmailState('idle'), 4000);
     } catch (e) {

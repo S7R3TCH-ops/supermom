@@ -45,7 +45,8 @@ export default function Home() {
   const isKeyboardFocused = useKeyboardFocus();
 
   // Use a stable reference for "today"
-  const [today] = useState(() => new Date());
+  const [today, setToday] = useState(() => new Date());
+  const hiddenAtRef = useRef(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
 
   const [currentWeekStart, currentWeekEnd] = useMemo(() => {
@@ -132,16 +133,26 @@ export default function Home() {
   // Placed here (after todayJobs) to avoid TDZ — todayJobs is const, accessing it in the dep array
   // before its declaration crashes the production bundle.
   useEffect(() => {
-    let hiddenAt = null;
     function onVisibility() {
-      if (document.hidden) { hiddenAt = Date.now(); return; }
-      const awayMs = hiddenAt ? Date.now() - hiddenAt : 0;
-      hiddenAt = null;
-      setNow(new Date());
-      if (awayMs > 30 * 60 * 1000 || !sameDay(new Date(), today)) {
+      if (document.hidden) {
+        hiddenAtRef.current = Date.now();
+        return;
+      }
+      const awayMs = hiddenAtRef.current ? Date.now() - hiddenAtRef.current : 0;
+      hiddenAtRef.current = null;
+      
+      const currentDate = new Date();
+      setNow(currentDate);
+      
+      if (awayMs > 30 * 60 * 1000) {
         window.location.reload();
         return;
       }
+      
+      if (!sameDay(currentDate, today)) {
+        setToday(currentDate);
+      }
+      
       if (todayJobs.length > 0 && Date.now() - lastFetchTimeRef.current > 10 * 60 * 1000) {
         fetchLocationDrives();
       }
@@ -678,7 +689,7 @@ export default function Home() {
             </div>
           </div>
 
-          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flexShrink: 0 }}>
             <button
               type="button"
               onClick={() => openDetail(
@@ -687,7 +698,7 @@ export default function Home() {
                 'jobs'
               )}
               aria-label="View this week's jobs"
-              style={{ cursor: 'pointer', padding: '4px 0 4px 12px', background: 'none', border: 'none', textAlign: 'right' }}
+              style={{ cursor: 'pointer', padding: '4px 0', background: 'none', border: 'none', textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}
             >
               <div style={{
                 fontFamily: T.serif,
@@ -725,7 +736,7 @@ export default function Home() {
               style={{
                 cursor: 'pointer',
                 marginTop: 4,
-                padding: '4px 0 4px 12px',
+                padding: '4px 0',
                 background: 'none',
                 border: 'none',
                 fontSize: 10,

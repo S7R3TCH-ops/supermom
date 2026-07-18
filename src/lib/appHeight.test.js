@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { resolveViewportHeight, applyAppHeight, installAppHeight } from './appHeight';
+import { resolveViewportHeight, applyAppHeight, installAppHeight, kickViewportGeometry } from './appHeight';
 
 describe('resolveViewportHeight', () => {
   it('prefers visualViewport.height when present', () => {
@@ -58,5 +58,55 @@ describe('installAppHeight', () => {
     win.visualViewport.height = 812;
     vvListeners.scroll();
     expect(setProperty).toHaveBeenLastCalledWith('--app-height', '812px');
+  });
+});
+
+describe('kickViewportGeometry', () => {
+  const makeMeta = (content) => {
+    let value = content;
+    return {
+      getAttribute: () => value,
+      setAttribute: vi.fn((_, v) => { value = v; }),
+      get value() { return value; },
+    };
+  };
+
+  it('is a no-op when not in an iOS standalone PWA', () => {
+    const meta = makeMeta('width=device-width, viewport-fit=cover');
+    const doc = { querySelector: () => meta };
+    kickViewportGeometry({ navigator: {} }, doc);
+    expect(meta.setAttribute).not.toHaveBeenCalled();
+  });
+
+  it('is a no-op when the viewport meta has no viewport-fit=cover', () => {
+    const meta = makeMeta('width=device-width, initial-scale=1');
+    const doc = { querySelector: () => meta };
+    const win = { navigator: { standalone: true }, requestAnimationFrame: vi.fn() };
+    kickViewportGeometry(win, doc);
+    expect(meta.setAttribute).not.toHaveBeenCalled();
+    expect(win.requestAnimationFrame).not.toHaveBeenCalled();
+  });
+
+  it('toggles viewport-fit cover->auto->cover across two frames, then re-reads height', () => {
+    const original = 'width=device-width, initial-scale=1.0, viewport-fit=cover';
+    const meta = makeMeta(original);
+    const setProperty = vi.fn();
+    const doc = { querySelector: () => meta, documentElement: { style: { setProperty } } };
+    // Run rAF callbacks synchronously so we can observe the full cycle.
+    const win = {
+      navigator: { standalone: true },
+      innerHeight: 700,
+      requestAnimationFrame: (cb) => cb(),
+    };
+
+    kickViewportGeometry(win, doc);
+
+    // First it switched cover -> auto...
+    expect(meta.setAttribute).toHaveBeenNthCalledWith(1, 'content', original.replace('viewport-fit=cover', 'viewport-fit=auto'));
+    // ...then restored the exact original (cover) on the next frame.
+    expect(meta.setAttribute).toHaveBeenNthCalledWith(2, 'content', original);
+    expect(meta.value).toBe(original);
+    // ...and recomputed --app-height after the geometry change.
+    expect(setProperty).toHaveBeenCalledWith('--app-height', '700px');
   });
 });

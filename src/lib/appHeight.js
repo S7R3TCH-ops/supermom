@@ -33,12 +33,39 @@ export function applyAppHeight(win = window, doc = document) {
   return h
 }
 
+/**
+ * iOS standalone-only: force WebKit to (re)compute viewport-fit=cover geometry.
+ * On a cold standalone launch WebKit can lay the canvas out at safe-area height
+ * and never recompute (white native bar below the canvas) until a real geometry
+ * change — e.g. the Reachability gesture. Toggling viewport-fit cover->auto->cover
+ * across two frames triggers that recomputation programmatically.
+ */
+export function kickViewportGeometry(win = window, doc = document) {
+  if (!win.navigator?.standalone) return
+  const meta = doc.querySelector('meta[name="viewport"]')
+  const original = meta?.getAttribute('content')
+  if (!original?.includes('viewport-fit=cover')) return
+  meta.setAttribute('content', original.replace('viewport-fit=cover', 'viewport-fit=auto'))
+  win.requestAnimationFrame(() => {
+    meta.setAttribute('content', original)
+    win.requestAnimationFrame(() => applyAppHeight(win, doc))
+  })
+}
+
 /** Sets `--app-height` now and keeps it correct across the cold-launch and ongoing events. */
 export function installAppHeight(win = window, doc = document) {
   const set = () => applyAppHeight(win, doc)
 
   // Initial synchronous read — correct on desktop and warm/already-settled loads.
   set()
+
+  // iOS standalone cold-launch: WebKit sometimes lays the canvas out at safe-area
+  // height and never applies viewport-fit=cover geometry, leaving a native white
+  // bar below the canvas that no CSS/height fix can reach — only a real geometry
+  // change (the Reachability gesture) fixes it. Kick that recomputation now and
+  // once more after the launch settles. No-op off iOS standalone.
+  kickViewportGeometry(win, doc)
+  win.setTimeout?.(() => kickViewportGeometry(win, doc), 350)
 
   // Re-read at the settle points a cold iOS standalone PWA launch actually honors.
   // Double rAF = after the first real layout/paint; load/pageshow = the app became

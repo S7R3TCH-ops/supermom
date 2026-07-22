@@ -165,9 +165,26 @@ describe('convenience wrappers', () => {
     expect(computeJobSubtotal(job)).toBe(110);
   });
 
-  it('worker_pay is informational only — never added to the client total', () => {
-    const f = computeJobFinancials({ ...job, worker_pay: 40 });
+  it('workers[].pay is informational only — never added to the client total', () => {
+    const f = computeJobFinancials({ ...job, workers: [{ pay: 40 }] });
     expect(f.workerCost).toBe(40);
     expect(f.total).toBeCloseTo(124.3, 10);
+  });
+
+  it('sums pay across multiple assigned workers', () => {
+    const f = computeJobFinancials({ ...job, workers: [{ pay: 40 }, { pay: 25 }] });
+    expect(f.workerCost).toBe(65);
+  });
+
+  it('workerCost is 0 when no workers are assigned', () => {
+    const f = computeJobFinancials({ ...job, workers: [] });
+    expect(f.workerCost).toBe(0);
+    const noField = computeJobFinancials(job);
+    expect(noField.workerCost).toBe(0);
+  });
+
+  it('ignores non-numeric worker pay entries', () => {
+    const f = computeJobFinancials({ ...job, workers: [{ pay: 'oops' }, { pay: 30 }] });
+    expect(f.workerCost).toBe(30);
   });
 });

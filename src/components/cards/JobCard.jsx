@@ -91,7 +91,7 @@ export default function JobCard({ job: j, T, onClick, paid = 0, total = 0, grand
           <span style={{ fontSize: 10.5, color: mutedColor, fontFamily: T.font }}>
             {getWorkerLabel(business, j.assignee_type)}: {j.worker_name}
           </span>
-          {isPaid && Number(j.raw?.worker_pay) > 0 && !j.raw?.worker_paid && (
+          {isPaid && Number(j.worker_pay) > 0 && !j.worker_paid && (
             <span style={{ fontSize: 8.5, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: T.status.attention.pill, color: T.status.attention.text, textTransform: 'uppercase', letterSpacing: '0.3px', flexShrink: 0 }}>
               $ Unpaid
             </span>

@@ -12,6 +12,21 @@ export interface CostItem {
   description?: string | null;
 }
 
+// One worker's negotiated pay on a job (job_workers row). Informational only —
+// never added to the client-facing total. See docs/plans (worker pay data model).
+// Extra fields beyond `pay` are optional here (computeJobFinancials only sums
+// pay) but present so the same job_workers row shape (see selectors.ts's
+// JobWorkerRow) can be passed through without excess-property errors.
+export interface WorkerAssignment {
+  pay?: number | string | null;
+  id?: string;
+  worker_id?: string;
+  name?: string | null;
+  person_type?: string | null;
+  paid?: boolean;
+  paid_at?: string | null;
+}
+
 // Raw DB job fields consumed by financial calculations.
 // tax_enabled is nullable: null/undefined = inherit from business; true/false = per-job override.
 export interface JobInput {
@@ -27,7 +42,9 @@ export interface JobInput {
   additional_cost_notes?: string | null;
   tax_enabled?: boolean | null;
   hst_amount?: number | string | null;
-  worker_pay?: number | string | null;
+  // Workers assigned to this job (job_workers rows) — replaces the old flat
+  // worker_pay column. A job can have zero, one, or several workers.
+  workers?: WorkerAssignment[] | null;
   subtotal?: number | string | null;
 }
 
@@ -135,8 +152,10 @@ export function computeJobFinancials(
     taxEnabled = true;
   }
 
-  // 7. Worker Cost (informational — not added to client-facing total)
-  const workerCost = Number(src?.worker_pay) || 0;
+  // 7. Worker Cost (informational — not added to client-facing total).
+  // Sums pay across every worker assigned to this job (job_workers rows).
+  const workerCost = (Array.isArray(src?.workers) ? src.workers : [])
+    .reduce((s, w) => s + (Number(w?.pay) || 0), 0);
 
   // 8. Grand Total
   const total = subtotal + additionalTotal + taxAmount;

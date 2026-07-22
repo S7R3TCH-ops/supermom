@@ -5,6 +5,7 @@ import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useBackClose } from '../../hooks/useBackClose';
 import { useKeyboardFocus } from '../../hooks/useKeyboardFocus';
 import { fetchJobById, updateJob, softDeleteJob, cancelJob, hardDeleteJob, revertJobToPreCompletion } from '../../data/jobsRepo';
+import { markJobWorkerPaid } from '../../data/jobWorkersRepo';
 import { recalcInvoiceTotal } from '../../data/invoicesRepo';
 import { deriveJobStage, getPolicyMessage, validateJobDraft, buildFinancialPatch, isHoursLocked, resolveBillableHours } from '../../lib/jobDraftPolicy';
 import { useAuth } from '../../context/AuthContext';
@@ -226,7 +227,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
   async function handleMarkWorkerPaid() {
     setBusy(true); setMutErr(null);
     try {
-      await updateJob(job.id, { worker_paid: true });
+      await markJobWorkerPaid(job.id, true);
       notifyDataChanged();
       toast.success('Team member marked as paid');
       onClose();
@@ -589,9 +590,9 @@ function ReadMode({
           )}
           {!futureConfirmType && !isCancelled && isScheduled && <Btn onClick={onMarkComplete} disabled={busy} bg="#22C55E" color="white" T={T}>Mark Complete</Btn>}
           {!futureConfirmType && !isCancelled && !isPaid && <Btn onClick={onMarkPaid} disabled={busy} bg="#FC4693" color="white" T={T}>Mark Paid</Btn>}
-          {!futureConfirmType && !isCancelled && isPaid && Number(job.raw?.worker_pay) > 0 && !job.raw?.worker_paid && (
+          {!futureConfirmType && !isCancelled && isPaid && Number(job.worker_pay) > 0 && !job.worker_paid && (
             <Btn onClick={onMarkWorkerPaid} disabled={busy} bg="#F59E0B" color="white" T={T}>
-              🦸 Mark {job.raw?.worker_name || 'Team Member'} Paid — ${Number(job.raw.worker_pay).toFixed(0)}
+              🦸 Mark {job.worker_name || 'Team Member'} Paid — ${Number(job.worker_pay).toFixed(0)}
             </Btn>
           )}
           {!futureConfirmType && !isCancelled && (

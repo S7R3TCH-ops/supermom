@@ -9,6 +9,7 @@ import { generateInvoiceForJob } from './invoicesRepo';
 import { computeJobFinancials } from '../lib/financialMath';
 import { MONEY_FIELDS } from '../lib/jobDraftPolicy';
 import { composeTorontoISO as _composeTorontoISO } from '../lib/dateUtils';
+import { setJobWorkers, markJobWorkerPaid, fetchJobWorkers, fetchJobWorkersForJobs } from './jobWorkersRepo';
 export { composeTorontoISO } from '../lib/dateUtils';
 
 function assertWrote(data, op) {
@@ -25,7 +26,6 @@ const SELECT_LIST = [
   'additional_cost', 'additional_cost_notes', 'additional_costs_json', 'total_amount',
   'job_status', 'payment_status', 'payment_method', 'job_notes', 'photo_links',
   'calendar_event_id', 'ai_context', 'deleted_at',
-  'worker_id', 'worker_pay', 'worker_paid',
   'distance_to_km', 'distance_home_km',
 ].join(', ');
 
@@ -41,7 +41,7 @@ export async function fetchActiveJobs() {
     .order('scheduled_date', { ascending: true })
     .order('scheduled_time', { ascending: true });
   if (error) throw error;
-  return (data ?? []).map(decorateJob);
+  return decorateJobsWithWorkers(data ?? [], businessId);
 }
 
 export async function fetchJobsByClientId(clientId) {
@@ -57,7 +57,7 @@ export async function fetchJobsByClientId(clientId) {
     .order('scheduled_date', { ascending: false })
     .order('scheduled_time', { ascending: false });
   if (error) throw error;
-  return (data ?? []).map(decorateJob);
+  return decorateJobsWithWorkers(data ?? [], businessId);
 }
 
 export async function searchJobs(q, dateFrom, dateTo) {
@@ -76,12 +76,21 @@ export async function searchJobs(q, dateFrom, dateTo) {
   if (dateTo) query = query.lte('scheduled_date', dateTo);
   const { data, error } = await query.order('scheduled_date', { ascending: false });
   if (error) throw error;
-  return (data ?? []).map(j => {
+  const rows = data ?? [];
+  const jwMap = await fetchJobWorkersForJobs(rows.map(j => j.id), businessId);
+  return rows.map(j => {
     const c = j.clients;
     const client_name = c ? [c.first_name, c.last_name].filter(Boolean).join(' ') : null;
     const { clients: _dropped, ...rest } = j;
-    return { ...decorateJob(rest), client_name };
+    return { ...decorateJob({ ...rest, workers: jwMap[j.id] || [] }), client_name };
   });
+}
+
+// Batch-attaches job_workers to a list of job rows (one query for all of
+// them, not N+1) and runs each through decorateJob.
+async function decorateJobsWithWorkers(rows, businessId) {
+  const jwMap = await fetchJobWorkersForJobs(rows.map(j => j.id), businessId);
+  return rows.map(j => decorateJob({ ...j, workers: jwMap[j.id] || [] }));
 }
 
 export async function fetchJobById(id) {
@@ -90,7 +99,7 @@ export async function fetchJobById(id) {
 
   const { data, error } = await supabase
     .from('jobs')
-    .select(`*, clients(first_name, last_name, notes, ai_context, tags), workers(name, person_type)`)
+    .select(`*, clients(first_name, last_name, notes, ai_context, tags)`)
     .eq('id', id)
     .eq('business_id', businessId)
     .maybeSingle();
@@ -100,8 +109,8 @@ export async function fetchJobById(id) {
   const clientName = c
     ? [c.first_name, c.last_name].filter(Boolean).join(' ')
     : 'Unknown';
-  const workerName = data.workers?.name ?? null;
-  const { clients: _dropped, workers: _droppedW, ...jobRow } = data;
+  const { clients: _dropped, ...jobRow } = data;
+  const jobWorkers = await fetchJobWorkers(id);
 
   let client_recent_notes = [];
   if (data.client_id) {
@@ -119,23 +128,23 @@ export async function fetchJobById(id) {
   }
 
   return {
-    ...decorateJob(jobRow),
+    ...decorateJob({ ...jobRow, workers: jobWorkers }),
     client_name: clientName,
     client_notes: c?.notes || '',
     client_ai_context: c?.ai_context || {},
     client_tags: c?.tags || [],
     client_recent_notes,
-    worker_name: workerName,
   };
 }
 
 export async function createJob(payload) {
   const businessId = await getCurrentBusinessId();
   const recurrence = payload.ai_context?.recurrence_rule;
-  const cleanPayload = normalizeJobPayload(payload);
+  const { worker_id: assignWorkerId, worker_pay: assignWorkerPay, ...payloadNoWorker } = payload;
+  const cleanPayload = normalizeJobPayload(payloadNoWorker);
 
   if (recurrence && recurrence !== 'None') {
-    return createRecurringSeries(cleanPayload, businessId);
+    return createRecurringSeries(cleanPayload, businessId, assignWorkerId, assignWorkerPay);
   }
 
   const { data, error } = await supabase
@@ -144,12 +153,15 @@ export async function createJob(payload) {
     .select()
     .single();
   if (error) throw error;
+  if (assignWorkerId) {
+    await setJobWorkers(data.id, businessId, [{ worker_id: assignWorkerId, pay: assignWorkerPay ?? null }]);
+  }
   const decorated = decorateJob(data);
   await triggerGCalSync(decorated.id, 'upsert');
   return decorated;
 }
 
-async function createRecurringSeries(payload, businessId) {
+async function createRecurringSeries(payload, businessId, assignWorkerId, assignWorkerPay) {
   // 1. Create the template
   const { data: template, error: tErr } = await supabase
     .from('job_templates')
@@ -199,16 +211,30 @@ async function createRecurringSeries(payload, businessId) {
     .select();
   if (error) throw error;
 
+  if (assignWorkerId) {
+    await Promise.all(data.map(j =>
+      setJobWorkers(j.id, businessId, [{ worker_id: assignWorkerId, pay: assignWorkerPay ?? null }])
+    ));
+  }
+
   const results = data.map(decorateJob);
   // Sync all occurrences to GCal
   await Promise.allSettled(results.map(j => triggerGCalSync(j.id, 'upsert')));
-  
+
   return results[0];
 }
 
 export async function updateJob(id, patch, seriesAction = 'this') {
   const businessId = await getCurrentBusinessId();
-  const cleanPatch = { ...normalizeJobPayload(patch), updated_at: new Date().toISOString() };
+  // Worker assignment (worker_id/worker_pay/worker_paid) lives in job_workers,
+  // not on the jobs row — pulled out of the patch and handled separately below.
+  // Keyed off 'worker_id' in patch specifically (not worker_pay/worker_paid
+  // alone) since a full reassignment always sends all three together
+  // (JobDetailSheet's saveEdit); a bare { worker_paid } patch used to exist
+  // pre-cutover but callers now go through markJobWorkerPaid directly instead.
+  const hasWorkerReassignment = 'worker_id' in patch;
+  const { worker_id, worker_pay, worker_paid, ...patchNoWorker } = patch;
+  const cleanPatch = { ...normalizeJobPayload(patchNoWorker), updated_at: new Date().toISOString() };
 
   if (seriesAction === 'this') {
     const { data, error } = await supabase
@@ -220,13 +246,21 @@ export async function updateJob(id, patch, seriesAction = 'this') {
       .single();
     if (error) throw error;
     assertWrote(data, 'updateJob:this');
+    let jobWorkers = [];
+    if (hasWorkerReassignment) {
+      jobWorkers = worker_id
+        ? await setJobWorkers(id, businessId, [{ worker_id, pay: worker_pay ?? null, paid: worker_paid ?? false }])
+        : await setJobWorkers(id, businessId, []);
+    }
     // Backstop (jobDraftPolicy): a money edit can silently invalidate payment_status
     // (e.g. rate change on a Paid job). Re-derive from the payments sum unless the
     // caller set payment_status itself (recordPayment does — it already derived it).
     if (!('payment_status' in cleanPatch) && MONEY_FIELDS.some(f => f in cleanPatch)) {
       data.payment_status = await rederivePaymentStatus(id);
     }
-    const decorated = decorateJob(data);
+    const decorated = hasWorkerReassignment
+      ? decorateJob({ ...data, workers: jobWorkers })
+      : decorateJob(data);
     triggerGCalSync(id, 'upsert');
     return decorated;
   }
@@ -239,7 +273,7 @@ export async function updateJob(id, patch, seriesAction = 'this') {
     .eq('business_id', businessId)
     .single();
   if (fErr) throw fErr;
-  if (!job.template_id) return updateJob(id, cleanPatch, 'this');
+  if (!job.template_id) return updateJob(id, patch, 'this');
 
   // Protect series updates from flattening dates
   const seriesPatch = { ...cleanPatch };
@@ -259,6 +293,12 @@ export async function updateJob(id, patch, seriesAction = 'this') {
   const { data, error } = await query.select();
   if (error) throw error;
   assertWrote(data, 'updateJob:series');
+
+  if (hasWorkerReassignment) {
+    await Promise.all(data.map(j => worker_id
+      ? setJobWorkers(j.id, businessId, [{ worker_id, pay: worker_pay ?? null, paid: worker_paid ?? false }])
+      : setJobWorkers(j.id, businessId, [])));
+  }
 
   // Sync affected jobs (limited to avoid blast)
   await Promise.allSettled(data.slice(0, 5).map(j => triggerGCalSync(j.id, 'upsert')));
@@ -386,6 +426,8 @@ export async function hardDeleteJob(id) {
   if (delPayErr) throw delPayErr;
   const { error: delLinkErr } = await supabase.from('invoice_jobs').delete().eq('job_id', id).eq('business_id', businessId);
   if (delLinkErr) throw delLinkErr;
+  const { error: delWorkersErr } = await supabase.from('job_workers').delete().eq('job_id', id).eq('business_id', businessId);
+  if (delWorkersErr) throw delWorkersErr;
   const { error } = await supabase.from('jobs').delete().eq('id', id).eq('business_id', businessId);
   if (error) throw error;
 }
@@ -548,7 +590,6 @@ export async function recordPayment(jobId, amount, method = 'Cash', _paymentStat
     subtotal: financials.subtotal,
     hst_amount: financials.taxAmount,
     total_amount: financials.total,
-    ...(workerPaid !== null ? { worker_paid: workerPaid } : {}),
     ...(taxOverride !== null ? { tax_enabled: taxOverride } : {}),
   };
   if (validCosts.length > 0) {
@@ -558,6 +599,7 @@ export async function recordPayment(jobId, amount, method = 'Cash', _paymentStat
   }
 
   const updated = await updateJob(jobId, jobPatch);
+  if (workerPaid !== null) await markJobWorkerPaid(jobId, workerPaid);
 
   // 4. AUTO-LEARNING: Update service default duration based on moving average
   if (duration > 0 && job.service_id) {
@@ -636,8 +678,11 @@ function addMonthsToDateStr(dateStr, months) {
   return dt.toISOString().split('T')[0];
 }
 
-// Adds a derived `scheduled_at` ISO string in America/Toronto for UI sorting / time math.
-// The DB stores scheduled_date + scheduled_time separately.
+// Adds a derived `scheduled_at` ISO string in America/Toronto for UI sorting / time math,
+// plus derived flat worker-assignment convenience fields from `j.workers` —
+// the resolved job_workers rows (pre-joined with worker name/person_type by
+// the caller via jobWorkersRepo's batch fetch). The DB stores scheduled_date +
+// scheduled_time separately.
 function decorateJob(j) {
   if (!j) return j;
   const iso = _composeTorontoISO(j.scheduled_date, j.scheduled_time);
@@ -648,7 +693,21 @@ function decorateJob(j) {
     : null;
   const durationHours = actualHrs ?? (j.estimated_hours != null ? Number(j.estimated_hours) : 0);
   const durationMin = durationHours > 0 ? Math.round(durationHours * 60) : null;
-  return { ...j, scheduled_at: iso, duration_est: durationMin };
+
+  const workers = Array.isArray(j.workers) ? j.workers : [];
+  const primary = workers[0] || null;
+
+  return {
+    ...j,
+    scheduled_at: iso,
+    duration_est: durationMin,
+    workers,
+    worker_id: primary?.worker_id ?? null,
+    worker_name: primary?.name ?? null,
+    worker_pay: primary?.pay ?? null,
+    worker_paid: primary?.paid ?? false,
+    assignee_type: primary?.person_type ?? null,
+  };
 }
 
 // Returns jobs within `windowMinutes` of the given scheduled_at ISO string.

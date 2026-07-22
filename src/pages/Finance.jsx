@@ -360,17 +360,21 @@ export default function Finance() {
     [completedPeriodJobs],
   );
 
+  // One item per worker assigned to a completed job (job_workers rows) — a job
+  // with 2+ workers contributes 2+ line items here, each with its own pay/paid.
   const workerCostItems = useMemo(() =>
-    completedPeriodJobs
-      .filter(j => Number(j.raw?.worker_pay) > 0)
-      .map(j => ({
-        ...j.raw,
-        client_name: j.client_name,
-        worker_name: j.worker_name,
-        amount: Number(j.raw.worker_pay),
-        worker_paid: j.raw.worker_paid ?? false,
-        _itemType: 'worker_cost',
-      })),
+    completedPeriodJobs.flatMap(j =>
+      (j.workers || [])
+        .filter(w => Number(w.pay) > 0)
+        .map(w => ({
+          ...j.raw,
+          client_name: j.client_name,
+          worker_name: w.name,
+          amount: Number(w.pay),
+          worker_paid: w.paid ?? false,
+          _itemType: 'worker_cost',
+        }))
+    ),
     [completedPeriodJobs],
   );
 

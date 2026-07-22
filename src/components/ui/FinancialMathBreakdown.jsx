@@ -18,10 +18,10 @@ export default function FinancialMathBreakdown({ job, business, liveForm, paymen
     return computeJobFinancials(job, business, liveForm);
   }, [job, business, liveForm]);
 
-  const { pricingType, isHourly, hours, rate, subtotal, activeCosts, additionalTotal, taxEnabled, taxAmount, taxRate, total } = data;
-  const workerPay = Number(job?.raw?.worker_pay ?? job?.worker_pay ?? 0);
-  const workerPaid = job?.raw?.worker_paid ?? job?.worker_paid ?? false;
-  const workerName = job?.raw?.worker_name ?? job?.worker_name ?? null;
+  const { pricingType, isHourly, hours, rate, subtotal, activeCosts, additionalTotal, taxEnabled, taxAmount, taxRate, total, workerCost } = data;
+  const workerPay = workerCost;
+  const workerPaid = job?.worker_paid ?? false;
+  const workerName = job?.worker_name ?? null;
 
   const rowStyle = { display: 'flex', justifyContent: 'space-between', padding: '4px 0', alignItems: 'baseline' };
   const labelStyle = { fontSize: compact ? 10 : 11, color: T.inkMuted, fontWeight: 500 };

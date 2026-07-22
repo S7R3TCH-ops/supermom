@@ -43,6 +43,18 @@ export interface WorkerRow {
   person_type?: string | null;
 }
 
+// One worker assigned to a job (job_workers row, already joined with the
+// worker's name/person_type by jobsRepo's decorateJob).
+export interface JobWorkerRow {
+  id?: string;
+  worker_id: string;
+  name?: string | null;
+  person_type?: string | null;
+  pay?: number | null;
+  paid?: boolean;
+  paid_at?: string | null;
+}
+
 export interface ClientLookup {
   [clientId: string]: DisplayClient | null | undefined;
 }
@@ -122,9 +134,11 @@ export interface DisplayJob {
   client_notes: string;
   client_ai_context: Record<string, unknown>;
   client_tags: string[];
+  workers: JobWorkerRow[];
   worker_id: string | null;
   worker_name: string | null;
   worker_pay: number | null;
+  worker_paid: boolean;
   assignee_type: string | null;
   service_name: string;
   scheduled_at: string | null;
@@ -272,15 +286,18 @@ export function toDisplayClient(
 }
 
 // Decorate the jobs themselves with the display shape pages expect.
+// jobsRepo's decorateJob has already attached `workers` (job_workers rows,
+// pre-joined with each worker's name/person_type) plus the derived
+// worker_id/worker_name/worker_pay/worker_paid/assignee_type convenience
+// fields (from workers[0]) onto jobRow — this just passes them through.
 export function toDisplayJob(
   jobRow: JobInput & Record<string, unknown>,
   clientLookup: ClientLookup = {},
-  workerLookup: WorkerLookup = {},
   paymentsByJobId: PaymentsByJobId = {}
 ): DisplayJob | null {
   if (!jobRow) return null;
   const c = clientLookup[jobRow.client_id as string] || null;
-  const w = workerLookup[jobRow.worker_id as string] || null;
+  const workers: JobWorkerRow[] = Array.isArray(jobRow.workers) ? jobRow.workers as JobWorkerRow[] : [];
   return {
     id: jobRow.id as string,
     raw: jobRow,
@@ -292,10 +309,12 @@ export function toDisplayJob(
     client_notes: c?.note || '',
     client_ai_context: (c?.raw?.ai_context as Record<string, unknown>) || {},
     client_tags: Array.isArray(c?.raw?.tags) ? c.raw.tags as string[] : [],
+    workers,
     worker_id: (jobRow.worker_id as string) ?? null,
-    worker_name: w ? (w.name ?? null) : ((jobRow.worker_name as string) ?? null),
+    worker_name: (jobRow.worker_name as string) ?? null,
     worker_pay: (jobRow.worker_pay as number) ?? null,
-    assignee_type: w ? (w.person_type ?? 'worker') : null,
+    worker_paid: !!jobRow.worker_paid,
+    assignee_type: (jobRow.assignee_type as string) ?? null,
     service_name: (jobRow.service_name as string) || 'Service',
     scheduled_at: (jobRow.scheduled_at as string) ?? null,
     duration_est: (jobRow.duration_est as number) ?? null,

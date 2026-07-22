@@ -103,7 +103,7 @@ export function useJobs() {
   paymentRows.forEach(p => {
     paymentsByJobId[p.job_id] = (paymentsByJobId[p.job_id] || 0) + Number(p.amount || 0);
   });
-  const display = rows.map(j => toDisplayJob(j, clientLookup, workerLookup, paymentsByJobId));
+  const display = rows.map(j => toDisplayJob(j, clientLookup, paymentsByJobId));
   return { jobs: display, raw: rows, clients: clientLookup, workers: workerLookup, loading, error, refresh: refetch };
 }
 

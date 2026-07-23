@@ -1040,21 +1040,25 @@ function EditMode({ job, stage, form, setForm, services, workers, business, T, m
         )}
         {isKeyboardFocused && <div style={{ height: 260 }} aria-hidden="true" />}
       </div>
-      <div style={{ padding: '10px 14px 28px', borderTop: `1px solid ${T.cardBorder}`, display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {mutErr && <div style={{ padding: '9px 11px', borderRadius: 8, background: T.redBg, border: `1px solid ${T.redBorder}`, fontSize: 12, color: T.ink }}>{mutErr}</div>}
-        {/* Rendered in the fixed footer (not the scrollable area above) so it's
-            always visible right where the user just tapped Save — it used to
-            render near the HST toggle field, off-screen below a long scroll,
-            looking like Save silently did nothing (Joel, 2026-07-15). */}
-        {showSeriesPicker ? (
-          <SeriesPicker show={showSeriesPicker} onChoice={onSeriesChoice} onCancel={() => onSeriesChoice(null)} busy={busy} T={T} mode={mode} />
-        ) : (
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Btn onClick={onCancelEdit} bg={T.card} border={`1.5px solid ${T.cardBorder}`} color={T.inkSub} T={T} style={{ flex: 1 }}>Cancel</Btn>
-            <Btn onClick={handleSaveClick} disabled={busy} bg="#FC4693" color="white" T={T} style={{ flex: 2 }}>{busy ? 'Saving…' : 'Save'}</Btn>
-          </div>
-        )}
-      </div>
+      {/* Hidden while keyboard is up so the pinned chrome doesn't eat the
+          already-shrunk sheet's usable form area; reappears on blur. */}
+      {!isKeyboardFocused && (
+        <div style={{ padding: '10px 14px 28px', borderTop: `1px solid ${T.cardBorder}`, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {mutErr && <div style={{ padding: '9px 11px', borderRadius: 8, background: T.redBg, border: `1px solid ${T.redBorder}`, fontSize: 12, color: T.ink }}>{mutErr}</div>}
+          {/* Rendered in the fixed footer (not the scrollable area above) so it's
+              always visible right where the user just tapped Save — it used to
+              render near the HST toggle field, off-screen below a long scroll,
+              looking like Save silently did nothing (Joel, 2026-07-15). */}
+          {showSeriesPicker ? (
+            <SeriesPicker show={showSeriesPicker} onChoice={onSeriesChoice} onCancel={() => onSeriesChoice(null)} busy={busy} T={T} mode={mode} />
+          ) : (
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Btn onClick={onCancelEdit} bg={T.card} border={`1.5px solid ${T.cardBorder}`} color={T.inkSub} T={T} style={{ flex: 1 }}>Cancel</Btn>
+              <Btn onClick={handleSaveClick} disabled={busy} bg="#FC4693" color="white" T={T} style={{ flex: 2 }}>{busy ? 'Saving…' : 'Save'}</Btn>
+            </div>
+          )}
+        </div>
+      )}
     </>
   );
 }

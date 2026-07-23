@@ -429,39 +429,42 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
           )}
         </div>
 
-        {/* Footer */}
-        <div style={{ padding: '10px 18px 18px', borderTop: `1px solid ${T.cardBorder}`, background: T.bg }}>
-          {bookErr && (
-            <div style={{ paddingBottom: 8, color: T.errorFg, fontSize: 12, fontWeight: 500, textAlign: 'center' }}>{bookErr}</div>
-          )}
-          {!bookErr && step === 1 && !clientId && (
-            <div style={{ paddingBottom: 8, color: T.inkMuted, fontSize: 12, fontWeight: 500, textAlign: 'center' }}>Select a client to continue</div>
-          )}
-          {!bookErr && step === 2 && (!serviceId || !date || !time || !duration) && (
-            <div style={{ paddingBottom: 8, color: T.inkMuted, fontSize: 12, fontWeight: 500, textAlign: 'center' }}>
-              Set {[!serviceId && 'service', !date && 'date', !time && 'time', !duration && 'duration'].filter(Boolean).join(', ')} to continue
-            </div>
-          )}
-          <div style={{ display: 'flex', gap: 10 }}>
-            {step > 1 && (
-              <button type="button" onClick={() => setStep(step - 1)} style={{ flex: 1, background: 'transparent', border: `1.5px solid ${T.cardBorder}`, color: T.inkMuted, borderRadius: 12, padding: '12px 0', fontFamily: T.font, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Back</button>
+        {/* Footer — hidden while keyboard is up so the pinned chrome doesn't eat
+            the already-shrunk sheet's usable form area; reappears on blur. */}
+        {!isKeyboardFocused && (
+          <div style={{ padding: '10px 18px 18px', borderTop: `1px solid ${T.cardBorder}`, background: T.bg }}>
+            {bookErr && (
+              <div style={{ paddingBottom: 8, color: T.errorFg, fontSize: 12, fontWeight: 500, textAlign: 'center' }}>{bookErr}</div>
             )}
-            <button
-              type="button"
-              onClick={step === 1 ? (clientId ? () => setStep(2) : () => {}) : step === 2 ? () => setStep(3) : handleBook}
-              disabled={busy || (step === 1 && !clientId) || (step === 2 && (!serviceId || !date || !time || !duration))}
-              style={{
-                flex: 2, borderRadius: 12, padding: '12px 0', border: 'none',
-                fontFamily: T.font, fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                background: (busy || (step === 1 && !clientId) || (step === 2 && (!serviceId || !date || !time || !duration))) ? T.pinkTint : T.pink,
-                color: (busy || (step === 1 && !clientId) || (step === 2 && (!serviceId || !date || !time || !duration))) ? T.inkMuted : 'white',
-                boxShadow: '0 4px 12px rgba(233,30,106,0.3)',
-              }}
-            >
-              {busy ? 'Booking...' : step < 3 ? 'Next' : 'Confirm Booking'}
-            </button>
+            {!bookErr && step === 1 && !clientId && (
+              <div style={{ paddingBottom: 8, color: T.inkMuted, fontSize: 12, fontWeight: 500, textAlign: 'center' }}>Select a client to continue</div>
+            )}
+            {!bookErr && step === 2 && (!serviceId || !date || !time || !duration) && (
+              <div style={{ paddingBottom: 8, color: T.inkMuted, fontSize: 12, fontWeight: 500, textAlign: 'center' }}>
+                Set {[!serviceId && 'service', !date && 'date', !time && 'time', !duration && 'duration'].filter(Boolean).join(', ')} to continue
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 10 }}>
+              {step > 1 && (
+                <button type="button" onClick={() => setStep(step - 1)} style={{ flex: 1, background: 'transparent', border: `1.5px solid ${T.cardBorder}`, color: T.inkMuted, borderRadius: 12, padding: '12px 0', fontFamily: T.font, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Back</button>
+              )}
+              <button
+                type="button"
+                onClick={step === 1 ? (clientId ? () => setStep(2) : () => {}) : step === 2 ? () => setStep(3) : handleBook}
+                disabled={busy || (step === 1 && !clientId) || (step === 2 && (!serviceId || !date || !time || !duration))}
+                style={{
+                  flex: 2, borderRadius: 12, padding: '12px 0', border: 'none',
+                  fontFamily: T.font, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                  background: (busy || (step === 1 && !clientId) || (step === 2 && (!serviceId || !date || !time || !duration))) ? T.pinkTint : T.pink,
+                  color: (busy || (step === 1 && !clientId) || (step === 2 && (!serviceId || !date || !time || !duration))) ? T.inkMuted : 'white',
+                  boxShadow: '0 4px 12px rgba(233,30,106,0.3)',
+                }}
+              >
+                {busy ? 'Booking...' : step < 3 ? 'Next' : 'Confirm Booking'}
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {activePicker === 'date' && (
@@ -544,7 +547,7 @@ function Step1Who({ clients, onPick, onNew, T }) {
         }}>
           {clients.slice(0, 5).map(c => (
             <button key={c.id} type="button" onClick={() => onPick(c.id)} style={{ minWidth: 80, textAlign: 'center', cursor: 'pointer', background: 'none', border: 'none', padding: 0, fontFamily: T.font }}>
-              <div style={{ width: 48, height: 48, borderRadius: '50%', background: T.pinkTint, border: `1.5px solid ${T.pink}`, margin: '0 auto 6px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>
+              <div style={{ width: 48, height: 48, borderRadius: '50%', background: T.pinkTint, border: `1.5px solid ${T.pink}`, margin: '0 auto 6px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 600, color: T.pink }}>
                 {(c.first_name || c.last_name || '?')[0].toUpperCase()}
               </div>
               <div style={{ fontSize: 11, fontWeight: 600, color: T.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.first_name}</div>

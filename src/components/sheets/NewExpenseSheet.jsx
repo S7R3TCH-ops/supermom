@@ -186,22 +186,25 @@ export default function NewExpenseSheet({ isOpen, onClose }) {
           )}
         </div>
 
-        {/* Footer */}
-        <div style={{ padding: '10px 18px 24px', borderTop: `1px solid ${T.cardBorder}`, display: 'flex', gap: 10, background: T.bg }}>
-          <button
-            onClick={handleClose}
-            style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: `1.5px solid ${T.cardBorder}`, background: T.card, color: T.inkSub, fontFamily: T.font, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            style={{ flex: 2, padding: '12px 0', borderRadius: 12, border: 'none', background: saving ? '#F9C5DB' : '#FC4693', color: 'white', fontFamily: T.font, fontSize: 13, fontWeight: 700, cursor: saving ? 'default' : 'pointer', boxShadow: saving ? 'none' : '0 4px 12px rgba(233,30,106,0.3)' }}
-          >
-            {saving ? 'Saving…' : 'Log Expense'}
-          </button>
-        </div>
+        {/* Footer — hidden while keyboard is up so the pinned chrome doesn't eat
+            the already-shrunk sheet's usable form area; reappears on blur. */}
+        {!isKeyboardFocused && (
+          <div style={{ padding: '10px 18px 24px', borderTop: `1px solid ${T.cardBorder}`, display: 'flex', gap: 10, background: T.bg }}>
+            <button
+              onClick={handleClose}
+              style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: `1.5px solid ${T.cardBorder}`, background: T.card, color: T.inkSub, fontFamily: T.font, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              style={{ flex: 2, padding: '12px 0', borderRadius: 12, border: 'none', background: saving ? '#F9C5DB' : '#FC4693', color: 'white', fontFamily: T.font, fontSize: 13, fontWeight: 700, cursor: saving ? 'default' : 'pointer', boxShadow: saving ? 'none' : '0 4px 12px rgba(233,30,106,0.3)' }}
+            >
+              {saving ? 'Saving…' : 'Log Expense'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

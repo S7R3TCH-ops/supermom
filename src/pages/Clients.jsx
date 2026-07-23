@@ -258,7 +258,7 @@ export default function Clients() {
           overflowY: 'auto',
           padding: '4px 13px 80px',
           contain: 'layout style paint',
-          display: !loading && !error && filtered.length <= 2 ? 'flex' : 'block',
+          display: !loading && !error && filtered.length === 0 ? 'flex' : 'block',
           flexDirection: 'column',
           justifyContent: 'center',
         }}

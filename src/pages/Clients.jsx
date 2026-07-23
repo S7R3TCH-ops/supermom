@@ -250,28 +250,39 @@ export default function Clients() {
         </div>
       )}
 
-      {/* Empty state: No clients at all */}
-      {!loading && !error && clients.length === 0 && (
-        <div style={{ padding: '60px 20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
-          <EmptyClients size={100} />
-          <div style={{ fontFamily: T.font, fontSize: 13, color: T.inkMuted, maxWidth: 220, lineHeight: 1.5 }}>
-            No clients yet. Tap <strong style={{ color: T.pink }}>+</strong> below to add your first VIP.
-          </div>
-        </div>
-      )}
-
-      {/* Empty state: No search/filter results */}
-      {!loading && !error && clients.length > 0 && filtered.length === 0 && (
-        <div style={{ padding: '60px 20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
-          <NoResults size={100} />
-          <div style={{ fontFamily: T.font, fontSize: 13, color: T.inkMuted, maxWidth: 220, lineHeight: 1.5 }}>
-            No matches for "{search || filter}".
-          </div>
-        </div>
-      )}
-
       {/* Client list */}
-      <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '4px 13px 80px', contain: 'layout style paint' }}>
+      <div
+        className="sm-scroll"
+        style={{
+          flex: 1,
+          overflowY: 'auto',
+          padding: '4px 13px 80px',
+          contain: 'layout style paint',
+          display: !loading && !error && filtered.length <= 2 ? 'flex' : 'block',
+          flexDirection: 'column',
+          justifyContent: 'center',
+        }}
+      >
+        {/* Empty state: No clients at all */}
+        {!loading && !error && clients.length === 0 && (
+          <div style={{ padding: '20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
+            <EmptyClients size={100} />
+            <div style={{ fontFamily: T.font, fontSize: 13, color: T.inkMuted, maxWidth: 220, lineHeight: 1.5 }}>
+              No clients yet. Tap <strong style={{ color: T.pink }}>+</strong> below to add your first VIP.
+            </div>
+          </div>
+        )}
+
+        {/* Empty state: No search/filter results */}
+        {!loading && !error && clients.length > 0 && filtered.length === 0 && (
+          <div style={{ padding: '20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
+            <NoResults size={100} />
+            <div style={{ fontFamily: T.font, fontSize: 13, color: T.inkMuted, maxWidth: 220, lineHeight: 1.5 }}>
+              No matches for "{search || filter}".
+            </div>
+          </div>
+        )}
+
         {filtered.map((c, i) => (
           <ClientCard key={c.id || i} c={c} T={T} mode={mode} onPress={handleClientPress} onBook={openNewJobFor} />
         ))}

@@ -58,40 +58,77 @@ test.describe('Standard Business Flows', () => {
 
     // 1. Book first job at 10:00 AM
     await page.getByRole('link', { name: 'Home' }).click();
-    await page.getByRole('button', { name: 'Book new job' }).click();
+    // Expand bottom navigation menu by clicking the center "+" button
+    await page.getByRole('button', { name: 'Add or search' }).click();
+    await page.waitForTimeout(600); // Wait for expand animation
+    // Click "+ New Job" inside the menu
+    await page.getByRole('button', { name: '+ New Job' }).click();
     
-    const dialog = page.getByRole('dialog', { name: 'Book new job' });
+    const dialog = page.getByRole('dialog', { name: 'Book a mission' }).last();
     await expect(dialog).toBeVisible();
 
     // Step 1: Who (Pick Sarah)
     await dialog.locator('button').filter({ hasText: /Sarah/i }).first().click({ force: true });
     await page.waitForTimeout(1000);
-    await dialog.getByRole('button', { name: 'Next →' }).click({ force: true });
 
     // Step 2: What & When
     await dialog.locator('button').filter({ hasText: /Regular/i }).first().click({ force: true });
     // Date is usually today by default, but let's be explicit
     await dialog.getByLabel('Date').fill(dateStr);
-    await dialog.getByLabel('Time').fill('10:00');
-    await dialog.getByRole('button', { name: 'Next →' }).click({ force: true });
+    
+    // Set start time to 10:00 AM using picker
+    await dialog.getByRole('button', { name: 'Set' }).first().click();
+    await page.waitForTimeout(400);
+    await page.locator('.wheel-col-hide-scrollbar').nth(0).getByText('10', { exact: true }).click();
+    await page.locator('.wheel-col-hide-scrollbar').nth(1).getByText('00', { exact: true }).click();
+    await page.locator('.wheel-col-hide-scrollbar').nth(2).getByText('AM', { exact: true }).click();
+    await page.waitForTimeout(400);
+    await page.getByRole('button', { name: 'Done' }).click();
+    await page.waitForTimeout(600);
+
+    await dialog.getByRole('button', { name: /Next/i }).click({ force: true });
 
     // Step 3: Review & Book
-    await dialog.getByRole('button', { name: /Book it!/ }).click({ force: true });
+    const pastCheckbox = dialog.getByRole('checkbox', { name: /Yes, I know/i });
+    const conflictCheckbox = dialog.getByRole('checkbox', { name: /schedule/i });
+    for (let i = 0; i < 6; i++) {
+      if (await pastCheckbox.isVisible().catch(() => false)) {
+        await pastCheckbox.check({ force: true });
+      }
+      if (await conflictCheckbox.isVisible().catch(() => false)) {
+        await conflictCheckbox.check({ force: true });
+      }
+      await page.waitForTimeout(300);
+    }
+
+    await dialog.getByRole('button', { name: /Confirm Booking/ }).click({ force: true });
     await page.waitForTimeout(2500);
 
     // 2. Attempt to book another job that overlaps
-    await page.getByRole('button', { name: 'Book new job' }).click();
+    // Expand bottom navigation menu by clicking the center "+" button
+    await page.getByRole('button', { name: 'Add or search' }).click();
+    await page.waitForTimeout(600); // Wait for expand animation
+    // Click "+ New Job" inside the menu
+    await page.getByRole('button', { name: '+ New Job' }).click();
     await expect(dialog).toBeVisible();
 
     // Step 1: Who
     await dialog.locator('button').filter({ hasText: /Sarah/i }).first().click({ force: true });
     await page.waitForTimeout(1000);
-    await dialog.getByRole('button', { name: 'Next →' }).click({ force: true });
 
     // Step 2: What & When (Conflict)
     await dialog.locator('button').filter({ hasText: /Regular/i }).first().click({ force: true });
     await dialog.getByLabel('Date').fill(dateStr);
-    await dialog.getByLabel('Time').fill('10:30'); // Overlaps with 10:00 (2h duration)
+    
+    // Set start time to 10:30 AM using picker (overlaps with 10:00 AM)
+    await dialog.getByRole('button', { name: 'Set' }).first().click();
+    await page.waitForTimeout(400);
+    await page.locator('.wheel-col-hide-scrollbar').nth(0).getByText('10', { exact: true }).click();
+    await page.locator('.wheel-col-hide-scrollbar').nth(1).getByText('30', { exact: true }).click();
+    await page.locator('.wheel-col-hide-scrollbar').nth(2).getByText('AM', { exact: true }).click();
+    await page.waitForTimeout(400);
+    await page.getByRole('button', { name: 'Done' }).click();
+    await page.waitForTimeout(600);
 
     // Verify amber high-contrast conflict warning
     const conflictWarning = dialog.getByText(/Schedule Conflict/i);
@@ -110,13 +147,38 @@ test.describe('Standard Business Flows', () => {
     
     if (!(await sarahCard.isVisible())) {
       // Book one quickly
-      await page.getByRole('button', { name: 'Book new job' }).click();
-      const dialog = page.getByRole('dialog', { name: 'Book new job' });
+      // Expand bottom navigation menu by clicking the center "+" button
+      await page.getByRole('button', { name: 'Add or search' }).click();
+      await page.waitForTimeout(600); // Wait for expand animation
+      // Click "+ New Job" inside the menu
+      await page.getByRole('button', { name: '+ New Job' }).click();
+      const dialog = page.getByRole('dialog', { name: 'Book a mission' });
       await dialog.locator('button').filter({ hasText: /Sarah/i }).first().click({ force: true });
-      await dialog.getByRole('button', { name: 'Next →' }).click({ force: true });
+      await page.waitForTimeout(1000);
       await dialog.locator('button').filter({ hasText: /Regular/i }).first().click({ force: true });
-      await dialog.getByRole('button', { name: 'Next →' }).click({ force: true });
-      await dialog.getByRole('button', { name: /Book it!/ }).click({ force: true });
+      await page.waitForTimeout(600);
+
+      // Set start time using the wheel time picker (opens at 09:00 AM by default)
+      await dialog.getByRole('button', { name: 'Set' }).first().click();
+      await page.waitForTimeout(600);
+      await page.getByRole('button', { name: 'Done' }).click();
+      await page.waitForTimeout(600);
+
+      await dialog.getByRole('button', { name: /Next/i }).click({ force: true });
+      
+      const pastCheckbox = dialog.getByRole('checkbox', { name: /Yes, I know/i });
+      const conflictCheckbox = dialog.getByRole('checkbox', { name: /schedule/i });
+      for (let i = 0; i < 6; i++) {
+        if (await pastCheckbox.isVisible().catch(() => false)) {
+          await pastCheckbox.check({ force: true });
+        }
+        if (await conflictCheckbox.isVisible().catch(() => false)) {
+          await conflictCheckbox.check({ force: true });
+        }
+        await page.waitForTimeout(300);
+      }
+
+      await dialog.getByRole('button', { name: /Confirm Booking/ }).click({ force: true });
       await page.waitForTimeout(2500);
     }
 

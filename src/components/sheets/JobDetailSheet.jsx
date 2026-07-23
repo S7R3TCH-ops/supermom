@@ -21,6 +21,9 @@ import { queryClient } from '../../lib/queryClient';
 import { supabase } from '../../lib/supabase';
 import GrabBar from '../ui/GrabBar';
 import FinancialMathBreakdown from '../ui/FinancialMathBreakdown';
+import PhotoLightbox from '../ui/PhotoLightbox';
+import WheelDatePicker from '../ui/WheelDatePicker';
+import WheelTimePicker from '../ui/WheelTimePicker';
 import { triggerHaptic } from '../../lib/haptics';
 
 const STATUS_COLORS = {
@@ -365,7 +368,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
           background: T.bg, color: T.ink,
           borderRadius: '18px 18px 0 0',
           boxShadow: '0 -10px 40px rgba(0,0,0,0.38)',
-          maxHeight: '92svh', display: 'flex', flexDirection: 'column',
+          maxHeight: 'calc(var(--app-height, 100dvh) * 0.92)', display: 'flex', flexDirection: 'column',
           animation: 'jdsSlide 260ms cubic-bezier(0.2,0.8,0.2,1)',
           border: `1px solid ${T.cardBorder}`, borderBottom: 'none',
         }}
@@ -742,6 +745,7 @@ function EditMode({ job, stage, form, setForm, services, workers, business, T, m
   const serviceRef = useRef(null);
   const rateRef = useRef(null);
   const hoursRef = useRef(null);
+  const [activePicker, setActivePicker] = useState(null); // null | 'date' | 'start' | 'end'
   function set(k, v) { setForm(f => ({ ...f, [k]: v })); }
 
   function handleSaveClick() {
@@ -816,33 +820,79 @@ function EditMode({ job, stage, form, setForm, services, workers, business, T, m
       </div>
       <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '12px 14px 4px' }}>
         <SectionDivider label="Schedule & Service" T={T} />
-        <Field T={T} label="Date"><input ref={dateRef} type="date" value={form.scheduled_date} onChange={e => set('scheduled_date', e.target.value)} style={iStyle(T)} /></Field>
+        <Field T={T} label="Date">
+          <button
+            ref={dateRef}
+            type="button"
+            onClick={() => setActivePicker('date')}
+            style={{ ...iStyle(T), width: '100%', textAlign: 'left', cursor: 'pointer' }}
+          >
+            {form.scheduled_date ? new Date(form.scheduled_date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : 'Select a date'}
+          </button>
+        </Field>
         <Field T={T} label="Time">
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 18px 1fr', alignItems: 'end', gap: 4 }}>
             <div>
               <div style={{ fontSize: 9, fontWeight: 600, color: T.inkMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.4px' }}>Start</div>
-              <input ref={timeRef} type="time" step={1800} value={form.scheduled_time} onChange={e => set('scheduled_time', roundToHalfHour(e.target.value))} style={iStyle(T)} />
+              <button
+                ref={timeRef}
+                type="button"
+                onClick={() => setActivePicker('start')}
+                style={{ ...iStyle(T), width: '100%', textAlign: 'left', cursor: 'pointer' }}
+              >
+                {form.scheduled_time ? fmtTime12(form.scheduled_time) : 'Set'}
+              </button>
             </div>
             <div style={{ textAlign: 'center', color: T.inkMuted, fontSize: 13, paddingBottom: 9 }}>→</div>
             <div>
               <div style={{ fontSize: 9, fontWeight: 600, color: T.inkMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.4px' }}>End</div>
-              <input
-                type="time"
-                step={1800}
-                value={toHHMMStr(form.scheduled_time, Math.round(parseFloat(form.estimated_hours || 0) * 60))}
+              <button
+                type="button"
                 disabled={!form.scheduled_time}
-                onChange={e => {
-                  const mins = diffMinutes(form.scheduled_time, roundToHalfHour(e.target.value));
-                  if (mins != null) { set('estimated_hours', (mins / 60).toFixed(2)); set('hoursTouched', true); }
-                }}
-                style={{ ...iStyle(T), opacity: form.scheduled_time ? 1 : 0.4 }}
-              />
+                onClick={() => setActivePicker('end')}
+                style={{ ...iStyle(T), width: '100%', textAlign: 'left', opacity: form.scheduled_time ? 1 : 0.4, cursor: form.scheduled_time ? 'pointer' : 'default' }}
+              >
+                {form.scheduled_time && toHHMMStr(form.scheduled_time, Math.round(parseFloat(form.estimated_hours || 0) * 60))
+                  ? fmtTime12(toHHMMStr(form.scheduled_time, Math.round(parseFloat(form.estimated_hours || 0) * 60)))
+                  : 'Set'}
+              </button>
             </div>
           </div>
           {!form.scheduled_time && (
             <div style={{ fontSize: 9, color: T.inkMuted, marginTop: 4 }}>Set start time first</div>
           )}
         </Field>
+        {activePicker === 'date' && (
+          <WheelDatePicker
+            value={form.scheduled_date}
+            onConfirm={(iso) => { set('scheduled_date', iso); setActivePicker(null); }}
+            onCancel={() => setActivePicker(null)}
+            T={T}
+            mode={mode}
+          />
+        )}
+        {activePicker === 'start' && (
+          <WheelTimePicker
+            value={form.scheduled_time || '09:00'}
+            onConfirm={(hhmm) => { set('scheduled_time', roundToHalfHour(hhmm)); setActivePicker(null); }}
+            onCancel={() => setActivePicker(null)}
+            T={T}
+            mode={mode}
+          />
+        )}
+        {activePicker === 'end' && (
+          <WheelTimePicker
+            value={toHHMMStr(form.scheduled_time, Math.round(parseFloat(form.estimated_hours || 0) * 60)) || form.scheduled_time}
+            onConfirm={(hhmm) => {
+              const mins = diffMinutes(form.scheduled_time, roundToHalfHour(hhmm));
+              if (mins != null) { set('estimated_hours', (mins / 60).toFixed(2)); set('hoursTouched', true); }
+              setActivePicker(null);
+            }}
+            onCancel={() => setActivePicker(null)}
+            T={T}
+            mode={mode}
+          />
+        )}
         <Field T={T} label="Service">
           <select ref={serviceRef} value={form.service_id || ''} onChange={onPickService} style={{ ...iStyle(T), width: '100%' }}>
             <option value="">— select —</option>
@@ -1146,13 +1196,14 @@ function PrepNoteCard({ job, T, business, onDeepPrep, mode }) {
 function MediaCard({ job, T, mode, onUpdate }) {
   const [photoUrls, setPhotoUrls] = useState([]);
   const [voiceUrl, setVoiceUrl] = useState(null);
+  const [lightboxUrl, setLightboxUrl] = useState(null);
   const fileInputRef = useRef(null);
   const photoPaths = (job.photo_links || '').split(',').filter(Boolean);
-  useEffect(() => { 
+  useEffect(() => {
     const paths = (job.photo_links || '').split(',').filter(Boolean);
-    if (paths.length > 0) getSignedUrls(paths).then(setPhotoUrls); 
-    if (job.voice_note) getSignedUrl(job.voice_note).then(setVoiceUrl); 
+    if (paths.length > 0) getSignedUrls(paths).then(setPhotoUrls);
+    if (job.voice_note) getSignedUrl(job.voice_note).then(setVoiceUrl);
   }, [job.photo_links, job.voice_note]);
   async function handlePhotoUpload(e) { const file = e.target.files?.[0]; if (!file) return; try { const path = await uploadFile(job.id, file, 'photo'); await onUpdate({ photo_links: [...photoPaths, path].join(',') }); } catch (err) { alert(err.message); } }
-  return <InfoCard T={T}><div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: T.inkMuted, marginBottom: 6 }}>Media</div>{photoUrls.length > 0 && <div className="sm-scroll" style={{ display: 'flex', gap: 8, overflowX: 'auto', marginBottom: 8 }}>{photoUrls.map((url, i) => <img key={i} src={url} alt="" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8 }} />)}</div>}{voiceUrl && <div style={{ marginBottom: 12 }}><audio controls src={voiceUrl} style={{ width: '100%', height: 32 }} /></div>}<div style={{ display: 'flex', gap: 8 }}><input type="file" accept="image/*" aria-label="Add photo" ref={fileInputRef} onChange={handlePhotoUpload} style={{ display: 'none' }} /><Btn onClick={() => fileInputRef.current?.click()} bg={mode === 'dark' ? 'rgba(255,255,255,0.05)' : T.pinkTint} color={T.pink} T={T} style={{ flex: 1, padding: '8px 0', fontSize: 11.5 }}>📸 Add Photo</Btn></div></InfoCard>;
+  return <InfoCard T={T}><div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: T.inkMuted, marginBottom: 6 }}>Media</div>{photoUrls.length > 0 && <div className="sm-scroll" style={{ display: 'flex', gap: 8, overflowX: 'auto', marginBottom: 8 }}>{photoUrls.map((url, i) => <img key={i} src={url} alt="" onClick={() => setLightboxUrl(url)} style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8, cursor: 'pointer' }} />)}</div>}{voiceUrl && <div style={{ marginBottom: 12 }}><audio controls src={voiceUrl} style={{ width: '100%', height: 32 }} /></div>}<div style={{ display: 'flex', gap: 8 }}><input type="file" accept="image/*" aria-label="Add photo" ref={fileInputRef} onChange={handlePhotoUpload} style={{ display: 'none' }} /><Btn onClick={() => fileInputRef.current?.click()} bg={mode === 'dark' ? 'rgba(255,255,255,0.05)' : T.pinkTint} color={T.pink} T={T} style={{ flex: 1, padding: '8px 0', fontSize: 11.5 }}>📸 Add Photo</Btn></div><PhotoLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} /></InfoCard>;
 }

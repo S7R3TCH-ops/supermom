@@ -21,7 +21,7 @@ test.describe('Schedule page agenda content-area swipe', () => {
 
     await page.goto('/calendar');
     await page.waitForTimeout(2000);
-    await expect(page.getByText('Schedule', { exact: true })).toBeVisible();
+    await expect(page.getByText('Schedule', { exact: true }).first()).toBeVisible();
 
     // Baseline: no day filter set.
     await expect(page.getByText('Whole week')).toBeVisible();

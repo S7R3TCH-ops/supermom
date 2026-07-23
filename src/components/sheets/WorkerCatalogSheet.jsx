@@ -217,7 +217,7 @@ export default function WorkerCatalogSheet({ isOpen, onClose }) {
         onClick={e => e.stopPropagation()}
         style={{
           background: T.bg, width: '100%', maxWidth: 500, margin: '0 auto',
-          maxHeight: '92svh', borderTopLeftRadius: 24, borderTopRightRadius: 24,
+          maxHeight: 'calc(var(--app-height, 100dvh) * 0.92)', borderTopLeftRadius: 24, borderTopRightRadius: 24,
           display: 'flex', flexDirection: 'column', overflow: 'hidden',
           boxShadow: '0 -8px 40px rgba(0,0,0,0.4)',
         }}

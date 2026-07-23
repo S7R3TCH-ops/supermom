@@ -1,4 +1,7 @@
 import { test as setup, expect } from '@playwright/test';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const authFile = 'playwright/.auth/user.json';
 
@@ -7,13 +10,15 @@ setup('authenticate', async ({ page }) => {
   await page.goto('/');
 
   // 2. Fill login form
-  // Use Joel's owner account (joel@test.com) — same permissions as Sandra for testing.
-  // Sandra's password is unknown; use ADMIN_EMAIL/ADMIN_PASSWORD env vars to override.
-  const email = process.env.ADMIN_EMAIL || 'jlundie@gmail.com';
-  const password = process.env.ADMIN_PASSWORD || 'TempPass2026!';
+  // Use the canonical shared QA account (Bright Path Concierge)
+  const email = process.env.ADMIN_EMAIL || 'jlundie+supermom-qa@gmail.com';
+  const password = process.env.ADMIN_PASSWORD;
+  if (!password) {
+    throw new Error('ADMIN_PASSWORD env var is required (no hardcoded fallback — set it in .env)');
+  }
 
   await page.getByLabel('EMAIL').fill(email);
-  await page.getByLabel('PASSWORD').fill(password);
+  await page.locator('input[type="password"]').fill(password);
   await page.getByRole('button', { name: 'Sign in' }).click();
 
   // 3. Check for errors or wait for redirect
@@ -41,7 +46,7 @@ setup('authenticate', async ({ page }) => {
   }
 
   // 5. Verify we are on home page
-  await expect(page.getByText('Today', { exact: true })).toBeVisible();
+  await expect(page.getByText('Today')).toBeVisible();
 
   // 6. Save storage state
   await page.context().storageState({ path: authFile });

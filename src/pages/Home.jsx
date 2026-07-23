@@ -658,6 +658,10 @@ export default function Home() {
     );
   }
 
+  const totalHomeItems = (activeJob ? 1 : 0) + (next ? 1 : 0) + todayUpcoming.length + owingJobs.length + restOfWeekJobs.length + nextWeekJobs.length + completedPaidThisWeek.length;
+  const showNotifBanner = notifPermission === 'default' && !notifBannerDismissed;
+  const isShortContent = !loading && totalHomeItems <= 2 && !showNotifBanner;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: T.bg, color: T.ink }}>
       {/* Hero */}
@@ -775,7 +779,17 @@ export default function Home() {
         )}
       </div>
 
-      <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '16px 14px' }}>
+      <div
+        className="sm-scroll"
+        style={{
+          flex: 1,
+          overflowY: 'auto',
+          padding: '16px 14px',
+          display: isShortContent ? 'flex' : 'block',
+          flexDirection: 'column',
+          justifyContent: 'center',
+        }}
+      >
 
         {/* Loading skeleton — shown while initial data fetch is in flight */}
         {loading && !allJobs && (

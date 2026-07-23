@@ -18,6 +18,8 @@ import { buildFinancialPatch } from '../../lib/jobDraftPolicy';
 import { useKeyboardFocus } from '../../hooks/useKeyboardFocus';
 import GrabBar from '../ui/GrabBar';
 import FinancialMathBreakdown from '../ui/FinancialMathBreakdown';
+import WheelDatePicker from '../ui/WheelDatePicker';
+import WheelTimePicker from '../ui/WheelTimePicker';
 
 function todayISODate() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Toronto' }).format(new Date());
@@ -73,7 +75,8 @@ function diffMinutes(startHHMM, endHHMM) {
 }
 
 export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
-  const { T } = useAppTheme();
+  const { T, mode } = useAppTheme();
+  const [activePicker, setActivePicker] = useState(null); // null | 'date' | 'start' | 'end'
   const navigate = useNavigate();
   const toast = useToast();
   const isKeyboardFocused = useKeyboardFocus();
@@ -321,7 +324,7 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
       `}</style>
       <div style={{
         background: T.bg, width: '100%', maxWidth: 500, margin: '0 auto',
-        height: '92svh', borderTopLeftRadius: 28, borderTopRightRadius: 28,
+        height: 'calc(var(--app-height, 100dvh) * 0.92)', borderTopLeftRadius: 28, borderTopRightRadius: 28,
         display: 'flex', flexDirection: 'column', overflow: 'hidden',
         animation: 'njSlide 300ms cubic-bezier(0.16, 1, 0.3, 1)',
         boxShadow: '0 -8px 40px rgba(0,0,0,0.4)',
@@ -363,6 +366,7 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
             />
           ) : step === 2 ? (
             <Step2What
+              setActivePicker={setActivePicker}
               selectedClient={selectedClient}
               services={services}
               serviceId={serviceId}
@@ -460,6 +464,38 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
         </div>
       </div>
 
+      {activePicker === 'date' && (
+        <WheelDatePicker
+          value={date}
+          onConfirm={(iso) => { setDate(iso); setActivePicker(null); }}
+          onCancel={() => setActivePicker(null)}
+          T={T}
+          mode={mode}
+        />
+      )}
+      {activePicker === 'start' && (
+        <WheelTimePicker
+          value={time || '09:00'}
+          onConfirm={(hhmm) => { setTime(roundToHalfHour(hhmm)); setActivePicker(null); }}
+          onCancel={() => setActivePicker(null)}
+          T={T}
+          mode={mode}
+        />
+      )}
+      {activePicker === 'end' && (
+        <WheelTimePicker
+          value={toHHMMStr(time, duration) || time}
+          onConfirm={(hhmm) => {
+            const mins = diffMinutes(time, roundToHalfHour(hhmm));
+            if (mins != null) setDuration(mins);
+            setActivePicker(null);
+          }}
+          onCancel={() => setActivePicker(null)}
+          T={T}
+          mode={mode}
+        />
+      )}
+
       {showNewClient && (
         <NewClientSheet
           onClose={() => setShowNewClient(false)}
@@ -545,6 +581,7 @@ function fmtMins(min) {
 }
 
 function Step2What({
+  setActivePicker,
   selectedClient, services, serviceId, onPickService,
   date, setDate, time, setTime, duration, setDuration,
   recurrence, setRecurrence, notes, setNotes,
@@ -653,7 +690,13 @@ function Step2What({
       {/* Date */}
       <div>
         <SectionLabel>When</SectionLabel>
-        <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: 12, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.ink, fontSize: 14 }} />
+        <button
+          type="button"
+          onClick={() => setActivePicker('date')}
+          style={{ width: '100%', textAlign: 'left', padding: '12px', borderRadius: 12, background: T.card, border: `1px solid ${T.cardBorder}`, color: date ? T.ink : T.inkMuted, fontSize: 14, cursor: 'pointer' }}
+        >
+          {date ? new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : 'Select a date'}
+        </button>
       </div>
 
       {/* Start & End Time */}
@@ -662,22 +705,25 @@ function Step2What({
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 18px 1fr', alignItems: 'end', gap: 4 }}>
           <div>
             <div style={{ fontSize: 10, fontWeight: 600, color: T.inkMuted, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.4px' }}>Start</div>
-            <input type="time" step={1800} value={time} onChange={e => setTime(roundToHalfHour(e.target.value))} style={{ width: '100%', padding: '10px 8px', borderRadius: 12, background: T.card, border: `1.5px solid ${time ? T.cardBorder : T.pink}`, color: T.ink, fontSize: 14 }} />
+            <button
+              type="button"
+              onClick={() => setActivePicker('start')}
+              style={{ width: '100%', textAlign: 'left', padding: '10px 8px', borderRadius: 12, background: T.card, border: `1.5px solid ${time ? T.cardBorder : T.pink}`, color: time ? T.ink : T.inkMuted, fontSize: 14, cursor: 'pointer' }}
+            >
+              {time ? fmtTime12(time) : 'Set'}
+            </button>
           </div>
           <div style={{ textAlign: 'center', color: T.inkMuted, fontSize: 13, paddingBottom: 10 }}>→</div>
           <div>
             <div style={{ fontSize: 10, fontWeight: 600, color: T.inkMuted, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.4px' }}>End</div>
-            <input
-              type="time"
-              step={1800}
-              value={toHHMMStr(time, duration)}
+            <button
+              type="button"
               disabled={!time}
-              onChange={e => {
-                const mins = diffMinutes(time, roundToHalfHour(e.target.value));
-                if (mins != null) setDuration(mins);
-              }}
-              style={{ width: '100%', padding: '10px 8px', borderRadius: 12, background: T.card, border: `1.5px solid ${T.cardBorder}`, color: T.ink, fontSize: 14, opacity: time ? 1 : 0.4 }}
-            />
+              onClick={() => setActivePicker('end')}
+              style={{ width: '100%', textAlign: 'left', padding: '10px 8px', borderRadius: 12, background: T.card, border: `1.5px solid ${T.cardBorder}`, color: T.ink, fontSize: 14, opacity: time ? 1 : 0.4, cursor: time ? 'pointer' : 'default' }}
+            >
+              {time && toHHMMStr(time, duration) ? fmtTime12(toHHMMStr(time, duration)) : 'Set'}
+            </button>
           </div>
         </div>
         {!time && (

@@ -194,6 +194,8 @@ button {
   flex-shrink: 0;
 }
 
+.wheel-col-hide-scrollbar::-webkit-scrollbar { width: 0; height: 0; }
+
 /* Global Mobile Polish */
 * {
   -webkit-tap-highlight-color: transparent; /* Remove the grey box on tap in iOS/Chrome */

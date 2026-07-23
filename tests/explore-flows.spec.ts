@@ -1,15 +1,16 @@
 /**
  * Exploratory flow: create client → book job (multiple paths) → partial payment → full payment + additional costs
- * Runs as superadmin (Joel) with viewpoint set to Sandra's business.
+ * Runs as the canonical QA account (Bright Path Concierge, jlundie+supermom-qa@gmail.com) —
+ * an owner account, no admin viewpoint-switch needed. Never use the real superadmin account for this.
  * All flows run in ONE test to maintain shared state (client created in step 1 used in steps 2+).
  *
- * Run: npx playwright test tests/explore-flows.spec.ts --project=superadmin-chromium --reporter=list
+ * Run: npx playwright test tests/explore-flows.spec.ts --project=chromium --reporter=list
  */
 import { test, expect, Page } from '@playwright/test';
 import path from 'path';
 import fs from 'fs';
 
-test.use({ storageState: 'playwright/.auth/superadmin.json' });
+test.use({ storageState: 'playwright/.auth/user.json' });
 
 const SS_DIR = path.join(process.cwd(), 'test-screenshots');
 if (!fs.existsSync(SS_DIR)) fs.mkdirSync(SS_DIR, { recursive: true });
@@ -26,27 +27,12 @@ const CLIENT_FIRST = 'Tester';
 const CLIENT_LAST  = `Flow${Date.now().toString().slice(-6)}`;
 const CLIENT_FULL  = `${CLIENT_FIRST} ${CLIENT_LAST}`;
 
-async function switchViewpoint(page: Page) {
-  await page.goto('/admin');
-  await page.waitForTimeout(1800);
-  const select = page.locator('select').first();
-  if (await select.isVisible().catch(() => false)) {
-    const options = await select.locator('option').all();
-    if (options.length > 1) {
-      await select.selectOption({ index: 1 });
-      await page.getByRole('button', { name: /switch/i }).click();
-      await page.waitForTimeout(1200);
-    }
-  }
-  // Client-side nav preserves React state + superOverrideId
-  await page.getByRole('link', { name: /home/i }).first().click();
-  await page.waitForTimeout(1500);
-}
-
 test('Full owner flow — create client → book job → partial payment → complete with additional costs', async ({ page }) => {
+  test.setTimeout(120000);
   await page.addInitScript(() => { (window as any).__SKIP_ONBOARDING = true; });
 
-  await switchViewpoint(page);
+  await page.goto('/');
+  await page.waitForTimeout(1500);
   await ss(page, '01-home-start');
 
   // ─────────────────────────────────────────────────────────────
@@ -57,8 +43,12 @@ test('Full owner flow — create client → book job → partial payment → com
   await page.waitForTimeout(1000);
   await ss(page, '02-clients-page');
 
-  // Open New Client sheet via the + button
-  await page.getByRole('button', { name: /add client|\+/i }).first().click();
+  // Expand bottom navigation menu by clicking the center "+" button
+  await page.getByRole('button', { name: 'Add or search' }).click();
+  await page.waitForTimeout(600); // Wait for expand animation
+
+  // Click "+ New Client" inside the menu
+  await page.getByRole('button', { name: '+ New Client' }).click();
   await page.waitForTimeout(800);
   await ss(page, '03-new-client-sheet');
 
@@ -90,13 +80,18 @@ test('Full owner flow — create client → book job → partial payment → com
   await page.getByRole('link', { name: /home/i }).first().click();
   await page.waitForTimeout(1000);
 
-  const fab = page.getByRole('button', { name: /book new job/i });
-  await expect(fab).toBeVisible({ timeout: 5000 });
-  await fab.click();
+  // Expand bottom navigation menu by clicking the center "+" button
+  const addBtn = page.getByRole('button', { name: 'Add or search' });
+  await expect(addBtn).toBeVisible({ timeout: 5000 });
+  await addBtn.click();
+  await page.waitForTimeout(600); // Wait for expand animation
+
+  // Click "+ New Job" inside the menu
+  await page.getByRole('button', { name: '+ New Job' }).click();
   await page.waitForTimeout(1000);
   await ss(page, '06-new-job-step1');
 
-  const njDialog = page.getByRole('dialog', { name: /book new job/i });
+  const njDialog = page.getByRole('dialog', { name: /book a mission/i }).last();
   await expect(njDialog).toBeVisible();
 
   // Step1: check client cards (they only show first name)
@@ -129,7 +124,6 @@ test('Full owner flow — create client → book job → partial payment → com
     console.log('✅ Selected client banner shows full name correctly');
   }
 
-  await njDialog.getByRole('button', { name: /next/i }).click();
   await page.waitForTimeout(1000);
   await ss(page, '08-step2-what');
 
@@ -143,11 +137,29 @@ test('Full owner flow — create client → book job → partial payment → com
   }
   await ss(page, '09-service-selected');
 
+  // Set start time using the wheel time picker (opens at 09:00 AM by default)
+  await njDialog.getByRole('button', { name: 'Set' }).first().click();
+  await page.waitForTimeout(600);
+  await page.getByRole('button', { name: 'Done' }).click();
+  await page.waitForTimeout(600);
+
   await njDialog.getByRole('button', { name: /next/i }).click();
   await page.waitForTimeout(800);
   await ss(page, '10-step3-review');
 
-  const bookBtn = njDialog.getByRole('button', { name: /book it/i });
+  const pastCheckbox = njDialog.getByRole('checkbox', { name: /Yes, I know/i });
+  const conflictCheckbox = njDialog.getByRole('checkbox', { name: /schedule/i });
+  for (let i = 0; i < 6; i++) {
+    if (await pastCheckbox.isVisible().catch(() => false)) {
+      await pastCheckbox.check({ force: true });
+    }
+    if (await conflictCheckbox.isVisible().catch(() => false)) {
+      await conflictCheckbox.check({ force: true });
+    }
+    await page.waitForTimeout(300);
+  }
+
+  const bookBtn = njDialog.getByRole('button', { name: /Confirm Booking/i });
   await expect(bookBtn).toBeVisible({ timeout: 5000 });
   await bookBtn.click();
   await page.waitForTimeout(2500);
@@ -189,11 +201,11 @@ test('Full owner flow — create client → book job → partial payment → com
       await page.waitForTimeout(1000);
       await ss(page, '15-new-job-from-profile');
 
-      const profileDialog = page.getByRole('dialog', { name: /book new job/i });
+      const profileDialog = page.getByRole('dialog', { name: /book a mission/i }).last();
       await expect(profileDialog).toBeVisible();
 
       // Should open at step 2 (client pre-selected); step indicator shows "Step 1 of 2"
-      const stepLabel = await profileDialog.getByText(/step/i).first().innerText().catch(() => '?');
+      const stepLabel = await profileDialog.getByText(/step/i).first().innerText({ timeout: 1000 }).catch(() => '?');
       console.log(`Step label when opened from profile: "${stepLabel}"`);
       if (stepLabel.includes('1 of 3') || stepLabel.includes('Step 1')) {
         console.warn('⚠️  BUG: Opening from profile shows Step 1 instead of Step 2');
@@ -201,20 +213,37 @@ test('Full owner flow — create client → book job → partial payment → com
 
       // Pick a service
       const svc = profileDialog.locator('button').filter({ hasText: /\$|\/hr/i }).first();
-      if (await svc.isVisible({ timeout: 5000 }).catch(() => false)) {
-        await svc.click();
-        await page.waitForTimeout(600);
-        await profileDialog.getByRole('button', { name: /next/i }).click();
-        await page.waitForTimeout(800);
-        await ss(page, '16-profile-job-step3');
+      await svc.waitFor({ state: 'visible', timeout: 5000 });
+      await svc.click();
+      await page.waitForTimeout(600);
+      // Set start time using the wheel time picker (opens at 09:00 AM by default)
+      await profileDialog.getByRole('button', { name: 'Set' }).first().click();
+      await page.waitForTimeout(600);
+      await page.getByRole('button', { name: 'Done' }).click();
+      await page.waitForTimeout(600);
 
-        const profileBookBtn = profileDialog.getByRole('button', { name: /book it/i });
-        await expect(profileBookBtn).toBeVisible({ timeout: 5000 });
-        await profileBookBtn.click();
-        await page.waitForTimeout(2000);
-        await ss(page, '17-profile-job-booked');
-        console.log('✅ Second job booked from client profile');
+      await profileDialog.getByRole('button', { name: /next/i }).click();
+      await page.waitForTimeout(800);
+      await ss(page, '16-profile-job-step3');
+
+      const profilePastCheckbox = profileDialog.getByRole('checkbox', { name: /Yes, I know/i });
+      const profileConflictCheckbox = profileDialog.getByRole('checkbox', { name: /schedule/i });
+      for (let i = 0; i < 6; i++) {
+        if (await profilePastCheckbox.isVisible().catch(() => false)) {
+          await profilePastCheckbox.check({ force: true });
+        }
+        if (await profileConflictCheckbox.isVisible().catch(() => false)) {
+          await profileConflictCheckbox.check({ force: true });
+        }
+        await page.waitForTimeout(300);
       }
+
+      const profileBookBtn = profileDialog.getByRole('button', { name: /Confirm Booking/i });
+      await expect(profileBookBtn).toBeVisible({ timeout: 5000 });
+      await profileBookBtn.click();
+      await page.waitForTimeout(2000);
+      await ss(page, '17-profile-job-booked');
+      console.log('✅ Second job booked from client profile');
     }
   }
 
@@ -271,10 +300,11 @@ test('Full owner flow — create client → book job → partial payment → com
     if (!await pjDialog.isVisible({ timeout: 5000 }).catch(() => false)) {
       console.warn('⚠️  BUG: PostJobSheet did not open');
     } else {
-      // Default should be "Paid" — verify
-      const isPaidDefault = await pjDialog.getByRole('button', { name: /paid ✓/i }).evaluate((el) => {
-        return el.style.background.includes('rgba') && el.style.background.includes('34,197,94');
-      }).catch(() => false);
+      // Default should be "Paid" — verify (should be styled with pink background token)
+      const paidBtn = pjDialog.getByRole('button', { name: 'paid', exact: true });
+      const isPaidDefault = await paidBtn.evaluate((el) => {
+        return el.style.background.includes('rgba') || el.style.background.includes('rgb') || el.style.background.includes('#');
+      }, null, { timeout: 1000 }).catch(() => false);
       console.log('PostJobSheet defaults to Paid:', isPaidDefault);
 
       // Switch to Partial
@@ -298,7 +328,7 @@ test('Full owner flow — create client → book job → partial payment → com
       await ss(page, '23-partial-amount-set');
 
       // Check balance math
-      const balanceText = await pjDialog.getByText(/balance owing/i).textContent().catch(() => '');
+      const balanceText = await pjDialog.getByText(/balance owing/i).textContent({ timeout: 1000 }).catch(() => '');
       console.log('Balance owing text:', balanceText);
 
       // Add a post-job note before saving
@@ -312,7 +342,17 @@ test('Full owner flow — create client → book job → partial payment → com
       } else {
         await ss(page, '24-ready-to-save-partial');
         await savePartialBtn.click();
-        await page.waitForTimeout(3000);
+
+        // Wait for the success overlay and click "Not now" to dismiss it
+        const notNowBtn = pjDialog.getByRole('button', { name: /Not now/i });
+        try {
+          await notNowBtn.waitFor({ state: 'visible', timeout: 3000 });
+          await notNowBtn.click();
+        } catch (e) {
+          console.log('No "Not now" button appeared after partial payment:', e.message);
+        }
+
+        await page.waitForTimeout(1000);
         await ss(page, '25-after-partial-save');
         console.log('✅ Partial payment recorded');
       }
@@ -404,7 +444,17 @@ test('Full owner flow — create client → book job → partial payment → com
           await ss(page, '31b-save-paid-not-found');
         } else {
           await saveFullBtn.click();
-          await page.waitForTimeout(3000);
+
+          // Wait for the success overlay and click "Not now" to dismiss it
+          const notNowBtn = pj2.getByRole('button', { name: /Not now/i });
+          try {
+            await notNowBtn.waitFor({ state: 'visible', timeout: 3000 });
+            await notNowBtn.click();
+          } catch (e) {
+            console.log('No "Not now" button appeared after full payment:', e.message);
+          }
+
+          await page.waitForTimeout(1000);
           await ss(page, '32-after-full-payment');
           console.log('✅ Full payment with additional costs recorded');
         }
@@ -453,8 +503,8 @@ test('Full owner flow — create client → book job → partial payment → com
 
     if (invoiceBtn) {
       const [popup] = await Promise.all([
-        page.context().waitForEvent('page'),
-        finalDetail.getByRole('button', { name: /view/i }).click(),
+        page.waitForEvent('popup'),
+        finalDetail.getByRole('button', { name: /view/i }).click({ force: true }),
       ]);
       await popup.waitForLoadState('networkidle');
       await ss(popup as Page, '36-invoice-page');

@@ -13,14 +13,38 @@ test.describe('QA Regression Suite', () => {
 
   test('Job Editing Validation: Red-box error on empty fields', async ({ page }) => {
     // 1. Setup: Book a job quickly
-    await page.getByRole('button', { name: 'Book new job' }).click();
-    const dialog = page.getByRole('dialog', { name: 'Book new job' });
-    await dialog.locator('button').filter({ hasText: /@/ }).first().click({ force: true });
+    // Expand bottom navigation menu by clicking the center "+" button
+    await page.getByRole('button', { name: 'Add or search' }).click();
+    await page.waitForTimeout(600); // Wait for expand animation
+    // Click "+ New Job" inside the menu
+    await page.getByRole('button', { name: '+ New Job' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Book a mission' }).last();
+    await dialog.locator('button').filter({ hasText: /Maria/i }).first().click({ force: true });
     await page.waitForTimeout(1000);
-    await dialog.getByRole('button', { name: 'Next →' }).click({ force: true });
     await dialog.locator('button').filter({ hasText: /\$|\/hr/ }).first().click({ force: true });
-    await dialog.getByRole('button', { name: 'Next →' }).click({ force: true });
-    await dialog.getByRole('button', { name: /Book it!/ }).click({ force: true });
+    await page.waitForTimeout(600);
+
+    // Set start time using picker
+    await dialog.getByRole('button', { name: 'Set' }).first().click();
+    await page.waitForTimeout(600);
+    await page.getByRole('button', { name: 'Done' }).click();
+    await page.waitForTimeout(600);
+
+    await dialog.getByRole('button', { name: /Next/i }).click({ force: true });
+
+    const pastCheckbox = dialog.getByRole('checkbox', { name: /Yes, I know/i });
+    const conflictCheckbox = dialog.getByRole('checkbox', { name: /schedule/i });
+    for (let i = 0; i < 6; i++) {
+      if (await pastCheckbox.isVisible().catch(() => false)) {
+        await pastCheckbox.check({ force: true });
+      }
+      if (await conflictCheckbox.isVisible().catch(() => false)) {
+        await conflictCheckbox.check({ force: true });
+      }
+      await page.waitForTimeout(300);
+    }
+
+    await dialog.getByRole('button', { name: /Confirm Booking/ }).click({ force: true });
     await page.waitForTimeout(2500);
 
     // 2. Open Job Detail Sheet
@@ -58,16 +82,20 @@ test.describe('QA Regression Suite', () => {
 
   test('Future-dated job completion flow (No freeze/crash)', async ({ page }) => {
     // 1. Setup: Book a job for tomorrow
-    await page.getByRole('button', { name: 'Book new job' }).click();
-    const dialog = page.getByRole('dialog', { name: 'Book new job' });
+    // Expand bottom navigation menu by clicking the center "+" button
+    await page.getByRole('button', { name: 'Add or search' }).click();
+    await page.waitForTimeout(600); // Wait for expand animation
+    // Click "+ New Job" inside the menu
+    await page.getByRole('button', { name: '+ New Job' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Book a mission' }).last();
     
     // Step 1: Who
-    await dialog.locator('button').filter({ hasText: /@/ }).first().click({ force: true });
+    await dialog.locator('button').filter({ hasText: /Maria/i }).first().click({ force: true });
     await page.waitForTimeout(1000);
-    await dialog.getByRole('button', { name: 'Next →' }).click({ force: true });
 
     // Step 2: What & When
     await dialog.locator('button').filter({ hasText: /\$|\/hr/ }).first().click({ force: true });
+    await page.waitForTimeout(600);
     
     // Set date to tomorrow
     const tomorrow = new Date();
@@ -75,10 +103,28 @@ test.describe('QA Regression Suite', () => {
     const dateStr = tomorrow.toISOString().split('T')[0];
     await dialog.getByLabel('Date').fill(dateStr);
     
-    await dialog.getByRole('button', { name: 'Next →' }).click({ force: true });
+    // Set start time using picker
+    await dialog.getByRole('button', { name: 'Set' }).first().click();
+    await page.waitForTimeout(600);
+    await page.getByRole('button', { name: 'Done' }).click();
+    await page.waitForTimeout(600);
+
+    await dialog.getByRole('button', { name: /Next/i }).click({ force: true });
 
     // Step 3: Book
-    await dialog.getByRole('button', { name: /Book it!/ }).click({ force: true });
+    const pastCheckbox = dialog.getByRole('checkbox', { name: /Yes, I know/i });
+    const conflictCheckbox = dialog.getByRole('checkbox', { name: /schedule/i });
+    for (let i = 0; i < 6; i++) {
+      if (await pastCheckbox.isVisible().catch(() => false)) {
+        await pastCheckbox.check({ force: true });
+      }
+      if (await conflictCheckbox.isVisible().catch(() => false)) {
+        await conflictCheckbox.check({ force: true });
+      }
+      await page.waitForTimeout(300);
+    }
+
+    await dialog.getByRole('button', { name: /Confirm Booking/ }).click({ force: true });
     await page.waitForTimeout(2500);
 
     // Navigate to next week/day to find the job if it's tomorrow

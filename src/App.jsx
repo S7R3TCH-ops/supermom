@@ -18,6 +18,7 @@ import { PostJobSheetProvider } from './context/PostJobSheet';
 import { EditClientSheetProvider } from './context/EditClientSheet';
 import { AiChatSheetProvider } from './context/AiChatSheet';
 import { GeofenceProvider } from './context/GeofenceContext';
+import ScrollToTop from './components/ScrollToTop';
 import LogoBar from './components/layout/LogoBar';
 import BottomNav from './components/layout/BottomNav';
 import OnboardingWalkthrough from './components/layout/OnboardingWalkthrough';
@@ -265,6 +266,7 @@ function AuthedShell() {
         <div
           style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}
         >
+          <ScrollToTop />
           <Suspense fallback={<div style={{ padding: 20, color: T.inkMuted, fontFamily: T.font, fontSize: 13 }}>Loading...</div>}>
             <Routes>
               <Route path="/" element={<ErrorBoundary><Home /></ErrorBoundary>} />

@@ -194,6 +194,15 @@ button {
   flex-shrink: 0;
 }
 
+/* Same scrollbar-hiding as .sm-scroll, without the ::after FAB-clearance block —
+   for horizontal scrollers (filter chips, etc.) that aren't the page's main
+   vertical list and shouldn't reserve 100px of extra height under them. */
+.hscroll::-webkit-scrollbar { width: 0; height: 0; }
+.hscroll {
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
 .wheel-col-hide-scrollbar::-webkit-scrollbar { width: 0; height: 0; }
 
 /* Global Mobile Polish */

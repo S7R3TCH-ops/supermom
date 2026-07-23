@@ -213,7 +213,7 @@ export default function Clients() {
       </div>
 
       {/* Filter chips */}
-      <div className="sm-scroll" style={{ display: 'flex', gap: 6, padding: '10px 13px 6px', overflowX: 'auto', flexShrink: 0, background: T.bg }}>
+      <div className="hscroll" style={{ display: 'flex', gap: 6, padding: '10px 13px 6px', overflowX: 'auto', flexShrink: 0, background: T.bg }}>
         {filters.map(f => {
           const count = filterCounts[f];
           const active = filter === f;

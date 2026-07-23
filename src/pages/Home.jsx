@@ -1,6 +1,5 @@
 import { useMemo, useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
 import { useAppTheme } from '../context/AppThemeContext';
 import { Title, Subheading, Text, Caption, SectionLabel } from '../components/ui/typography';
 import { useJobs, useBusiness, notifyDataChanged } from '../data/useData';
@@ -281,53 +280,21 @@ export default function Home() {
       .sort((a, b) => a.start - b.start);
   }, [allJobs, nextWeekStart, nextWeekEnd, showNextWeekPreview]);
 
-  // Stable string of IDs — changes only when actual job IDs change, not every clock tick.
-  // attentionItems depends on `now` (updates every minute), so we extract IDs here to
-  // prevent the payments fetch from firing 1440x/day while the tab is open.
-  const paymentFetchKey = useMemo(() => {
-    const ids = [...new Set([
-      ...allWeekJobs.map(j => j.id),
-      ...attentionItems.map(j => j.id),
-    ])].sort();
-    return ids.join(',');
-  }, [allWeekJobs, attentionItems]);
-
-  const [paymentMap, setPaymentMap] = useState({});
-  useEffect(() => {
-    const jobIds = paymentFetchKey ? paymentFetchKey.split(',') : [];
-
-    let alive = true;
-    const fetchPayments = async () => {
-      if (!jobIds.length) {
-        if (alive) setPaymentMap(p => Object.keys(p).length === 0 ? p : {});
-        return;
-      }
-      const { data } = await supabase
-        .from('payments')
-        .select('job_id, amount')
-        .in('job_id', jobIds)
-        .eq('is_void', false);
-
-      if (alive) {
-        const map = {};
-        (data ?? []).forEach(p => { map[p.job_id] = (map[p.job_id] || 0) + Number(p.amount); });
-        setPaymentMap(map);
-      }
-    };
-
-    fetchPayments();
-    return () => { alive = false; };
-  }, [paymentFetchKey]);
-
+  // Paid-so-far amounts come from `j.amount_paid`, already computed by `toDisplayJob`
+  // from the same `useJobs()` query this page reads for everything else — a separate
+  // manually-fetched `paymentMap` used to live here, keyed only on the set of job IDs,
+  // so it never refreshed when a job already on-screen got a new payment recorded
+  // (only the status tag updated, via the jobs query; the paid amount stayed stale
+  // until a full page reload). Removed rather than patched — this data was redundant.
   const owingJobs = useMemo(() => {
     return attentionItems.map(j => {
-      const paid = paymentMap[j.id] || 0;
+      const paid = j.amount_paid || 0;
       const tot = computeJobTotal(j);
       const remaining = Math.max(0, tot - Math.min(paid, tot));
       const hoursOld = (now - j.end) / 3600000;
       return { ...j, paid: Math.min(paid, tot), remaining, hoursOld };
     }).sort((a, b) => b.hoursOld - a.hoursOld);
-  }, [attentionItems, paymentMap, now]);
+  }, [attentionItems, now]);
 
   const owingTotal = useMemo(() => owingJobs.filter(j => j.status === 'Completed').reduce((sum, j) => sum + j.remaining, 0), [owingJobs]);
 
@@ -335,20 +302,20 @@ export default function Home() {
     return allWeekJobs.reduce((s, j) => {
       const tot = computeJobTotal(j);
       if (j.payment_status === 'Paid') return s + tot;
-      if (j.payment_status === 'Partial') return s + Math.min(paymentMap[j.id] || 0, tot);
+      if (j.payment_status === 'Partial') return s + Math.min(j.amount_paid || 0, tot);
       return s;
     }, 0);
-  }, [allWeekJobs, paymentMap]);
+  }, [allWeekJobs]);
 
   const weekOwed = useMemo(() => {
     return allWeekJobs
       .filter(j => j.status === 'Completed' && j.payment_status !== 'Paid')
       .reduce((s, j) => {
         const tot = computeJobTotal(j);
-        const paid = paymentMap[j.id] || 0;
+        const paid = j.amount_paid || 0;
         return s + Math.max(0, tot - Math.min(paid, tot));
       }, 0);
-  }, [allWeekJobs, paymentMap]);
+  }, [allWeekJobs]);
 
   const weekUpcoming = useMemo(() => {
     return allWeekJobs
@@ -1159,7 +1126,7 @@ export default function Home() {
                       onClick={() => openJob(j.id)}
                       total={computeJobTotal(j)}
                       grandTotal={computeJobTotal(j)}
-                      paid={paymentMap[j.id] || 0}
+                      paid={j.amount_paid || 0}
                       privacyOn={privacyOn}
                     />
                   </Swipeable>
@@ -1287,7 +1254,7 @@ export default function Home() {
                 job={j}
                 T={T}
                 onClick={() => openJob(j.id)}
-                paid={paymentMap[j.id] || 0}
+                paid={j.amount_paid || 0}
                 total={computeJobTotal(j)}
                 grandTotal={computeJobTotal(j)}
                 privacyOn={privacyOn}
@@ -1306,7 +1273,7 @@ export default function Home() {
                 job={j}
                 T={T}
                 onClick={() => openJob(j.id)}
-                paid={paymentMap[j.id] || 0}
+                paid={j.amount_paid || 0}
                 total={computeJobTotal(j)}
                 grandTotal={computeJobTotal(j)}
                 privacyOn={privacyOn}
@@ -1325,7 +1292,7 @@ export default function Home() {
                 job={j}
                 T={T}
                 onClick={() => openJob(j.id)}
-                paid={paymentMap[j.id] || 0}
+                paid={j.amount_paid || 0}
                 total={computeJobTotal(j)}
                 grandTotal={computeJobTotal(j)}
                 privacyOn={privacyOn}

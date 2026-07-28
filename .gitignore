@@ -41,6 +41,7 @@ skills-lock.json
 /test-results/
 /playwright/.auth/
 /test-screenshots/
+/audit-output/
 
 .claude/*
 !.claude/settings.json

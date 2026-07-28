@@ -7,7 +7,7 @@ import { useEditClientSheet } from '../context/EditClientSheetContext';
 import { useToast } from '../context/ToastContext';
 import AmtCell from '../components/ui/AmtCell';
 import { Title, Subheading, Text, Caption, SectionLabel } from '../components/ui/typography';
-import { useClient, useClientInvoices, notifyDataChanged } from '../data/useData';
+import { useClient, useClientInvoices, notifyDataChanged, useAiEnabled } from '../data/useData';
 import { updateClient, softDeleteClient, hardDeleteClient } from '../data/clientsRepo';
 import { archiveClientJobs } from '../data/jobsRepo';
 import { useAuth } from '../context/AuthContext';
@@ -30,6 +30,7 @@ export default function ClientProfile() {
   const toast = useToast();
   const { client, raw, loading, error, refresh } = useClient(id);
   const { invoices: clientInvoices } = useClientInvoices(id);
+  const aiEnabled = useAiEnabled();
 
   const [isSavingAi, setIsSavingAi] = useState(false);
   const [isEditingIntel, setIsEditingIntel] = useState(false);
@@ -343,7 +344,7 @@ export default function ClientProfile() {
               { k: 'Contact',     f: 'comms',    v: client.aiContext.comms },
               { k: 'Personal',    f: 'personal', v: client.aiContext.personal },
             ];
-            const hasAnyContext = fields.some(r => r.v) || !!client.aiContext.learned;
+            const hasAnyContext = fields.some(r => r.v) || (aiEnabled && !!client.aiContext.learned);
             if (!hasAnyContext && !isEditingIntel) {
               return (
                 <Text style={{ fontSize: 11.5, color: T.inkMuted, fontStyle: 'italic', lineHeight: 1.5 }}>
@@ -383,7 +384,7 @@ export default function ClientProfile() {
             );
           })()}
 
-          {client.aiContext.learned && (
+          {aiEnabled && client.aiContext.learned && (
             <div style={{ 
               marginTop: 14, paddingTop: 12, 
               borderTop: `1px dashed ${T.cardBorder}`,

@@ -26,7 +26,7 @@ export default defineConfig({
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
-    
+
     /* Target mobile viewport as per DESIGN.md */
     viewport: { width: 390, height: 844 },
     timezoneId: 'America/Toronto',
@@ -66,6 +66,16 @@ export default defineConfig({
       },
       dependencies: ['setup'],
     },
+    {
+      name: 'Mobile Chrome (Pixel 7)',
+      use: {
+        ...devices['Pixel 7'],
+        channel: 'chrome',
+        storageState: 'playwright/.auth/user.json',
+      },
+      dependencies: ['setup'],
+    },
+
   ],
 
   /* Run your local dev server before starting the tests */

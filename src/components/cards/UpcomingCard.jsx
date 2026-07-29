@@ -2,7 +2,7 @@ import { fmtTimeRange, dateBrief } from '../../lib/dateUtils';
 import { useBusiness } from '../../data/useData';
 import { getWorkerLabel } from '../../lib/labels';
 
-export default function UpcomingCard({ job: j, T, onClick, total = 0, grandTotal, paid = 0, privacyOn = false, hstNote = false }) {
+export default function UpcomingCard({ job: j, T, onClick, total = 0, privacyOn = false }) {
   const { business } = useBusiness();
   const S = T.status.scheduled;
   const timeRange = j.start && j.end ? fmtTimeRange(j.start, j.end) : '—';
@@ -51,7 +51,6 @@ export default function UpcomingCard({ job: j, T, onClick, total = 0, grandTotal
             fontVariantNumeric: 'tabular-nums',
           }}>
             {privacyOn ? '•••' : `$${total.toFixed(0)}`}
-            {!privacyOn && hstNote && <span style={{ fontSize: 8, fontWeight: 700, opacity: 0.6, marginLeft: 2, fontFamily: T.font, textTransform: 'uppercase' }}> +HST</span>}
           </div>
         )}
       </div>

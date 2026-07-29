@@ -1125,8 +1125,6 @@ export default function Home() {
                       T={T}
                       onClick={() => openJob(j.id)}
                       total={computeJobTotal(j)}
-                      grandTotal={computeJobTotal(j)}
-                      paid={j.amount_paid || 0}
                       privacyOn={privacyOn}
                     />
                   </Swipeable>
@@ -1254,9 +1252,7 @@ export default function Home() {
                 job={j}
                 T={T}
                 onClick={() => openJob(j.id)}
-                paid={j.amount_paid || 0}
                 total={computeJobTotal(j)}
-                grandTotal={computeJobTotal(j)}
                 privacyOn={privacyOn}
               />
             ))}
@@ -1273,9 +1269,7 @@ export default function Home() {
                 job={j}
                 T={T}
                 onClick={() => openJob(j.id)}
-                paid={j.amount_paid || 0}
                 total={computeJobTotal(j)}
-                grandTotal={computeJobTotal(j)}
                 privacyOn={privacyOn}
               />
             ))}
@@ -1292,9 +1286,7 @@ export default function Home() {
                 job={j}
                 T={T}
                 onClick={() => openJob(j.id)}
-                paid={j.amount_paid || 0}
                 total={computeJobTotal(j)}
-                grandTotal={computeJobTotal(j)}
                 privacyOn={privacyOn}
               />
             ))}

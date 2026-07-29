@@ -2,7 +2,7 @@ import { fmtTimeRange, dateBrief } from '../../lib/dateUtils';
 import { useBusiness } from '../../data/useData';
 import { getWorkerLabel } from '../../lib/labels';
 
-export default function JobCard({ job: j, T, onClick, paid = 0, total = 0, grandTotal, privacyOn = false, hstNote = false }) {
+export default function JobCard({ job: j, T, onClick, total = 0, privacyOn = false }) {
   const { business } = useBusiness();
   const isCompleted = j.status === 'Completed';
   const isPaid = j.payment_status === 'Paid';
@@ -70,7 +70,6 @@ export default function JobCard({ job: j, T, onClick, paid = 0, total = 0, grand
             color: amountColor, fontVariantNumeric: 'tabular-nums',
           }}>
             {privacyOn ? '•••' : `$${total.toFixed(0)}`}
-            {!privacyOn && hstNote && <span style={{ fontSize: 8, fontWeight: 700, opacity: 0.6, marginLeft: 2, fontFamily: T.font, textTransform: 'uppercase' }}> +HST</span>}
           </div>
         )}
       </div>

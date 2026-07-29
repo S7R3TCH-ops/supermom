@@ -48,11 +48,11 @@ test.describe('QA Regression Suite', () => {
     await page.waitForTimeout(2500);
 
     // 2. Open Job Detail Sheet
-    const jobCard = page.locator('div[style*="cursor: pointer"]').first();
+    const jobCard = page.locator('div[style*="cursor: pointer"]').filter({ hasText: /scheduled|unpaid|paid|partial/i }).first();
     await jobCard.click({ force: true });
     await page.waitForTimeout(1000);
 
-    const detailDialog = page.getByRole('dialog', { name: 'Job details' });
+    const detailDialog = page.getByRole('dialog', { name: /job details/i });
     await detailDialog.getByRole('button', { name: 'Edit Job' }).click({ force: true });
     await page.waitForTimeout(1000);
 
@@ -132,11 +132,11 @@ test.describe('QA Regression Suite', () => {
     await page.waitForTimeout(1000);
 
     // 2. Open Job Detail Sheet
-    const jobCard = page.locator('div[style*="cursor: pointer"]').first();
+    const jobCard = page.locator('div[style*="cursor: pointer"]').filter({ hasText: /scheduled|unpaid|paid|partial/i }).first();
     await jobCard.click({ force: true });
     await page.waitForTimeout(1000);
 
-    const detailDialog = page.getByRole('dialog', { name: 'Job details' });
+    const detailDialog = page.getByRole('dialog', { name: /job details/i });
     
     // 3. Click Mark Complete
     await detailDialog.getByRole('button', { name: 'Mark Complete' }).click({ force: true });

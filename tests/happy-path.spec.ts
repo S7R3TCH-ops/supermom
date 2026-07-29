@@ -81,7 +81,7 @@ test.describe('Supermom Happy Path', () => {
     
     await page.waitForTimeout(2000);
     
-    const detailDialog = page.getByRole('dialog', { name: 'Job details' });
+    const detailDialog = page.getByRole('dialog', { name: /job details/i });
     await expect(detailDialog).toBeVisible();
     
     // Click Mark Paid to open the PostJobSheet

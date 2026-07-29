@@ -25,7 +25,6 @@ import Swipeable from '../components/ui/Swipeable';
 import EmptyState from '../components/cards/EmptyState';
 import LiveTimer from '../components/cards/LiveTimer';
 import MissionIntel from '../components/cards/MissionIntel';
-import PaymentBreakdown from '../components/cards/PaymentBreakdown';
 
 const DEEP_ROSE = '#B5004E';
 

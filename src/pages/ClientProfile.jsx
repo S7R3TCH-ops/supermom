@@ -20,6 +20,12 @@ function formatPhone(p) {
   return `(${digits.slice(0,3)}) ${digits.slice(3,6)}-${digits.slice(6)}`;
 }
 
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
 export default function ClientProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -573,7 +579,7 @@ export default function ClientProfile() {
                 >
                   <div>
                     <div style={{ fontFamily: T.serif, fontSize: 13.5, fontWeight: 500, color: T.ink }}>#{inv.invoice_number}</div>
-                    <div style={{ fontFamily: T.font, fontSize: 10.5, color: T.inkMuted, marginTop: 2 }}>{inv.invoice_date}</div>
+                    <div style={{ fontFamily: T.font, fontSize: 10.5, color: T.inkMuted, marginTop: 2 }}>{formatDate(inv.invoice_date)}</div>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
                     {!privacyOn && (

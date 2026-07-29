@@ -57,12 +57,23 @@ test('Audit daily ops flow for viewport bugs (Pixel 10 Pro simulation)', async (
   await page.getByRole('link', { name: /home/i }).first().click();
   await page.waitForTimeout(1500);
   
-  // Try to find a job card and open it
-  const jobCard = page.locator('div[style*="border-radius: 12px"]').first();
+  // Try to find a job card and open it (Needs Attention wrap-up/unpaid/partial cards,
+  // or a scheduled JobCard if the QA account has current-week jobs)
+  const jobCard = page.locator('button, div[style*="cursor: pointer"]').filter({ hasText: /wrap up|unpaid|partial paid|scheduled|paid/i }).first();
   if (await jobCard.isVisible().catch(() => false)) {
     await jobCard.click({ force: true });
     await page.waitForTimeout(1500);
-    await ss(page, '04-job-detail-sheet');
+    
+    // Verify job detail sheet opens via dialog role / aria-label
+    const detailDialog = page.getByRole('dialog', { name: /job details/i });
+    if (await detailDialog.isVisible().catch(() => false)) {
+      await ss(page, '04-job-detail-sheet');
+
+      // Close it — backdrop click (top of dialog, outside the bottom sheet which
+      // stops propagation) so later steps aren't blocked by an open modal
+      await detailDialog.click({ position: { x: 10, y: 10 } });
+      await page.waitForTimeout(500);
+    }
   }
 
   // 4. Keyboard-occlusion viewport-shrink simulation

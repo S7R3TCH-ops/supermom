@@ -415,6 +415,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
             onCancelConfirm={initiateDelete}
             onConfirmDelete={() => deleteJob('this')}
             onDismissConfirm={() => { setConfirm(false); setShowSeriesPicker(false); }}
+            showSeriesPicker={showSeriesPicker} onSeriesChoice={onSeriesChoice}
             hardDeleteConfirm={hardDeleteConfirm}
             onHardDeleteConfirm={() => setHardDeleteConfirm(true)}
             onHardDeleteCancel={() => setHardDeleteConfirm(false)}
@@ -459,6 +460,7 @@ function ReadMode({
   showCancelForm, cancelReason, cancelBusy,
   onSetShowCancelForm, onSetCancelReason, onHandleCancel,
   onClose, onMarkComplete, onMarkPaid, onMarkWorkerPaid, onCancelConfirm, onConfirmDelete, onDismissConfirm, onEdit, onUpdate, onDeepPrep,
+  showSeriesPicker, onSeriesChoice,
   hardDeleteConfirm, onHardDeleteConfirm, onHardDeleteCancel, onHardDelete,
   revertConfirm, onRevertConfirm, onRevertCancel, onRevert,
   futureConfirmType, onFutureConfirmProceed, onFutureConfirmCancel,
@@ -578,7 +580,12 @@ function ReadMode({
         )}
       </div>
 
-      {!confirm && (
+      {!confirm && showSeriesPicker && (
+        <div style={{ padding: '10px 14px 28px', borderTop: `1px solid ${T.cardBorder}` }}>
+          <SeriesPicker show={showSeriesPicker} onChoice={onSeriesChoice} onCancel={() => onSeriesChoice(null)} busy={busy} T={T} mode={mode} />
+        </div>
+      )}
+      {!confirm && !showSeriesPicker && (
         <div style={{ padding: '10px 14px 28px', borderTop: `1px solid ${T.cardBorder}`, display: 'flex', flexDirection: 'column', gap: 8 }}>
           {futureConfirmType && (
             <div style={{ padding: '12px', borderRadius: 12, background: 'rgba(233,30,106,0.08)', border: '1px solid rgba(233,30,106,0.3)' }}>

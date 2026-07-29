@@ -415,7 +415,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
             onCancelConfirm={initiateDelete}
             onConfirmDelete={() => deleteJob('this')}
             onDismissConfirm={() => { setConfirm(false); setShowSeriesPicker(false); }}
-            showSeriesPicker={showSeriesPicker} onSeriesChoice={onSeriesChoice}
+            showSeriesPicker={showSeriesPicker} onSeriesChoice={onSeriesChoice} pendingAction={pendingAction}
             hardDeleteConfirm={hardDeleteConfirm}
             onHardDeleteConfirm={() => setHardDeleteConfirm(true)}
             onHardDeleteCancel={() => setHardDeleteConfirm(false)}
@@ -439,7 +439,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
             stage={stage}
             form={form} setForm={setForm} services={services} workers={workers} business={business}
             T={T} mode={mode} busy={busy} mutErr={mutErr} setMutErr={setMutErr}
-            showSeriesPicker={showSeriesPicker} onSeriesChoice={onSeriesChoice}
+            showSeriesPicker={showSeriesPicker} onSeriesChoice={onSeriesChoice} pendingAction={pendingAction}
             onSave={initiateSave}
             onCancelEdit={() => { setEditMode(false); setMutErr(null); setShowSeriesPicker(false); }}
             isKeyboardFocused={isKeyboardFocused}
@@ -460,7 +460,7 @@ function ReadMode({
   showCancelForm, cancelReason, cancelBusy,
   onSetShowCancelForm, onSetCancelReason, onHandleCancel,
   onClose, onMarkComplete, onMarkPaid, onMarkWorkerPaid, onCancelConfirm, onConfirmDelete, onDismissConfirm, onEdit, onUpdate, onDeepPrep,
-  showSeriesPicker, onSeriesChoice,
+  showSeriesPicker, onSeriesChoice, pendingAction,
   hardDeleteConfirm, onHardDeleteConfirm, onHardDeleteCancel, onHardDelete,
   revertConfirm, onRevertConfirm, onRevertCancel, onRevert,
   futureConfirmType, onFutureConfirmProceed, onFutureConfirmCancel,
@@ -582,7 +582,7 @@ function ReadMode({
 
       {!confirm && showSeriesPicker && (
         <div style={{ padding: '10px 14px 28px', borderTop: `1px solid ${T.cardBorder}` }}>
-          <SeriesPicker show={showSeriesPicker} onChoice={onSeriesChoice} onCancel={() => onSeriesChoice(null)} busy={busy} T={T} mode={mode} />
+          <SeriesPicker show={showSeriesPicker} onChoice={onSeriesChoice} onCancel={() => onSeriesChoice(null)} busy={busy} T={T} mode={mode} action={pendingAction} />
         </div>
       )}
       {!confirm && !showSeriesPicker && (
@@ -746,7 +746,7 @@ function ReadMode({
 }
 
 /* ============= EDIT MODE ============= */
-function EditMode({ job, stage, form, setForm, services, workers, business, T, mode, busy, mutErr, setMutErr, showSeriesPicker, onSeriesChoice, onSave, onCancelEdit, isKeyboardFocused }) {
+function EditMode({ job, stage, form, setForm, services, workers, business, T, mode, busy, mutErr, setMutErr, showSeriesPicker, onSeriesChoice, pendingAction, onSave, onCancelEdit, isKeyboardFocused }) {
   const dateRef = useRef(null);
   const timeRef = useRef(null);
   const serviceRef = useRef(null);
@@ -1057,7 +1057,7 @@ function EditMode({ job, stage, form, setForm, services, workers, business, T, m
               render near the HST toggle field, off-screen below a long scroll,
               looking like Save silently did nothing (Joel, 2026-07-15). */}
           {showSeriesPicker ? (
-            <SeriesPicker show={showSeriesPicker} onChoice={onSeriesChoice} onCancel={() => onSeriesChoice(null)} busy={busy} T={T} mode={mode} />
+            <SeriesPicker show={showSeriesPicker} onChoice={onSeriesChoice} onCancel={() => onSeriesChoice(null)} busy={busy} T={T} mode={mode} action={pendingAction} />
           ) : (
             <div style={{ display: 'flex', gap: 8 }}>
               <Btn onClick={onCancelEdit} bg={T.card} border={`1.5px solid ${T.cardBorder}`} color={T.inkSub} T={T} style={{ flex: 1 }}>Cancel</Btn>
@@ -1079,8 +1079,9 @@ function iStyle(T) { return { background: T.card, border: `1.5px solid ${T.cardB
 function SectionDivider({ label, T }) {
   return <div style={{ fontFamily: T.serif, fontSize: 10, fontWeight: 600, letterSpacing: '0.7px', textTransform: 'uppercase', color: T.inkMuted, margin: '20px 0 8px', paddingBottom: 6, borderBottom: `1px solid ${T.cardBorder}` }}>{label}</div>;
 }
-function SeriesPicker({ show, onChoice, onCancel, busy, T, mode }) {
+function SeriesPicker({ show, onChoice, onCancel, busy, T, mode, action }) {
   if (!show) return null;
+  const promptText = action === 'delete' ? 'This is a recurring job — delete...' : 'This is a recurring job — apply changes to...';
   return (
     <div style={{
       background: T.hero,
@@ -1088,7 +1089,7 @@ function SeriesPicker({ show, onChoice, onCancel, busy, T, mode }) {
       padding: '14px',
       border: `1.5px solid ${mode === 'dark' ? 'rgba(233,30,106,0.35)' : 'rgba(233,30,106,0.15)'}`
     }}>
-      <div style={{ fontSize: 16, color: mode === 'dark' ? 'white' : T.ink, marginBottom: 12 }}>This is a recurring job — apply changes to...</div>
+      <div style={{ fontSize: 16, color: mode === 'dark' ? 'white' : T.ink, marginBottom: 12 }}>{promptText}</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
         <SeriesBtn onClick={() => onChoice('this')} disabled={busy} T={T} mode={mode}>Just this visit</SeriesBtn>
         <SeriesBtn onClick={() => onChoice('future')} disabled={busy} T={T} mode={mode}>This and future</SeriesBtn>

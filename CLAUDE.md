@@ -167,7 +167,9 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 
 ---
 
-## Current version: 0.13.35 — Jul 29, 2026 (NOT pushed — local commits only, awaiting Joel's go-ahead per push-to-main standing rule)
+## Current version: 0.13.36 — Aug 3, 2026 (NOT pushed — local commits only, awaiting Joel's go-ahead per push-to-main standing rule)
+
+**v0.13.36 (Aug 3) — Job Detail sheet's pinned footer was disproportionately tall.** Joel dropped a phone screen-recording in the Google Drive "Second Brain Inbox" folder showing the bottom action bar eating a large share of the viewport whenever a job's detail sheet was open, viewing as Super Admin. Root cause: `JobDetailSheet.jsx`'s `isAdmin` block (Revert to Scheduled / Delete Job / Permanently Delete Job) rendered inline and always-visible in the pinned footer, on top of the 3 primary action buttons (Mark Complete/Mark Paid/Edit Job) + Cancel Booking link — 6+ rows stacked regardless of scroll position. `ClientProfile.jsx` already solved this exact problem for its own admin actions with a collapsed-by-default "Admin Actions" disclosure toggle (▾); `JobDetailSheet.jsx` never got the same treatment. Applied the identical pattern: admin-only destructive actions now sit behind a closed-by-default toggle, cutting the default footer from 6 rows to 4 (Mark Complete, Mark Paid, Edit Job, Cancel Booking). Primary actions and their existing confirm-flows untouched. Build clean, Vitest 111/111. **Not phone-tested yet** — needs Joel/Sandra to confirm on a real device, especially that the Admin Actions toggle is discoverable when actually needed (job revert/delete are used, just infrequently).
 
 Sandra's business is live — data wiped and re-provisioned Jun 9. App in active use.
 

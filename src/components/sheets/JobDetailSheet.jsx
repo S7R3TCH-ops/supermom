@@ -467,6 +467,7 @@ function ReadMode({
 }) {
   const navigate = useNavigate();
   const [showEditWarn, setShowEditWarn] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
   const statusC = STATUS_COLORS[job.job_status] || STATUS_COLORS.Scheduled;
   const payKey  = job.payment_status || '';
   const payC    = PAY_COLORS[payKey] || PAY_COLORS[''];
@@ -660,77 +661,92 @@ function ReadMode({
           )}
 
           {!futureConfirmType && isAdmin && (
-            <>
-              <div style={{ height: 1, background: T.cardBorder, margin: '4px 0' }} />
-              {job.job_status === 'Completed' && (
-                <>
-                  {!revertConfirm ? (
+            <div style={{ margin: '4px 0 0' }}>
+              <button
+                onClick={() => setAdminOpen(o => !o)}
+                style={{
+                  width: '100%', background: 'transparent', border: `1px solid ${T.cardBorder}`,
+                  borderRadius: 10, padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  cursor: 'pointer', fontFamily: T.font, fontSize: 11, fontWeight: 600, color: T.inkMuted,
+                }}
+              >
+                <span>Admin Actions</span>
+                <span style={{ fontSize: 10, transition: 'transform 0.2s', display: 'inline-block', transform: adminOpen ? 'rotate(180deg)' : 'none' }}>▾</span>
+              </button>
+
+              {adminOpen && (
+                <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {job.job_status === 'Completed' && (
+                    <>
+                      {!revertConfirm ? (
+                        <button
+                          onClick={onRevertConfirm}
+                          style={{ background: 'transparent', border: 'none', fontSize: 12, color: '#B45309', padding: '4px 0', cursor: 'pointer', fontFamily: T.font, fontWeight: 600, textAlign: 'left' }}
+                        >
+                          Revert to Scheduled (Admin)
+                        </button>
+                      ) : (
+                        <div style={{ background: 'rgba(180,83,9,0.08)', border: '1px solid rgba(180,83,9,0.3)', borderRadius: 10, padding: '10px 12px' }}>
+                          <div style={{ fontFamily: T.font, fontSize: 11, color: '#B45309', marginBottom: 8, fontWeight: 600 }}>
+                            Delete all payments and revert this job to Scheduled? The invoice will be voided.
+                          </div>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <button
+                              onClick={onRevertCancel}
+                              style={{ flex: 1, background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 9, padding: '8px 0', fontFamily: T.font, fontSize: 12, fontWeight: 600, color: T.inkSub, cursor: 'pointer' }}
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={onRevert}
+                              style={{ flex: 1, background: '#B45309', border: 'none', borderRadius: 9, padding: '8px 0', fontFamily: T.font, fontSize: 12, fontWeight: 700, color: 'white', cursor: 'pointer' }}
+                            >
+                              Yes, revert job
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                      <div style={{ height: 1, background: T.cardBorder }} />
+                    </>
+                  )}
+                  <button
+                    onClick={onCancelConfirm}
+                    style={{ background: 'transparent', border: 'none', fontSize: 12, color: '#B01550', padding: '4px 0', cursor: 'pointer', fontFamily: T.font, fontWeight: 600, textAlign: 'left' }}
+                  >
+                    Delete Job (Admin)
+                  </button>
+                  <div style={{ height: 1, background: T.cardBorder }} />
+                  {!hardDeleteConfirm ? (
                     <button
-                      onClick={onRevertConfirm}
-                      style={{ background: 'transparent', border: 'none', fontSize: 12, color: '#B45309', padding: '4px 0', cursor: 'pointer', fontFamily: T.font, fontWeight: 600, textAlign: 'left' }}
+                      onClick={onHardDeleteConfirm}
+                      style={{ background: 'transparent', border: 'none', fontSize: 12, color: '#7F1D1D', padding: '4px 0', cursor: 'pointer', fontFamily: T.font, fontWeight: 600, textAlign: 'left' }}
                     >
-                      Revert to Scheduled (Admin)
+                      Permanently Delete Job (Admin)
                     </button>
                   ) : (
-                    <div style={{ background: 'rgba(180,83,9,0.08)', border: '1px solid rgba(180,83,9,0.3)', borderRadius: 10, padding: '10px 12px', marginTop: 4 }}>
-                      <div style={{ fontFamily: T.font, fontSize: 11, color: '#B45309', marginBottom: 8, fontWeight: 600 }}>
-                        Delete all payments and revert this job to Scheduled? The invoice will be voided.
+                    <div style={{ background: 'rgba(127,29,29,0.08)', border: '1px solid rgba(127,29,29,0.3)', borderRadius: 10, padding: '10px 12px' }}>
+                      <div style={{ fontFamily: T.font, fontSize: 11, color: '#7F1D1D', marginBottom: 8, fontWeight: 600 }}>
+                        Permanently delete this job? This cannot be undone.
                       </div>
                       <div style={{ display: 'flex', gap: 8 }}>
                         <button
-                          onClick={onRevertCancel}
+                          onClick={onHardDeleteCancel}
                           style={{ flex: 1, background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 9, padding: '8px 0', fontFamily: T.font, fontSize: 12, fontWeight: 600, color: T.inkSub, cursor: 'pointer' }}
                         >
                           Cancel
                         </button>
                         <button
-                          onClick={onRevert}
-                          style={{ flex: 1, background: '#B45309', border: 'none', borderRadius: 9, padding: '8px 0', fontFamily: T.font, fontSize: 12, fontWeight: 700, color: 'white', cursor: 'pointer' }}
+                          onClick={onHardDelete}
+                          style={{ flex: 1, background: '#7F1D1D', border: 'none', borderRadius: 9, padding: '8px 0', fontFamily: T.font, fontSize: 12, fontWeight: 700, color: 'white', cursor: 'pointer' }}
                         >
-                          Yes, revert job
+                          Delete Forever
                         </button>
                       </div>
                     </div>
                   )}
-                  <div style={{ height: 1, background: T.cardBorder, margin: '4px 0' }} />
-                </>
-              )}
-              <button
-                onClick={onCancelConfirm}
-                style={{ background: 'transparent', border: 'none', fontSize: 12, color: '#B01550', padding: '4px 0', cursor: 'pointer', fontFamily: T.font, fontWeight: 600, textAlign: 'left' }}
-              >
-                Delete Job (Admin)
-              </button>
-              <div style={{ height: 1, background: T.cardBorder, margin: '4px 0' }} />
-              {!hardDeleteConfirm ? (
-                <button
-                  onClick={onHardDeleteConfirm}
-                  style={{ background: 'transparent', border: 'none', fontSize: 12, color: '#7F1D1D', padding: '4px 0', cursor: 'pointer', fontFamily: T.font, fontWeight: 600, textAlign: 'left' }}
-                >
-                  Permanently Delete Job (Admin)
-                </button>
-              ) : (
-                <div style={{ background: 'rgba(127,29,29,0.08)', border: '1px solid rgba(127,29,29,0.3)', borderRadius: 10, padding: '10px 12px', marginTop: 4 }}>
-                  <div style={{ fontFamily: T.font, fontSize: 11, color: '#7F1D1D', marginBottom: 8, fontWeight: 600 }}>
-                    Permanently delete this job? This cannot be undone.
-                  </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button
-                      onClick={onHardDeleteCancel}
-                      style={{ flex: 1, background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 9, padding: '8px 0', fontFamily: T.font, fontSize: 12, fontWeight: 600, color: T.inkSub, cursor: 'pointer' }}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={onHardDelete}
-                      style={{ flex: 1, background: '#7F1D1D', border: 'none', borderRadius: 9, padding: '8px 0', fontFamily: T.font, fontSize: 12, fontWeight: 700, color: 'white', cursor: 'pointer' }}
-                    >
-                      Delete Forever
-                    </button>
-                  </div>
                 </div>
               )}
-            </>
+            </div>
           )}
 
           {invoiceId && (

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 const FOCUSABLE = [
   'a[href]',
@@ -10,6 +10,11 @@ const FOCUSABLE = [
 ].join(', ');
 
 export function useFocusTrap(ref, isActive, onClose) {
+  // Ref, not a dep — an inline onClose from the parent must not restart
+  // the effect (and the 350ms autofocus timer) on every re-render.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
   useEffect(() => {
     if (!isActive || !ref.current) return;
 
@@ -17,23 +22,23 @@ export function useFocusTrap(ref, isActive, onClose) {
     const getFocusable = () => Array.from(el.querySelectorAll(FOCUSABLE));
 
     // Focus appropriate element on open
+    let focusTimer;
     const focusable = getFocusable();
     if (focusable.length && !el.contains(document.activeElement)) {
       // Prioritize inputs/textareas over close buttons
       const priority = focusable.find(f => ['INPUT', 'TEXTAREA', 'SELECT'].includes(f.tagName)) || focusable[0];
-      
+
       // 350ms delay to ensure animations (like njSlide) are finished
-      const timer = setTimeout(() => {
+      focusTimer = setTimeout(() => {
         if (el.contains(document.activeElement)) return;
         priority.focus();
       }, 350);
-      return () => clearTimeout(timer);
     }
 
     function handleKeyDown(e) {
       if (e.key === 'Escape') {
         e.preventDefault();
-        onClose?.();
+        onCloseRef.current?.();
         return;
       }
       if (e.key !== 'Tab') return;
@@ -57,7 +62,13 @@ export function useFocusTrap(ref, isActive, onClose) {
       }
     }
 
+    // Keydown listener attaches unconditionally — previously it was gated
+    // behind the autofocus branch's early return, so Escape/Tab-wrap were
+    // dead whenever a sheet autofocused (i.e. almost always).
     el.addEventListener('keydown', handleKeyDown);
-    return () => el.removeEventListener('keydown', handleKeyDown);
-  }, [isActive, ref, onClose]);
+    return () => {
+      clearTimeout(focusTimer);
+      el.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isActive, ref]);
 }

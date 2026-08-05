@@ -477,6 +477,7 @@ function ReadMode({
     : Number(job.estimated_hours || 0);
   const endTime = calcEnd(job.scheduled_time, displayHours);
   const timeRange = job.scheduled_time ? `${fmtTime12(job.scheduled_time)}${endTime ? ` – ${endTime}` : ''}` : '—';
+  const showWorkerPaid = !isCancelled && isPaid && Number(job.worker_pay) > 0 && !job.worker_paid;
 
   return (
     <>
@@ -599,21 +600,39 @@ function ReadMode({
               </div>
             </div>
           )}
-          {!futureConfirmType && !isCancelled && isScheduled && <Btn onClick={onMarkComplete} disabled={busy} bg="#22C55E" color="white" T={T}>Mark Complete</Btn>}
-          {!futureConfirmType && !isCancelled && !isPaid && <Btn onClick={onMarkPaid} disabled={busy} bg="#FC4693" color="white" T={T}>Mark Paid</Btn>}
-          {!futureConfirmType && !isCancelled && isPaid && Number(job.worker_pay) > 0 && !job.worker_paid && (
-            <Btn onClick={onMarkWorkerPaid} disabled={busy} bg="#F59E0B" color="white" T={T}>
-              🦸 Mark {job.worker_name || 'Team Member'} Paid — ${Number(job.worker_pay).toFixed(0)}
-            </Btn>
+          {!futureConfirmType && !isCancelled && (isScheduled || !isPaid) && (
+            <div style={{ display: 'flex', gap: 8 }}>
+              {isScheduled && <Btn onClick={onMarkComplete} disabled={busy} bg="#22C55E" color="white" T={T} style={{ flex: 1 }}>Mark Complete</Btn>}
+              {!isPaid && <Btn onClick={onMarkPaid} disabled={busy} bg="#FC4693" color="white" T={T} style={{ flex: 1 }}>Mark Paid</Btn>}
+            </div>
           )}
           {!futureConfirmType && !isCancelled && (
             showEditWarn ? (
-              <div style={{ padding: '12px', borderRadius: 12, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)' }}>
-                <div style={{ fontSize: 12.5, fontWeight: 600, color: T.ink, marginBottom: 10 }}>{policyMsg}</div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <Btn onClick={() => setShowEditWarn(false)} bg={T.card} border={`1px solid ${T.cardBorder}`} color={T.inkSub} T={T} style={{ flex: 1 }}>Cancel</Btn>
-                  <Btn onClick={onEdit} bg="#B45309" color="white" T={T} style={{ flex: 1 }}>Edit anyway</Btn>
+              <>
+                {showWorkerPaid && (
+                  <Btn onClick={onMarkWorkerPaid} disabled={busy} bg="#F59E0B" color="white" T={T}>
+                    🦸 Mark {job.worker_name || 'Team Member'} Paid — ${Number(job.worker_pay).toFixed(0)}
+                  </Btn>
+                )}
+                <div style={{ padding: '12px', borderRadius: 12, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)' }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 600, color: T.ink, marginBottom: 10 }}>{policyMsg}</div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <Btn onClick={() => setShowEditWarn(false)} bg={T.card} border={`1px solid ${T.cardBorder}`} color={T.inkSub} T={T} style={{ flex: 1 }}>Cancel</Btn>
+                    <Btn onClick={onEdit} bg="#B45309" color="white" T={T} style={{ flex: 1 }}>Edit anyway</Btn>
+                  </div>
                 </div>
+              </>
+            ) : showWorkerPaid ? (
+              <div style={{ display: 'flex', gap: 8 }}>
+                <Btn onClick={onMarkWorkerPaid} disabled={busy} bg="#F59E0B" color="white" T={T} style={{ flex: 1 }}>
+                  🦸 Mark {job.worker_name || 'Team Member'} Paid — ${Number(job.worker_pay).toFixed(0)}
+                </Btn>
+                <Btn
+                  onClick={policyMsg ? () => setShowEditWarn(true) : onEdit}
+                  bg={T.card} border={`1.5px solid ${T.cardBorder}`} color={T.ink} T={T} style={{ flex: 1 }}
+                >
+                  Edit Job{policyMsg ? ' ⚠️' : ''}
+                </Btn>
               </div>
             ) : (
               <Btn
@@ -624,7 +643,6 @@ function ReadMode({
               </Btn>
             )
           )}
-
           {!futureConfirmType && isScheduled && !showCancelForm && (
             <button
               onClick={() => onSetShowCancelForm(true)}

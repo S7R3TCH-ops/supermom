@@ -167,7 +167,9 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 
 ---
 
-## Current version: 0.13.37 — Aug 4, 2026 (LIVE, pushed to `main` — Joel's explicit go-ahead, routed via second-brain flush carve-out)
+## Current version: 0.13.38 — Aug 4, 2026 (LIVE, pushed to `main` — Cowork edit, flushed via second-brain flush carve-out)
+
+**v0.13.38 (Aug 4) — `JobDetailSheet.jsx` footer pairs action buttons into flex rows.** Follow-up to v0.13.36's admin-actions collapse: Joel still found the footer "too large" (tasks.md 2026-08-04). Paired `Mark Complete` + `Mark Paid` into one flex row, and `Mark Worker Paid` + `Edit Job` into another, instead of stacking each as a full-width row — cuts default footer from 4 stacked rows to 2. Primary actions/confirm-flows untouched. Build clean.
 
 **v0.13.37 (Aug 4) — `useFocusTrap` stale-closure and dead-keydown-listener fixes.** Found while scoping Statler Phase 2's `<Sheet>` primitive (`second-brain/03-projects/active/statler/decisions.md` 2026-08-03) and ported back here since the bug is real and pre-existing. Two issues in `src/hooks/useFocusTrap.js`: (1) `onClose` was captured directly in the effect's closure — any inline `onClose` passed from a parent (a fresh function reference every render) restarted the whole effect, including the 350ms autofocus timer, on every parent re-render; now held in a `useRef` so the effect's own deps don't include it. (2) The `keydown` listener (Escape to close, Tab-wrap) was attached inside the same code path as the autofocus branch's early-return, so on any sheet that actually autofocused (nearly all of them) the listener silently never attached — Escape and Tab-wrap have been dead in practice. Listener now attaches unconditionally whenever the trap is active. No behavior change to the 11 sheets consuming this hook beyond fixing both bugs — same public API. Build clean, Vitest 111/111.
 

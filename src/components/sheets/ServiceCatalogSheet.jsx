@@ -205,7 +205,7 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
       <div ref={sheetRef} onClick={e => e.stopPropagation()} style={{
         background: T.bg, color: T.ink,
         borderRadius: '24px 24px 0 0',
-        maxHeight: 'calc(var(--app-height, 100dvh) * 0.90)', display: 'flex', flexDirection: 'column',
+        maxHeight: 'calc(var(--app-height, 100dvh) * 0.94)', display: 'flex', flexDirection: 'column',
         animation: 'scSlide 300ms cubic-bezier(0.2,0.8,0.2,1)',
         border: `1px solid ${T.cardBorder}`, borderBottom: 'none',
       }}>

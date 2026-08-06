@@ -324,7 +324,7 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
       `}</style>
       <div style={{
         background: T.bg, width: '100%', maxWidth: 500, margin: '0 auto',
-        height: 'calc(var(--app-height, 100dvh) * 0.92)', borderTopLeftRadius: 28, borderTopRightRadius: 28,
+        maxHeight: 'calc(var(--app-height, 100dvh) * 0.96)', borderTopLeftRadius: 28, borderTopRightRadius: 28,
         display: 'flex', flexDirection: 'column', overflow: 'hidden',
         animation: 'njSlide 300ms cubic-bezier(0.16, 1, 0.3, 1)',
         boxShadow: '0 -8px 40px rgba(0,0,0,0.4)',

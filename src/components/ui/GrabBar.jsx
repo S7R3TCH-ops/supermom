@@ -20,6 +20,8 @@ export default function GrabBar({ onDismiss }) {
       style={{
         width: '100%',
         height: 28,
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+        boxSizing: 'content-box',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',

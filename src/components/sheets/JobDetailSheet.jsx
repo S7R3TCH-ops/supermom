@@ -368,7 +368,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
           background: T.bg, color: T.ink,
           borderRadius: '18px 18px 0 0',
           boxShadow: '0 -10px 40px rgba(0,0,0,0.38)',
-          maxHeight: 'calc(var(--app-height, 100dvh) * 0.92)', display: 'flex', flexDirection: 'column',
+          maxHeight: 'calc(var(--app-height, 100dvh) * 0.96)', display: 'flex', flexDirection: 'column',
           animation: 'jdsSlide 260ms cubic-bezier(0.2,0.8,0.2,1)',
           border: `1px solid ${T.cardBorder}`, borderBottom: 'none',
         }}
@@ -478,6 +478,7 @@ function ReadMode({
   const endTime = calcEnd(job.scheduled_time, displayHours);
   const timeRange = job.scheduled_time ? `${fmtTime12(job.scheduled_time)}${endTime ? ` – ${endTime}` : ''}` : '—';
   const showWorkerPaid = !isCancelled && isPaid && Number(job.worker_pay) > 0 && !job.worker_paid;
+  const mergeMarkPaidEdit = !isCancelled && !isScheduled && !isPaid && !showWorkerPaid;
 
   return (
     <>
@@ -525,9 +526,17 @@ function ReadMode({
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 6 }}>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
           <Pill bg={statusC.bg} border={statusC.border} color={statusC.color} T={T}>{job.job_status}</Pill>
           <Pill bg={payC.bg} border={payC.border} color={payC.color} T={T}>{payKey || 'Unpaid'}</Pill>
+          {invoiceId && (
+            <button
+              onClick={() => window.open(`/i/${invoiceId}`, '_blank')}
+              style={{ background: T.pink, color: 'white', border: 'none', padding: '3px 10px', borderRadius: 20, fontSize: 10, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 }}
+            >
+              {isPaid ? 'Receipt' : 'Invoice'} · View
+            </button>
+          )}
         </div>
       </div>
 
@@ -603,7 +612,7 @@ function ReadMode({
           {!futureConfirmType && !isCancelled && (isScheduled || !isPaid) && (
             <div style={{ display: 'flex', gap: 8 }}>
               {isScheduled && <Btn onClick={onMarkComplete} disabled={busy} bg="#22C55E" color="white" T={T} style={{ flex: 1 }}>Mark Complete</Btn>}
-              {!isPaid && <Btn onClick={onMarkPaid} disabled={busy} bg="#FC4693" color="white" T={T} style={{ flex: 1 }}>Mark Paid</Btn>}
+              {!isPaid && !(mergeMarkPaidEdit && !showEditWarn) && <Btn onClick={onMarkPaid} disabled={busy} bg="#FC4693" color="white" T={T} style={{ flex: 1 }}>Mark Paid</Btn>}
             </div>
           )}
           {!futureConfirmType && !isCancelled && (
@@ -627,6 +636,16 @@ function ReadMode({
                 <Btn onClick={onMarkWorkerPaid} disabled={busy} bg="#F59E0B" color="white" T={T} style={{ flex: 1 }}>
                   🦸 Mark {job.worker_name || 'Team Member'} Paid — ${Number(job.worker_pay).toFixed(0)}
                 </Btn>
+                <Btn
+                  onClick={policyMsg ? () => setShowEditWarn(true) : onEdit}
+                  bg={T.card} border={`1.5px solid ${T.cardBorder}`} color={T.ink} T={T} style={{ flex: 1 }}
+                >
+                  Edit Job{policyMsg ? ' ⚠️' : ''}
+                </Btn>
+              </div>
+            ) : mergeMarkPaidEdit ? (
+              <div style={{ display: 'flex', gap: 8 }}>
+                <Btn onClick={onMarkPaid} disabled={busy} bg="#FC4693" color="white" T={T} style={{ flex: 1 }}>Mark Paid</Btn>
                 <Btn
                   onClick={policyMsg ? () => setShowEditWarn(true) : onEdit}
                   bg={T.card} border={`1.5px solid ${T.cardBorder}`} color={T.ink} T={T} style={{ flex: 1 }}
@@ -764,13 +783,6 @@ function ReadMode({
                   )}
                 </div>
               )}
-            </div>
-          )}
-
-          {invoiceId && (
-            <div style={{ marginTop: 4, background: mode === 'dark' ? 'rgba(233,30,106,0.05)' : '#FFF0F7', borderRadius: 16, border: `1px solid ${T.pink}40`, padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: T.ink }}>{isPaid ? 'Receipt Ready' : 'Invoice Ready'}</div>
-              <button onClick={() => window.open(`/i/${invoiceId}`, '_blank')} style={{ background: T.pink, color: 'white', border: 'none', padding: '6px 14px', borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>VIEW</button>
             </div>
           )}
         </div>

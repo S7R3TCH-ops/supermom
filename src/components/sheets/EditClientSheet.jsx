@@ -173,7 +173,7 @@ export default function EditClientSheet({ clientId, onClose }) {
           background: T.bg, color: T.ink,
           borderRadius: '24px 24px 0 0',
           boxShadow: '0 -10px 40px rgba(0,0,0,0.38)',
-          maxHeight: 'calc(var(--app-height, 100dvh) * 0.92)', display: 'flex', flexDirection: 'column',
+          maxHeight: 'calc(var(--app-height, 100dvh) * 0.96)', display: 'flex', flexDirection: 'column',
           border: `1px solid ${T.cardBorder}`, borderBottom: 'none',
           }}
           >

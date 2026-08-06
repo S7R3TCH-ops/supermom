@@ -96,7 +96,7 @@ export default function AiChatSheet({ onClose, context = {} }) {
           background: T.card,
           borderRadius: '24px 24px 0 0',
           boxShadow: '0 -10px 40px rgba(0,0,0,0.38)',
-          maxHeight: 'calc(var(--app-height, 100dvh) * 0.85)',
+          maxHeight: 'calc(var(--app-height, 100dvh) * 0.89)',
           display: 'flex',
           flexDirection: 'column',
           animation: 'aichatSlide 260ms cubic-bezier(0.2,0.8,0.2,1)',

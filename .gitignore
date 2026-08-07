@@ -15,6 +15,10 @@ dist-ssr
 .env.*
 docs/*
 !docs/superpowers/
+!docs/changelog/
+!docs/archive/
+docs/archive/BLUEPRINT.md
+docs/archive/AI_PROJECT_INSTRUCTIONS.md
 /branding/
 
 # Editor directories and files

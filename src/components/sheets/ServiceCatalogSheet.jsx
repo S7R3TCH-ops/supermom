@@ -221,7 +221,7 @@ export default function ServiceCatalogSheet({ isOpen, onClose }) {
         </div>
 
         {/* Scrollable Body */}
-        <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '16px 20px 30px' }}>
+        <div className="sm-scroll" style={{ flex: '0 1 auto', minHeight: 0, overflowY: 'auto', padding: '16px 20px 30px' }}>
           <div style={{ marginBottom: 16, fontSize: 12, color: T.inkMuted, lineHeight: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
             <div style={{ flex: 1, paddingRight: 20 }}>
               Manage your standard service offerings. These defaults are used when booking new jobs.

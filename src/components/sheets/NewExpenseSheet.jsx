@@ -109,9 +109,10 @@ export default function NewExpenseSheet({ isOpen, onClose }) {
         </div>
 
         {/* Body */}
-        <div className="sm-scroll" style={{ 
-          flex: 1, 
-          overflowY: 'auto', 
+        <div className="sm-scroll" style={{
+          flex: '0 1 auto',
+          minHeight: 0,
+          overflowY: 'auto',
           padding: `0 18px ${isKeyboardFocused ? '260px' : '6px'}`,
           transition: 'padding-bottom 0.2s ease-out'
         }}>

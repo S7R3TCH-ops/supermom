@@ -477,7 +477,7 @@ export default function PostJobSheet({ jobId, onClose }) {
           </div>
         ) : (
           <>
-          <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+          <div className="sm-scroll" style={{ flex: '0 1 auto', minHeight: 0, overflowY: 'auto', padding: '20px' }}>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           

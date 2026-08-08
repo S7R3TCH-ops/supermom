@@ -540,7 +540,7 @@ function ReadMode({
         </div>
       </div>
 
-      <div ref={scrollRef} className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '12px 14px 4px' }}>
+      <div ref={scrollRef} className="sm-scroll" style={{ flex: '0 1 auto', minHeight: 0, overflowY: 'auto', padding: '12px 14px 4px' }}>
         <PrepNoteCard job={job} T={T} business={business} onDeepPrep={onDeepPrep} />
         
         <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', marginBottom: 8, color: T.pink }}>Mission Vitals</div>
@@ -871,7 +871,7 @@ function EditMode({ job, stage, form, setForm, services, workers, business, T, m
           <span style={{ fontSize: 12, color: T.inkMuted, marginLeft: 8 }}>{job.service_name || '—'} · {fmtDate(job.scheduled_date)}</span>
         </div>
       </div>
-      <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '12px 14px 4px' }}>
+      <div className="sm-scroll" style={{ flex: '0 1 auto', minHeight: 0, overflowY: 'auto', padding: '12px 14px 4px' }}>
         <SectionDivider label="Schedule & Service" T={T} />
         <Field T={T} label="Date">
           <button

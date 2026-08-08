@@ -353,8 +353,9 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
         </div>
 
         <div className="sm-scroll" style={{
-          flex: 1, 
-          overflowY: 'auto', 
+          flex: '0 1 auto',
+          minHeight: 0,
+          overflowY: 'auto',
           padding: `20px 20px ${isKeyboardFocused ? '140px' : '20px'}`,
         }}>
           {step === 1 ? (

@@ -59,7 +59,7 @@ test('Audit daily ops flow for viewport bugs (Pixel 10 Pro simulation)', async (
   
   // Try to find a job card and open it (Needs Attention wrap-up/unpaid/partial cards,
   // or a scheduled JobCard if the QA account has current-week jobs)
-  const jobCard = page.locator('button, div[style*="cursor: pointer"]').filter({ hasText: /wrap up|unpaid|partial paid|scheduled|paid/i }).first();
+  const jobCard = page.locator('button:has-text("WRAP UP"), button:has-text("UNPAID"), button:has-text("PARTIAL PAID"), div[style*="cursor: pointer"]:has-text("SCHEDULED")').first();
   if (await jobCard.isVisible().catch(() => false)) {
     await jobCard.click({ force: true });
     await page.waitForTimeout(1500);

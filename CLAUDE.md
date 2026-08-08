@@ -167,11 +167,12 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 
 ---
 
-## Current version: 0.13.39 — Aug 6, 2026 (LIVE, pushed to `main` — `77b79ee`)
+## Current version: 0.13.40 — Aug 8, 2026 (LIVE, pushed to `main` — `584b73f`)
 
 App is live, Sandra using it daily. Full version-by-version changelog (v0.12.86 through v0.13.39) lives in `docs/archive/CHANGELOG-v0.13-archive.md` — this section only tracks what's currently open.
 
 **Currently awaiting real-device verification** (both are UI/CSS-only, cleanly revertible, no schema changes — not blockers, just unverified):
+- **v0.13.40** (`584b73f`, Aug 8) — sheet scroll-region dead-space fix, round 2: v0.13.39's fix only covered JobDetailSheet; this closes the gap between short content and footer buttons on the other sheets with the same header/scroll/footer shape — ServiceCatalogSheet, NewExpenseSheet, PostJobSheet, NewJobSheet. Same technique (`flex:1` → `flex:'0 1 auto', minHeight:0` on the scroll region) applied only where a separate footer sibling exists; skipped WorkerCatalogSheet/FinanceDetailSheet (scroll is the last child), EditClientSheet/NewClientSheet (buttons scroll with the form), PrepNoteSheet (no footer), AiChatSheet (chat input correctly wants flex:1 to stay pinned). Investigated Admin.jsx's similar-looking gap above the bottom nav — confirmed by flex-math trace it's normal underfill on a full-height page (not the sheet bug), left as-is per Joel's call.
 - **v0.13.39** (`77b79ee`, Aug 6) — sheet dead-space fix, Invoice/Receipt badge moved to header, Mark Paid/Edit Job row merge, GrabBar safe-area-inset-top padding + top-margin nudge on all 10 height-capped sheets. Needs Sandra's phone-test (notch/Dynamic Island clearance especially — she's back ~2026-08-10). Revert via `git revert 77b79ee` if needed.
 - **v0.13.36** (`49adf9e`, Aug 3) — JobDetailSheet admin actions (Revert/Delete) collapsed behind a closed-by-default toggle. Needs confirming the toggle is discoverable in real use.
 

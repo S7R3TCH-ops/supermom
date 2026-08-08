@@ -167,9 +167,11 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 
 ---
 
-## Current version: 0.13.40 — Aug 8, 2026 (LIVE, pushed to `main` — `584b73f`)
+## Current version: 0.13.41 — Aug 8, 2026 (built, NOT pushed — awaiting Joel's go-ahead)
 
 App is live, Sandra using it daily. Full version-by-version changelog (v0.12.86 through v0.13.39) lives in `docs/archive/CHANGELOG-v0.13-archive.md` — this section only tracks what's currently open.
+
+- **v0.13.41** (Aug 8, not yet committed) — calendar picker now shows day-of-week. `WheelDatePicker.jsx` header gains a live weekday line (`new Date(year, monthIdx, day).toLocaleDateString('en-US', {weekday:'long'})`), recomputed on every wheel change — no 4th wheel column (weekday is derived, not choosable). Related fix in the same pass: `Finance.jsx`'s local `dateFmt` (ledger row dates) was missing `weekday:'short'`, inconsistent with the app's shared `dateBrief()` convention used elsewhere (JobCard/UpcomingCard/Home) — added. Build clean, Vitest 111/111.
 
 **Currently awaiting real-device verification** (both are UI/CSS-only, cleanly revertible, no schema changes — not blockers, just unverified):
 - **v0.13.40** (`584b73f`, Aug 8) — sheet scroll-region dead-space fix, round 2: v0.13.39's fix only covered JobDetailSheet; this closes the gap between short content and footer buttons on the other sheets with the same header/scroll/footer shape — ServiceCatalogSheet, NewExpenseSheet, PostJobSheet, NewJobSheet. Same technique (`flex:1` → `flex:'0 1 auto', minHeight:0` on the scroll region) applied only where a separate footer sibling exists; skipped WorkerCatalogSheet/FinanceDetailSheet (scroll is the last child), EditClientSheet/NewClientSheet (buttons scroll with the form), PrepNoteSheet (no footer), AiChatSheet (chat input correctly wants flex:1 to stay pinned). Investigated Admin.jsx's similar-looking gap above the bottom nav — confirmed by flex-math trace it's normal underfill on a full-height page (not the sheet bug), left as-is per Joel's call.

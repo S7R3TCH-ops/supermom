@@ -449,7 +449,7 @@ export default function Finance() {
 
   const transactions = useMemo(() => {
     // "All" spans multiple years — include the year so "Mar 12" is never ambiguous
-    const dateFmt = { month: 'short', day: 'numeric', ...(period === 'All' ? { year: 'numeric' } : {}) };
+    const dateFmt = { weekday: 'short', month: 'short', day: 'numeric', ...(period === 'All' ? { year: 'numeric' } : {}) };
     const jobTx = periodJobs.map(j => {
       const computed = computeJobFinancials(j);
       const sub = computed.subtotal + computed.additionalTotal;

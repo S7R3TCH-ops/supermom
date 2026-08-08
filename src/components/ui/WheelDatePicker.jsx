@@ -19,6 +19,8 @@ export default function WheelDatePicker({ value, onConfirm, onCancel, T, mode })
   const dayLabels = Array.from({ length: dayCount }, (_, i) => String(i + 1));
   const clampedDayIdx = Math.min(dayIdx, dayCount - 1);
 
+  const weekday = new Date(years[yearIdx], monthIdx, clampedDayIdx + 1).toLocaleDateString('en-US', { weekday: 'long' });
+
   function handleDone() {
     onConfirm(buildISODate(years[yearIdx], monthIdx + 1, clampedDayIdx + 1));
   }
@@ -41,7 +43,10 @@ export default function WheelDatePicker({ value, onConfirm, onCancel, T, mode })
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', borderBottom: `1px solid ${T.cardBorder}` }}>
           <button onClick={onCancel} style={{ background: 'none', border: 'none', color: T.inkMuted, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
-          <div style={{ fontSize: 13, fontWeight: 700, color: T.ink }}>Set Date</div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: T.ink }}>Set Date</div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: T.inkMuted }}>{weekday}</div>
+          </div>
           <button onClick={handleDone} style={{ background: 'none', border: 'none', color: T.pink, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>Done</button>
         </div>
         <div style={{ position: 'relative', display: 'flex', justifyContent: 'center', padding: '8px 20px 4px' }}>

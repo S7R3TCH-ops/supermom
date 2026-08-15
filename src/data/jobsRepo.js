@@ -721,6 +721,7 @@ export function findConflicts(allJobs, scheduledAtISO, durationMin, windowMinute
   const endT = t + durationMin * 60_000;
   return allJobs.filter(j => {
     if (j.deleted_at) return false;
+    if (j.job_status === 'Cancelled') return false;
     const jt = new Date(j.scheduled_at).getTime();
     if (Number.isNaN(jt)) return false;
     const je = jt + ((j.duration_est ?? 0) * 60_000);

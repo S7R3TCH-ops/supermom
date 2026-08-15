@@ -167,10 +167,11 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 
 ---
 
-## Current version: 0.13.41 — Aug 8, 2026 (built, NOT pushed — awaiting Joel's go-ahead)
+## Current version: 0.13.42 — Aug 15, 2026 (built, NOT pushed — awaiting Joel's go-ahead)
 
 App is live, Sandra using it daily. Full version-by-version changelog (v0.12.86 through v0.13.39) lives in `docs/archive/CHANGELOG-v0.13-archive.md` — this section only tracks what's currently open.
 
+- **v0.13.42** (Aug 15, not yet committed) — 2 bugs from Sandra's live use, reported via second-brain (`tasks.md` 2026-08-15). (1) **Cancelled job still triggered overlap warning**: `findConflicts()` in `src/data/jobsRepo.js` filtered out soft-deleted jobs (`deleted_at`) but not `job_status === 'Cancelled'` jobs, so booking a new job over a cancelled one's old slot still threw a false conflict. One-line fix: added `if (j.job_status === 'Cancelled') return false;` to the filter. (2) **"Job/client card click doesn't navigate" — audited, could not reproduce.** Live-tested (QA account, Chrome) every screen named in the report — Home (all job-card sections, the "Needs attention" wrap-up list, the Next-Up hero card), Finance (ledger `TransactionRow`, `FinanceDetailSheet` drill-ins), `JobDetailSheet`'s client-name link, and `ClientProfile`'s Recent History rows — all correctly open the job/client detail sheet already. No dead click targets found in current code. Likely explanation: Sandra hit this on a stale cached PWA build (this project has a known recurring stale-service-worker/cache class of bug, see the v0.13.23–27 white-bar saga) rather than a live code defect — nothing here needed a code change. Flagging closed pending Sandra re-confirming on a fresh reinstall; if it recurs, need the exact screen + element she tapped to keep looking. Build clean, Vitest 111/111.
 - **v0.13.41** (Aug 8, not yet committed) — calendar picker now shows day-of-week. `WheelDatePicker.jsx` header gains a live weekday line (`new Date(year, monthIdx, day).toLocaleDateString('en-US', {weekday:'long'})`), recomputed on every wheel change — no 4th wheel column (weekday is derived, not choosable). Related fix in the same pass: `Finance.jsx`'s local `dateFmt` (ledger row dates) was missing `weekday:'short'`, inconsistent with the app's shared `dateBrief()` convention used elsewhere (JobCard/UpcomingCard/Home) — added. Build clean, Vitest 111/111.
 
 **Currently awaiting real-device verification** (both are UI/CSS-only, cleanly revertible, no schema changes — not blockers, just unverified):

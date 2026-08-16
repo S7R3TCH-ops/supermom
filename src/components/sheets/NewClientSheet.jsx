@@ -139,7 +139,12 @@ export default function NewClientSheet({ onClose, onCreated }) {
           </button>
         </div>
 
-        <form onSubmit={submit} className="sm-scroll" style={{
+        <form onSubmit={submit} className="sm-scroll" onFocusCapture={e => {
+          const t = e.target;
+          if (['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName)) {
+            setTimeout(() => t.scrollIntoView({ block: 'center', behavior: 'smooth' }), 300);
+          }
+        }} style={{
           flex: 1,
           overflowY: 'auto',
           padding: '0 18px 14px',

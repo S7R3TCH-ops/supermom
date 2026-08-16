@@ -13,6 +13,16 @@ describe('resolveViewportHeight', () => {
   it('falls back to innerHeight when visualViewport.height is undefined', () => {
     expect(resolveViewportHeight({ visualViewport: {}, innerHeight: 700 })).toBe(700);
   });
+
+  it('ignores visualViewport when the on-screen keyboard has shrunk it (delta > 150px)', () => {
+    // innerHeight (layout viewport) stays put; visualViewport shrinks ~291px, as on
+    // Android Chrome's default resizes-visual keyboard behavior.
+    expect(resolveViewportHeight({ visualViewport: { height: 624 }, innerHeight: 915 })).toBe(915);
+  });
+
+  it('still tracks visualViewport for small, non-keyboard deltas (safe-area/toolbar, <=150px)', () => {
+    expect(resolveViewportHeight({ visualViewport: { height: 812 }, innerHeight: 900 })).toBe(812);
+  });
 });
 
 describe('applyAppHeight', () => {

@@ -21,9 +21,26 @@
  * which is the exact signal that was already fixing it manually.
  */
 
-/** Pure: the real visible viewport height in px. visualViewport wins over innerHeight. */
+/** Pure: the real visible viewport height in px. visualViewport wins over innerHeight,
+ * except when the delta looks like the on-screen keyboard (see below). */
 export function resolveViewportHeight(win = window) {
-  return win.visualViewport?.height ?? win.innerHeight
+  const vv = win.visualViewport
+  if (!vv || vv.height == null) return win.innerHeight
+
+  // Keyboard detection heuristic: on Android Chrome / iOS Safari's default
+  // `resizes-visual` behavior, opening the on-screen keyboard shrinks only
+  // visualViewport.height — window.innerHeight (the layout viewport) stays put.
+  // If we let --app-height follow visualViewport here, the whole app shell
+  // (BottomNav included) shrinks to fit above the keyboard while the real
+  // window is still full height underneath, exposing raw html/body background
+  // below the shell (the pink/black "void" bug). Real non-keyboard deltas this
+  // function needs to keep tracking — safe-area/notch geometry (<100px), iOS
+  // toolbar show/hide (~50-100px) — stay well under keyboard height (~250-300px),
+  // so a 150px threshold separates them without misfiring on rotation (innerHeight
+  // and visualViewport shift together there, delta stays ~0).
+  if (win.innerHeight - vv.height > 150) return win.innerHeight
+
+  return vv.height
 }
 
 /** Writes the resolved height onto the `--app-height` custom property. Returns the value used. */

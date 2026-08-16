@@ -10,6 +10,11 @@ export function AppThemeProvider({ children }) {
 
   useEffect(() => {
     localStorage.setItem('supermom-theme', mode);
+    if (mode === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
   }, [mode]);
 
   const value = useMemo(() => ({

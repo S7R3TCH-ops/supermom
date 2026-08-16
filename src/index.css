@@ -58,6 +58,14 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Keeps the native canvas (html/body, visible in any gap outside #root — cold-launch
+   settle, keyboard-open geometry) in sync with the app's dark-mode toggle. Without this
+   it's always the light pink below, even in dark mode. Set synchronously pre-paint by
+   the inline script in index.html; kept live by AppTheme.jsx on toggle. */
+html[data-theme="dark"] {
+  --bg: #0A0A0A;
+}
+
 html {
   margin: 0;
   padding: 0;

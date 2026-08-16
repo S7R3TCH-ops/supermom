@@ -56,3 +56,4 @@ skills-lock.json
 !docs/.nojekyll
 .env*
 supabase/.temp/
+.playwright-mcp/

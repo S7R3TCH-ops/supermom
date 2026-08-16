@@ -707,6 +707,7 @@ export default function Settings() {
             )}
           </div>
         </div>
+        {isKeyboardFocused && <div style={{ height: 260 }} aria-hidden="true" />}
       </div>
 
       {/* Persistent save footer */}
@@ -733,7 +734,6 @@ export default function Settings() {
         </button>
       </div>
 
-      <div style={{ height: isKeyboardFocused ? 260 : 0 }} />
       <WorkerCatalogSheet isOpen={showWorkers} onClose={() => setShowWorkers(false)} />
     </div>
   );

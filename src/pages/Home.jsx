@@ -1297,9 +1297,8 @@ export default function Home() {
           <EmptyState allDone={allDone} T={T} persona={persona} />
         )}
 
+        {isKeyboardFocused && <div style={{ height: 80 }} aria-hidden="true" />}
       </div>
-
-      <div style={{ height: isKeyboardFocused ? 80 : 0 }} />
 
       {costModalJob && (
         <div

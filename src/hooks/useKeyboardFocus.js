@@ -1,6 +1,16 @@
 import { useState, useEffect } from 'react';
 
 const FIELD_TAGS = ['INPUT', 'TEXTAREA', 'SELECT'];
+const KEYBOARD_DELTA_PX = 150;
+
+/** Pure: mirrors appHeight.js's resolveViewportHeight keyboard heuristic (same
+ * threshold). Kept local/duplicated here rather than imported — consolidating
+ * both call sites behind one shared export is a separate, reviewed change (F2). */
+export function isKeyboardOpen(win = window) {
+  const vv = win.visualViewport;
+  if (!vv || vv.height == null) return false;
+  return win.innerHeight - vv.height > KEYBOARD_DELTA_PX;
+}
 
 export function useKeyboardFocus() {
   const [isFocused, setIsFocused] = useState(false);
@@ -9,10 +19,11 @@ export function useKeyboardFocus() {
     const vv = window.visualViewport;
 
     if (vv) {
-      const fullHeight = vv.height;
-
+      // Stateless signal — NOT a captured baseline. A frozen `fullHeight` read once
+      // at mount goes stale on any legitimate non-keyboard resize (rotation, nav-bar
+      // show/hide) and then latches `isFocused` wrong for this component's lifetime.
       const handleResize = () => {
-        setIsFocused(vv.height < fullHeight - 100);
+        setIsFocused(isKeyboardOpen(window));
       };
 
       vv.addEventListener('resize', handleResize);

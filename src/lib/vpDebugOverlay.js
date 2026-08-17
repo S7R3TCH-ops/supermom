@@ -11,7 +11,13 @@
  * Remove this file and its `installVpDebugOverlay()` call once the fix is verified.
  */
 export function installVpDebugOverlay(win = window, doc = document) {
-  if (new URLSearchParams(win.location.search).get('vpdebug') !== '1') return
+  const qp = new URLSearchParams(win.location.search).get('vpdebug')
+  // manifest start_url ('/') drops query params on standalone launch, so the
+  // Safari session that first visits ?vpdebug=1 persists a flag that survives
+  // into the installed PWA (localStorage is shared cross-launch, same origin).
+  if (qp === '1') win.localStorage?.setItem('vpdebug', '1')
+  if (qp === '0') win.localStorage?.removeItem('vpdebug')
+  if (qp !== '1' && win.localStorage?.getItem('vpdebug') !== '1') return
 
   // 0-sized probe whose padding resolves env(safe-area-inset-bottom) for readback.
   const probe = doc.createElement('div')
@@ -31,6 +37,7 @@ export function installVpDebugOverlay(win = window, doc = document) {
     const vv = win.visualViewport
     const inset = win.getComputedStyle(probe).paddingBottom
     box.textContent =
+      `build    ${typeof __COMMIT_SHA__ !== 'undefined' ? __COMMIT_SHA__ : '—'}\n` +
       `innerH   ${win.innerHeight}\n` +
       `vvH      ${vv ? Math.round(vv.height * 100) / 100 : '—'}\n` +
       `screenH  ${win.screen?.height ?? '—'}\n` +

@@ -62,7 +62,7 @@ export function useKeyboardFocus() {
     const handleFocusIn = (e) => {
       if (!FIELD_TAGS.includes(e.target.tagName)) return;
       const el = e.target;
-      setTimeout(() => el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 300);
+      setTimeout(() => el.scrollIntoView({ block: 'center', behavior: 'smooth' }), 300);
     };
 
     document.addEventListener('focusin', handleFocusIn);

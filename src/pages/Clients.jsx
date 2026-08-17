@@ -286,6 +286,12 @@ export default function Clients() {
         {filtered.map((c, i) => (
           <ClientCard key={c.id || i} c={c} T={T} mode={mode} onPress={handleClientPress} onBook={openNewJobFor} />
         ))}
+
+        {filtered.length > 0 && filtered.length <= 3 && (
+          <div style={{ fontFamily: T.font, fontSize: 12, color: T.inkMuted, marginTop: 40, marginBottom: 20, textAlign: 'center' }}>
+            ✦ End of roster ✦
+          </div>
+        )}
       </div>
     </div>
   );

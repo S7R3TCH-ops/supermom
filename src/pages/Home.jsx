@@ -1297,6 +1297,12 @@ export default function Home() {
           <EmptyState allDone={allDone} T={T} persona={persona} />
         )}
 
+        {todayJobs.length <= 3 && attentionItems.length === 0 && (
+          <div style={{ fontFamily: T.font, fontSize: 12, color: T.inkMuted, marginTop: 40, marginBottom: 20, textAlign: 'center' }}>
+            ✦ All caught up ✦
+          </div>
+        )}
+
         {isKeyboardFocused && <div style={{ height: 80 }} aria-hidden="true" />}
       </div>
 

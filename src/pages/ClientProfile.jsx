@@ -302,7 +302,7 @@ export default function ClientProfile() {
                 {privacyOn ? '•••' : `$${creditBalance.toFixed(2)}`}
               </Subheading>
               <Caption style={{ fontSize: 9, fontWeight: 600, color: mode === 'dark' ? 'rgba(255,255,255,0.4)' : T.inkMuted, letterSpacing: '0.4px', textTransform: 'uppercase', marginTop: 2 }}>
-                ✦ Account credit — applies to next job
+                ✦ Account credit — use on next job or return it
               </Caption>
             </div>
           </div>

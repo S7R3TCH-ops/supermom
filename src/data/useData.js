@@ -83,13 +83,14 @@ export function useJobs() {
       const bid = await getBusinessProfile().catch(() => null);
       if (!bid) return { rows: [], clientRows: [], workerRows: [], paymentRows: [] };
       const businessId = bid.id || await getCurrentBusinessId();
-      const [js, cs, ws, pmtResult] = await Promise.all([
+      const [js, cs, ws, pmtResult, creditResult] = await Promise.all([
         fetchActiveJobs(),
         fetchClients(),
         fetchWorkers({ includeArchived: true }).catch(() => []),
         supabase.from('payments').select('job_id, amount').eq('business_id', businessId),
+        supabase.from('client_credits').select('job_id, amount').eq('business_id', businessId).eq('kind', 'issued'),
       ]);
-      return { rows: js, clientRows: cs, workerRows: ws, paymentRows: pmtResult.data || [] };
+      return { rows: js, clientRows: cs, workerRows: ws, paymentRows: pmtResult.data || [], creditRows: creditResult.data || [] };
     },
   });
 
@@ -97,13 +98,18 @@ export function useJobs() {
   const clientRows = data?.clientRows ?? [];
   const workerRows = data?.workerRows ?? [];
   const paymentRows = data?.paymentRows ?? [];
+  const creditRows = data?.creditRows ?? [];
   const clientLookup = Object.fromEntries(clientRows.map(c => [c.id, toDisplayClient(c, [])]));
   const workerLookup = Object.fromEntries(workerRows.map(w => [w.id, w]));
   const paymentsByJobId = {};
   paymentRows.forEach(p => {
     paymentsByJobId[p.job_id] = (paymentsByJobId[p.job_id] || 0) + Number(p.amount || 0);
   });
-  const display = rows.map(j => toDisplayJob(j, clientLookup, paymentsByJobId));
+  const creditsByJobId = {};
+  creditRows.forEach(c => {
+    creditsByJobId[c.job_id] = (creditsByJobId[c.job_id] || 0) + Number(c.amount || 0);
+  });
+  const display = rows.map(j => toDisplayJob(j, clientLookup, paymentsByJobId, creditsByJobId));
   return { jobs: display, raw: rows, clients: clientLookup, workers: workerLookup, loading, error, refresh: refetch };
 }
 

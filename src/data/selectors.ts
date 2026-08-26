@@ -67,6 +67,10 @@ export interface PaymentsByJobId {
   [jobId: string]: number;
 }
 
+export interface CreditsByJobId {
+  [jobId: string]: number;
+}
+
 export interface UpcomingJobItem {
   id: string;
   date: string;
@@ -155,6 +159,7 @@ export interface DisplayJob {
   recurrence_rule: string | null;
   gcal_event_id: string | null;
   is_deleted: boolean;
+  issued_credit: number;
 }
 
 // ---------- helpers ----------
@@ -293,7 +298,8 @@ export function toDisplayClient(
 export function toDisplayJob(
   jobRow: JobInput & Record<string, unknown>,
   clientLookup: ClientLookup = {},
-  paymentsByJobId: PaymentsByJobId = {}
+  paymentsByJobId: PaymentsByJobId = {},
+  creditsByJobId: CreditsByJobId = {}
 ): DisplayJob | null {
   if (!jobRow) return null;
   const c = clientLookup[jobRow.client_id as string] || null;
@@ -330,6 +336,7 @@ export function toDisplayJob(
     recurrence_rule: ((jobRow.ai_context as Record<string, unknown>)?.recurrence_rule as string) ?? null,
     gcal_event_id: (jobRow.calendar_event_id as string) ?? null,
     is_deleted: !!(jobRow.deleted_at),
+    issued_credit: creditsByJobId[jobRow.id as string] || 0,
   };
 }
 

@@ -98,6 +98,18 @@ export default function JobCard({ job: j, T, onClick, total = 0, privacyOn = fal
         </div>
       )}
 
+      {/* Overpaid → credit issued */}
+      {Number(j.issued_credit) > 0.009 && (
+        <div style={{ marginTop: 4 }}>
+          <span style={{
+            fontSize: 8.5, fontWeight: 700, padding: '1px 5px', borderRadius: 4,
+            background: T.pink, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.3px',
+          }}>
+            ✦ Overpaid — {privacyOn ? '•••' : `$${Number(j.issued_credit).toFixed(2)}`} credited
+          </span>
+        </div>
+      )}
+
       {/* Notes */}
       {j.notes && (
         <div style={{

@@ -19,11 +19,11 @@ export async function decorateInvoiceWithBalances(supabase, invoice) {
     amountPaid: 0, balanceOwing: 0, isPaidInFull: false,
     payments: [], otherOutstanding: [], alsoPaid: [],
     runningTotalOwing: 0, totalPaidAllJobs: 0, settlementCount: 0,
-    invoiceJobBalances: [],
+    invoiceJobBalances: [], creditRemaining: 0,
   };
   if (!invoiceJobIds.size || !clientId) return { ...invoice, ...empty };
 
-  const [{ data: clientJobs, error: jobsErr }, { data: clientPayments, error: paymentsErr }] = await Promise.all([
+  const [{ data: clientJobs, error: jobsErr }, { data: clientPayments, error: paymentsErr }, { data: creditRows, error: creditErr }] = await Promise.all([
     supabase.from('jobs').select('*')
       .eq('client_id', clientId)
       .eq('business_id', invoice.business_id)
@@ -34,9 +34,15 @@ export async function decorateInvoiceWithBalances(supabase, invoice) {
       .eq('business_id', invoice.business_id)
       .eq('is_void', false)
       .order('payment_date', { ascending: true }),
+    supabase.from('client_credits').select('amount')
+      .eq('client_id', clientId)
+      .eq('business_id', invoice.business_id),
   ]);
   if (jobsErr) throw jobsErr;
   if (paymentsErr) throw paymentsErr;
+  if (creditErr) throw creditErr;
+
+  const creditRemaining = Math.round((creditRows ?? []).reduce((s, r) => s + Number(r.amount), 0) * 100) / 100;
 
   const paidByJobId = {};
   (clientPayments ?? []).forEach(p => {
@@ -95,5 +101,6 @@ export async function decorateInvoiceWithBalances(supabase, invoice) {
     totalPaidAllJobs,
     settlementCount,
     invoiceJobBalances,
+    creditRemaining,
   };
 }

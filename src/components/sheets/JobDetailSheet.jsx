@@ -6,6 +6,7 @@ import { useBackClose } from '../../hooks/useBackClose';
 import { useKeyboardFocus } from '../../hooks/useKeyboardFocus';
 import { fetchJobById, updateJob, softDeleteJob, cancelJob, hardDeleteJob, revertJobToPreCompletion } from '../../data/jobsRepo';
 import { markJobWorkerPaid } from '../../data/jobWorkersRepo';
+import { getJobIssuedCredit, reclassifyToTip } from '../../data/creditsRepo';
 import { recalcInvoiceTotal } from '../../data/invoicesRepo';
 import { deriveJobStage, getPolicyMessage, validateJobDraft, buildFinancialPatch, isHoursLocked, resolveBillableHours } from '../../lib/jobDraftPolicy';
 import { useAuth } from '../../context/AuthContext';
@@ -108,6 +109,8 @@ export default function JobDetailSheet({ jobId, onClose }) {
   const [showCancelForm, setShowCancelForm] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [cancelBusy, setCancelBusy] = useState(false);
+  const [issuedCredit, setIssuedCredit] = useState(null);
+  const [reclassifyBusy, setReclassifyBusy] = useState(false);
 
   if (jobId !== prevJobId) {
     setPrevJobId(jobId);
@@ -145,6 +148,34 @@ export default function JobDetailSheet({ jobId, onClose }) {
       .catch(e => { if (alive) { setError(e.message || String(e)); setLoading(false); } });
     return () => { alive = false; };
   }, [jobId]);
+
+  function refreshIssuedCredit() {
+    if (!jobId || !business?.id) return;
+    getJobIssuedCredit(business.id, jobId)
+      .then(row => setIssuedCredit(row))
+      .catch(() => setIssuedCredit(null));
+  }
+
+  useEffect(() => {
+    refreshIssuedCredit();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobId, business?.id]);
+
+  async function handleReclassifyToTip() {
+    if (!issuedCredit) return;
+    setReclassifyBusy(true);
+    setMutErr(null);
+    try {
+      await reclassifyToTip(business.id, issuedCredit.client_id, issuedCredit.job_id, issuedCredit.amount);
+      refreshIssuedCredit();
+      toast.success('Marked as a tip instead');
+      notifyDataChanged();
+    } catch (e) {
+      setMutErr(e.message || String(e));
+    } finally {
+      setReclassifyBusy(false);
+    }
+  }
 
   // Prefetch prep note so it's ready when Sandra taps "Client briefing"
   useEffect(() => {
@@ -400,6 +431,9 @@ export default function JobDetailSheet({ jobId, onClose }) {
             busy={busy} confirm={confirm} mutErr={mutErr}
             invoiceId={invoiceId}
             jobPayments={jobPayments}
+            issuedCredit={issuedCredit}
+            reclassifyBusy={reclassifyBusy}
+            onReclassifyToTip={handleReclassifyToTip}
             policyMsg={policyMsg}
             isAdmin={isAdmin}
             showCancelForm={showCancelForm}
@@ -456,6 +490,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
 function ReadMode({
   job, T, mode, business, isScheduled, isPaid, isCancelled,
   busy, confirm, mutErr, invoiceId, jobPayments, policyMsg, scrollRef,
+  issuedCredit, reclassifyBusy, onReclassifyToTip,
   isAdmin,
   showCancelForm, cancelReason, cancelBusy,
   onSetShowCancelForm, onSetCancelReason, onHandleCancel,
@@ -565,6 +600,17 @@ function ReadMode({
         </InfoCard>
 
         <FinancialMathBreakdown job={job} business={business} payments={jobPayments} T={T} mode={mode} />
+
+        {issuedCredit && (
+          <InfoCard T={T}>
+            <div style={{ fontFamily: T.font, fontSize: 12.5, color: T.ink, marginBottom: 8 }}>
+              ✦ This job included <strong>${Number(issuedCredit.amount).toFixed(2)}</strong> credited to {job.client_name}'s account.
+            </div>
+            <Btn onClick={onReclassifyToTip} disabled={reclassifyBusy} bg={T.card} border={`1px solid ${T.cardBorder}`} color={T.inkSub} T={T}>
+              {reclassifyBusy ? 'Working…' : 'Mark as a tip instead'}
+            </Btn>
+          </InfoCard>
+        )}
 
         {job.job_notes && (
           <InfoCard T={T}>

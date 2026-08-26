@@ -10,6 +10,7 @@ import { computeJobFinancials } from '../lib/financialMath';
 import { MONEY_FIELDS } from '../lib/jobDraftPolicy';
 import { composeTorontoISO as _composeTorontoISO } from '../lib/dateUtils';
 import { setJobWorkers, markJobWorkerPaid, fetchJobWorkers, fetchJobWorkersForJobs } from './jobWorkersRepo';
+import { getClientCreditBalance, getJobIssuedCredit, applyCredit, issueCredit } from './creditsRepo';
 export { composeTorontoISO } from '../lib/dateUtils';
 
 function assertWrote(data, op) {
@@ -537,6 +538,22 @@ export async function recordPayment(jobId, amount, method = 'Cash', _paymentStat
     .single();
   if (getErr) throw getErr;
 
+  const validCosts = (additionalCosts || []).filter(c => Number(c.amount) > 0);
+  const costSum = validCosts.reduce((s, c) => s + Number(c.amount), 0);
+  const costNotes = validCosts.map(c => c.description).filter(Boolean).join('; ');
+
+  // Compute total against the values being written, not the stale pre-completion DB row.
+  // The DB row still has job_status='Scheduled' and the old actual_duration/costs at this point.
+  const liveJob = {
+    ...job,
+    job_status: 'Completed',
+    actual_duration: duration,
+    ...(validCosts.length > 0 ? { additional_costs_json: validCosts, additional_cost: costSum } : {}),
+    ...(taxOverride !== null ? { tax_enabled: taxOverride } : {}),
+  };
+  const financials = computeJobFinancials(liveJob);
+  const total = financials.total;
+
   // 2. Insert into payments if amount > 0
   if (amount > 0) {
     const { data: payData, error: payErr } = await supabase
@@ -555,11 +572,40 @@ export async function recordPayment(jobId, amount, method = 'Cash', _paymentStat
     assertWrote(payData, 'recordPayment:insert');
   }
 
-  const validCosts = (additionalCosts || []).filter(c => Number(c.amount) > 0);
-  const costSum = validCosts.reduce((s, c) => s + Number(c.amount), 0);
-  const costNotes = validCosts.map(c => c.description).filter(Boolean).join('; ');
+  // 3. Auto-apply any available client credit toward this job's balance —
+  // once only per job (checked via a prior 'Credit'-method payments row).
+  // Client account credit, not cash — modeled as a payments row so every
+  // existing balance/paid-status readout (Finance, Home, invoices,
+  // FinancialMathBreakdown) handles it for free. See docs/plans (client
+  // credit design, 2026-08-26).
+  const { data: priorPayments, error: priorPayErr } = await supabase
+    .from('payments')
+    .select('amount, payment_method')
+    .eq('job_id', jobId)
+    .eq('is_void', false);
+  if (priorPayErr) throw priorPayErr;
+  const alreadyRealPaid = (priorPayments ?? []).reduce((s, p) => s + Number(p.amount), 0);
+  const alreadyAppliedCredit = (priorPayments ?? []).some(p => p.payment_method === 'Credit');
+  if (!alreadyAppliedCredit) {
+    const availableCredit = await getClientCreditBalance(businessId, job.client_id);
+    const creditToApply = Math.min(availableCredit, Math.max(0, Math.round((total - alreadyRealPaid) * 100) / 100));
+    if (creditToApply > 0.009) {
+      const { error: creditPayErr } = await supabase
+        .from('payments')
+        .insert({
+          business_id: businessId,
+          job_id: jobId,
+          client_id: job.client_id,
+          amount: creditToApply,
+          payment_method: 'Credit',
+          payment_date: new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Toronto' }).format(new Date()),
+        });
+      if (creditPayErr) throw creditPayErr;
+      await applyCredit(businessId, job.client_id, jobId, creditToApply);
+    }
+  }
 
-  // 3. Always derive status from DB payments sum — never trust caller-supplied value
+  // 4. Always derive status from DB payments sum — never trust caller-supplied value
   const { data: existingPayments, error: paymentsErr } = await supabase
     .from('payments')
     .select('amount')
@@ -567,19 +613,17 @@ export async function recordPayment(jobId, amount, method = 'Cash', _paymentStat
     .eq('is_void', false);
   if (paymentsErr) throw paymentsErr;
   const paid = (existingPayments ?? []).reduce((s, p) => s + Number(p.amount), 0);
-
-  // Compute total against the values being written, not the stale pre-completion DB row.
-  // The DB row still has job_status='Scheduled' and the old actual_duration/costs at this point.
-  const liveJob = {
-    ...job,
-    job_status: 'Completed',
-    actual_duration: duration,
-    ...(validCosts.length > 0 ? { additional_costs_json: validCosts, additional_cost: costSum } : {}),
-    ...(taxOverride !== null ? { tax_enabled: taxOverride } : {}),
-  };
-  const financials = computeJobFinancials(liveJob);
-  const total = financials.total;
   let status = paid >= total - 0.01 && paid > 0 ? 'Paid' : paid > 0 ? 'Partial' : (amount > 0 ? 'Partial' : '');
+
+  // 5. If this payment pushed the job over its total, auto-issue the surplus
+  // as client credit — once only per job (idempotency guard: only issue if
+  // this job hasn't already issued credit before, e.g. on a later edit/resave).
+  if (paid > total + 0.009) {
+    const alreadyIssued = await getJobIssuedCredit(businessId, jobId);
+    if (!alreadyIssued) {
+      await issueCredit(businessId, job.client_id, jobId, paid - total);
+    }
+  }
 
   const jobPatch = {
     payment_status: status,

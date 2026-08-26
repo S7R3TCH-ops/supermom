@@ -15,6 +15,7 @@ import FinancialMathBreakdown from '../ui/FinancialMathBreakdown';
 import { triggerHaptic } from '../../lib/haptics';
 import { getWorkerLabel } from '../../lib/labels';
 import { validatePaymentAmount } from '../../lib/jobDraftPolicy';
+import { getClientCreditBalance } from '../../data/creditsRepo';
 
 export default function PostJobSheet({ jobId, onClose }) {
   const { T, mode } = useAppTheme();
@@ -44,6 +45,7 @@ export default function PostJobSheet({ jobId, onClose }) {
   const [costs, setCosts] = useState([{ amount: '', description: '' }]);
   const [workerPaid, setWorkerPaid] = useState(false);
   const [taxEnabled, setTaxEnabled] = useState(false);
+  const [availableCredit, setAvailableCredit] = useState(0);
 
   // Derived state defined early to satisfy linter and simplify logic
   // Use flat_rate (pre-tax base set at booking) or subtotal DB column (pre-tax base written by recordPayment).
@@ -87,10 +89,27 @@ export default function PostJobSheet({ jobId, onClose }) {
     };
   }, [job, actualMinutes, isHourly, hourlyRate, totalAmt, taxEnabled, costs]);
 
-  const alreadyPaid = useMemo(
+  const realPaid = useMemo(
     () => jobPayments.reduce((s, p) => s + Number(p.amount), 0),
     [jobPayments]
   );
+
+  // Client account credit auto-applies toward this job's balance, silently —
+  // a preview only (recordPayment independently applies it server-side, the
+  // source of truth). Skipped if this job already has its own Credit-method
+  // payment on file (already applied, don't double-count the balance).
+  const creditToApply = useMemo(() => {
+    if (jobPayments.some(p => p.payment_method === 'Credit')) return 0;
+    const remaining = Math.max(0, Math.round((liveTotal - realPaid) * 100) / 100);
+    return Math.min(availableCredit, remaining);
+  }, [availableCredit, jobPayments, liveTotal, realPaid]);
+
+  const alreadyPaid = realPaid + creditToApply;
+
+  const displayPayments = useMemo(() => {
+    if (creditToApply <= 0.009) return jobPayments;
+    return [...jobPayments, { amount: creditToApply, payment_method: 'Credit', payment_date: new Date().toISOString().slice(0, 10) }];
+  }, [jobPayments, creditToApply]);
 
   useEffect(() => {
     if (!jobId) return;
@@ -115,6 +134,11 @@ export default function PostJobSheet({ jobId, onClose }) {
                 setPayStatus('paid');
               }
             });
+          if (j?.client_id && business?.id) {
+            getClientCreditBalance(business.id, j.client_id)
+              .then(bal => { if (alive) setAvailableCredit(bal); })
+              .catch(() => { if (alive) setAvailableCredit(0); });
+          }
           // Round to nearest 30-min increment
           const initHours = j?.actual_duration || j?.estimated_hours || 1;
           const rawMin = Math.round(initHours * 60);
@@ -140,7 +164,7 @@ export default function PostJobSheet({ jobId, onClose }) {
       .catch(e => { if (alive) setFetchErr(e.message || String(e)); })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, [jobId, business?.tax_enabled]);
+  }, [jobId, business?.tax_enabled, business?.id]);
 
   // Keep the payment amount field in sync with the live total (HST-inclusive).
   // Whenever liveTotal, alreadyPaid, or payStatus changes, re-derive the default.
@@ -598,7 +622,7 @@ export default function PostJobSheet({ jobId, onClose }) {
                 const over = Math.round(((parseFloat(amount) || 0) - Math.max(0, liveTotal - alreadyPaid)) * 100) / 100;
                 return over > 0.009 ? (
                   <div style={{ fontSize: 10, color: '#16A34A', marginTop: 4, textAlign: 'center', fontWeight: 600 }}>
-                    Includes ${over.toFixed(2)} over the total — recorded as a tip
+                    Includes ${over.toFixed(2)} over the total — credited to their account automatically
                   </div>
                 ) : null;
               })()}
@@ -721,7 +745,7 @@ export default function PostJobSheet({ jobId, onClose }) {
           <FinancialMathBreakdown
             job={job}
             liveForm={liveBreakdownForm}
-            payments={jobPayments}
+            payments={displayPayments}
             business={business}
             T={T}
             mode={mode}

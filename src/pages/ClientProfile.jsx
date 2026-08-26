@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Navigate } from 'react-router-dom';
 import { useAppTheme } from '../context/AppThemeContext';
 import { useJobDetailSheet } from '../context/JobDetailSheetContext';
@@ -10,6 +10,7 @@ import { Title, Subheading, Text, Caption, SectionLabel } from '../components/ui
 import { useClient, useClientInvoices, notifyDataChanged, useAiEnabled } from '../data/useData';
 import { updateClient, softDeleteClient, hardDeleteClient } from '../data/clientsRepo';
 import { archiveClientJobs } from '../data/jobsRepo';
+import { getClientCreditBalance, getClientCreditHistory } from '../data/creditsRepo';
 import { useAuth } from '../context/AuthContext';
 import { EmptyActivity, EmptySchedule } from '../components/ui/Illustrations';
 
@@ -49,6 +50,17 @@ export default function ClientProfile() {
   const [archiveBusy, setArchiveBusy] = useState(false);
   const [hardDeleteConfirm, setHardDeleteConfirm] = useState(false);
   const [hardDeleteBusy, setHardDeleteBusy] = useState(false);
+  const [creditBalance, setCreditBalance] = useState(0);
+  const [creditHistory, setCreditHistory] = useState([]);
+
+  useEffect(() => {
+    const businessId = raw?.business_id;
+    if (!id || !businessId) return;
+    let alive = true;
+    getClientCreditBalance(businessId, id).then(bal => { if (alive) setCreditBalance(bal); }).catch(() => {});
+    getClientCreditHistory(businessId, id).then(rows => { if (alive) setCreditHistory(rows); }).catch(() => {});
+    return () => { alive = false; };
+  }, [id, raw?.business_id]);
 
   const handleEditIntel = () => {
     setIntelDraft({
@@ -275,6 +287,24 @@ export default function ClientProfile() {
                 <Caption style={{ fontSize: 9, fontWeight: 600, color: mode === 'dark' ? 'rgba(255,255,255,0.35)' : T.inkMuted, letterSpacing: '0.4px', textTransform: 'uppercase', marginTop: 2 }}>{s.l}</Caption>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Account credit */}
+        {creditBalance > 0.009 && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 6, marginBottom: 12, position: 'relative' }}>
+            <div style={{
+              background: mode === 'dark' ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.4)',
+              border: `1px solid ${mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'}`,
+              borderRadius: 11, padding: '9px 6px', textAlign: 'center',
+            }}>
+              <Subheading style={{ fontSize: 16, fontWeight: 500, color: T.pink, letterSpacing: '-0.3px', fontVariantNumeric: 'tabular-nums', margin: 0 }}>
+                {privacyOn ? '•••' : `$${creditBalance.toFixed(2)}`}
+              </Subheading>
+              <Caption style={{ fontSize: 9, fontWeight: 600, color: mode === 'dark' ? 'rgba(255,255,255,0.4)' : T.inkMuted, letterSpacing: '0.4px', textTransform: 'uppercase', marginTop: 2 }}>
+                ✦ Account credit — applies to next job
+              </Caption>
+            </div>
           </div>
         )}
 
@@ -512,6 +542,34 @@ export default function ClientProfile() {
             ))
           )}
         </div>
+
+        {/* Account credit history */}
+        {creditHistory.length > 0 && (
+          <>
+            <SectionLabel>Credit history</SectionLabel>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+              {creditHistory.slice(0, 5).map(c => (
+                <div key={c.id} style={{
+                  background: T.card, border: `1.5px solid ${T.cardBorder}`,
+                  borderRadius: 13, padding: '10px 12px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+                }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontFamily: T.font, fontSize: 12, fontWeight: 600, color: T.ink }}>
+                      {c.kind === 'issued' ? 'Credit issued' : c.kind === 'applied' ? 'Applied to a job' : 'Reclassified as tip'}
+                    </div>
+                    <div style={{ fontFamily: T.font, fontSize: 10.5, color: T.inkMuted, marginTop: 2 }}>{formatDate(c.created_at?.slice(0, 10))}</div>
+                  </div>
+                  <AmtCell
+                    amount={privacyOn ? '•••' : `${Number(c.amount) > 0 ? '+' : '−'}$${Math.abs(Number(c.amount)).toFixed(2)}`}
+                    size={13}
+                    color={Number(c.amount) > 0 ? T.pink : T.inkMuted}
+                  />
+                </div>
+              ))}
+            </div>
+          </>
+        )}
 
         {/* Recent history */}
         <SectionLabel>Recent history</SectionLabel>

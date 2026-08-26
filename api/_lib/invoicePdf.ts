@@ -165,6 +165,12 @@ function InvoiceDocument({ invoice }) {
       )
     : null;
 
+  const creditRow = (invoice.creditRemaining > 0.009)
+    ? T({ key: 'credit', style: { fontSize: 8, color: '#888', marginTop: 4, textAlign: 'right' } },
+        `✦ $${invoice.creditRemaining.toFixed(2)} account credit remaining — applied automatically to your next visit.`,
+      )
+    : null;
+
   const bizCity    = [biz.city, biz.province].filter(Boolean).join(', ');
   const clientCity = [[client.city, client.province].filter(Boolean).join(', '), client.postal_code].filter(Boolean).join(' ');
   const appBase    = process.env.APP_BASE_URL || 'https://app.supermomforhire.com';
@@ -291,6 +297,7 @@ function InvoiceDocument({ invoice }) {
           ) : null,
           totalRow,
           balanceRow,
+          creditRow,
         ),
       ),
 

@@ -640,6 +640,11 @@ export default function InvoiceView() {
                 <div style={{ fontSize: 15, fontWeight: 700, color: '#DC2626' }}>${invoice.balanceOwing.toFixed(2)}</div>
               </div>
             )}
+            {invoice.creditRemaining > 0.009 && (
+              <div style={{ padding: '6px 14px 0', fontSize: 10.5, color: '#888', textAlign: 'right' }}>
+                ✦ ${invoice.creditRemaining.toFixed(2)} account credit remaining — applied automatically to your next visit.
+              </div>
+            )}
           </div>
         </div>
 

@@ -34,7 +34,7 @@ function brandedEmailHtml({ clientName, bizName, bizEmail, invoiceNumber, isRece
 
         <!-- Header -->
         <tr><td style="background:${headerColor};padding:28px 32px;text-align:center;">
-          <img src="https://supermom-v2.vercel.app/branding/logo-final.png" alt="${bizName}" height="80" style="display:block;margin:0 auto 12px;" />
+          <img src="https://supermom-v2.vercel.app/branding/logo-final-white-bg.png" alt="${bizName}" height="80" style="display:block;margin:0 auto 12px;" />
           <div style="color:white;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;opacity:.85;">${docLabel}</div>
         </td></tr>
 

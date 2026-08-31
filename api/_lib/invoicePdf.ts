@@ -174,7 +174,7 @@ function InvoiceDocument({ invoice }) {
   const bizCity    = [biz.city, biz.province].filter(Boolean).join(', ');
   const clientCity = [[client.city, client.province].filter(Boolean).join(', '), client.postal_code].filter(Boolean).join(' ');
   const appBase    = process.env.APP_BASE_URL || 'https://app.supermomforhire.com';
-  const logoUrl    = biz.logo_url?.startsWith('http') ? biz.logo_url : `${appBase}/branding/logo-final.png`;
+  const logoUrl    = biz.logo_url?.startsWith('http') ? biz.logo_url : `${appBase}/branding/logo-final-white-bg.png`;
 
   return el(Document, null,
     el(Page, { size: 'A4', style: s.page },

@@ -112,7 +112,7 @@ function buildEmailHtml({ todayJobs, tomorrowJobs, unpaidJobs, todayLabel, tomor
 
         <!-- Header -->
         <tr><td style="background:${pink};padding:28px 32px;text-align:center;">
-          <img src="https://app.supermomforhire.com/branding/logo-final.png" alt="Supermom for Hire" height="70" style="display:block;margin:0 auto 12px;" />
+          <img src="https://app.supermomforhire.com/branding/logo-final-white-bg.png" alt="Supermom for Hire" height="70" style="display:block;margin:0 auto 12px;" />
           <div style="color:white;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;opacity:.85;">Daily Briefing · ${escapeHtml(todayLabel)}</div>
         </td></tr>
 

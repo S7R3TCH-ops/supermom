@@ -126,7 +126,7 @@ export default function InvoiceView() {
   const aggTax         = allFinancials.reduce((s, f) => s + f.taxAmount, 0);
   const aggTotal       = allFinancials.reduce((s, f) => s + f.total, 0);
   const aggTaxRate     = allFinancials[0]?.taxRate || 0;
-  const logoSrc    = biz.logo_url || '/branding/logo-final.png';
+  const logoSrc    = biz.logo_url || '/branding/logo-final-white-bg.png';
   const bizCity    = [biz.city, biz.province].filter(Boolean).join(', ');
   const clientCity = [[client.city, client.province].filter(Boolean).join(', '), client.postal_code].filter(Boolean).join(' ');
 

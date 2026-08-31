@@ -11,6 +11,11 @@ import { useDaySwipeGesture } from '../hooks/useDaySwipeGesture';
 // Real "now" — was previously a hard-coded prototype anchor.
 const NOW = () => new Date();
 
+// Same deep-rose "Next up" convention as Home.jsx's SectionLabel — kept distinct
+// from T.pink so a job in progress ("Happening now") doesn't read as the same
+// state as one that's merely next on the schedule.
+const DEEP_ROSE = '#B5004E';
+
 // Reactive hook that re-renders once per minute so the current-time indicator stays accurate.
 function useNow() {
   const [now, setNow] = useState(() => new Date());
@@ -554,12 +559,14 @@ function AgendaView({ T, mode, privacyOn, allJobs, nextUpcoming, onJobPress, day
             {group.jobs.map(j => {
               const conflict = conflicts.find(c => c.a.id === j.id || c.b.id === j.id);
               const isNext = nextUpcoming && j.id === nextUpcoming.id;
+              const isNow = j.status === 'Scheduled' && j.start <= NOW() && NOW() < j.end;
               return (
                 <AgendaCard
                   key={j.id}
                   T={T} mode={mode} privacyOn={privacyOn}
                   job={j}
                   isNext={isNext}
+                  isNow={isNow}
                   conflict={conflict}
                   onPress={onJobPress}
                 />
@@ -573,7 +580,7 @@ function AgendaView({ T, mode, privacyOn, allJobs, nextUpcoming, onJobPress, day
   );
 }
 
-const AgendaCard = memo(function AgendaCard({ T, mode, privacyOn, job, isNext, conflict, onPress }) {
+const AgendaCard = memo(function AgendaCard({ T, mode, privacyOn, job, isNext, isNow, conflict, onPress }) {
   const paid = job.paid;
   const isPartial = job.isPartial;
   const isUnpaidCompleted = job.isUnpaidCompleted;
@@ -592,25 +599,33 @@ const AgendaCard = memo(function AgendaCard({ T, mode, privacyOn, job, isNext, c
     ? T.amberBorder
     : isCancelled
       ? '#D1D5DB'
-      : (isNext ? '#FC4693' : S.border);
+      : isNow
+        ? T.pink
+        : (isNext ? DEEP_ROSE : S.border);
 
   const bg = isCancelled
     ? (mode === 'dark' ? 'rgba(156,163,175,0.08)' : '#F9FAFB')
-    : isNext
-      ? (mode === 'dark' ? 'rgba(233,30,106,0.1)' : '#FFF0F7')
-      : S.bg;
+    : isNow
+      ? (mode === 'dark' ? T.pinkGlow : T.pinkTint)
+      : isNext
+        ? (mode === 'dark' ? 'rgba(181,0,78,0.12)' : '#FFF0F4')
+        : S.bg;
 
   const badges = [];
   if (isCancelled) {
     badges.push({ text: 'Cancelled', bg: mode === 'dark' ? 'rgba(156,163,175,0.15)' : '#F3F4F6', fg: '#6B7280' });
+  } else if (isNow) {
+    // Same T.pink brand color Home.jsx's "Happening now" hero card uses —
+    // deliberately distinct from "Next up"'s deep rose so the two states never look alike.
+    badges.push({ text: '● Happening now', bg: T.pink, fg: 'white' });
   } else if (isNext) {
-    badges.push({ text: 'Next up', bg: '#FC4693', fg: 'white' });
+    badges.push({ text: 'Next up', bg: DEEP_ROSE, fg: 'white' });
   }
   if (!isCancelled) {
     if (paid)   badges.push({ text: 'Paid ✓', bg: T.status.paid.pill, fg: T.status.paid.text });
     else if (isPartial) badges.push({ text: 'Partial', bg: T.status.partial.pill, fg: T.status.partial.text });
     else if (isUnpaidCompleted) badges.push({ text: 'Unpaid', bg: T.status.unpaid.pill, fg: T.status.unpaid.text });
-    else if (!isNext) badges.push({ text: 'Scheduled', bg: T.status.scheduled.pill, fg: T.status.scheduled.text });
+    else if (!isNext && !isNow) badges.push({ text: 'Scheduled', bg: T.status.scheduled.pill, fg: T.status.scheduled.text });
   }
 
   if (job.status === 'Completed' && !job.actual_duration) {

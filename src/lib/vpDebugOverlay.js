@@ -36,10 +36,12 @@ export function installVpDebugOverlay(win = window, doc = document) {
   const render = () => {
     const vv = win.visualViewport
     const inset = win.getComputedStyle(probe).paddingBottom
+    const appHeight = doc.documentElement.style.getPropertyValue('--app-height')
     box.textContent =
       `build    ${typeof __COMMIT_SHA__ !== 'undefined' ? __COMMIT_SHA__ : '—'}\n` +
       `innerH   ${win.innerHeight}\n` +
       `vvH      ${vv ? Math.round(vv.height * 100) / 100 : '—'}\n` +
+      `appVar   ${appHeight || '—'}\n` +
       `screenH  ${win.screen?.height ?? '—'}\n` +
       `safe-bot ${inset}\n` +
       `standaln ${win.navigator?.standalone ? 'yes' : 'no'}`

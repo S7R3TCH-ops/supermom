@@ -202,6 +202,16 @@ button {
   flex-shrink: 0;
 }
 
+/* Same scrollbar-hiding + momentum as .sm-scroll, without the 100px FAB-clearance
+   ::after — for scroll regions inside a modal sheet, which has its own pinned
+   footer and no floating FAB to clear. Using .sm-scroll here left a 100px dead
+   gap between short content and the footer (found via JobDetailSheet, Sep 1). */
+.sm-scroll-sheet::-webkit-scrollbar { width: 0; }
+.sm-scroll-sheet {
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
 /* Same scrollbar-hiding as .sm-scroll, without the ::after FAB-clearance block —
    for horizontal scrollers (filter chips, etc.) that aren't the page's main
    vertical list and shouldn't reserve 100px of extra height under them. */

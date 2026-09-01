@@ -517,12 +517,13 @@ function ReadMode({
 
   return (
     <>
-      <div style={{ 
-        background: T.hero, 
-        borderBottom: mode === 'dark' ? '3px solid #FC4693' : 'none', 
-        padding: '10px 14px 12px', 
-        position: 'relative', 
-        overflow: 'hidden' 
+      <div style={{
+        background: T.hero,
+        borderBottom: mode === 'dark' ? '3px solid #FC4693' : 'none',
+        padding: '10px 14px 12px',
+        position: 'relative',
+        overflow: 'hidden',
+        flexShrink: 0,
       }}>
         <div style={{ position: 'absolute', top: -40, right: -20, width: 140, height: 140, borderRadius: '50%', background: `radial-gradient(circle,${T.pinkGlow} 0%,transparent 70%)`, pointerEvents: 'none' }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4, position: 'relative' }}>
@@ -564,18 +565,27 @@ function ReadMode({
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
           <Pill bg={statusC.bg} border={statusC.border} color={statusC.color} T={T}>{job.job_status}</Pill>
           <Pill bg={payC.bg} border={payC.border} color={payC.color} T={T}>{payKey || 'Unpaid'}</Pill>
-          {invoiceId && (
-            <button
-              onClick={() => window.open(`/i/${invoiceId}`, '_blank')}
-              style={{ background: T.pink, color: 'white', border: 'none', padding: '3px 10px', borderRadius: 20, fontSize: 10, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 }}
-            >
-              {isPaid ? 'Receipt' : 'Invoice'} · View
-            </button>
-          )}
         </div>
+
+        {invoiceId && (
+          <button
+            onClick={() => window.open(`/i/${invoiceId}`, '_blank')}
+            style={{
+              width: '100%', marginTop: 10, position: 'relative',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+              background: T.pink, color: 'white', border: 'none',
+              borderRadius: 11, padding: '10px 12px',
+              fontFamily: T.font, fontSize: 12.5, fontWeight: 700,
+              boxShadow: `0 3px 12px ${T.pinkGlow}`,
+              cursor: 'pointer',
+            }}
+          >
+            🧾 View {isPaid ? 'Receipt' : 'Invoice'} <span style={{ opacity: 0.85 }}>›</span>
+          </button>
+        )}
       </div>
 
-      <div ref={scrollRef} className="sm-scroll" style={{ flex: '0 1 auto', minHeight: 0, overflowY: 'auto', padding: '12px 14px 4px' }}>
+      <div ref={scrollRef} className="sm-scroll-sheet" style={{ flex: '0 1 auto', minHeight: 0, overflowY: 'auto', padding: '12px 14px 4px' }}>
         <PrepNoteCard job={job} T={T} business={business} onDeepPrep={onDeepPrep} />
         
         <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', marginBottom: 8, color: T.pink }}>Mission Vitals</div>
@@ -643,7 +653,7 @@ function ReadMode({
         </div>
       )}
       {!confirm && !showSeriesPicker && (
-        <div style={{ padding: '10px 14px 28px', borderTop: `1px solid ${T.cardBorder}`, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ padding: '10px 14px 28px', borderTop: `1px solid ${T.cardBorder}`, display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 }}>
           {futureConfirmType && (
             <div style={{ padding: '12px', borderRadius: 12, background: 'rgba(233,30,106,0.08)', border: '1px solid rgba(233,30,106,0.3)' }}>
               <div style={{ fontSize: 12.5, fontWeight: 600, color: T.ink, marginBottom: 10 }}>
@@ -917,7 +927,7 @@ function EditMode({ job, stage, form, setForm, services, workers, business, T, m
           <span style={{ fontSize: 12, color: T.inkMuted, marginLeft: 8 }}>{job.service_name || '—'} · {fmtDate(job.scheduled_date)}</span>
         </div>
       </div>
-      <div className="sm-scroll" style={{ flex: '0 1 auto', minHeight: 0, overflowY: 'auto', padding: '12px 14px 4px' }}>
+      <div className="sm-scroll-sheet" style={{ flex: '0 1 auto', minHeight: 0, overflowY: 'auto', padding: '12px 14px 4px' }}>
         <SectionDivider label="Schedule & Service" T={T} />
         <Field T={T} label="Date">
           <button

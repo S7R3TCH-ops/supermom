@@ -27,26 +27,35 @@ import { getCurrentBusinessId } from './data/currentBusiness';
 import { useIdleTimeout } from './hooks/useIdleTimeout';
 
 function PWAUpdatePrompt() {
-  const { needRefresh: [needRefresh], updateServiceWorker } = useRegisterSW();
+  const { needRefresh: [needRefresh], updateServiceWorker } = useRegisterSW({
+    onRegisteredSW(_swUrl, registration) {
+      if (!registration) return;
+      // Installed PWAs (iOS/Android) get resumed from background, not re-navigated,
+      // so the default one-time boot check never runs again on its own. Re-check
+      // every time the app comes back to the foreground — this is also the safest
+      // moment to auto-apply an update, since nothing is mid-entry yet.
+      const check = () => registration.update();
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') check();
+      });
+    },
+  });
+
+  // Auto-apply — no tap required. Clients (Sandra included) never need to
+  // manually clear cache or reinstall the app to pick up a new deploy.
+  useEffect(() => {
+    if (needRefresh) updateServiceWorker(true);
+  }, [needRefresh, updateServiceWorker]);
+
   if (!needRefresh) return null;
   return (
     <div style={{
       position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)',
       background: '#1C1C1E', color: '#fff', borderRadius: 12, padding: '10px 16px',
-      display: 'flex', alignItems: 'center', gap: 12, zIndex: 9999,
-      boxShadow: '0 4px 20px rgba(0,0,0,0.4)', fontSize: 13, fontFamily: 'Inter, sans-serif',
-      whiteSpace: 'nowrap',
+      zIndex: 9999, boxShadow: '0 4px 20px rgba(0,0,0,0.4)', fontSize: 13,
+      fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap',
     }}>
-      <span>New version available</span>
-      <button
-        onClick={() => updateServiceWorker(true)}
-        style={{
-          background: '#FF70A6', color: '#fff', border: 'none',
-          borderRadius: 8, padding: '5px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer',
-        }}
-      >
-        Reload
-      </button>
+      Updating to the latest version…
     </div>
   );
 }

@@ -105,7 +105,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
   const [jobPayments, setJobPayments] = useState([]);
   const [prevJobId, setPrevJobId] = useState(jobId);
   const { profile } = useAuth();
-  const isAdmin = profile?.role === 'admin' || profile?.role === 'superadmin';
+  const isAdmin = profile?.role === 'admin' || profile?.role === 'superadmin' || profile?.role === 'owner';
   const [showCancelForm, setShowCancelForm] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [cancelBusy, setCancelBusy] = useState(false);

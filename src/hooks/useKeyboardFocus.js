@@ -1,57 +1,30 @@
 import { useState, useEffect } from 'react';
+import { isKeyboardOpen } from '../lib/appHeight';
 
 const FIELD_TAGS = ['INPUT', 'TEXTAREA', 'SELECT'];
-const KEYBOARD_DELTA_PX = 150;
 
-/** Pure: mirrors appHeight.js's resolveViewportHeight keyboard heuristic (same
- * threshold). Kept local/duplicated here rather than imported — consolidating
- * both call sites behind one shared export is a separate, reviewed change (F2). */
-export function isKeyboardOpen(win = window) {
-  const vv = win.visualViewport;
-  if (!vv || vv.height == null) return false;
-  return win.innerHeight - vv.height > KEYBOARD_DELTA_PX;
-}
+// Re-exported for import-path stability (existing test imports it from here).
+// Source of truth is appHeight.js (F2) — Strategy A means visualViewport is
+// always present on this app's target browsers, so there is no non-iOS
+// focus-event fallback path left to maintain.
+export { isKeyboardOpen };
 
 export function useKeyboardFocus() {
   const [isFocused, setIsFocused] = useState(false);
 
   useEffect(() => {
     const vv = window.visualViewport;
+    if (!vv) return;
 
-    if (vv) {
-      // Stateless signal — NOT a captured baseline. A frozen `fullHeight` read once
-      // at mount goes stale on any legitimate non-keyboard resize (rotation, nav-bar
-      // show/hide) and then latches `isFocused` wrong for this component's lifetime.
-      const handleResize = () => {
-        setIsFocused(isKeyboardOpen(window));
-      };
-
-      vv.addEventListener('resize', handleResize);
-      return () => vv.removeEventListener('resize', handleResize);
-    }
-
-    // Fallback for non-iOS: focus events
-    const handleFocusIn = (e) => {
-      if (FIELD_TAGS.includes(e.target.tagName)) {
-        setIsFocused(true);
-      }
+    // Stateless signal — NOT a captured baseline. A frozen `fullHeight` read once
+    // at mount goes stale on any legitimate non-keyboard resize (rotation, nav-bar
+    // show/hide) and then latches `isFocused` wrong for this component's lifetime.
+    const handleResize = () => {
+      setIsFocused(isKeyboardOpen(window));
     };
 
-    const handleFocusOut = () => {
-      setTimeout(() => {
-        if (!FIELD_TAGS.includes(document.activeElement?.tagName)) {
-          setIsFocused(false);
-        }
-      }, 50);
-    };
-
-    document.addEventListener('focusin', handleFocusIn);
-    document.addEventListener('focusout', handleFocusOut);
-
-    return () => {
-      document.removeEventListener('focusin', handleFocusIn);
-      document.removeEventListener('focusout', handleFocusOut);
-    };
+    vv.addEventListener('resize', handleResize);
+    return () => vv.removeEventListener('resize', handleResize);
   }, []);
 
   // Keeps the field being typed into clear of the keyboard. iOS `position:fixed`

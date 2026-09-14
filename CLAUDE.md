@@ -205,6 +205,8 @@ App is live, Sandra using it daily. Full version-by-version changelog (v0.12.86 
 
 **⚠️ Multi-client git discipline**: Always push local commits before starting an online Claude Code session; always pull before the online session writes code.
 
+**⚠️ STANDING RULE (2026-09-14): Opus needs Joel's go-ahead first, every time — weekly Claude usage is tight.** Don't auto-escalate to Opus (`Agent(model:"opus")`, `/model opus`) on a judgment call the way Sonnet/Haiku get used freely — ask first. Default down to Haiku 4.5 or route to Gemini Pro (Antigravity) when a task doesn't clearly need Sonnet-or-above reasoning, and flag which tier/surface is in use for anything non-trivial. Same flag-first treatment for Claude-in-Chrome browser automation (expensive, not restriction-gated the same way, but call it out). Full detail: `second-brain/05-systems/tool-routing.md` and `second-brain/02-dashboard/decisions-log.md` 2026-09-14.
+
 ## Critical rules — read before every build
 - **Read `DESIGN.md` before writing any component** — all tokens, typography, component anatomy defined there
 - **Mobile-first** — design for 390px iPhone viewport first

@@ -36,7 +36,14 @@ export const KEYBOARD_DELTA_PX = 150
 
 /** Pure: how many px the on-screen keyboard is eating, or 0 if none/unavailable.
  * Single source of truth — appHeight.js and useKeyboardFocus.js both key off this
- * instead of hand-duplicating the innerHeight/visualViewport comparison (F2). */
+ * instead of hand-duplicating the innerHeight/visualViewport comparison (F2).
+ *
+ * Depends on `interactive-widget=resizes-visual` (pinned explicitly in index.html's
+ * viewport meta, F4) — that's what keeps `win.innerHeight` fixed while only
+ * `visualViewport.height` shrinks when the keyboard opens. Under the alternate
+ * `resizes-content` behavior, innerHeight shrinks too, this delta collapses to ~0,
+ * and the void bug this function exists to prevent comes back with no code change
+ * to blame. Don't remove that meta value. */
 export function getKeyboardInset(win = window) {
   const vv = win.visualViewport
   if (!vv || vv.height == null) return 0

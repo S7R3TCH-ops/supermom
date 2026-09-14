@@ -113,11 +113,18 @@ export default function JobCard({ job: j, T, onClick, total = 0, privacyOn = fal
       {/* Notes */}
       {j.notes && (
         <div style={{
-          fontSize: 10.5, color: mutedColor, fontStyle: 'italic', marginTop: 4,
-          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-          overflow: 'hidden', lineHeight: 1.4,
+          marginTop: 5, padding: '5px 8px', borderRadius: 8,
+          background: isOwing ? 'rgba(255,255,255,0.15)' : T.pinkTint,
+          border: `1px solid ${isOwing ? 'rgba(255,255,255,0.35)' : T.pink}`,
+          display: 'flex', alignItems: 'flex-start', gap: 5,
         }}>
-          {j.notes}
+          <span style={{ fontSize: 10, color: isOwing ? '#fff' : T.pink, flexShrink: 0, lineHeight: 1.4 }}>✦</span>
+          <span style={{
+            fontSize: 11, fontWeight: 500, color: isOwing ? '#fff' : T.ink, lineHeight: 1.4,
+            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+          }}>
+            {j.notes}
+          </span>
         </div>
       )}
     </div>

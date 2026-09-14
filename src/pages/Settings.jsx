@@ -707,7 +707,7 @@ export default function Settings() {
             )}
           </div>
         </div>
-        {isKeyboardFocused && <div style={{ height: isKeyboardFocused }} aria-hidden="true" />}
+        {isKeyboardFocused > 0 && <div style={{ height: isKeyboardFocused }} aria-hidden="true" />}
       </div>
 
       {/* Persistent save footer */}

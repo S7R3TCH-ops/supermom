@@ -1303,7 +1303,7 @@ export default function Home() {
           </div>
         )}
 
-        {isKeyboardFocused && <div style={{ height: 80 }} aria-hidden="true" />}
+        {isKeyboardFocused && <div style={{ height: isKeyboardFocused }} aria-hidden="true" />}
       </div>
 
       {costModalJob && (

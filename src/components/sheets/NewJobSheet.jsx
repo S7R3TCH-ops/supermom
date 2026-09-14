@@ -356,7 +356,7 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
           flex: '0 1 auto',
           minHeight: 0,
           overflowY: 'auto',
-          padding: `20px 20px ${isKeyboardFocused ? '140px' : '20px'}`,
+          padding: `20px 20px ${isKeyboardFocused ? `${isKeyboardFocused}px` : '20px'}`,
         }}>
           {step === 1 ? (
             <Step1Who 

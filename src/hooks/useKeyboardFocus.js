@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { isKeyboardOpen } from '../lib/appHeight';
+import { getKeyboardInset, isKeyboardOpen } from '../lib/appHeight';
 
 const FIELD_TAGS = ['INPUT', 'TEXTAREA', 'SELECT'];
 
@@ -9,8 +9,13 @@ const FIELD_TAGS = ['INPUT', 'TEXTAREA', 'SELECT'];
 // focus-event fallback path left to maintain.
 export { isKeyboardOpen };
 
+/** Returns the measured keyboard inset in px (0 when the keyboard isn't open),
+ * not just a boolean — callers use it directly as spacer/padding height (F3)
+ * instead of a hardcoded per-component guess. Gated on isKeyboardOpen()'s
+ * threshold, not raw getKeyboardInset(), so small non-keyboard deltas (iOS
+ * toolbar collapse, safe-area changes) stay 0 and don't trigger a spacer. */
 export function useKeyboardFocus() {
-  const [isFocused, setIsFocused] = useState(false);
+  const [keyboardInset, setKeyboardInset] = useState(0);
 
   useEffect(() => {
     const vv = window.visualViewport;
@@ -18,9 +23,9 @@ export function useKeyboardFocus() {
 
     // Stateless signal — NOT a captured baseline. A frozen `fullHeight` read once
     // at mount goes stale on any legitimate non-keyboard resize (rotation, nav-bar
-    // show/hide) and then latches `isFocused` wrong for this component's lifetime.
+    // show/hide) and then latches the inset wrong for this component's lifetime.
     const handleResize = () => {
-      setIsFocused(isKeyboardOpen(window));
+      setKeyboardInset(isKeyboardOpen(window) ? getKeyboardInset(window) : 0);
     };
 
     vv.addEventListener('resize', handleResize);
@@ -42,5 +47,5 @@ export function useKeyboardFocus() {
     return () => document.removeEventListener('focusin', handleFocusIn);
   }, []);
 
-  return isFocused;
+  return keyboardInset;
 }

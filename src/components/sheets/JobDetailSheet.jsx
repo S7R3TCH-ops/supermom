@@ -1147,7 +1147,7 @@ function EditMode({ job, stage, form, setForm, services, workers, business, T, m
             </div>
           </Field>
         )}
-        {isKeyboardFocused && <div style={{ height: 260 }} aria-hidden="true" />}
+        {isKeyboardFocused && <div style={{ height: isKeyboardFocused }} aria-hidden="true" />}
       </div>
       {/* Hidden while keyboard is up so the pinned chrome doesn't eat the
           already-shrunk sheet's usable form area; reappears on blur. */}

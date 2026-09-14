@@ -113,7 +113,7 @@ export default function NewExpenseSheet({ isOpen, onClose }) {
           flex: '0 1 auto',
           minHeight: 0,
           overflowY: 'auto',
-          padding: `0 18px ${isKeyboardFocused ? '260px' : '6px'}`,
+          padding: `0 18px ${isKeyboardFocused ? `${isKeyboardFocused}px` : '6px'}`,
           transition: 'padding-bottom 0.2s ease-out'
         }}>
 

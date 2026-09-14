@@ -300,7 +300,7 @@ export default function NewClientSheet({ onClose, onCreated }) {
             opacity: busy ? 0.5 : 1, cursor: busy ? 'not-allowed' : 'pointer',
           }}>{busy ? 'Saving…' : 'Save client'}</button>
 
-          {isKeyboardFocused && <div style={{ height: 260 }} aria-hidden="true" />}
+          {isKeyboardFocused && <div style={{ height: isKeyboardFocused }} aria-hidden="true" />}
         </form>
       </div>
     </div>

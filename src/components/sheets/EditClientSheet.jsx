@@ -431,7 +431,7 @@ export default function EditClientSheet({ clientId, onClose }) {
               )}
             </div>
 
-            <div style={{ height: isKeyboardFocused ? 260 : 8 }} />
+            <div style={{ height: isKeyboardFocused || 8 }} />
           </div>
         )}
       </div>

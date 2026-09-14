@@ -1,6 +1,7 @@
 import { fmtTimeRange, dateBrief } from '../../lib/dateUtils';
 import { useBusiness } from '../../data/useData';
 import { getWorkerLabel } from '../../lib/labels';
+import NoteCallout from '../ui/NoteCallout';
 
 export default function UpcomingCard({ job: j, T, onClick, total = 0, privacyOn = false }) {
   const { business } = useBusiness();
@@ -74,19 +75,7 @@ export default function UpcomingCard({ job: j, T, onClick, total = 0, privacyOn 
 
       {/* Notes */}
       {j.notes && (
-        <div style={{
-          marginTop: 5, padding: '5px 8px', borderRadius: 8,
-          background: T.pinkTint, border: `1px solid ${T.pink}`,
-          display: 'flex', alignItems: 'flex-start', gap: 5,
-        }}>
-          <span style={{ fontSize: 10, color: T.pink, flexShrink: 0, lineHeight: 1.4 }}>✦</span>
-          <span style={{
-            fontSize: 11, fontWeight: 500, color: T.ink, lineHeight: 1.4,
-            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-          }}>
-            {j.notes}
-          </span>
-        </div>
+        <NoteCallout T={T} text={j.notes} compact />
       )}
     </div>
   );

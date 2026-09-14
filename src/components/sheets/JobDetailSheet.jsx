@@ -22,6 +22,7 @@ import { queryClient } from '../../lib/queryClient';
 import { supabase } from '../../lib/supabase';
 import GrabBar from '../ui/GrabBar';
 import FinancialMathBreakdown from '../ui/FinancialMathBreakdown';
+import NoteCallout from '../ui/NoteCallout';
 import PhotoLightbox from '../ui/PhotoLightbox';
 import WheelDatePicker from '../ui/WheelDatePicker';
 import WheelTimePicker from '../ui/WheelTimePicker';
@@ -623,16 +624,10 @@ function ReadMode({
         )}
 
         {job.job_notes && (
-          <div style={{ background: T.pinkTint, border: `1.5px solid ${T.pink}`, borderRadius: 12, padding: '11px 13px', marginBottom: 10 }}>
-            <div style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '1.1px', textTransform: 'uppercase', color: mode === 'dark' ? '#FF78B0' : T.pink, marginBottom: 6 }}>✦ Pre-job Notes</div>
-            <div style={{ fontFamily: T.font, fontSize: 13, fontWeight: 500, color: T.ink, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{job.job_notes}</div>
-          </div>
+          <NoteCallout T={T} mode={mode} label="Pre-job Notes" text={job.job_notes} />
         )}
         {job.completion_notes && (
-          <div style={{ background: T.pinkTint, border: `1.5px solid ${T.pink}`, borderRadius: 12, padding: '11px 13px', marginBottom: 10 }}>
-            <div style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '1.1px', textTransform: 'uppercase', color: mode === 'dark' ? '#FF78B0' : T.pink, marginBottom: 6 }}>✦ Post-Job Notes</div>
-            <div style={{ fontFamily: T.font, fontSize: 13, fontWeight: 500, color: T.ink, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{job.completion_notes}</div>
-          </div>
+          <NoteCallout T={T} mode={mode} label="Post-Job Notes" text={job.completion_notes} />
         )}
         <MediaCard job={job} T={T} mode={mode} onUpdate={onUpdate} />
         {mutErr && <div style={{ padding: '9px 11px', borderRadius: 8, background: T.redBg, border: `1px solid ${T.redBorder}`, fontSize: 12, color: T.ink }}>{mutErr}</div>}

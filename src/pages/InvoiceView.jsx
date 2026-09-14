@@ -116,7 +116,8 @@ export default function InvoiceView() {
 
   const biz            = invoice.businesses || {};
   const client         = invoice.clients    || {};
-  const allInvoiceJobs = (invoice.invoice_jobs || []).map(ij => ij.jobs).filter(Boolean);
+  const allInvoiceJobs = (invoice.invoice_jobs || []).map(ij => ij.jobs).filter(Boolean)
+    .sort((a, b) => new Date(a.scheduled_date) - new Date(b.scheduled_date));
   const jobByIdMap     = Object.fromEntries(allInvoiceJobs.map(j => [j.id, j]));
   const isReceipt      = !!invoice.isPaidInFull;
   const anyHourly      = allInvoiceJobs.some(j => j.pricing_type === 'Hourly');

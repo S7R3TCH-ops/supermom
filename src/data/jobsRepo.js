@@ -66,7 +66,7 @@ export async function searchJobs(q, dateFrom, dateTo) {
   if (!businessId) return [];
   let query = supabase
     .from('jobs')
-    .select(`${SELECT_LIST}, clients(first_name, last_name)`)
+    .select(`${SELECT_LIST}, clients!jobs_client_id_fkey(first_name, last_name)`)
     .eq('business_id', businessId)
     .is('deleted_at', null);
   if (q) {
@@ -100,7 +100,7 @@ export async function fetchJobById(id) {
 
   const { data, error } = await supabase
     .from('jobs')
-    .select(`*, clients(first_name, last_name, notes, ai_context, tags)`)
+    .select(`*, clients!jobs_client_id_fkey(first_name, last_name, notes, ai_context, tags)`)
     .eq('id', id)
     .eq('business_id', businessId)
     .maybeSingle();

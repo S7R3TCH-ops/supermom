@@ -20,7 +20,7 @@ export async function generateInvoiceForJob(jobId) {
   // 2. Fetch job details
   const { data: job, error: jobErr } = await supabase
     .from('jobs')
-    .select('*, clients(*)')
+    .select('*, clients!jobs_client_id_fkey(*)')
     .eq('id', jobId)
     .eq('business_id', businessId)
     .single();

@@ -23,6 +23,8 @@ export interface ClientRow {
   province?: string | null;
   postal_code?: string | null;
   notes?: string | null;
+  pending_note?: string | null;
+  pending_note_source_job_id?: string | null;
   access_info?: string | null;
   tags?: string[] | null;
   status?: string | null;
@@ -109,6 +111,8 @@ export interface DisplayClient {
   owed: boolean;
   tags: string[];
   note: string;
+  pendingNote: string;
+  pendingNoteSourceJobId: string | null;
   aiContext: {
     prefs: string;
     access: string;
@@ -247,6 +251,8 @@ export function toDisplayClient(
     owed: owedTotal > 0,
     tags,
     note: row.notes ?? '',
+    pendingNote: row.pending_note ?? '',
+    pendingNoteSourceJobId: row.pending_note_source_job_id ?? null,
     aiContext: {
       prefs: ai.prefs ?? '',
       access: ai.access ?? row.access_info ?? '',

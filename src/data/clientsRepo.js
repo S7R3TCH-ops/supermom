@@ -12,7 +12,7 @@ function assertWrote(data, op) {
 
 // Narrow select for list queries — drops phone2, referral_source, created_at (not accessed by UI).
 // fetchClientById keeps * for full profile/edit views.
-const SELECT_LIST = 'id, first_name, last_name, email, phone, street, city, province, postal_code, status, notes, access_info, tags, ai_context';
+const SELECT_LIST = 'id, first_name, last_name, email, phone, street, city, province, postal_code, status, notes, access_info, tags, ai_context, pending_note, pending_note_source_job_id';
 
 export async function fetchClients() {
   const businessId = await getCurrentBusinessId();
@@ -105,6 +105,40 @@ export async function updateClient(id, patch) {
   if (error) throw error;
   assertWrote(data, 'updateClient');
   return data;
+}
+
+// Set (or clear, with null args) the single in-flight carry-forward note on a client.
+// A second carried note from a DIFFERENT job before the first is consumed APPENDS to it
+// (2026-09-15 decision — silently replacing would lose whichever note completed first; she
+// can backspace what she doesn't want on the next pre-fill).
+// EXACT-repeat no-op guard: if this exact text was the last thing THIS job appended (verbatim
+// tail match), skip the write — reachable via a partial-then-final payment re-triggering
+// PostJobSheet's completion flow, or Admin's Revert-then-re-complete, with the checkbox still
+// checked and the note untouched. Deliberately NOT a blind overwrite-on-same-job: if another
+// job's note is still stacked ahead of this job's own segment (unconsumed), overwriting the
+// whole field would silently delete it — the exact data-loss failure append exists to prevent,
+// just triggered from a different angle. A same-job repeat with EDITED text still appends
+// (a near-duplicate line, cosmetic, backspaceable) rather than risk deleting someone else's note.
+export async function setPendingNote(clientId, noteText, sourceJobId) {
+  if (noteText) {
+    const businessId = await getCurrentBusinessId();
+    const { data: existing, error: fetchError } = await supabase
+      .from('clients')
+      .select('pending_note, pending_note_source_job_id')
+      .eq('id', clientId)
+      .eq('business_id', businessId)
+      .single();
+    if (fetchError) throw fetchError;
+    const prior = existing?.pending_note?.trim();
+    const trimmedNote = noteText.trim();
+    const sameSource = sourceJobId && existing?.pending_note_source_job_id === sourceJobId;
+    if (sameSource && prior && prior.endsWith(trimmedNote)) return existing; // exact repeat, no-op
+    noteText = prior ? `${prior}\n\n${noteText}` : noteText;
+  }
+  return updateClient(clientId, {
+    pending_note: noteText,
+    pending_note_source_job_id: sourceJobId,
+  });
 }
 
 // Soft delete (deleted_at) — never hard delete (per CLAUDE.md).

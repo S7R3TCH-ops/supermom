@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { toDisplayJob } from './selectors';
+import { toDisplayJob, toDisplayClient } from './selectors';
 
 // toDisplayJob no longer does its own worker lookup — jobsRepo's decorateJob
 // already attaches `workers` (job_workers rows) plus derived `worker_id` /
@@ -40,5 +40,25 @@ describe('toDisplayJob — worker fields', () => {
     const d = toDisplayJob({ id: 'j1' })!;
     expect(d.workers).toEqual([]);
     expect(d.worker_paid).toBe(false);
+  });
+});
+
+describe('toDisplayClient — pending note', () => {
+  it('maps pending_note and pending_note_source_job_id from the raw row', () => {
+    const d = toDisplayClient({
+      id: 'c1',
+      first_name: 'Ann',
+      last_name: 'Rae',
+      pending_note: 'Call before showing up next time',
+      pending_note_source_job_id: 'j99',
+    } as any)!;
+    expect(d.pendingNote).toBe('Call before showing up next time');
+    expect(d.pendingNoteSourceJobId).toBe('j99');
+  });
+
+  it('defaults to empty/null when there is no pending note', () => {
+    const d = toDisplayClient({ id: 'c1', first_name: 'Ann' } as any)!;
+    expect(d.pendingNote).toBe('');
+    expect(d.pendingNoteSourceJobId).toBeNull();
   });
 });

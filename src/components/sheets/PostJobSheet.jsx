@@ -16,6 +16,7 @@ import { triggerHaptic } from '../../lib/haptics';
 import { getWorkerLabel } from '../../lib/labels';
 import { validatePaymentAmount } from '../../lib/jobDraftPolicy';
 import { getClientCreditBalance } from '../../data/creditsRepo';
+import { setPendingNote } from '../../data/clientsRepo';
 
 export default function PostJobSheet({ jobId, onClose }) {
   const { T, mode } = useAppTheme();
@@ -31,6 +32,7 @@ export default function PostJobSheet({ jobId, onClose }) {
   const [amount, setAmount] = useState('');
   const [actualMinutes, setActualMinutes] = useState(60);
   const [jobNotes, setJobNotes] = useState('');
+  const [carryNoteForward, setCarryNoteForward] = useState(false);
   // payStatus: 'paid' | 'partial' | 'unpaid'
   const [payStatus, setPayStatus] = useState('paid');
   const [busy, setBusy] = useState(false);
@@ -197,6 +199,14 @@ export default function PostJobSheet({ jobId, onClose }) {
         .map(c => ({ amount: parseFloat(c.amount), description: c.description }));
 
       await recordPayment(jobId, paidAmt, method, ps, totalDuration, null, validCosts, jobNotes, job?.worker_name ? workerPaid : null, taxEnabled);
+
+      if (carryNoteForward && jobNotes.trim() && job?.client_id) {
+        try {
+          await setPendingNote(job.client_id, jobNotes.trim(), jobId);
+        } catch (e) {
+          console.warn('setPendingNote failed (non-fatal — payment already recorded):', e);
+        }
+      }
 
       const { data } = await supabase
         .from('invoice_jobs')
@@ -739,6 +749,19 @@ export default function PostJobSheet({ jobId, onClose }) {
               color: T.ink, fontSize: 13, resize: 'none', fontFamily: T.font
             }}
           />
+          {jobNotes.trim() && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={carryNoteForward}
+                onChange={e => setCarryNoteForward(e.target.checked)}
+                style={{ width: 16, height: 16, accentColor: T.pink, flexShrink: 0 }}
+              />
+              <span style={{ fontSize: 12, color: T.inkSub, fontFamily: T.font }}>
+                ✦ Also flag this for {job?.client_name || 'their'}'s next job
+              </span>
+            </label>
+          )}
           </div>
 
           {/* Financial Breakdown */}

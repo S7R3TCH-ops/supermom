@@ -12,7 +12,7 @@ function assertWrote(data, op) {
 
 // Narrow select for list queries — drops phone2, referral_source, created_at (not accessed by UI).
 // fetchClientById keeps * for full profile/edit views.
-const SELECT_LIST = 'id, first_name, last_name, email, phone, street, city, province, postal_code, status, notes, access_info, tags, ai_context';
+const SELECT_LIST = 'id, first_name, last_name, email, phone, street, city, province, postal_code, status, notes, access_info, tags, ai_context, pending_note, pending_note_source_job_id';
 
 export async function fetchClients() {
   const businessId = await getCurrentBusinessId();
@@ -105,6 +105,15 @@ export async function updateClient(id, patch) {
   if (error) throw error;
   assertWrote(data, 'updateClient');
   return data;
+}
+
+// Set (or clear, with null args) the single in-flight carry-forward note on a client.
+// A second carried note before the first is consumed replaces it (by design — see spec).
+export async function setPendingNote(clientId, noteText, sourceJobId) {
+  return updateClient(clientId, {
+    pending_note: noteText,
+    pending_note_source_job_id: sourceJobId,
+  });
 }
 
 // Soft delete (deleted_at) — never hard delete (per CLAUDE.md).

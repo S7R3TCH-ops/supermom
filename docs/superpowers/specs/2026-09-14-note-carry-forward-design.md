@@ -21,7 +21,9 @@ alter table clients add column pending_note_source_job_id uuid references jobs(i
 ```
 
 - `pending_note_source_job_id` is informational only (lets ClientProfile show "from the Sep 14 job" if ever needed) — not used for any logic branch.
-- If a client already has a pending note and Sandra completes *another* job with the carry-forward box checked before the first one is consumed, the new note **replaces** the old one (simplest correct behavior for a single-slot field — confirmed with Joel).
+- If a client already has a pending note and Sandra completes *another* job with the carry-forward box checked before the first one is consumed, the new note **appends** to the old one, separated by a blank line (`pending_note = coalesce(pending_note || '\n\n', '') || new_note`) — **decided 2026-09-15, switched from an earlier "replace" call** after Gemini's cross-check flagged replace as silent data loss (whichever note completes second wins, first one vanishes with no trace). She can backspace what she doesn't want out of the pre-filled textarea on the next booking. `pending_note_source_job_id` tracks only the most recent contributing job on append (informational, not load-bearing).
+  - **Known future idea, not in scope for v2**: since append can now stack multiple notes across multiple collisions before one gets consumed, a later pass could offer an AI summary to condense the pile instead of showing raw concatenated text. Revisit only if stacking turns out to be messy in practice.
+  - **Idempotency guard (added during implementation, not in the original reconciliation)**: append only fires for a *different* source job. A repeat `setPendingNote` call from the same `sourceJobId` overwrites instead of stacking a duplicate — reachable via a partial-then-final payment re-entering `PostJobSheet`'s completion flow with the checkbox still checked, or Admin's Revert-then-re-complete. Implemented by comparing the incoming `sourceJobId` against the client's currently-stored `pending_note_source_job_id` before deciding to append vs. overwrite.
 
 ## Trigger: PostJobSheet
 
@@ -44,11 +46,13 @@ alter table clients add column pending_note_source_job_id uuid references jobs(i
 - This is a **visible, editable pre-fill**, not a silent background write — same UX as the recurrence auto-fill. She sees it in the textarea before saving and can edit or clear it. (Considered a fully-silent write straight into `job_notes` at creation time, relying on the note rendering loudly via `NoteCallout` the instant the job exists — rejected because it removes her chance to edit/drop a note that's gone stale, e.g. if she's now booking a *different* service where it doesn't apply.)
 - **Recurring bookings**: if she books a recurring series with a carried note still in the field, `createJob()`'s `createRecurringSeries()` path copies `job_notes` onto every generated occurrence (all 4-12 future jobs), same as it does for any manually-typed note today. This is existing, expected behavior for the notes field in general — not new risk introduced by this feature — and it's visible/editable before she saves, same backstop as above.
 - On successful `createJob()` when `payload.client_id` had a pending note, clear it: `clientsRepo.setPendingNote(clientId, null, null)`.
+- **Known accepted gap (2026-09-15 reconciliation)**: this consumption isn't transactional — `createJob()` succeeds, then a separate `setPendingNote(null, null)` call clears the flag. If that second call fails or drops, the note wrongly pre-fills again next time. Both call sites already treat the clear as non-fatal (logged, not thrown — the job is already booked, don't block on it). Accepted as a known v1 limitation; revisit only if `createJob` ever becomes a single backend RPC that could combine both writes into one transaction.
 
 ## Visibility while pending
 
 - Small tile on `ClientProfile.jsx`, same slot/style precedent as the existing account-credit tile (v0.13.49): "✦ Note waiting for next job" showing the note text, with a dismiss (✕) that clears both columns without booking anything.
 - Without this, the pending note is invisible state she set once at completion and then can't see or cancel until she happens to rebook — same principle the credit tile already established for a different "something is queued for later" case.
+- **Dismiss requires a confirm step (2026-09-15 addition)**: tapping ✕ doesn't delete immediately — it reveals an inline "Remove this note? [Keep] [Remove]" row first. One-tap-deletes-text-no-undo was flagged as too cheap to leave unguarded, mirroring the existing `ClientProfile` hard-delete two-step pattern rather than adding a new confirm-dialog component.
 
 ## Data layer changes
 

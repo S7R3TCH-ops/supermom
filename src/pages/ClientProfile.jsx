@@ -63,12 +63,14 @@ export default function ClientProfile() {
   }, [id, raw?.business_id]);
 
   const [dismissingPendingNote, setDismissingPendingNote] = useState(false);
+  const [pendingNoteDismissConfirm, setPendingNoteDismissConfirm] = useState(false);
   const handleDismissPendingNote = async () => {
     if (!id || dismissingPendingNote) return;
     setDismissingPendingNote(true);
     try {
       await setPendingNote(id, null, null);
       await refresh();
+      setPendingNoteDismissConfirm(false);
     } catch (e) {
       toast.error(e.message || String(e));
     } finally {
@@ -336,7 +338,7 @@ export default function ClientProfile() {
             </div>
             <button
               type="button"
-              onClick={handleDismissPendingNote}
+              onClick={() => setPendingNoteDismissConfirm(true)}
               disabled={dismissingPendingNote}
               aria-label="Dismiss pending note"
               style={{
@@ -347,6 +349,27 @@ export default function ClientProfile() {
             >
               ✕
             </button>
+            {pendingNoteDismissConfirm && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, paddingTop: 10, borderTop: `1px solid ${T.pink}33` }}>
+                <Caption style={{ fontSize: 11.5, color: T.inkSub, flex: 1 }}>Remove this note?</Caption>
+                <button
+                  type="button"
+                  onClick={() => setPendingNoteDismissConfirm(false)}
+                  disabled={dismissingPendingNote}
+                  style={{ background: 'transparent', border: `1px solid ${T.inkMuted}`, borderRadius: 8, padding: '5px 11px', fontFamily: T.font, fontSize: 11.5, fontWeight: 600, color: T.inkSub, cursor: dismissingPendingNote ? 'default' : 'pointer' }}
+                >
+                  Keep
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDismissPendingNote}
+                  disabled={dismissingPendingNote}
+                  style={{ background: T.pink, border: 'none', borderRadius: 8, padding: '5px 11px', fontFamily: T.font, fontSize: 11.5, fontWeight: 700, color: 'white', cursor: dismissingPendingNote ? 'default' : 'pointer', opacity: dismissingPendingNote ? 0.7 : 1 }}
+                >
+                  {dismissingPendingNote ? 'Removing…' : 'Remove'}
+                </button>
+              </div>
+            )}
           </div>
         )}
 

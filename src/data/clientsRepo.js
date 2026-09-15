@@ -108,8 +108,25 @@ export async function updateClient(id, patch) {
 }
 
 // Set (or clear, with null args) the single in-flight carry-forward note on a client.
-// A second carried note before the first is consumed replaces it (by design — see spec).
+// A second carried note from a DIFFERENT job before the first is consumed APPENDS to it
+// (2026-09-15 decision — silently replacing would lose whichever note completed first; she
+// can backspace what she doesn't want on the next pre-fill). A repeat call from the SAME
+// sourceJobId overwrites instead of stacking a duplicate — reachable via a partial-then-final
+// payment re-triggering PostJobSheet's completion flow, or Admin's Revert-then-re-complete.
 export async function setPendingNote(clientId, noteText, sourceJobId) {
+  if (noteText) {
+    const businessId = await getCurrentBusinessId();
+    const { data: existing, error: fetchError } = await supabase
+      .from('clients')
+      .select('pending_note, pending_note_source_job_id')
+      .eq('id', clientId)
+      .eq('business_id', businessId)
+      .single();
+    if (fetchError) throw fetchError;
+    const prior = existing?.pending_note?.trim();
+    const sameSource = sourceJobId && existing?.pending_note_source_job_id === sourceJobId;
+    noteText = (prior && !sameSource) ? `${prior}\n\n${noteText}` : noteText;
+  }
   return updateClient(clientId, {
     pending_note: noteText,
     pending_note_source_job_id: sourceJobId,

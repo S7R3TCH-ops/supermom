@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { useServices, useBusiness, notifyDataChanged } from '../../data/useData';
 import { createJob, fetchActiveJobs, fetchJobsByClientId, findConflicts, composeTorontoISO } from '../../data/jobsRepo';
-import { fetchClients } from '../../data/clientsRepo';
+import { fetchClients, setPendingNote } from '../../data/clientsRepo';
 import { fetchWorkersWithSkills } from '../../data/workersRepo';
 import { toDisplayClient } from '../../data/selectors';
 import { useToast } from '../../context/ToastContext';
@@ -204,12 +204,13 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
   const [aiEstimateLoading, setAiEstimateLoading] = useState(false);
   const [aiEstimateReason, setAiEstimateReason] = useState('');
 
-  // Auto-select recurrence from client usual if available
+  // Auto-select recurrence from client usual if available; pre-fill a carried-forward note
   const [lastClientRefId, setLastClientRefId] = useState(null);
   if (selectedClient && selectedClient.id !== lastClientRefId) {
     setLastClientRefId(selectedClient.id);
     // Don't overwrite if we have specific prefillData for a duplication
     if (!prefillData && selectedClient.recurrence) setRecurrence(selectedClient.recurrence);
+    if (!prefillData && selectedClient.pendingNote) setBookingNotes(selectedClient.pendingNote);
   }
 
   const onPickService = async (id) => {
@@ -300,6 +301,13 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
         ...(recurrence ? { ai_context: { recurrence_rule: recurrence } } : {}),
       };
       await createJob(payload);
+      if (selectedClient?.pendingNote) {
+        try {
+          await setPendingNote(clientId, null, null);
+        } catch (e) {
+          console.warn('Clearing pending note failed (non-fatal — job already booked):', e);
+        }
+      }
       notifyDataChanged();
       toast.success('Mission Booked! 🚀');
       onClose();

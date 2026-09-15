@@ -110,9 +110,15 @@ export async function updateClient(id, patch) {
 // Set (or clear, with null args) the single in-flight carry-forward note on a client.
 // A second carried note from a DIFFERENT job before the first is consumed APPENDS to it
 // (2026-09-15 decision — silently replacing would lose whichever note completed first; she
-// can backspace what she doesn't want on the next pre-fill). A repeat call from the SAME
-// sourceJobId overwrites instead of stacking a duplicate — reachable via a partial-then-final
-// payment re-triggering PostJobSheet's completion flow, or Admin's Revert-then-re-complete.
+// can backspace what she doesn't want on the next pre-fill).
+// EXACT-repeat no-op guard: if this exact text was the last thing THIS job appended (verbatim
+// tail match), skip the write — reachable via a partial-then-final payment re-triggering
+// PostJobSheet's completion flow, or Admin's Revert-then-re-complete, with the checkbox still
+// checked and the note untouched. Deliberately NOT a blind overwrite-on-same-job: if another
+// job's note is still stacked ahead of this job's own segment (unconsumed), overwriting the
+// whole field would silently delete it — the exact data-loss failure append exists to prevent,
+// just triggered from a different angle. A same-job repeat with EDITED text still appends
+// (a near-duplicate line, cosmetic, backspaceable) rather than risk deleting someone else's note.
 export async function setPendingNote(clientId, noteText, sourceJobId) {
   if (noteText) {
     const businessId = await getCurrentBusinessId();
@@ -124,8 +130,10 @@ export async function setPendingNote(clientId, noteText, sourceJobId) {
       .single();
     if (fetchError) throw fetchError;
     const prior = existing?.pending_note?.trim();
+    const trimmedNote = noteText.trim();
     const sameSource = sourceJobId && existing?.pending_note_source_job_id === sourceJobId;
-    noteText = (prior && !sameSource) ? `${prior}\n\n${noteText}` : noteText;
+    if (sameSource && prior && prior.endsWith(trimmedNote)) return existing; // exact repeat, no-op
+    noteText = prior ? `${prior}\n\n${noteText}` : noteText;
   }
   return updateClient(clientId, {
     pending_note: noteText,

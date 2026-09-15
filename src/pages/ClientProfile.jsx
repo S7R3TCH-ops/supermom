@@ -8,7 +8,7 @@ import { useToast } from '../context/ToastContext';
 import AmtCell from '../components/ui/AmtCell';
 import { Title, Subheading, Text, Caption, SectionLabel } from '../components/ui/typography';
 import { useClient, useClientInvoices, notifyDataChanged, useAiEnabled } from '../data/useData';
-import { updateClient, softDeleteClient, hardDeleteClient } from '../data/clientsRepo';
+import { updateClient, softDeleteClient, hardDeleteClient, setPendingNote } from '../data/clientsRepo';
 import { archiveClientJobs } from '../data/jobsRepo';
 import { getClientCreditBalance, getClientCreditHistory } from '../data/creditsRepo';
 import { useAuth } from '../context/AuthContext';
@@ -61,6 +61,20 @@ export default function ClientProfile() {
     getClientCreditHistory(businessId, id).then(rows => { if (alive) setCreditHistory(rows); }).catch(() => {});
     return () => { alive = false; };
   }, [id, raw?.business_id]);
+
+  const [dismissingPendingNote, setDismissingPendingNote] = useState(false);
+  const handleDismissPendingNote = async () => {
+    if (!id || dismissingPendingNote) return;
+    setDismissingPendingNote(true);
+    try {
+      await setPendingNote(id, null, null);
+      await refresh();
+    } catch (e) {
+      toast.error(e.message || String(e));
+    } finally {
+      setDismissingPendingNote(false);
+    }
+  };
 
   const handleEditIntel = () => {
     setIntelDraft({
@@ -305,6 +319,34 @@ export default function ClientProfile() {
                 ✦ Account credit — use on next job or return it
               </Caption>
             </div>
+          </div>
+        )}
+
+        {/* Pending carry-forward note */}
+        {client.pendingNote && (
+          <div style={{
+            background: T.pinkTint, border: `1.5px solid ${T.pink}`, borderRadius: 12,
+            padding: '11px 13px', marginBottom: 12, position: 'relative',
+          }}>
+            <div style={{ fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '1.1px', textTransform: 'uppercase', color: mode === 'dark' ? '#FF78B0' : T.pink, marginBottom: 6 }}>
+              ✦ Note waiting for next job
+            </div>
+            <div style={{ fontFamily: T.font, fontSize: 13, fontWeight: 500, color: T.ink, lineHeight: 1.5, whiteSpace: 'pre-wrap', paddingRight: 24 }}>
+              {client.pendingNote}
+            </div>
+            <button
+              type="button"
+              onClick={handleDismissPendingNote}
+              disabled={dismissingPendingNote}
+              aria-label="Dismiss pending note"
+              style={{
+                position: 'absolute', top: 10, right: 10, width: 22, height: 22, borderRadius: '50%',
+                border: 'none', background: 'transparent', color: T.inkMuted, fontSize: 14,
+                cursor: dismissingPendingNote ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              ✕
+            </button>
           </div>
         )}
 

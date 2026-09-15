@@ -231,35 +231,38 @@ async function runDailyBriefing({ req, toOverride, res }) {
     if (!toEmail) continue;
 
     // Today's jobs
-    const { data: todayJobs } = await sb
+    const { data: todayJobs, error: todayErr } = await sb
       .from('jobs')
-      .select('id, scheduled_time, service_name, estimated_hours, job_notes, clients(first_name, last_name, ai_context)')
+      .select('id, scheduled_time, service_name, estimated_hours, job_notes, clients!jobs_client_id_fkey(first_name, last_name, ai_context)')
       .eq('business_id', biz.id)
       .eq('scheduled_date', today)
       .not('job_status', 'eq', 'Cancelled')
       .is('deleted_at', null)
       .order('scheduled_time', { ascending: true });
+    if (todayErr) throw new Error(`todayJobs query failed for business ${biz.id}: ${todayErr.message}`);
 
     // Tomorrow's jobs
-    const { data: tomorrowJobs } = await sb
+    const { data: tomorrowJobs, error: tomorrowErr } = await sb
       .from('jobs')
-      .select('id, scheduled_time, service_name, estimated_hours, job_notes, clients(first_name, last_name)')
+      .select('id, scheduled_time, service_name, estimated_hours, job_notes, clients!jobs_client_id_fkey(first_name, last_name)')
       .eq('business_id', biz.id)
       .eq('scheduled_date', tomorrow)
       .not('job_status', 'eq', 'Cancelled')
       .is('deleted_at', null)
       .order('scheduled_time', { ascending: true });
+    if (tomorrowErr) throw new Error(`tomorrowJobs query failed for business ${biz.id}: ${tomorrowErr.message}`);
 
     // Outstanding balances — completed jobs not fully paid
-    const { data: unpaidJobs } = await sb
+    const { data: unpaidJobs, error: unpaidErr } = await sb
       .from('jobs')
-      .select('id, scheduled_date, total_amount, clients(first_name, last_name)')
+      .select('id, scheduled_date, total_amount, clients!jobs_client_id_fkey(first_name, last_name)')
       .eq('business_id', biz.id)
       .eq('job_status', 'Completed')
       .neq('payment_status', 'Paid')
       .is('deleted_at', null)
       .order('scheduled_date', { ascending: false })
       .limit(10);
+    if (unpaidErr) throw new Error(`unpaidJobs query failed for business ${biz.id}: ${unpaidErr.message}`);
 
     const todayCount = (todayJobs ?? []).length;
     const firstName = (biz.owner_name || 'Sandra').split(' ')[0];

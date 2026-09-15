@@ -15,7 +15,7 @@ export default async function handler(req, res) {
     // 1. Fetch Job
     const { data: job, error: jobErr } = await supabase
       .from('jobs')
-      .select('*, clients(*)')
+      .select('*, clients!jobs_client_id_fkey(*)')
       .eq('id', jobId)
       .single();
     if (jobErr || !job) throw new Error('Job not found');

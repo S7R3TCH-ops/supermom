@@ -11,6 +11,7 @@ import { MONEY_FIELDS } from '../lib/jobDraftPolicy';
 import { composeTorontoISO as _composeTorontoISO } from '../lib/dateUtils';
 import { setJobWorkers, markJobWorkerPaid, fetchJobWorkers, fetchJobWorkersForJobs } from './jobWorkersRepo';
 import { getClientCreditBalance, getJobIssuedCredit, applyCredit, issueCredit } from './creditsRepo';
+import { logClientError } from '../lib/errorTracking';
 export { composeTorontoISO } from '../lib/dateUtils';
 
 function assertWrote(data, op) {
@@ -828,9 +829,11 @@ async function triggerGCalSync(jobId, action = 'upsert') {
     const data = await res.json().catch(() => ({}));
     if (data.status === 'token_expired') {
       window.dispatchEvent(new CustomEvent('gcal-token-expired'));
+    } else if (!res.ok) {
+      logClientError(new Error(`GCal sync failed: ${res.status} ${data.error || ''}`), { jobId, action, source: 'triggerGCalSync' });
     }
   } catch (e) {
-    console.error('GCal Sync Trigger Error:', e);
+    logClientError(e, { jobId, action, source: 'triggerGCalSync' });
   }
 }
 

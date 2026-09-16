@@ -301,9 +301,6 @@ export default function InvoiceView() {
         }
         @media (max-width: 600px) {
           .invoice-box { padding: 16px 12px; }
-          .info-grid { grid-template-columns: 1fr; gap: 18px; margin-bottom: 28px; font-size: 12px; }
-          .info-col-right { text-align: left !important; }
-          .invoice-meta { justify-content: flex-start !important; }
         }
         @media print {
           .invoice-scale-wrap { height: auto !important; overflow: visible !important; }

@@ -135,7 +135,7 @@ function InvoiceDocument({ invoice }) {
   const biz      = invoice.businesses || {};
   const client   = invoice.clients    || {};
   const allJobs  = (invoice.invoice_jobs || []).map(ij => ij.jobs).filter(Boolean)
-    .sort((a, b) => new Date(a.scheduled_date) - new Date(b.scheduled_date));
+    .sort((a, b) => new Date(a.scheduled_date).getTime() - new Date(b.scheduled_date).getTime());
   const jobById  = Object.fromEntries(allJobs.map(j => [j.id, j]));
   const isReceipt = !!invoice.isPaidInFull;
   const anyHourly = allJobs.some(j => j.pricing_type === 'Hourly');

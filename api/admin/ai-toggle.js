@@ -1,17 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
-
-const SUPER_ADMIN_EMAILS = ['jlundie@gmail.com', 'joel@supermomforhire.com'];
+import { requireUser } from '../_lib/authGuard.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET' && req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
   const supabaseUrl = process.env.VITE_SUPABASE_URL;
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const authHeader = req.headers.authorization;
 
-  if (!authHeader) {
-    return res.status(401).json({ error: 'Missing Authorization header' });
-  }
   if (!supabaseUrl || !supabaseServiceKey) {
     return res.status(500).json({ error: 'Database configuration missing' });
   }
@@ -20,11 +15,10 @@ export default async function handler(req, res) {
     auth: { persistSession: false }
   });
 
-  const token = authHeader.replace('Bearer ', '');
-
   try {
-    const { data: { user }, error: authErr } = await supabaseAdmin.auth.getUser(token);
-    if (authErr || !user || !SUPER_ADMIN_EMAILS.includes(user.email)) {
+    const auth = await requireUser(req, supabaseAdmin);
+    if (auth.error) return res.status(auth.error.status).json({ error: auth.error.message });
+    if (!auth.isAdmin) {
       return res.status(403).json({ error: 'Forbidden: Only Super Admins can manage AI settings.' });
     }
 

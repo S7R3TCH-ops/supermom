@@ -10,8 +10,13 @@ import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
 
 const ADMIN_EMAIL = 'jlundie@gmail.com';
-const ADMIN_PASSWORD = 'TempPass2026!';
+const ADMIN_PASSWORD = process.env.PROVISION_ADMIN_PASSWORD;
 const BUSINESS_NAME = 'Supermom for Hire';
+
+if (!ADMIN_PASSWORD) {
+  console.error('Set PROVISION_ADMIN_PASSWORD env var before running this script.');
+  process.exit(1);
+}
 
 const sb = createClient(process.env.VITE_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false },

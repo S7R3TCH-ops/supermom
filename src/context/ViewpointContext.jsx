@@ -13,7 +13,11 @@ export function ViewpointProvider({ children }) {
   const [viewingAsId, setViewingAsId] = useState(() => sessionStorage.getItem('superViewId'));
   const [viewingAsName, setViewingAsName] = useState(() => sessionStorage.getItem('superViewName'));
 
-  const isSuperAdmin = profile?.email === 'jlundie@gmail.com' || profile?.email === 'joel@supermom.io';
+  // role === 'admin' is the single source of truth (matches api/_lib/authGuard.js
+  // and src/data/currentBusiness.js) — a hardcoded email list drifted out of sync
+  // with itself across 3 files (one had a typo'd domain), and this is UI-gating
+  // only anyway; RLS is the real enforcement.
+  const isSuperAdmin = profile?.role === 'admin';
 
   useEffect(() => {
     if (isSuperAdmin) {

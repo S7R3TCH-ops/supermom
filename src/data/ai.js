@@ -240,8 +240,27 @@ export async function fetchSmartDurationEstimate(clientId, serviceName, business
 }
 
 /**
+ * Merges two stacked carry-forward client notes into one concise note.
+ */
+export async function summarizeCarriedNote(clientId, priorNote, newNote) {
+  const response = await fetch('/api/ai/summarize-carried-note', {
+    method: 'POST',
+    headers: await authHeaders(),
+    body: JSON.stringify({ clientId, priorNote, newNote }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `Failed to summarize carried note (${response.status})`);
+  }
+
+  const data = await response.json();
+  return data.note;
+}
+
+/**
  * Calculates a smart duration estimate for Step 2 of the booking flow.
- * Priority: 
+ * Priority:
  * 1. Last visit duration for this specific service (client-specific)
  * 2. Average duration for this service (client-specific)
  * 3. Default duration for the service type

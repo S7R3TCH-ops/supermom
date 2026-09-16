@@ -20,7 +20,6 @@ import { computeJobTotal } from '../lib/financialMath';
 import { getWorkerLabel } from '../lib/labels';
 import OfflineMessage from '../components/ui/OfflineMessage';
 import JobCard from '../components/cards/JobCard';
-import UpcomingCard from '../components/cards/UpcomingCard';
 import Swipeable from '../components/ui/Swipeable';
 import EmptyState from '../components/cards/EmptyState';
 import LiveTimer from '../components/cards/LiveTimer';
@@ -1119,12 +1118,13 @@ export default function Home() {
               return (
                 <div key={j.id}>
                   <Swipeable onAction={() => openPostJob(j.id)} actionLabel="Wrap up" actionColor="#16A34A">
-                    <UpcomingCard
+                    <JobCard
                       job={j}
                       T={T}
                       onClick={() => openJob(j.id)}
                       total={computeJobTotal(j)}
                       privacyOn={privacyOn}
+                      label="UPCOMING"
                     />
                   </Swipeable>
                   {leaveBy && (
@@ -1160,81 +1160,25 @@ export default function Home() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {owingJobs.map((j) => {
                 const isWrapUp = j.status !== 'Completed';
-                const isPartial = j.status === 'Completed' && j.payment_status === 'Partial';
-                const isStale = j.hoursOld >= 48;
-                const variant = isWrapUp ? 'wrap-up' : isPartial ? 'partial' : isStale ? 'unpaid-stale' : 'unpaid-fresh';
-                const VSTYLES = {
-                  'wrap-up':      { ...T.status.attention, label: 'WRAP UP' },
-                  'unpaid-fresh': { ...T.status.unpaid,    label: 'UNPAID' },
-                  'unpaid-stale': { ...T.status.overdue,   label: 'UNPAID' },
-                  'partial':      { ...T.status.partial,   label: 'PARTIAL PAID' },
-                }[variant];
-
-                // Bold solid fill for unpaid/overdue/partial — switch body text to white for contrast
-                const isBold = !isWrapUp;
-                const cardNameColor = isBold ? VSTYLES.fg : T.ink;
-                const cardSubColor = isBold ? 'rgba(255,255,255,0.85)' : T.inkSub;
-                const cardMutedColor = isBold ? 'rgba(255,255,255,0.75)' : T.inkMuted;
-                const cardAccentColor = isBold ? VSTYLES.fg : VSTYLES.text;
-
                 const h = j.hoursOld;
-                const recencyText = isWrapUp
+                const staleness = isWrapUp
                   ? (h < 1 ? 'just now' : h < 24 ? `${Math.floor(h)}h overdue` : `${Math.floor(h / 24)}d overdue`)
                   : (h < 1 ? 'moments ago' : h < 24 ? `${Math.floor(h)}h ago` : `${Math.floor(h / 24)}d ago`);
 
-                const dateStr = j.start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                const fmtTime = (d) => {
-                  const hh = d.getHours(); const mm = d.getMinutes();
-                  const ap = hh >= 12 ? 'pm' : 'am'; const h12 = hh % 12 || 12;
-                  return mm > 0 ? `${h12}:${String(mm).padStart(2, '0')}${ap}` : `${h12}${ap}`;
-                };
-                const timeRange = `${fmtTime(j.start)}–${fmtTime(j.end)}`;
-
                 return (
-                  <button
+                  <JobCard
                     key={j.id}
-                    type="button"
+                    job={j}
+                    T={T}
                     onClick={() => openJob(j.id)}
-                    style={{
-                      display: 'block', width: '100%', textAlign: 'left',
-                      background: VSTYLES.bg,
-                      border: `1px solid ${VSTYLES.border}66`,
-                      borderLeft: `4px solid ${VSTYLES.border}`,
-                      borderRadius: 12,
-                      padding: '10px 12px',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
-                      <span style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.5px', background: VSTYLES.pill, color: VSTYLES.text, padding: '2px 6px', borderRadius: 4 }}>
-                        {VSTYLES.label}
-                      </span>
-                      {isWrapUp ? (
-                        <span style={{ fontFamily: T.font, fontSize: 11, color: VSTYLES.text, opacity: 0.8 }}>Tap to wrap up →</span>
-                      ) : (
-                        <span style={{ fontFamily: T.serif, fontSize: 14, fontWeight: 700, color: cardAccentColor, fontVariantNumeric: 'tabular-nums' }}>
-                          {privacyOn ? '•••' : `$${j.remaining.toFixed(0)} owing`}
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ fontFamily: T.serif, fontSize: 16, fontWeight: 600, color: cardNameColor, letterSpacing: '-0.3px', marginBottom: 2 }}>
-                      {j.client_name}
-                    </div>
-                    {j.service_name && (
-                      <div style={{ fontFamily: T.font, fontSize: 12, color: cardSubColor, marginBottom: 4 }}>
-                        {j.service_name}
-                      </div>
-                    )}
-                    {isPartial && !privacyOn && (
-                      <div style={{ fontFamily: T.font, fontSize: 11, fontWeight: 600, color: cardAccentColor, marginBottom: 4 }}>
-                        ${j.paid.toFixed(0)} paid already
-                      </div>
-                    )}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontFamily: T.font, fontSize: 11, color: cardMutedColor }}>{dateStr} · {timeRange}</span>
-                      <span style={{ fontFamily: T.font, fontSize: 11, fontWeight: 600, color: cardAccentColor }}>{recencyText}</span>
-                    </div>
-                  </button>
+                    total={computeJobTotal(j)}
+                    privacyOn={privacyOn}
+                    wrapUp={isWrapUp}
+                    remaining={j.remaining}
+                    paidSoFar={j.paid}
+                    staleness={staleness}
+                    stale={h >= 48}
+                  />
                 );
               })}
             </div>

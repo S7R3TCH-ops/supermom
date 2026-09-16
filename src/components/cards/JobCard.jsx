@@ -3,7 +3,10 @@ import { useBusiness } from '../../data/useData';
 import { getWorkerLabel } from '../../lib/labels';
 import NoteCallout from '../ui/NoteCallout';
 
-export default function JobCard({ job: j, T, onClick, total = 0, privacyOn = false }) {
+export default function JobCard({
+  job: j, T, onClick, total = 0, privacyOn = false, label,
+  wrapUp = false, remaining = null, staleness = null, paidSoFar = 0, stale = false,
+}) {
   const { business } = useBusiness();
   const isCompleted = j.status === 'Completed';
   const isPaid = j.payment_status === 'Paid';
@@ -11,14 +14,28 @@ export default function JobCard({ job: j, T, onClick, total = 0, privacyOn = fal
   const isUnpaid = isCompleted && !isPaid;
   const isOwing = isUnpaid || isPartial;
 
-  const S = isPartial ? T.status.partial
-    : (isUnpaid && !isPartial) ? T.status.overdue
+  // wrapUp: job's scheduled end has passed but it hasn't been marked Completed yet
+  // (Home's "Needs attention" section). Styled like scheduled (light, non-bold) —
+  // there's no formal $ owed until the job is wrapped up and finalized.
+  const S = wrapUp ? T.status.attention
+    : isPartial ? T.status.partial
+    : isUnpaid ? (stale ? T.status.overdue : T.status.unpaid)
     : isPaid ? T.status.paid
     : T.status.scheduled;
-  const statusLabel = isPartial ? 'PARTIAL' : isUnpaid ? 'UNPAID' : isPaid ? 'PAID ✓' : 'SCHEDULED';
+  const statusLabel = label || (wrapUp ? 'WRAP UP' : isPartial ? 'PARTIAL' : isUnpaid ? 'UNPAID' : isPaid ? 'PAID ✓' : 'SCHEDULED');
+
+  // Once a job is Completed, its pre-job note (job_notes) is stale — swap to the
+  // post-job note (completion_notes) so a card never shows both or the wrong one.
+  // Highlighted note disappears entirely once paid in full (Joel's call, 2026-09-15) —
+  // full detail (both notes) is still always in JobDetailSheet.
+  const noteText = isCompleted ? (isPaid ? null : j.completion_notes) : j.notes;
 
   const timeRange = j.start && j.end ? fmtTimeRange(j.start, j.end) : '—';
-  const dateLabel = j.start ? dateBrief(j.start) : '';
+  const dateLabel = j.start ? dateBrief(j.start) + (staleness ? ` · ${staleness}` : '') : '';
+
+  // Outstanding balance takes priority over the gross total once something's owed —
+  // that's the actionable number. Wrap-up jobs show no $ at all (nothing's final yet).
+  const amountToShow = wrapUp ? 0 : (isOwing && remaining != null) ? remaining : total;
 
   // Owing cards (unpaid/overdue/partial) get a bold solid fill — switch body text to white for contrast
   const nameColor = isOwing ? S.fg : T.ink;
@@ -64,16 +81,23 @@ export default function JobCard({ job: j, T, onClick, total = 0, privacyOn = fal
       {/* Row 2: date | amount */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
         <div style={{ fontSize: 11, fontWeight: 500, color: dateColor }}>{dateLabel}</div>
-        {total > 0 && (
+        {amountToShow > 0 && (
           <div style={{
             fontFamily: T.serif, fontSize: 14,
             fontWeight: isOwing ? 700 : 600,
             color: amountColor, fontVariantNumeric: 'tabular-nums',
           }}>
-            {privacyOn ? '•••' : `$${total.toFixed(0)}`}
+            {privacyOn ? '•••' : `$${amountToShow.toFixed(0)}`}
           </div>
         )}
       </div>
+
+      {/* Partial: what's already been paid, next to the outstanding figure above */}
+      {isPartial && paidSoFar > 0 && !privacyOn && (
+        <div style={{ fontSize: 10.5, fontWeight: 600, color: mutedColor, marginTop: -3, marginBottom: 5 }}>
+          ${paidSoFar.toFixed(0)} paid already
+        </div>
+      )}
 
       {/* Row 3: service tag */}
       <div style={{
@@ -112,8 +136,8 @@ export default function JobCard({ job: j, T, onClick, total = 0, privacyOn = fal
       )}
 
       {/* Notes */}
-      {j.notes && (
-        <NoteCallout T={T} text={j.notes} compact onDark={isOwing} />
+      {noteText && (
+        <NoteCallout T={T} text={noteText} compact onDark={isOwing} />
       )}
     </div>
   );

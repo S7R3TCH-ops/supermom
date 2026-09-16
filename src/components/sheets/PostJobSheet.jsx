@@ -16,7 +16,7 @@ import { triggerHaptic } from '../../lib/haptics';
 import { getWorkerLabel } from '../../lib/labels';
 import { validatePaymentAmount } from '../../lib/jobDraftPolicy';
 import { getClientCreditBalance } from '../../data/creditsRepo';
-import { setPendingNote } from '../../data/clientsRepo';
+import { setPendingNote, fetchClientById } from '../../data/clientsRepo';
 
 export default function PostJobSheet({ jobId, onClose }) {
   const { T, mode } = useAppTheme();
@@ -33,6 +33,11 @@ export default function PostJobSheet({ jobId, onClose }) {
   const [actualMinutes, setActualMinutes] = useState(60);
   const [jobNotes, setJobNotes] = useState('');
   const [carryNoteForward, setCarryNoteForward] = useState(false);
+  // True when this job already had a note carried forward to the client's next
+  // booking (client.pending_note_source_job_id === this job, not yet consumed)
+  // *before* this sheet session — used to prompt keep/remove once this job is
+  // fully paid, since "resolved and paid" often means the carried note is stale.
+  const [hadCarriedNoteFromThisJob, setHadCarriedNoteFromThisJob] = useState(false);
   // payStatus: 'paid' | 'partial' | 'unpaid'
   const [payStatus, setPayStatus] = useState('paid');
   const [busy, setBusy] = useState(false);
@@ -122,6 +127,7 @@ export default function PostJobSheet({ jobId, onClose }) {
         if (alive) { 
           setJob(j);
           setJobNotes(j?.completion_notes || '');
+          setHadCarriedNoteFromThisJob(!!j?.client_pending_note && j?.client_pending_note_source_job_id === jobId);
           setWorkerPaid(!!j?.worker_paid);
           setTaxEnabled(j?.tax_enabled ?? (business?.tax_enabled ?? false));
           supabase
@@ -177,6 +183,48 @@ export default function PostJobSheet({ jobId, onClose }) {
     setAmount(String(balance));
   }, [liveTotal, alreadyPaid, payStatus, job]);
 
+  // Runs after payment is recorded (and, if applicable, after the carried-note
+  // keep/remove decision is resolved) — checks for other open invoices for the
+  // same client before landing on the success/nudge screen.
+  async function advanceToOutstandingCheck() {
+    setPhase('checking');
+    triggerHaptic('success');
+    try {
+      const outstanding = await fetchOutstandingJobsForClient(job.client_id, jobId);
+      if (outstanding.length > 0) {
+        setClientOutstanding(outstanding);
+        setBundleSelected(new Set(outstanding.map(j => j.id)));
+        setPhase('bundle');
+      } else {
+        setPhase('nudge');
+      }
+    } catch {
+      setPhase('nudge');
+    }
+  }
+
+  async function handleKeepCarriedNote() {
+    setBusy(true);
+    await advanceToOutstandingCheck();
+    setBusy(false);
+  }
+
+  async function handleRemoveCarriedNote() {
+    setBusy(true);
+    try {
+      // Re-check right before clearing — if the client picked up a newer carried
+      // note from a different job in the meantime, that one wins; never clobber it.
+      const current = await fetchClientById(job.client_id);
+      if (current?.pending_note_source_job_id === jobId) {
+        await setPendingNote(job.client_id, null, null);
+      }
+    } catch (e) {
+      toast.error(e.message || 'Failed to remove the carried note.');
+    }
+    await advanceToOutstandingCheck();
+    setBusy(false);
+  }
+
   async function handleLogPayment() {
     if (!job) return;
     const balance = Math.max(0, Math.round((liveTotal - alreadyPaid) * 100) / 100);
@@ -217,22 +265,17 @@ export default function PostJobSheet({ jobId, onClose }) {
 
       notifyDataChangedNow();
       setSavedPs(ps);
-      setPhase('checking');
-      triggerHaptic('success');
 
-      // Check for other outstanding jobs for this client before opening PDF
-      try {
-        const outstanding = await fetchOutstandingJobsForClient(job.client_id, jobId);
-        if (outstanding.length > 0) {
-          setClientOutstanding(outstanding);
-          setBundleSelected(new Set(outstanding.map(j => j.id)));
-          setPhase('bundle');
-        } else {
-          setPhase('nudge');
-        }
-      } catch {
-        setPhase('nudge');
+      // Paid off, and a note from this exact job is still riding along uncomsumed
+      // on the client's next booking, and this submission didn't just reaffirm it —
+      // ask instead of letting a possibly-stale note carry silently.
+      if (ps === 'Paid' && hadCarriedNoteFromThisJob && !carryNoteForward) {
+        setPhase('carried-note-check');
+        setBusy(false);
+        return;
       }
+
+      await advanceToOutstandingCheck();
       setBusy(false);
     } catch (e) {
       const msg = e.message || String(e);
@@ -256,6 +299,7 @@ export default function PostJobSheet({ jobId, onClose }) {
   const isNudge = phase === 'nudge';
   const isBundle = phase === 'bundle';
   const isChecking = phase === 'checking';
+  const isCarriedNoteCheck = phase === 'carried-note-check';
 
   return (
     <div ref={sheetRef} role="dialog" aria-modal="true" aria-label="Complete job" style={{
@@ -347,6 +391,42 @@ export default function PostJobSheet({ jobId, onClose }) {
           <div style={{ padding: 40, textAlign: 'center', color: T.inkMuted }}>Initializing...</div>
         ) : fetchErr ? (
           <div style={{ padding: 40, textAlign: 'center', color: T.errorFg }}>{fetchErr}</div>
+        ) : isCarriedNoteCheck ? (
+          /* ── Carried-note keep/remove check ── */
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '24px 20px', gap: 16 }}>
+            <div>
+              <div style={{ fontFamily: T.serif, fontSize: 20, fontWeight: 500, color: T.ink, marginBottom: 8 }}>
+                This job had a note flagged for next time
+              </div>
+              <div style={{ fontSize: 13, color: T.inkMuted, lineHeight: 1.45 }}>
+                It's paid off now — still want this note carried onto {job?.client_name || "the client"}'s next booking, or is it resolved?
+              </div>
+            </div>
+            <div style={{ background: T.pinkTint, border: `1.5px solid ${T.pink}`, borderRadius: 12, padding: '11px 13px' }}>
+              <div style={{ fontFamily: T.font, fontSize: 13, fontWeight: 500, color: T.ink, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+                {jobNotes || job?.completion_notes}
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 }}>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={handleKeepCarriedNote}
+                style={{ width: '100%', padding: '14px', borderRadius: 12, background: 'transparent', border: `1.5px solid ${T.cardBorder}`, color: T.ink, fontFamily: T.font, fontSize: 14, fontWeight: 600, cursor: 'pointer', minHeight: 44 }}
+              >
+                Keep it on their next job
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={handleRemoveCarriedNote}
+                style={{ width: '100%', padding: '14px', borderRadius: 12, background: T.pink, color: 'white', border: 'none', fontFamily: T.font, fontSize: 14, fontWeight: 700, cursor: 'pointer', minHeight: 44, boxShadow: '0 4px 12px rgba(233,30,106,0.3)' }}
+              >
+                {busy ? 'Removing…' : "Resolved — remove it"}
+              </button>
+            </div>
+          </div>
+
         ) : isChecking ? (
           /* ── Checking outstanding jobs ── */
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '32px 24px', gap: 16, textAlign: 'center' }}>

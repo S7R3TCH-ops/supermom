@@ -20,13 +20,14 @@ function assertWrote(data, op) {
 }
 
 // Narrow select for list queries — drops ~10 unused columns (review fields, reschedule history,
-// completion_notes, legacy rates, cron timestamps). fetchJobById keeps * for full detail view.
+// legacy rates, cron timestamps). completion_notes included — job cards show it once a job is
+// Completed (see JobCard.jsx). fetchJobById keeps * for full detail view.
 const SELECT_LIST = [
   'id', 'business_id', 'client_id', 'service_id', 'template_id', 'service_name',
   'scheduled_date', 'scheduled_time', 'pricing_type', 'estimated_hours',
   'actual_duration', 'flat_rate', 'tax_enabled', 'hst_rate', 'subtotal', 'hst_amount',
   'additional_cost', 'additional_cost_notes', 'additional_costs_json', 'total_amount',
-  'job_status', 'payment_status', 'payment_method', 'job_notes', 'photo_links',
+  'job_status', 'payment_status', 'payment_method', 'job_notes', 'completion_notes', 'photo_links',
   'calendar_event_id', 'ai_context', 'deleted_at',
   'distance_to_km', 'distance_home_km',
 ].join(', ');
@@ -101,7 +102,7 @@ export async function fetchJobById(id) {
 
   const { data, error } = await supabase
     .from('jobs')
-    .select(`*, clients!jobs_client_id_fkey(first_name, last_name, notes, ai_context, tags)`)
+    .select(`*, clients!jobs_client_id_fkey(first_name, last_name, notes, ai_context, tags, pending_note, pending_note_source_job_id)`)
     .eq('id', id)
     .eq('business_id', businessId)
     .maybeSingle();
@@ -136,6 +137,8 @@ export async function fetchJobById(id) {
     client_ai_context: c?.ai_context || {},
     client_tags: c?.tags || [],
     client_recent_notes,
+    client_pending_note: c?.pending_note || '',
+    client_pending_note_source_job_id: c?.pending_note_source_job_id || null,
   };
 }
 

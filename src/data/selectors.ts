@@ -157,6 +157,7 @@ export interface DisplayJob {
   payment_status: string;
   actual_duration: number | null;
   notes: string;
+  completion_notes: string;
   photo_links: string;
   voice_note: string | null;
   ai_context: Record<string, unknown>;
@@ -336,6 +337,7 @@ export function toDisplayJob(
     payment_status: (jobRow.payment_status as string) || '',
     actual_duration: (jobRow.actual_duration as number) ?? null,
     notes: (jobRow.job_notes as string) ?? '',
+    completion_notes: (jobRow.completion_notes as string) ?? '',
     photo_links: (jobRow.photo_links as string) ?? '',
     voice_note: (jobRow.ai_context as Record<string, unknown>)?.voice_note as string ?? null,
     ai_context: (jobRow.ai_context as Record<string, unknown>) || {},

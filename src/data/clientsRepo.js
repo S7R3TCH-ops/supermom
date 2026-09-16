@@ -4,6 +4,7 @@
 
 import { supabase } from '../lib/supabase';
 import { getCurrentBusinessId } from './currentBusiness';
+import { summarizeCarriedNote } from './ai';
 
 function assertWrote(data, op) {
   const rows = Array.isArray(data) ? data : (data ? [data] : []);
@@ -108,9 +109,10 @@ export async function updateClient(id, patch) {
 }
 
 // Set (or clear, with null args) the single in-flight carry-forward note on a client.
-// A second carried note from a DIFFERENT job before the first is consumed APPENDS to it
-// (2026-09-15 decision — silently replacing would lose whichever note completed first; she
-// can backspace what she doesn't want on the next pre-fill).
+// A second carried note from a DIFFERENT job before the first is consumed MERGES into it via
+// summarizeCarriedNote() (2026-09-15 decision — silently replacing would lose whichever note
+// completed first; she can edit what comes out on the next pre-fill). Falls back to a plain
+// "\n\n" join if the AI call fails or AI is disabled — never blocks the completion flow.
 // EXACT-repeat no-op guard: if this exact text was the last thing THIS job appended (verbatim
 // tail match), skip the write — reachable via a partial-then-final payment re-triggering
 // PostJobSheet's completion flow, or Admin's Revert-then-re-complete, with the checkbox still
@@ -133,7 +135,14 @@ export async function setPendingNote(clientId, noteText, sourceJobId) {
     const trimmedNote = noteText.trim();
     const sameSource = sourceJobId && existing?.pending_note_source_job_id === sourceJobId;
     if (sameSource && prior && prior.endsWith(trimmedNote)) return existing; // exact repeat, no-op
-    noteText = prior ? `${prior}\n\n${noteText}` : noteText;
+    if (prior) {
+      try {
+        noteText = await summarizeCarriedNote(clientId, prior, noteText);
+      } catch (e) {
+        console.warn('Carried-note summarization failed, falling back to plain join (non-fatal):', e);
+        noteText = `${prior}\n\n${noteText}`;
+      }
+    }
   }
   return updateClient(clientId, {
     pending_note: noteText,

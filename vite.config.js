@@ -62,5 +62,9 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 8080,
+    // Vite 8+ rejects unrecognized Host headers by default. Wildcard so an ad-hoc
+    // cloudflared quick tunnel (a new random subdomain every run) can reach dev
+    // for remote phone testing.
+    allowedHosts: ['.trycloudflare.com'],
   },
 })

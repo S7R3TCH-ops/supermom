@@ -30,6 +30,12 @@ export default async function handler(req, res) {
   }
   // Scope context lookups to the caller's business (admins keep the requested scope).
   const scopeBusinessId = auth.isAdmin ? businessId : auth.businessId;
+  // A non-admin with no resolvable business_id must never fall through to an
+  // unscoped lookup below — that runs on the service-role client (bypasses RLS)
+  // and would leak any tenant's client/job notes into the prompt.
+  if (!auth.isAdmin && !scopeBusinessId) {
+    return res.status(403).json({ error: 'Forbidden: no business scope' });
+  }
 
   const { data: settings, error: settingsErr } = await supabase.from('app_settings').select('ai_enabled').eq('id', 1).single();
   if (settingsErr) return res.status(500).json({ error: 'Could not check AI settings' });

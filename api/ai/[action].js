@@ -126,7 +126,7 @@ Return ONLY valid JSON (no markdown):
 {"synthesis_note":"2-3 sentences about patterns useful before a visit.","behavioral_flags":["snake_case","max_4_words","max_4_items"]}`;
 
   const response = await anthropic.messages.create({
-    model: 'claude-3-5-haiku-20241022',
+    model: 'claude-haiku-4-5-20251001',
     max_tokens: 150,
     messages: [{ role: 'user', content: prompt }],
   });
@@ -240,7 +240,7 @@ Generate an estimate in hours (decimal). Return ONLY a JSON object in this forma
 
   try {
     const response = await anthropic.messages.create({
-      model: 'claude-3-5-haiku-20241022',
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: 300,
       messages: [{ role: 'user', content: prompt }],
     });
@@ -322,7 +322,7 @@ Generate the briefing now. Focus on patterns, preferences, or things she should 
 
   try {
     const response = await anthropic.messages.create({
-      model: 'claude-3-5-haiku-20241022',
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: 300,
       messages: [{ role: 'user', content: prompt }],
     });
@@ -331,6 +331,37 @@ Generate the briefing now. Focus on patterns, preferences, or things she should 
   } catch (e) {
     console.warn('[prep-note] Anthropic call failed, using local fallback.', e.message);
     return res.status(200).json(await localPrepNote(supabase, clientId));
+  }
+}
+
+async function summarizeCarriedNote(req, res, supabase, anthropic) {
+  const { priorNote, newNote } = req.body;
+  if (!priorNote || !newNote) return res.status(400).json({ error: 'Missing priorNote or newNote' });
+
+  const fallback = `${priorNote}\n\n${newNote}`;
+  if (!anthropic) {
+    console.warn('[summarize-carried-note] No ANTHROPIC_API_KEY found. Falling back to plain join.');
+    return res.status(200).json({ note: fallback, isMock: true });
+  }
+
+  const prompt = `Two carry-forward reminder notes for the same client stacked up before either was used. Merge them into ONE short note, 1-2 sentences, plain text, no markdown. Keep every concrete detail (names, requests, reminders) from both — drop only redundant phrasing.
+
+Note 1 (older): "${priorNote}"
+Note 2 (newer): "${newNote}"
+
+Return ONLY the merged note text, nothing else.`;
+
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 150,
+      messages: [{ role: 'user', content: prompt }],
+    });
+    const note = response.content[0].text.trim();
+    return res.status(200).json({ note });
+  } catch (e) {
+    console.warn('[summarize-carried-note] Anthropic call failed, using plain join.', e.message);
+    return res.status(200).json({ note: fallback, isMock: true });
   }
 }
 
@@ -357,7 +388,7 @@ Write a single, short, quirky 1-sentence greeting using a "${style || 'professio
 Be concise. No intro/outro.`;
 
   const response = await anthropic.messages.create({
-    model: 'claude-3-5-haiku-20241022',
+    model: 'claude-haiku-4-5-20251001',
     max_tokens: 100,
     messages: [{ role: 'user', content: prompt }],
   });
@@ -398,6 +429,7 @@ export default async function handler(req, res) {
     if (action === 'estimate-duration') return await estimateDuration(req, res, supabase, anthropic);
     if (action === 'prep-note') return await prepNote(req, res, supabase, anthropic);
     if (action === 'test-persona') return await testPersona(req, res, anthropic);
+    if (action === 'summarize-carried-note') return await summarizeCarriedNote(req, res, supabase, anthropic);
     if (action === 'transcribe-voice-note') return await transcribeVoiceNote(req, res, supabase);
     return res.status(404).json({ error: `Unknown AI action: ${action}` });
   } catch (error) {

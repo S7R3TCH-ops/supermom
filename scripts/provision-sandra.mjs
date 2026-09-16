@@ -6,8 +6,13 @@ const sb = createClient(process.env.VITE_SUPABASE_URL, process.env.SUPABASE_SERV
 });
 
 const SANDRA_EMAIL = 'sandra@supermomforhire.com';
-const SANDRA_PASSWORD = 'Supermom2026!'; // Temporary
+const SANDRA_PASSWORD = process.env.PROVISION_SANDRA_PASSWORD;
 const BUSINESS_NAME = 'Supermom for Hire';
+
+if (!SANDRA_PASSWORD) {
+  console.error('Set PROVISION_SANDRA_PASSWORD env var before running this script.');
+  process.exit(1);
+}
 
 const SERVICES = [
   { name: 'Deep Clean',       pricing_type: 'Flat',   default_price: 185, sort_order: 1 },

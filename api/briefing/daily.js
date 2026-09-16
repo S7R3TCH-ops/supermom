@@ -167,21 +167,21 @@ export default async function handler(req, res) {
   // Allow GET (Vercel Cron) or POST (manual trigger)
   if (req.method !== 'GET' && req.method !== 'POST') return res.status(405).end();
 
-  // Verify cron secret — accept Authorization header (Vercel Cron) or ?secret= (browser testing)
+  // Verify cron secret — Authorization header only (Vercel Cron sends this
+  // automatically). No ?secret= query-param path: it landed in access logs,
+  // browser history and Referer headers, and combined with the old ?to=
+  // override let anyone who'd read CRON_SECRET exfiltrate every business's
+  // schedule/client data to an arbitrary email in one request. Fails CLOSED
+  // (missing env var = reject) rather than open.
   const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret) {
-    const authHeader = req.headers['authorization'] ?? '';
-    const querySecret = req.query?.secret ?? '';
-    if (authHeader !== `Bearer ${cronSecret}` && querySecret !== cronSecret) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+  if (!cronSecret) return res.status(500).json({ error: 'CRON_SECRET not configured' });
+  const authHeader = req.headers['authorization'] ?? '';
+  if (authHeader !== `Bearer ${cronSecret}`) {
+    return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  // ?to= overrides recipient for one-off manual test sends only
-  const toOverride = req.query?.to ?? null;
-
   try {
-    return await runDailyBriefing({ req, toOverride, res });
+    return await runDailyBriefing({ req, toOverride: null, res });
   } catch (err) {
     console.error('[briefing] Unhandled cron failure:', err);
     await logServerError({

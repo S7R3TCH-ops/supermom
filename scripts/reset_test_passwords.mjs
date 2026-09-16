@@ -5,9 +5,16 @@ const url = process.env.VITE_SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const sb = createClient(url, serviceKey, { auth: { persistSession: false } });
 
+const adminPassword = process.env.RESET_ADMIN_PASSWORD;
+const sandraPassword = process.env.RESET_SANDRA_PASSWORD;
+if (!adminPassword || !sandraPassword) {
+  console.error('Set RESET_ADMIN_PASSWORD and RESET_SANDRA_PASSWORD env vars before running this script.');
+  process.exit(1);
+}
+
 const USERS = [
-  { email: 'jlundie@gmail.com', password: 'TempPass2026!' },
-  { email: 'sandra@supermom.io', password: 'TempPass2026!' }
+  { email: 'jlundie@gmail.com', password: adminPassword },
+  { email: 'sandra@supermomforhire.com', password: sandraPassword },
 ];
 
 async function resetPasswords() {

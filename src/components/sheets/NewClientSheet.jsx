@@ -139,7 +139,7 @@ export default function NewClientSheet({ onClose, onCreated }) {
           </button>
         </div>
 
-        <form onSubmit={submit} className="sm-scroll" style={{
+        <form onSubmit={submit} className="sm-scroll-sheet" style={{
           flex: 1,
           overflowY: 'auto',
           padding: '0 18px 14px',

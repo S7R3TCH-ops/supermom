@@ -255,7 +255,7 @@ export default function WorkerCatalogSheet({ isOpen, onClose }) {
           ))}
         </div>
 
-        <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '14px 18px 24px' }}>
+        <div className="sm-scroll-sheet" style={{ flex: 1, overflowY: 'auto', padding: '14px 18px 24px' }}>
 
           {/* Staff note */}
           {activeTab === 'staff' && (

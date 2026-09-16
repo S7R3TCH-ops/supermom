@@ -216,7 +216,7 @@ export default function EditClientSheet({ clientId, onClose }) {
           <div style={{ padding: 32, textAlign: 'center', color: T.inkMuted, fontFamily: T.font, fontSize: 13 }}>Loading…</div>
         ) : (
           <div
-            className="sm-scroll"
+            className="sm-scroll-sheet"
             style={{
               flex: 1, overflowY: 'auto',
               padding: '0 18px 14px',

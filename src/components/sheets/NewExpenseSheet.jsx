@@ -109,7 +109,7 @@ export default function NewExpenseSheet({ isOpen, onClose }) {
         </div>
 
         {/* Body */}
-        <div className="sm-scroll" style={{
+        <div className="sm-scroll-sheet" style={{
           flex: '0 1 auto',
           minHeight: 0,
           overflowY: 'auto',

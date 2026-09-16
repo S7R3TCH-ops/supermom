@@ -129,7 +129,7 @@ export default function AiChatSheet({ onClose, context = {} }) {
         {/* Messages */}
         <div
           ref={scrollRef}
-          className="sm-scroll"
+          className="sm-scroll-sheet"
           style={{
             flex: 1, overflowY: 'auto',
             padding: '16px 14px 8px',

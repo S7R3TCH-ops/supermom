@@ -77,8 +77,8 @@ export default function PrepNoteSheet({ isOpen, onClose, clientId, businessProfi
         </div>
 
         {/* Content Area */}
-        <div className="sm-scroll" style={{ 
-          padding: '24px 20px 32px', 
+        <div className="sm-scroll-sheet" style={{
+          padding: '24px 20px 32px',
           overflowY: 'auto',
           flex: 1
         }}>

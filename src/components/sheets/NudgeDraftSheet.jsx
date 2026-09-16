@@ -68,7 +68,7 @@ export default function NudgeDraftSheet({ isOpen, onClose }) {
 
         <div style={{ marginBottom: 20 }}>
           <label style={{ fontSize: 10, fontWeight: 700, color: T.inkMuted, textTransform: 'uppercase', display: 'block', marginBottom: 8 }}>Select Client</label>
-          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8 }} className="sm-scroll">
+          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8 }} className="hscroll">
             {clientsWithUnpaid.map(c => (
               <button
                 key={c.id}

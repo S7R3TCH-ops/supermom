@@ -360,14 +360,14 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
           </button>
         </div>
 
-        <div className="sm-scroll" style={{
+        <div className="sm-scroll-sheet" style={{
           flex: '0 1 auto',
           minHeight: 0,
           overflowY: 'auto',
           padding: `20px 20px ${isKeyboardFocused ? `${isKeyboardFocused}px` : '20px'}`,
         }}>
           {step === 1 ? (
-            <Step1Who 
+            <Step1Who
               clients={clientRows} 
               onPick={id => { setClientId(id); setStep(2); }} 
               onNew={() => setShowNewClient(true)}
@@ -550,7 +550,7 @@ function Step1Who({ clients, onPick, onNew, T }) {
       </div>
 
       <SectionLabel>Recent clients</SectionLabel>
-      <div className="sm-scroll" style={{
+      <div className="sm-scroll-sheet" style={{
           display: 'flex', gap: 8, overflowX: 'auto',
           paddingBottom: 4, marginBottom: 14, marginLeft: -4, marginRight: -4, paddingLeft: 4, paddingRight: 4,
         }}>

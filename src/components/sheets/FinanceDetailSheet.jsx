@@ -207,7 +207,7 @@ export default function FinanceDetailSheet({ title, items, type, onClose }) {
           </button>
         </div>
 
-        <div className="sm-scroll" style={{ flex: 1, overflowY: 'auto', padding: '14px 18px 24px' }}>
+        <div className="sm-scroll-sheet" style={{ flex: 1, overflowY: 'auto', padding: '14px 18px 24px' }}>
           {items.length === 0 ? (
             <div style={{ padding: '32px 0', textAlign: 'center', color: T.inkMuted, fontFamily: T.font, fontSize: 13 }}>
               No items found.

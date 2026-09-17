@@ -28,7 +28,7 @@ const SELECT_LIST = [
   'actual_duration', 'flat_rate', 'tax_enabled', 'hst_rate', 'subtotal', 'hst_amount',
   'additional_cost', 'additional_cost_notes', 'additional_costs_json', 'total_amount',
   'job_status', 'payment_status', 'payment_method', 'job_notes', 'completion_notes', 'photo_links',
-  'calendar_event_id', 'ai_context', 'deleted_at',
+  'calendar_event_id', 'ai_context', 'deleted_at', 'notes_resolved_at',
   'distance_to_km', 'distance_home_km',
 ].join(', ');
 
@@ -325,6 +325,25 @@ export async function updateJob(id, patch, seriesAction = 'this') {
   }
 
   return decorateJob(data.find(j => j.id === id) || data[0]);
+}
+
+// Marks a job's pre-job note (job_notes) done/open — pass an ISO string to
+// mark done, null to undo. Deliberately NOT routed through updateJob: that
+// fires triggerGCalSync on every 'this' update and can fan out across a
+// series — marking a note done must never touch Google Calendar or other
+// jobs. See design doc §3.3.
+export async function setJobNoteResolved(jobId, resolvedAtIsoOrNull) {
+  const businessId = await getCurrentBusinessId();
+  const { data, error } = await supabase
+    .from('jobs')
+    .update({ notes_resolved_at: resolvedAtIsoOrNull, updated_at: new Date().toISOString() })
+    .eq('id', jobId)
+    .eq('business_id', businessId)
+    .select('id, notes_resolved_at')
+    .single();
+  if (error) throw error;
+  assertWrote(data, 'setJobNoteResolved');
+  return data;
 }
 
 export async function softDeleteJob(id, seriesAction = 'this') {

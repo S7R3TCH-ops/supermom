@@ -43,6 +43,18 @@ describe('toDisplayJob — worker fields', () => {
   });
 });
 
+describe('toDisplayJob — notes_resolved_at', () => {
+  it('maps notes_resolved_at from the raw row', () => {
+    const d = toDisplayJob({ id: 'j1', notes_resolved_at: '2026-09-18T10:00:00Z' })!;
+    expect(d.notes_resolved_at).toBe('2026-09-18T10:00:00Z');
+  });
+
+  it('defaults to null when the row has no notes_resolved_at', () => {
+    const d = toDisplayJob({ id: 'j1' })!;
+    expect(d.notes_resolved_at).toBeNull();
+  });
+});
+
 describe('toDisplayClient — pending note', () => {
   it('maps pending_note and pending_note_source_job_id from the raw row', () => {
     const d = toDisplayClient({

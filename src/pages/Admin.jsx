@@ -10,6 +10,8 @@ import { useViewpoint } from '../context/ViewpointContext';
 import { computeJobSubtotal } from '../lib/financialMath';
 import ServiceCatalogSheet from '../components/sheets/ServiceCatalogSheet';
 import WorkerCatalogSheet from '../components/sheets/WorkerCatalogSheet';
+import { useRequestSheet } from '../context/RequestSheetContext';
+import { listRequestsAdmin, updateRequestStatus } from '../data/requestsRepo';
 
 function ToggleBtn({ show, onToggle, color }) {
   return (
@@ -47,6 +49,7 @@ export default function Admin() {
   const { clients, loading: clientsLoading } = useClients();
   const { jobs, loading: jobsLoading } = useJobs();
   const { isSuperAdmin, allBusinesses, switchTo, viewingAsId, refresh } = useViewpoint();
+  const { open: openRequestSheet } = useRequestSheet();
   const navigate = useNavigate();
 
   // SECURITY: Redirect non-superadmins and non-owners back to home
@@ -69,6 +72,26 @@ export default function Admin() {
   const [expandedErrorId, setExpandedErrorId] = useState(null);
   const [aiEnabled, setAiEnabled] = useState(null);
   const [aiToggleBusy, setAiToggleBusy] = useState(false);
+  const [requests, setRequests] = useState([]);
+  const [requestsLoading, setRequestsLoading] = useState(true);
+  const [expandedRequestId, setExpandedRequestId] = useState(null);
+
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+    listRequestsAdmin()
+      .then(setRequests)
+      .catch(() => setRequests([]))
+      .finally(() => setRequestsLoading(false));
+  }, [isSuperAdmin]);
+
+  async function handleRequestStatusChange(id, status) {
+    setRequests(prev => prev.map(r => (r.id === id ? { ...r, status } : r)));
+    try {
+      await updateRequestStatus(id, status);
+    } catch {
+      toast.error('Could not update status.');
+    }
+  }
 
   useEffect(() => {
     if (!isSuperAdmin) return;
@@ -431,6 +454,62 @@ export default function Admin() {
               </div>
             )}
 
+            <SectionLabel>Super Admin: Requests</SectionLabel>
+            <div style={{ background: 'var(--plum-dark)', border: '1.5px solid var(--pink-mid)', borderRadius: 16, padding: '14px', marginBottom: 20 }}>
+              <div style={{ fontSize: 11, color: 'var(--pink-label)', marginBottom: 12, fontWeight: 600 }}>
+                Last 50 bug reports / ideas submitted in-app, across all businesses.
+              </div>
+              {requestsLoading ? (
+                <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, textAlign: 'center', padding: '10px 0' }}>Loading…</div>
+              ) : requests.length === 0 ? (
+                <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, textAlign: 'center', padding: '10px 0' }}>Nothing submitted yet.</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 340, overflowY: 'auto' }}>
+                  {requests.map(r => {
+                    const isOpen = expandedRequestId === r.id;
+                    const kindColor = r.kind === 'bug' ? '#FBBF24' : 'var(--pink)';
+                    return (
+                      <div key={r.id} style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)', padding: '10px 12px' }}>
+                        <div
+                          onClick={() => setExpandedRequestId(isOpen ? null : r.id)}
+                          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, cursor: 'pointer' }}
+                        >
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                              <span style={{ fontSize: 9, fontWeight: 800, color: kindColor, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{r.kind}</span>
+                              <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)' }}>· {r.businesses?.name || 'Unknown business'}</span>
+                              <span title="Notified" style={{ width: 6, height: 6, borderRadius: '50%', background: r.notified_at ? '#10b981' : 'rgba(255,255,255,0.2)' }} />
+                              <span title="Exported" style={{ width: 6, height: 6, borderRadius: '50%', background: r.exported_at ? '#10b981' : 'rgba(255,255,255,0.2)' }} />
+                            </div>
+                            <div style={{ color: 'white', fontSize: 12.5, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: isOpen ? 'normal' : 'nowrap' }}>{r.title}</div>
+                          </div>
+                          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', whiteSpace: 'nowrap' }}>{new Date(r.created_at).toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</div>
+                        </div>
+                        {isOpen && (
+                          <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', marginBottom: 8 }}>{r.body}</div>
+                            {r.context && (
+                              <pre style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: '0 0 8px' }}>{JSON.stringify(r.context, null, 2)}</pre>
+                            )}
+                            <select
+                              value={r.status}
+                              onChange={e => handleRequestStatusChange(r.id, e.target.value)}
+                              className="sm-input"
+                              style={{ padding: '6px 10px', borderRadius: 8, background: 'var(--plum-mid)', border: '1px solid var(--pink-mid)', color: 'white', fontSize: 11.5 }}
+                            >
+                              {['new', 'triaged', 'planned', 'done', 'declined'].map(s => (
+                                <option key={s} value={s}>{s}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
             <SectionLabel>Super Admin: Error Log</SectionLabel>
             <div style={{ background: 'var(--plum-dark)', border: '1.5px solid var(--pink-mid)', borderRadius: 16, padding: '14px', marginBottom: 20 }}>
               <div style={{ fontSize: 11, color: 'var(--pink-label)', marginBottom: 12, fontWeight: 600 }}>
@@ -597,6 +676,7 @@ export default function Admin() {
           <ToolRow T={T} icon="⚙" label="Business Settings" sub="Profile, rates, Google Calendar" onClick={() => navigate('/settings')} />
           <ToolRow T={T} icon="👥" label="Staff Management" sub="Workers, staff, skills &amp; pay rates" onClick={() => setShowWorkers(true)} />
           <ToolRow T={T} icon="🗂" label="Service Catalog" sub="Manage defaults, rates, durations" onClick={() => setShowServices(true)} />
+          <ToolRow T={T} icon="✎" label="Tell Joel something" sub="Report a problem or suggest an idea" onClick={() => openRequestSheet()} />
         </div>
 
         <SectionLabel>Security</SectionLabel>

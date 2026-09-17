@@ -3,6 +3,7 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { useNewJobSheet } from '../../context/NewJobSheetContext';
 import { useNewClientSheet } from '../../context/NewClientSheetContext';
+import { useRequestSheet } from '../../context/RequestSheetContext';
 import { triggerHaptic } from '../../lib/haptics';
 
 const NAV_ITEMS = [
@@ -16,6 +17,7 @@ export default function BottomNav() {
   const { T, mode } = useAppTheme();
   const { openBlank } = useNewJobSheet();
   const { open: openNewClient } = useNewClientSheet();
+  const { open: openRequest } = useRequestSheet();
   const location = useLocation();
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
@@ -27,11 +29,13 @@ export default function BottomNav() {
         { label: '+ New Client', action: () => openNewClient() },
         { label: '+ New Job',    action: () => openBlank() },
         { label: '🔍 Search',    action: () => navigate('/search') },
+        { label: '✎ Tell Joel',  action: () => openRequest() },
       ]
     : [
         { label: '+ New Job',    action: () => openBlank() },
         { label: '+ New Client', action: () => openNewClient() },
         { label: '🔍 Search',    action: () => navigate('/search') },
+        { label: '✎ Tell Joel',  action: () => openRequest() },
       ];
 
   const handleOptionTap = (action) => {

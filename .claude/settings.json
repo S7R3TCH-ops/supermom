@@ -25,6 +25,13 @@
             "shell": "powershell",
             "statusMessage": "Checking for stray remote branches...",
             "timeout": 20
+          },
+          {
+            "type": "command",
+            "command": "$out = node 'C:/Projects/supermom/scripts/export-requests.mjs' --dest 'C:/Projects/second-brain/00-inbox/supermom-requests' 2>&1; Write-Host \"SUPERMOM REQUESTS: $out\"; exit 0",
+            "shell": "powershell",
+            "statusMessage": "Pulling in-app requests to second-brain...",
+            "timeout": 15
           }
         ]
       }

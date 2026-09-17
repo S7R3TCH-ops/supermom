@@ -1,6 +1,14 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
-import { requireUser, assertClientAccess } from '../_lib/authGuard.js';
+import { requireUser, assertClientAccess, canAccessBusiness } from '../_lib/authGuard.js';
+import { sendMail } from '../_lib/mailer.js';
+import { logServerError } from '../_lib/errorLog.js';
+
+// Actions that must work even when the AI kill-switch (app_settings.ai_enabled)
+// is off, and that never touch Anthropic — living under /api/ai/ purely to
+// reuse this router's existing auth/dispatch plumbing without spending a new
+// Vercel serverless function slot.
+const NON_AI_ACTIONS = new Set(['notify-request']);
 
 function initClients() {
   const supabaseUrl = process.env.VITE_SUPABASE_URL;
@@ -372,6 +380,75 @@ async function transcribeVoiceNote(req, res, supabase) {
   return res.json({ transcript: '', note: 'transcription not yet implemented' });
 }
 
+// Not an AI action — see NON_AI_ACTIONS. Sends Joel an email for a just-submitted
+// client_requests row and stamps notified_at. The row write itself already
+// happened client-side (RLS insert); this is best-effort notification only.
+async function notifyRequest(req, res, supabase, auth) {
+  const { requestId } = req.body;
+  if (!requestId) return res.status(400).json({ error: 'Missing requestId' });
+
+  const { data: row, error: fetchErr } = await supabase
+    .from('client_requests')
+    .select('id, business_id, kind, title, body, context, created_at, submitted_by')
+    .eq('id', requestId)
+    .single();
+  if (fetchErr || !row) return res.status(404).json({ error: 'Request not found' });
+  if (!canAccessBusiness(auth, row.business_id)) {
+    return res.status(403).json({ error: 'Forbidden: request not in your business' });
+  }
+
+  const [{ data: business }, { data: submitter }] = await Promise.all([
+    supabase.from('businesses').select('name').eq('id', row.business_id).single(),
+    row.submitted_by
+      ? supabase.from('users').select('email, first_name').eq('id', row.submitted_by).single()
+      : Promise.resolve({ data: null }),
+  ]);
+
+  const createdToronto = new Date(row.created_at).toLocaleString('en-CA', {
+    timeZone: 'America/Toronto', dateStyle: 'medium', timeStyle: 'short',
+  });
+  const kindLabel = row.kind === 'bug' ? 'BUG' : 'IDEA';
+
+  const text = [
+    `Kind: ${kindLabel}`,
+    `Business: ${business?.name || row.business_id}`,
+    `From: ${submitter?.first_name || 'Unknown'} (${submitter?.email || 'no email on file'})`,
+    `Submitted: ${createdToronto} (Toronto)`,
+    '',
+    row.title,
+    '',
+    row.body,
+    '',
+    `Context: ${JSON.stringify(row.context || {}, null, 2)}`,
+    '',
+    "Exported to second-brain on next session start.",
+  ].join('\n');
+
+  try {
+    await sendMail({
+      to: process.env.ALERT_EMAIL || 'jlundie@gmail.com',
+      subject: `[Supermom request] ${kindLabel}: ${row.title}`,
+      text,
+    });
+  } catch (e) {
+    await logServerError({
+      severity: 'error',
+      message: `Failed to email client_requests notification for ${requestId}`,
+      stack: e.stack,
+      context: { requestId },
+      businessId: row.business_id,
+      alert: true,
+    });
+    return res.status(502).json({ error: 'Could not send notification email' });
+  }
+
+  const { error: stampErr } = await supabase
+    .from('client_requests').update({ notified_at: new Date().toISOString() }).eq('id', requestId);
+  if (stampErr) throw stampErr;
+
+  return res.status(200).json({ ok: true });
+}
+
 async function testPersona(req, res, anthropic) {
   if (!anthropic) {
     const mockGreetings = {
@@ -420,9 +497,11 @@ export default async function handler(req, res) {
     if (!ok) return res.status(403).json({ error: 'Forbidden: client not in your business' });
   }
 
-  const { data: settings, error: settingsErr } = await supabase.from('app_settings').select('ai_enabled').eq('id', 1).single();
-  if (settingsErr) return res.status(500).json({ error: 'Could not check AI settings' });
-  if (!settings.ai_enabled) return res.status(503).json({ error: 'AI features are currently turned off.' });
+  if (!NON_AI_ACTIONS.has(action)) {
+    const { data: settings, error: settingsErr } = await supabase.from('app_settings').select('ai_enabled').eq('id', 1).single();
+    if (settingsErr) return res.status(500).json({ error: 'Could not check AI settings' });
+    if (!settings.ai_enabled) return res.status(503).json({ error: 'AI features are currently turned off.' });
+  }
 
   try {
     if (action === 'enrich-client') return await enrichClient(req, res, supabase, anthropic);
@@ -431,6 +510,7 @@ export default async function handler(req, res) {
     if (action === 'test-persona') return await testPersona(req, res, anthropic);
     if (action === 'summarize-carried-note') return await summarizeCarriedNote(req, res, supabase, anthropic);
     if (action === 'transcribe-voice-note') return await transcribeVoiceNote(req, res, supabase);
+    if (action === 'notify-request') return await notifyRequest(req, res, supabase, auth);
     return res.status(404).json({ error: `Unknown AI action: ${action}` });
   } catch (error) {
     console.error(`AI handler error [${action}]:`, error);

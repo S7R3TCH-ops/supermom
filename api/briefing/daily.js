@@ -319,5 +319,27 @@ async function runDailyBriefing({ req, toOverride, res }) {
     }
   }
 
+  // Silent-failure backstop for the in-app request pipeline: if the export
+  // script (Joel's PC) or notify-request (Vercel) ever stop running, requests
+  // pile up unexported/unnotified with nobody watching — same failure class
+  // as the retired-model and PGRST201 bugs this project keeps re-learning.
+  // Scoped to the same non-test businesses already fetched above.
+  const staleExportCutoff = new Date(Date.now() - 6 * 3600_000).toISOString();
+  const staleNotifyCutoff = new Date(Date.now() - 3600_000).toISOString();
+  const { count: staleCount, error: staleErr } = await sb
+    .from('client_requests')
+    .select('id', { count: 'exact', head: true })
+    .in('business_id', businesses.map(b => b.id))
+    .or(`and(exported_at.is.null,created_at.lt.${staleExportCutoff}),and(notified_at.is.null,created_at.lt.${staleNotifyCutoff})`);
+  if (staleErr) throw new Error(`stale client_requests check failed: ${staleErr.message}`);
+  if (staleCount > 0) {
+    await logServerError({
+      severity: 'warning',
+      message: `${staleCount} Supermom request(s) not yet notified/exported`,
+      context: { staleCount },
+      alert: true,
+    });
+  }
+
   return res.status(200).json({ ok: true, results, date: today });
 }

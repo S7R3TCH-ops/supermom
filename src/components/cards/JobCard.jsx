@@ -2,6 +2,7 @@ import { fmtTimeRange, dateBrief } from '../../lib/dateUtils';
 import { useBusiness } from '../../data/useData';
 import { getWorkerLabel } from '../../lib/labels';
 import NoteCallout from '../ui/NoteCallout';
+import { isNoteOpen, isNoteDone } from '../../lib/noteState';
 
 export default function JobCard({
   job: j, T, onClick, total = 0, privacyOn = false, label,
@@ -29,6 +30,12 @@ export default function JobCard({
   // Highlighted note disappears entirely once paid in full (Joel's call, 2026-09-15) —
   // full detail (both notes) is still always in JobDetailSheet.
   const noteText = isCompleted ? (isPaid ? null : j.completion_notes) : j.notes;
+  // job-note visibility v2: open/done state only applies to the pre-job note
+  // on a not-yet-completed job — noteState.js's helpers read the raw jobs-row
+  // shape (job.raw), status-gated on job_status === 'Scheduled' (design doc
+  // §3.1). NoteCallout hides itself entirely for compact+'done' (handled
+  // notes drop off cards — full detail stays in the sheet).
+  const noteStatus = !isCompleted ? (isNoteOpen(j.raw) ? 'open' : isNoteDone(j.raw) ? 'done' : null) : null;
 
   const timeRange = j.start && j.end ? fmtTimeRange(j.start, j.end) : '—';
   const dateLabel = j.start ? dateBrief(j.start) + (staleness ? ` · ${staleness}` : '') : '';
@@ -137,7 +144,7 @@ export default function JobCard({
 
       {/* Notes */}
       {noteText && (
-        <NoteCallout T={T} text={noteText} compact onDark={isOwing} />
+        <NoteCallout T={T} text={noteText} compact onDark={isOwing} status={noteStatus} />
       )}
     </div>
   );

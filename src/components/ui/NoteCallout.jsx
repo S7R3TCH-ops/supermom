@@ -7,7 +7,10 @@
 // src/lib/noteState.js). `onToggleDone`, when passed, renders a Done/Undo
 // control — omit it to render the callout with no interactive control (e.g.
 // JobCard's compact notes, which are deliberately non-interactive).
-const TODO_PILL = { background: '#FC4693' /* T.pink, but pill stays one color regardless of onDark/theme per design doc §3.2 "one state color everywhere" */ };
+//
+// The TO DO pill always uses T.pink (theme-aware — light/dark mode still
+// change it) and never the host card's own accent color (e.g. the Next-up
+// hero's DEEP_ROSE) — "one state color everywhere" per design doc §3.2.
 
 export default function NoteCallout({ T, mode, label, text, compact = false, onDark = false, status = null, onToggleDone }) {
   const isOpen = status === 'open';
@@ -40,7 +43,7 @@ export default function NoteCallout({ T, mode, label, text, compact = false, onD
             <span style={{
               flexShrink: 0, fontFamily: T.font, fontSize: 8, fontWeight: 700,
               letterSpacing: '0.4px', textTransform: 'uppercase',
-              background: TODO_PILL.background, color: '#fff',
+              background: T.pink, color: '#fff',
               padding: '1px 5px', borderRadius: 4, lineHeight: 1.5,
             }}>☐ To do</span>
           ) : (
@@ -76,7 +79,7 @@ export default function NoteCallout({ T, mode, label, text, compact = false, onD
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 6 }}>
           <span style={{
             fontFamily: T.font, fontSize: 9.5, fontWeight: 700, letterSpacing: '0.4px',
-            textTransform: 'uppercase', background: TODO_PILL.background, color: '#fff',
+            textTransform: 'uppercase', background: T.pink, color: '#fff',
             padding: '3px 9px', borderRadius: 5,
           }}>☐ To do</span>
           {onToggleDone && (

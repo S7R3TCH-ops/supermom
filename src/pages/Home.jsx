@@ -11,7 +11,11 @@ import { useNewJobSheet } from '../context/NewJobSheetContext';
 import { generateCommandBrief, speakBrief, stopSpeaking } from '../data/ai';
 import { updateDailyRoutes } from '../lib/maps';
 import { getBriefingMessage } from '../lib/briefingMessages';
-import { updateJob } from '../data/jobsRepo';
+import { updateJob, setJobNoteResolved } from '../data/jobsRepo';
+import { notifyDataChangedNow } from '../data/events';
+import { isNoteOpen, isNoteDone } from '../lib/noteState';
+import { triggerHaptic } from '../lib/haptics';
+import NoteCallout from '../components/ui/NoteCallout';
 import { useGeofence } from '../context/GeofenceContext';
 import { useToast } from '../context/ToastContext';
 import { useKeyboardFocus } from '../hooks/useKeyboardFocus';
@@ -575,6 +579,22 @@ export default function Home() {
     }
   };
 
+  // Done tap directly on the Happening-now hero (design doc §3.5 point 1,
+  // §8 answer 2 — included, not P2). Not via updateJob — no GCal sync, no
+  // series fan-out. notifyDataChangedNow (not the debounced version) so the
+  // pill disappears from the hero right away instead of after the 300ms
+  // debounce window.
+  const handleToggleNoteDone = async (job) => {
+    try {
+      const wasOpen = isNoteOpen(job.raw);
+      await setJobNoteResolved(job.id, wasOpen ? new Date().toISOString() : null);
+      notifyDataChangedNow();
+      triggerHaptic('success');
+    } catch {
+      toast.error('Could not update the note.');
+    }
+  };
+
   const openAddCost = (job) => {
     setCostModalJob(job);
     setCostAmount('');
@@ -840,6 +860,14 @@ export default function Home() {
                   <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.inkMuted }}>{activeJob.estimated_hours}h</span>
                 </div>
 
+                {activeJob.notes && (
+                  <NoteCallout
+                    T={T} text={activeJob.notes} compact
+                    status={isNoteOpen(activeJob.raw) ? 'open' : isNoteDone(activeJob.raw) ? 'done' : null}
+                    onToggleDone={() => handleToggleNoteDone(activeJob)}
+                  />
+                )}
+
                 <LiveTimer startTime={activeJob.ai_context.clock_in_time} />
 
                 {activeJob.address && (
@@ -962,9 +990,10 @@ export default function Home() {
                                 {next.service_name}
                               </div>
                               {next.notes && (
-                                <div style={{ fontSize: 11, color: T.inkMuted, marginTop: 3, lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-                                  {next.notes}
-                                </div>
+                                <NoteCallout
+                                  T={T} text={next.notes} compact
+                                  status={isNoteOpen(next.raw) ? 'open' : isNoteDone(next.raw) ? 'done' : null}
+                                />
                               )}
                               {next.worker_name && (
                                 <div style={{ fontSize: 11, color: T.inkMuted, marginTop: 3 }}>{getWorkerLabel(business, next.assignee_type)}: {next.worker_name}</div>

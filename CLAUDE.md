@@ -169,7 +169,9 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 
 ---
 
-## Current version: 0.13.69 — Sep 17, 2026 (pushed/live, `402bbaa`)
+## Current version: 0.13.70 — Sep 18, 2026 (committed, not yet pushed)
+
+- **v0.13.70** — fixed the daily briefing email's drive-time line, found incidentally by a Fable agent scoping the lockscreen-push-notifications idea (design doc: `second-brain/00-inbox/2026-09-18-supermom-lockscreen-notifications-design.md`). `api/briefing/daily.js`'s `jobRow()` read `job.clients?.ai_context?.drive_to` — the **client's** `ai_context` — but `src/lib/maps.js`'s `updateDailyRoutes()` writes `drive_to` into the **job's own** `ai_context` (via `patchJobAiContext(job.id, ...)`), and the client embed in the day's query never selected `ai_context` in a way that would've had it anyway. The "🚗 N mins away" line in the email has likely been a silent no-op since this shipped — nobody would notice a line that just never appears. Fixed the select to pull `ai_context` off `jobs` directly and read `job.ai_context?.drive_to`. **Verified against real prod data**: queried for jobs with `ai_context->drive_to` actually set — confirmed real historical rows have it (e.g. `{"drive_to":{"duration":"25 mins",...}}`), proving the field genuinely gets populated and the old code just never found it. Build clean, Vitest 124/124. **Not yet pushed.**
 
 - **v0.13.69** — in-app "Tell Joel" request pipeline (bug reports/ideas), per the 2026-09-17 Fable design doc (`second-brain/99-archive/2026-09-17-supermom-request-pipeline-design.md`). Replaces Sandra texting Joel ad hoc.
   - **New `client_requests` table** (`supabase/migrations/20260918010000_add_client_requests.sql`) — **run by Joel in the Supabase SQL Editor 2026-09-17, confirmed applied.**

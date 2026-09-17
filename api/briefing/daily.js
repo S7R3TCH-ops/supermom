@@ -56,7 +56,7 @@ function buildEmailHtml({ todayJobs, tomorrowJobs, unpaidJobs, todayLabel, tomor
     const timeStr = escapeHtml(endTime ? `${startFmt} – ${formatTime(endTime)}` : startFmt);
     const client = escapeHtml(`${job.clients?.first_name ?? ''} ${job.clients?.last_name ?? ''}`.trim() || 'Unknown Client');
     const service = escapeHtml(job.service_name || '');
-    const drive = job.clients?.ai_context?.drive_to?.duration ? `🚗 ${job.clients.ai_context.drive_to.duration} away` : '';
+    const drive = job.ai_context?.drive_to?.duration ? `🚗 ${job.ai_context.drive_to.duration} away` : '';
     const notes = job.job_notes ? `<div style="font-size:12px;color:#888;margin-top:2px;">${escapeHtml(job.job_notes)}</div>` : '';
     return `
       <tr>
@@ -233,7 +233,7 @@ async function runDailyBriefing({ req, toOverride, res }) {
     // Today's jobs
     const { data: todayJobs, error: todayErr } = await sb
       .from('jobs')
-      .select('id, scheduled_time, service_name, estimated_hours, job_notes, clients!jobs_client_id_fkey(first_name, last_name, ai_context)')
+      .select('id, scheduled_time, service_name, estimated_hours, job_notes, ai_context, clients!jobs_client_id_fkey(first_name, last_name)')
       .eq('business_id', biz.id)
       .eq('scheduled_date', today)
       .not('job_status', 'eq', 'Cancelled')

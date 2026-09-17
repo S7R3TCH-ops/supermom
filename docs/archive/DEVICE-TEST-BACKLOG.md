@@ -19,3 +19,9 @@
 | v0.13.40 | Sheet scroll dead-space round 2 | Sandra's iPhone | Confirmed 2026-09-17 |
 | v0.13.39 | Sheet dead-space fix, GrabBar safe-area-inset-top | Sandra's iPhone | Confirmed 2026-09-17 |
 | v0.13.36 | JobDetailSheet admin actions collapsed-by-default toggle | Either | Confirmed 2026-09-17 |
+
+**New, not yet device-confirmed (added 2026-09-17):**
+
+| Version | What to check | Device | Notes |
+|---|---|---|---|
+| v0.13.69 | "Tell Joel" bug/idea submission — bottom-nav "+" menu → sheet → submit → confirmation | Either | Web-QA'd end-to-end already (real submit, email, export all confirmed); device pass is for the UI/keyboard/touch feel only |

@@ -31,7 +31,7 @@ export function useClients() {
       const [clientRows, jobRows, pmtResult] = await Promise.all([
         fetchClients(),
         fetchActiveJobs(),
-        supabase.from('payments').select('job_id, amount').eq('business_id', businessId),
+        supabase.from('payments').select('job_id, amount').eq('business_id', businessId).eq('is_void', false),
       ]);
       return { rows: clientRows, jobs: jobRows, paymentRows: pmtResult.data || [] };
     },
@@ -59,7 +59,7 @@ export function useClient(id) {
       const [c, js, pmtResult] = await Promise.all([
         fetchClientById(id),
         fetchJobsByClientId(id),
-        supabase.from('payments').select('job_id, amount').eq('business_id', businessId),
+        supabase.from('payments').select('job_id, amount').eq('business_id', businessId).eq('is_void', false),
       ]);
       return { row: c, jobs: js, paymentRows: pmtResult.data || [] };
     },
@@ -87,7 +87,7 @@ export function useJobs() {
         fetchActiveJobs(),
         fetchClients(),
         fetchWorkers({ includeArchived: true }).catch(() => []),
-        supabase.from('payments').select('job_id, amount').eq('business_id', businessId),
+        supabase.from('payments').select('job_id, amount').eq('business_id', businessId).eq('is_void', false),
         supabase.from('client_credits').select('job_id, amount').eq('business_id', businessId).eq('kind', 'issued'),
       ]);
       return { rows: js, clientRows: cs, workerRows: ws, paymentRows: pmtResult.data || [], creditRows: creditResult.data || [] };

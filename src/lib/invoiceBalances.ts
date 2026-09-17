@@ -24,7 +24,7 @@ export async function decorateInvoiceWithBalances(supabase, invoice) {
   if (!invoiceJobIds.size || !clientId) return { ...invoice, ...empty };
 
   const [{ data: clientJobs, error: jobsErr }, { data: clientPayments, error: paymentsErr }, { data: creditRows, error: creditErr }] = await Promise.all([
-    supabase.from('jobs').select('*')
+    supabase.from('jobs').select('id, scheduled_date, service_name, pricing_type, actual_duration, estimated_hours, flat_rate, subtotal, additional_costs_json, additional_cost, additional_cost_notes, tax_enabled, hst_amount, job_status')
       .eq('client_id', clientId)
       .eq('business_id', invoice.business_id)
       .eq('job_status', 'Completed')

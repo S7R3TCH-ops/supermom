@@ -4,7 +4,8 @@ import { useAppTheme } from '../../context/AppThemeContext';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useBackClose } from '../../hooks/useBackClose';
 import { useKeyboardFocus } from '../../hooks/useKeyboardFocus';
-import { fetchJobById, updateJob, softDeleteJob, cancelJob, hardDeleteJob, revertJobToPreCompletion } from '../../data/jobsRepo';
+import { fetchJobById, updateJob, softDeleteJob, cancelJob, hardDeleteJob, revertJobToPreCompletion, setJobNoteResolved } from '../../data/jobsRepo';
+import { isNoteOpen, isNoteDone } from '../../lib/noteState';
 import { markJobWorkerPaid } from '../../data/jobWorkersRepo';
 import { getJobIssuedCredit, reclassifyToTip } from '../../data/creditsRepo';
 import { recalcInvoiceTotal } from '../../data/invoicesRepo';
@@ -269,6 +270,23 @@ export default function JobDetailSheet({ jobId, onClose }) {
     } catch (e) { setMutErr(e.message || String(e)); setBusy(false); }
   }
 
+  // Done/Undo on the pre-job note — deliberately NOT via updateJob (no GCal
+  // sync, no series fan-out). Optimistic local update first, matching the
+  // design doc's §3.3 handler spec.
+  async function handleToggleNoteDone() {
+    if (!job) return;
+    const wasOpen = isNoteOpen(job);
+    const resolvedAt = wasOpen ? new Date().toISOString() : null;
+    try {
+      await setJobNoteResolved(job.id, resolvedAt);
+      setJob(j => (j ? { ...j, notes_resolved_at: resolvedAt } : j));
+      notifyDataChanged();
+      triggerHaptic('success');
+    } catch (e) {
+      setMutErr(e.message || String(e));
+    }
+  }
+
   function initiateSave() {
     if (job.template_id) { setPendingAction('save'); setShowSeriesPicker(true); }
     else saveEdit('this');
@@ -287,12 +305,20 @@ export default function JobDetailSheet({ jobId, onClose }) {
       const isCompleted = job.job_status === 'Completed';
       const hoursLocked = isHoursLocked(stage);
       const billableHours = resolveBillableHours(stage, job, form.estimated_hours);
+      // Edit-reset rule (design doc §3.1): an edited to-do is a new to-do — if
+      // the note text actually changed and it was previously marked Done,
+      // reopen it. On a 'future'/'all' series save this patch applies to every
+      // matched Scheduled occurrence (same as job_notes itself already does),
+      // so a series-wide note edit reopens all of them, not just this one —
+      // intentional, not a bug (design doc §9 correction #5).
+      const noteTextChanged = (form.job_notes || '') !== (job.job_notes || '');
       await updateJob(job.id, {
         scheduled_date:  form.scheduled_date,
         scheduled_time:  form.scheduled_time,
         service_name:    form.service_name,
         service_id:      form.service_id,
         job_notes:       form.job_notes || null,
+        ...(noteTextChanged && job.notes_resolved_at ? { notes_resolved_at: null } : {}),
         worker_id:       form.worker_id || null,
         worker_pay:      form.worker_id && form.worker_pay !== '' ? Number(form.worker_pay) : null,
         worker_paid:     form.worker_paid ?? false,
@@ -461,6 +487,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
             onRevert={handleRevertJob}
             onEdit={openEditMode}
             onUpdate={(patch) => updateJob(job.id, patch).then(() => notifyDataChanged())}
+            onToggleNoteDone={handleToggleNoteDone}
             onDeepPrep={() => setShowDeepPrep(true)}
             futureConfirmType={futureConfirmType}
             onFutureConfirmProceed={proceedFutureAction}
@@ -495,7 +522,7 @@ function ReadMode({
   isAdmin,
   showCancelForm, cancelReason, cancelBusy,
   onSetShowCancelForm, onSetCancelReason, onHandleCancel,
-  onClose, onMarkComplete, onMarkPaid, onMarkWorkerPaid, onCancelConfirm, onConfirmDelete, onDismissConfirm, onEdit, onUpdate, onDeepPrep,
+  onClose, onMarkComplete, onMarkPaid, onMarkWorkerPaid, onCancelConfirm, onConfirmDelete, onDismissConfirm, onEdit, onUpdate, onToggleNoteDone, onDeepPrep,
   showSeriesPicker, onSeriesChoice, pendingAction,
   hardDeleteConfirm, onHardDeleteConfirm, onHardDeleteCancel, onHardDelete,
   revertConfirm, onRevertConfirm, onRevertCancel, onRevert,
@@ -587,8 +614,19 @@ function ReadMode({
       </div>
 
       <div ref={scrollRef} className="sm-scroll-sheet" style={{ flex: '0 1 auto', minHeight: 0, overflowY: 'auto', padding: '12px 14px 4px' }}>
+        {job.job_notes && (
+          <NoteCallout
+            T={T} mode={mode} label="Pre-job Notes" text={job.job_notes}
+            status={isNoteOpen(job) ? 'open' : isNoteDone(job) ? 'done' : null}
+            onToggleDone={onToggleNoteDone}
+          />
+        )}
+        {job.completion_notes && (
+          <NoteCallout T={T} mode={mode} label="Post-Job Notes" text={job.completion_notes} />
+        )}
+
         <PrepNoteCard job={job} T={T} business={business} onDeepPrep={onDeepPrep} />
-        
+
         <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', marginBottom: 8, color: T.pink }}>Mission Vitals</div>
         <InfoCard T={T}>
           <Row T={T} label="Date" value={fmtDate(job.scheduled_date)} />
@@ -623,12 +661,6 @@ function ReadMode({
           </InfoCard>
         )}
 
-        {job.job_notes && (
-          <NoteCallout T={T} mode={mode} label="Pre-job Notes" text={job.job_notes} />
-        )}
-        {job.completion_notes && (
-          <NoteCallout T={T} mode={mode} label="Post-Job Notes" text={job.completion_notes} />
-        )}
         <MediaCard job={job} T={T} mode={mode} onUpdate={onUpdate} />
         {mutErr && <div style={{ padding: '9px 11px', borderRadius: 8, background: T.redBg, border: `1px solid ${T.redBorder}`, fontSize: 12, color: T.ink }}>{mutErr}</div>}
         {confirm && (

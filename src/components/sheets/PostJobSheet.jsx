@@ -17,6 +17,8 @@ import { getWorkerLabel } from '../../lib/labels';
 import { validatePaymentAmount } from '../../lib/jobDraftPolicy';
 import { getClientCreditBalance } from '../../data/creditsRepo';
 import { setPendingNote, fetchClientById } from '../../data/clientsRepo';
+import { setJobNoteResolved } from '../../data/jobsRepo';
+import { isNoteOpen } from '../../lib/noteState';
 
 export default function PostJobSheet({ jobId, onClose }) {
   const { T, mode } = useAppTheme();
@@ -33,6 +35,11 @@ export default function PostJobSheet({ jobId, onClose }) {
   const [actualMinutes, setActualMinutes] = useState(60);
   const [jobNotes, setJobNotes] = useState('');
   const [carryNoteForward, setCarryNoteForward] = useState(false);
+  // The wrap-up gate for the pre-job note (job_notes): null until she picks
+  // one of the two options, 'done' | 'carry' after. Required when the gate is
+  // showing — see showNoteGate below (design doc §3.4).
+  const [noteChoice, setNoteChoice] = useState(null);
+  const noteGateRef = useRef(null);
   // True when this job already had a note carried forward to the client's next
   // booking (client.pending_note_source_job_id === this job, not yet consumed)
   // *before* this sheet session — used to prompt keep/remove once this job is
@@ -127,6 +134,7 @@ export default function PostJobSheet({ jobId, onClose }) {
         if (alive) { 
           setJob(j);
           setJobNotes(j?.completion_notes || '');
+          setNoteChoice(null);
           setHadCarriedNoteFromThisJob(!!j?.client_pending_note && j?.client_pending_note_source_job_id === jobId);
           setWorkerPaid(!!j?.worker_paid);
           setTaxEnabled(j?.tax_enabled ?? (business?.tax_enabled ?? false));
@@ -232,11 +240,27 @@ export default function PostJobSheet({ jobId, onClose }) {
       const check = validatePaymentAmount(amount, balance);
       if (!check.ok) { toast.error(check.error); return; }
     }
+    if (showNoteGate && !noteChoice) {
+      toast.error('Was the visit note done? Pick one above.');
+      noteGateRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
     const totalDuration = actualMinutes / 60;
 
     setBusy(true);
     triggerHaptic('light');
     try {
+      // Required, one tap, at the natural wrap-up moment — see design doc §3.4.
+      // Non-fatal on failure, like the setPendingNote calls below: a note-state
+      // write failing must never block the actual payment from recording.
+      if (noteChoice === 'done') {
+        try {
+          await setJobNoteResolved(jobId, new Date().toISOString());
+        } catch (e) {
+          console.warn('setJobNoteResolved failed (non-fatal — payment still proceeds):', e);
+        }
+      }
+
       const paidAmt = isPaidRecord ? 0 : (payStatus === 'paid' || payStatus === 'partial') ? (parseFloat(amount) || 0) : 0;
       let ps = payStatus === 'paid' ? 'Paid' : payStatus === 'partial' ? 'Partial' : '';
       if (ps === 'Paid' && alreadyPaid + paidAmt < liveTotal - 0.01) ps = 'Partial';
@@ -247,6 +271,20 @@ export default function PostJobSheet({ jobId, onClose }) {
         .map(c => ({ amount: parseFloat(c.amount), description: c.description }));
 
       await recordPayment(jobId, paidAmt, method, ps, totalDuration, null, validCosts, jobNotes, job?.worker_name ? workerPaid : null, taxEnabled);
+
+      // "Still to do" on the pre-job note — carries it the same way a
+      // completion note already can (existing v0.13.62 path, no new
+      // mechanism). Runs before the completion-note carry below so, if both
+      // fire in the same wrap-up, the existing same-source append rule
+      // (clientsRepo.js setPendingNote) merges them into one note instead of
+      // one clobbering the other (design doc §3.4, punch-list step 7c).
+      if (noteChoice === 'carry' && job?.job_notes?.trim() && job?.client_id) {
+        try {
+          await setPendingNote(job.client_id, job.job_notes.trim(), jobId);
+        } catch (e) {
+          console.warn('setPendingNote (pre-job note carry) failed (non-fatal — payment already recorded):', e);
+        }
+      }
 
       if (carryNoteForward && jobNotes.trim() && job?.client_id) {
         try {
@@ -296,6 +334,12 @@ export default function PostJobSheet({ jobId, onClose }) {
   }
 
   const isPaidRecord = job?.payment_status === 'Paid';
+  // Exactly: job.job_status === 'Scheduled' && job.job_notes?.trim() &&
+  // !job.notes_resolved_at (design doc §3.4) — isNoteOpen() is the same
+  // check. Never shows on a partial→final re-entry or isPaidRecord since
+  // the job is already Completed by then, nor once the note's been marked
+  // Done from the sheet or a Home hero card.
+  const showNoteGate = isNoteOpen(job);
   const isNudge = phase === 'nudge';
   const isBundle = phase === 'bundle';
   const isChecking = phase === 'checking';
@@ -404,7 +448,12 @@ export default function PostJobSheet({ jobId, onClose }) {
             </div>
             <div style={{ background: T.pinkTint, border: `1.5px solid ${T.pink}`, borderRadius: 12, padding: '11px 13px' }}>
               <div style={{ fontFamily: T.font, fontSize: 13, fontWeight: 500, color: T.ink, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
-                {jobNotes || job?.completion_notes}
+                {/* This phase shows the note actually riding forward on the
+                    client (client_pending_note) — not the completion-note
+                    textarea state or job.completion_notes, which is what this
+                    used to (and could) show before pre-job notes could also be
+                    carried (design doc §9 correction 2). */}
+                {job?.client_pending_note}
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 }}>
@@ -594,7 +643,55 @@ export default function PostJobSheet({ jobId, onClose }) {
           <div className="sm-scroll-sheet" style={{ flex: '0 1 auto', minHeight: 0, overflowY: 'auto', padding: '20px' }}>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          
+
+          {/* Section 0: pre-job note wrap-up gate — required, not a hard block
+              (the Complete/Log-payment button stays enabled; submitting with
+              neither option picked fires the inline error below). Design doc
+              §3.4. */}
+          {showNoteGate && (
+            <div ref={noteGateRef}>
+              <div style={{ fontFamily: T.serif, fontSize: 17, fontWeight: 500, color: T.ink, marginBottom: 4 }}>
+                Before you wrap up
+              </div>
+              <div style={{ fontSize: 12.5, color: T.inkMuted, marginBottom: 10 }}>
+                The note for this visit — is it done, or does it still need doing?
+              </div>
+              <div style={{ background: T.pinkTint, border: `1.5px solid ${T.pink}`, borderRadius: 12, padding: '11px 13px', marginBottom: 10 }}>
+                <div style={{ fontFamily: T.font, fontSize: 13, fontWeight: 500, color: T.ink, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+                  {job.job_notes}
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <button
+                  type="button"
+                  onClick={() => setNoteChoice('done')}
+                  style={{
+                    width: '100%', padding: '13px', borderRadius: 12, minHeight: 44,
+                    background: noteChoice === 'done' ? T.pink : T.card,
+                    border: `1.5px solid ${noteChoice === 'done' ? T.pink : T.cardBorder}`,
+                    color: noteChoice === 'done' ? '#fff' : T.ink,
+                    fontFamily: T.font, fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                  }}
+                >
+                  Done ✓
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNoteChoice('carry')}
+                  style={{
+                    width: '100%', padding: '13px', borderRadius: 12, minHeight: 44,
+                    background: noteChoice === 'carry' ? T.pinkTint : 'transparent',
+                    border: `1.5px solid ${noteChoice === 'carry' ? T.pink : T.cardBorder}`,
+                    color: noteChoice === 'carry' ? T.pink : T.inkSub,
+                    fontFamily: T.font, fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                  }}
+                >
+                  Still to do — carry to next job
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Section 1: Duration Adjustment */}
           <div>
           <SectionLabel>Actual duration</SectionLabel>

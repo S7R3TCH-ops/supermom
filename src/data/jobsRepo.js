@@ -427,6 +427,17 @@ export async function archiveClientJobs(clientId) {
 
 export async function hardDeleteJob(id) {
   const businessId = await getCurrentBusinessId();
+
+  // Must capture this BEFORE deleting the job: clients.pending_note_source_job_id
+  // has an ON DELETE SET NULL FK to jobs.id, so the delete below already auto-clears
+  // the *pointer* as part of the same statement — but leaves the stale pending_note
+  // TEXT behind with nothing left to find it by afterward. Look it up first.
+  const { data: notedClients, error: noteFetchErr } = await supabase
+    .from('clients').select('id')
+    .eq('business_id', businessId)
+    .eq('pending_note_source_job_id', id);
+  if (noteFetchErr) throw noteFetchErr;
+
   const { error: delPayErr } = await supabase.from('payments').delete().eq('job_id', id).eq('business_id', businessId);
   if (delPayErr) throw delPayErr;
   const { error: delLinkErr } = await supabase.from('invoice_jobs').delete().eq('job_id', id).eq('business_id', businessId);
@@ -435,6 +446,17 @@ export async function hardDeleteJob(id) {
   if (delWorkersErr) throw delWorkersErr;
   const { error } = await supabase.from('jobs').delete().eq('id', id).eq('business_id', businessId);
   if (error) throw error;
+
+  // A hard-deleted job that was the source of an in-flight carried-forward
+  // client note would otherwise leave that note's text dangling — silently
+  // resurfacing on the client's next new job. Clear it for whichever client(s)
+  // we found above; the FK already nulled their pending_note_source_job_id.
+  if (notedClients?.length) {
+    const { error: noteErr } = await supabase.from('clients')
+      .update({ pending_note: null, pending_note_source_job_id: null })
+      .in('id', notedClients.map(c => c.id));
+    if (noteErr) throw noteErr;
+  }
 }
 
 export async function revertJobToPreCompletion(id) {
@@ -494,6 +516,17 @@ export async function revertJobToPreCompletion(id) {
     .eq('id', id)
     .eq('business_id', businessId);
   if (error) throw error;
+
+  // Reverting a completion nulls out completion_notes above — if this job was
+  // the source of a still-pending carried-forward client note, that note's
+  // text no longer exists anywhere but the client row. Clear it (scoped to
+  // this exact job) rather than leave it dangling to resurface stale on the
+  // client's next new job.
+  const { error: noteErr } = await supabase.from('clients')
+    .update({ pending_note: null, pending_note_source_job_id: null })
+    .eq('business_id', businessId)
+    .eq('pending_note_source_job_id', id);
+  if (noteErr) throw noteErr;
 }
 
 /**

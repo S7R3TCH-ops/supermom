@@ -167,13 +167,19 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 
 ---
 
-## Current version: 0.13.67 — Sep 17, 2026 (committed, not yet pushed)
+## Current version: 0.13.68 — Sep 17, 2026 (committed, not yet pushed)
+
+- **v0.13.68** — fixed the carried-forward client note persistence bug (Joel's live report, 2026-09-16). Root cause: `clients.pending_note_source_job_id` has an `ON DELETE SET NULL` FK to `jobs.id` (migration `20260914010000_add_client_pending_note.sql`) — so hard-deleting or reverting the job that's currently the source of an in-flight carried note left the pointer auto-cleared by the FK, but the stale `pending_note` **text** behind with nothing left to find it by, resurfacing on the client's next new job. Fixed in `jobsRepo.js`:
+  - `hardDeleteJob(id)` — must look up any client whose `pending_note_source_job_id` equals this job **before** deleting it (the FK's `ON DELETE SET NULL` fires as part of the same delete statement, so checking after finds nothing), then explicitly null both `pending_note` and `pending_note_source_job_id` for that client afterward.
+  - `revertJobToPreCompletion(id)` — no FK complication here (the job row survives, only its `completion_notes` gets nulled), so a straightforward `.eq('pending_note_source_job_id', id)` clear after the revert closes the gap: the completion text that justified the carry no longer exists anywhere once reverted.
+  - Both scoped to the exact job id so a *different* job's still-pending note on the same or another client is never touched — mirrors the same same-source-check idempotency pattern `PostJobSheet.jsx`'s `handleRemoveCarriedNote` already uses.
+  **Verified against the real QA Supabase business** (Bright Path Concierge, throwaway script, cleaned up after): (1) hard-deleting the source job clears the dangling note, (2) reverting an *unrelated* job leaves another job's still-pending note untouched, (3) reverting the actual source job clears it. All 3 passed. Build clean, Vitest 119/119. **Not yet pushed.**
 
 - **v0.13.67** — 3 "do-this-week" fixes from the 2026-09-17 Fable whole-app audit (Phase 1 HIGH + Phase 5 process gap):
   1. **`is_void` filter added to 3 payments queries in `useData.js`** (`useClients`, `useClient`, `useJobs` — lines with `supabase.from('payments')`) — these were the only payments reads in the app missing it (every other read already filters it). Without it, a voided payment (e.g. after `voidInvoiceSettlement`) still counted toward `amount_paid`/owing on Home/Clients/Finance even though `payment_status` correctly re-derived to Unpaid — silent overstatement of what's actually been collected.
   2. **Public invoice route (`/i/:id`, `format=json`, and the emailed PDF) column-whitelisted** — `api/invoice.ts`'s 3 query sites (`handleJsonRead`, `handleDownload`, `handleEmail`) selected `clients(*)`/`businesses(*)`/`jobs(*)`, exposing `access_info` (door codes), `ai_context`, `notes`, `pending_note`, `job_notes`, `completion_notes`, `photo_links`, `ai_profile` to anyone holding the link. Whitelisted to exactly the fields `InvoiceView.jsx`/`invoicePdf.ts`/`computeJobFinancials` actually read. **Also fixed the same leak one level deeper**: `src/lib/invoiceBalances.ts`'s `decorateInvoiceWithBalances` does its own separate `jobs.select('*')` (all of a client's completed jobs, not just invoice-linked ones) and spreads those full job rows into `invoiceJobBalances`/`otherOutstanding`/`alsoPaid` on the response — whitelisting only the top-level query would NOT have closed this, since that second fetch bypasses it entirely. Both fixed together.
   3. **Added CI** (`.github/workflows/ci.yml`) — `vitest run` + `npm run build` on push/PR to `main`. Nothing ran either before this. Lint deliberately left out of the gate per the audit's own recommendation — it's currently red (22 problems) and would make every PR fail on unrelated pre-existing issues; add it as a required check once that count is driven to zero.
-  Build clean, Vitest 119/119. **Not yet pushed** — Joel's go-ahead needed (standing production-push rule).
+  Build clean, Vitest 119/119. **Pushed live** (`c7c4779`), Joel's explicit go-ahead.
 
 App is live, Sandra using it daily. Full version-by-version changelog (v0.12.86 through v0.13.39) lives in `docs/archive/CHANGELOG-v0.13-archive.md` — this section only tracks what's currently open.
 
@@ -250,7 +256,7 @@ App is live, Sandra using it daily. Full version-by-version changelog (v0.12.86 
 
 ### 🔴 Bugs / Active issues
 
-**Carried-forward client note persists past job completion/deletion** (found 2026-09-16, still open) — v0.13.62's carry-forward writes `pending_note_source_job_id` on the client, but nothing clears it once the *target* job is completed/hard-deleted, so a later new job for the same client re-inherits the stale note. Tracked in second-brain `tasks.md`, needs repro+fix. Resolved-bug history lives in `docs/archive/CHANGELOG-v0.13-archive.md`.
+None currently open. The carried-forward client note persistence bug (found 2026-09-16) was fixed in v0.13.68 — see above. Resolved-bug history lives in `docs/archive/CHANGELOG-v0.13-archive.md`.
 
 > **Constraint**: Vercel at 10/12 serverless function slots. Defer any feature requiring a new function until we consolidate or upgrade to Pro.
 

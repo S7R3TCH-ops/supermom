@@ -64,6 +64,7 @@ A modular, agentic, mobile-first **Solopreneur Operations Platform** — deploye
 - Client-side vars: `VITE_` prefix. Server-only: no prefix, Vercel env only.
 - `api/sync/gcal.js` has **no `INTERNAL_API_SECRET` check** intentionally — `triggerGCalSync` is called client-side; endpoint is write-only to GCal, exposure is low.
 - **Local-only dirs** (gitignored): `.agents/`, `skills-lock.json`, `.impeccable/` — never commit these.
+- **`VITE_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT`** (added v0.13.72, lockscreen push) — Vercel Production + Preview + local `.env`. `VITE_VAPID_PUBLIC_KEY` is client-visible by design (it's the public half). **Rotating the key pair invalidates every existing push subscription** — the client self-heals on next app open (`usePushSubscription.js` compares the subscribed key to the current one and re-subscribes on mismatch), no manual Sandra-side action needed.
 
 ---
 
@@ -73,7 +74,7 @@ A modular, agentic, mobile-first **Solopreneur Operations Platform** — deploye
 
 | Table | Purpose |
 |---|---|
-| `businesses` | One row per business; `ai_profile` jsonb for persona. |
+| `businesses` | One row per business; `ai_profile` jsonb for persona. `push_alerts_enabled` (boolean, default true) — per-tenant lockscreen-push master switch, added v0.13.72. |
 | `users` | `auth.users.id` → `business_id`, role (`owner`/`admin`/`worker`). |
 | `clients` | Business-scoped. `ai_context` jsonb, `tags` array. |
 | `jobs` | `scheduled_date` + `scheduled_time`, `pricing_type` (Hourly/Flat), `flat_rate`, `total_amount`, `actual_duration`, `additional_costs_json`, `worker_id`, `worker_pay`, `worker_paid`, `tax_enabled` (nullable), `notes_resolved_at` (nullable timestamptz — NULL = the job's `job_notes` is an open action item, set = marked done; see v0.13.71). |
@@ -87,6 +88,8 @@ A modular, agentic, mobile-first **Solopreneur Operations Platform** — deploye
 | `integrations` | OAuth tokens (Google Calendar). |
 | `error_logs` | Client + server error capture (source, severity, message, stack, context). Append-only, admin-viewable in Admin page. Migration run 2026-07-15. |
 | `client_requests` | In-app bug/idea intake from Sandra (`kind`, `title`, `body`, `context` jsonb, `status`). `notified_at`/`exported_at` track the email-Joel + pull-to-second-brain pipeline. Migration `20260918010000_add_client_requests.sql`. |
+| `push_subscriptions` | One row per (user, device/browser) Web Push subscription — `endpoint`/`p256dh`/`auth`, written client-side (RLS insert). `fail_count`/`last_success_at` drive the dead-subscription cleanup in the sweep. Migration `20260918030000_add_push_notifications.sql` — **NOT YET RUN**, Joel runs it manually. |
+| `push_log` | One row per dispatched leave/wrap-up push alert — `kind`, `job_start_at` (reschedule-safe dedupe key), `title`/`body` (exactly what was sent), `sent_count`/`failed_count`. `UNIQUE (job_id, kind, job_start_at)` is also the sweep's double-send guard (claimed via insert before sending). Same migration as `push_subscriptions` — **NOT YET RUN**. |
 | `storage.job-assets` | Private bucket for job photos and voice notes. |
 
 ### Critical data layer rules
@@ -95,6 +98,7 @@ A modular, agentic, mobile-first **Solopreneur Operations Platform** — deploye
 - **Supabase migrations are NOT auto-applied** — run schema changes manually in Supabase SQL Editor.
 - **Supabase project ID**: `lskzzsjmmtsosfneuovt`
 - **`client_requests` inserts are a plain client-side RLS write** (`requestsRepo.js`'s `submitRequest`), not routed through any API — same pattern as `error_logs`, so a submission survives even if the API layer is what's being reported broken. The only export path is the pull script (`scripts/export-requests.mjs`), never a push from Vercel.
+- **`app_settings.reminders_last_sweep_at` / `reminders_last_sweep_error`** (added v0.13.72) — heartbeat for the `api/reminders/[action].js` `sweep` action (pg_cron, `*/5`). Written first thing every tick, before anything else can throw, so a deliberately-off/misconfigured tick still reads as "checked in" rather than an outage. Tail + heartbeat visible on Admin → Super Admin: Job Alerts (Push).
 
 ### Hourly job field conventions — READ THIS
 - `flat_rate` stores the **$/hr rate** for Hourly jobs (not a flat fee). This is intentional — NewJobSheet writes it that way.
@@ -169,7 +173,14 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 
 ---
 
-## Current version: 0.13.71 — Sep 18, 2026 (built locally, NOT pushed yet)
+## Current version: 0.13.72 — Sep 18, 2026 (built locally, NOT pushed yet — stacked on v0.13.71, also not yet pushed)
+
+- **v0.13.72** — Lockscreen job notifications (leave-time + wrap-up), real server-side Web Push. Full design: `second-brain/00-inbox/2026-09-18-supermom-lockscreen-notifications-design.md`. Replaces the old `SCHEDULE_LEAVE_NOTIFICATIONS` service-worker `setTimeout` mechanism (`Home.jsx`/`sw.js`) — that mechanism only ever fired while the app was foregrounded, since a pending `setTimeout` doesn't survive service-worker idle-termination on any platform, not iOS-specifically as CLAUDE.md previously assumed.
+  - **New Vercel function** `api/reminders/[action].js` (11/12 slots) — `sweep` (bearer `CRON_SECRET`, `pg_cron` `*/5`, heartbeat-first) evaluates every Scheduled job today per business and dispatches leave/wrap-up `web-push` alerts via new pure helpers `api/_lib/pushAlerts.js` (window due-checks, `buildLeaveBody`/`buildWrapupBody`, `computeUnpaidBalance` — 37 Vitest cases) and `api/_lib/torontoTime.js`. `push-test` (requireUser) backs Settings' "Send me a test". Named `reminders/` (not `push/`) with commented hook points for `send`/`status`/`inbound` — the separately-approved SMS-reminders design (2026-09-17, `second-brain/99-archive/`) is built to ride this exact same sweep/cron/secret once its own Twilio Phase-0 (phone number + env vars, Joel-only) is done; push built the shared function first per that design's own §2.4 fallback, so SMS adds its actions later with no restructuring.
+  - **New tables** `push_subscriptions`, `push_log`, plus `businesses.push_alerts_enabled` and `app_settings.reminders_last_sweep_at`/`_error` — migration `supabase/migrations/20260918030000_add_push_notifications.sql`. **NOT YET RUN — Joel runs it manually.** Separate `supabase/migrations/20260918040000_reminders_sweep_cron.sql` (also manual) schedules the `pg_cron` sweep via a Vault-stored secret (never inlined — this repo rotated `CRON_SECRET` once already after a plaintext leak).
+  - **3 new env vars** `VITE_VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT` — generated via `npx web-push generate-vapid-keys`, set in Vercel Production + Preview + local `.env`. See Security & Environment above for the rotation note.
+  - **Client**: `src/hooks/usePushSubscription.js` (new — enable/disable/sendTest, foreground re-check throttled to once/24h, VAPID-rotation self-heal). `sw.js` — old scheduling block deleted, replaced with `push`/`notificationclick`/`pushsubscriptionchange` handlers (every push always shows a notification — Safari revokes the subscription after a few silent ones). `Home.jsx` — banner re-copied to "Job alerts" and now drives the hook; new `?job=` deep-link handling via `useSearchParams` (deliberately outside `useBackClose`, flag-only/do-not-touch — a `replace:true` `setSearchParams` doesn't touch history). `App.jsx` — new no-UI `PushNavigationListener` catches a tapped notification's `OPEN_JOB` message when the app's already open on a different route and navigates to `/?job=`. `Settings.jsx` — new "Job alerts" section (per-device toggle, "Send me a test", per-business master switch); hidden for `role='admin'` (push_subscriptions' RLS requires a business scope Joel's unlinked super-admin row doesn't have — QA via the Bright Path owner account, same as v0.13.69). `Admin.jsx` — new "Super Admin: Job Alerts (Push)" section, same shape as the Error Log viewer (heartbeat + last-50 `push_log` tail).
+  - Build clean, Vitest 176/176 (139 baseline + 37 new). **Not device-tested** — this session cannot do device QA (needs Joel's Pixel and, ultimately, Sandra's iPhone with Joel present); every unverified item added to `docs/archive/DEVICE-TEST-BACKLOG.md`. **NOT pushed** — needs (1) Joel to run both migrations, (2) Joel to enable the `pg_cron` schedule, (3) a real-device pass, (4) Joel's explicit go-ahead to deploy to live production. Stacks on the also-unpushed v0.13.71 — both ship together on the next production push.
 
 - **v0.13.71** — Job-note visibility v2 ("mark it done" action items). Sandra's ask ("more in my face," "make it so I have to mark it complete"), full design: `second-brain/00-inbox/2026-09-18-supermom-note-visibility-design.md` (§9 has a fresh-context change-auditor addendum with 6 corrections, followed over §1-§8 where they conflict). Spine: a `job_notes` note on a Scheduled job is now an open action item until marked done.
   - **New `jobs.notes_resolved_at` column** (`supabase/migrations/20260918020000_add_jobs_notes_resolved_at.sql`) — nullable timestamptz, no backfill, NULL = open. **NOT YET RUN — Joel runs it manually in the Supabase SQL Editor before this is functionally live** (per this project's standing migration convention). Deliberately did NOT touch `supabase_schema.sql` — that file is already confirmed stale (v0.13.69 note) and the design doc's own change-auditor addendum (§9 correction 6) says follow that precedent, schema-table row here only.
@@ -282,14 +293,14 @@ App is live, Sandra using it daily. Full version-by-version changelog (v0.12.86 
 ## Open items
 
 > **Sync rule**: every change to `api/_lib/invoicePdf.js` must be mirrored in `InvoiceView.jsx` before commit.
-> Vercel Hobby: **10 of 12** serverless functions: `maps`, `invoice`, `auth/google/login`, `auth/google/callback`, `briefing/daily`, `sync/gcal`, `ai/[action]`, `ai/chat`, `admin/provision`, `admin/ai-toggle`. (Corrected 2026-09-17 — count was stale at 9, missed `admin/ai-toggle`.)
+> Vercel Hobby: **11 of 12** serverless functions: `maps`, `invoice`, `auth/google/login`, `auth/google/callback`, `briefing/daily`, `sync/gcal`, `ai/[action]`, `ai/chat`, `admin/provision`, `admin/ai-toggle`, `reminders/[action]`. (2026-09-18, v0.13.72 — added `reminders/[action]` for lockscreen push; named generically because the separately-approved SMS-reminders design is built to ride this same function once its own Twilio Phase-0 is done, at no additional slot cost.)
 > Maps quota: Distance Matrix hard-capped at 500 elements/day. Sandra's real usage ~15–30/day. **Don't rapid-redeploy** (resets cron clock).
 
 ### 🔴 Bugs / Active issues
 
 None currently open. The carried-forward client note persistence bug (found 2026-09-16) was fixed in v0.13.68 — see above. Resolved-bug history lives in `docs/archive/CHANGELOG-v0.13-archive.md`.
 
-> **Constraint**: Vercel at 10/12 serverless function slots. Defer any feature requiring a new function until we consolidate or upgrade to Pro.
+> **Constraint**: Vercel at 11/12 serverless function slots. One slot left — defer any feature requiring a new function until we consolidate or upgrade to Pro.
 
 ### ✨ Next up (no new serverless functions needed)
 
@@ -307,7 +318,6 @@ None currently open. The carried-forward client note persistence bug (found 2026
 
 ### 📱 Phase 2 features
 
-13. **Push notifications (iOS proper)** — SW setTimeout unreliable on iOS when backgrounded. Needs VAPID keys + `web-push` npm + server-triggered via Vercel cron. Android works today.
 14. **Custom domain email** — swap `nodemailer` → `resend`, from `invoices@supermomforhire.com`.
 15. **Automated post-job follow-up email** — 24h after complete, send "Thanks!" with invoice link. Toggle in Settings. Daily briefing cron infrastructure already exists.
 16. **Staff app access** — `person_type = 'staff'` tracked in DB. No app login yet.

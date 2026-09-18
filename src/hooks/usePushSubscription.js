@@ -26,7 +26,10 @@ async function upsertSubscription(sub) {
   const businessId = await getCurrentBusinessId();
   const { data: { user } = {} } = await supabase.auth.getUser();
   if (!user || !businessId) return;
-  const json = sub.toJSON();
+  // Accepts either a live PushSubscription (has .toJSON) or the plain JSON
+  // shape sw.js's pushsubscriptionchange handler now posts (a live
+  // PushSubscription isn't structured-cloneable across postMessage).
+  const json = typeof sub.toJSON === 'function' ? sub.toJSON() : sub;
   const { error } = await supabase.from('push_subscriptions').upsert(
     {
       user_id: user.id,

@@ -72,19 +72,16 @@ async function claimPushLog(sb, { businessId, jobId, kind, jobStartAt, title, bo
   return data.id;
 }
 
-/** Sends to every subscription owned by this business's 'owner' user(s). Updates push_log counts. */
-async function dispatchPush(sb, { businessId, jobId, kind, title, body, url, pushLogId, vapidReady }) {
-  if (!vapidReady) {
-    await logServerError({
-      severity: 'critical',
-      message: 'Push dispatch skipped — VAPID env vars not configured',
-      context: { businessId, jobId, kind },
-      businessId,
-      alert: true,
-    });
-    return { sent: 0, failed: 0 };
-  }
-
+/**
+ * Sends to every subscription owned by this business's 'owner' user(s).
+ * Updates push_log counts. Caller (runPushSweep) guarantees VAPID is
+ * configured before any push_log row is claimed — see the fail-closed check
+ * at the top of runPushSweep, which returns before touching any business if
+ * VAPID env vars are missing, so a misconfigured deploy never permanently
+ * consumes an alert's dedupe slot (UNIQUE (job_id, kind, job_start_at) would
+ * block the retry once the env var is fixed).
+ */
+async function dispatchPush(sb, { businessId, jobId, kind, title, body, url, pushLogId }) {
   const { data: owners, error: ownersErr } = await sb
     .from('users')
     .select('id')
@@ -149,7 +146,20 @@ async function dispatchPush(sb, { businessId, jobId, kind, title, body, url, pus
 // ── sweep ────────────────────────────────────────────────────────────────
 
 async function runPushSweep(sb) {
+  // Fail closed BEFORE touching any business — if this ran per-candidate
+  // instead, a misconfigured deploy would claim (and permanently burn) every
+  // alert's push_log dedupe row without ever sending it, since
+  // UNIQUE (job_id, kind, job_start_at) blocks the retry once VAPID is fixed.
   const vapidReady = configureWebPush();
+  if (!vapidReady) {
+    await logServerError({
+      severity: 'critical',
+      message: 'Reminders sweep: push steps skipped — VAPID env vars not configured',
+      alert: true,
+    });
+    return { businesses: 0, candidates: 0, sent: 0, failed: 0, vapidConfigured: false };
+  }
+
   const today = torontoDateStr(0);
   const now = new Date();
 
@@ -244,7 +254,7 @@ async function runPushSweep(sb) {
         if (pushLogId) {
           const result = await dispatchPush(sb, {
             businessId: biz.id, jobId: job.id, kind: 'leave', title, body,
-            url: `/?job=${job.id}`, pushLogId, vapidReady,
+            url: `/?job=${job.id}`, pushLogId,
           });
           sentTotal += result.sent;
           failedTotal += result.failed;
@@ -266,7 +276,7 @@ async function runPushSweep(sb) {
         if (pushLogId) {
           const result = await dispatchPush(sb, {
             businessId: biz.id, jobId: job.id, kind: 'wrapup', title, body,
-            url: `/?job=${job.id}`, pushLogId, vapidReady,
+            url: `/?job=${job.id}`, pushLogId,
           });
           sentTotal += result.sent;
           failedTotal += result.failed;
@@ -354,6 +364,7 @@ async function handlePushTest(req, res, sb) {
 
   const payload = JSON.stringify({
     kind: 'test',
+    tag: 'push-test', // sw.js sets renotify only when a tag is present — Chrome throws without one
     title: 'Test alert',
     body: 'If you can read this on your lock screen, job alerts are working.',
     url: '/settings',

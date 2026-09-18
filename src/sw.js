@@ -78,7 +78,12 @@ self.addEventListener('push', (event) => {
       icon: '/icons/icon-192.png',
       badge: '/icons/icon-192.png',
       data: { url: payload.url, jobId: payload.jobId },
-      renotify: true,
+      // Chrome throws if renotify is set with no tag ("must specify a
+      // non-empty tag") — showNotification rejects and nothing shows at all.
+      // Every real alert carries a tag (leave-<jobId>/wrapup-<jobId>); guard
+      // it anyway so a payload without one (e.g. a future action) degrades
+      // to "just show it" instead of silently failing.
+      renotify: Boolean(payload.tag),
       // requireInteraction is not honoured on iOS and is mildly annoying on
       // Android for a time-sensitive nudge — deliberately omitted (was on
       // the old mechanism above).
@@ -114,11 +119,20 @@ self.addEventListener('notificationclick', (event) => {
 self.addEventListener('pushsubscriptionchange', (event) => {
   event.waitUntil(
     (async () => {
-      const applicationServerKey = event.oldSubscription?.options?.applicationServerKey
-      if (!applicationServerKey) return
-      const newSub = await self.registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey })
+      // Some browsers hand back the new subscription directly; fall back to
+      // re-subscribing with the old key when they don't.
+      let newSub = event.newSubscription ?? null
+      if (!newSub) {
+        const applicationServerKey = event.oldSubscription?.options?.applicationServerKey
+        if (!applicationServerKey) return
+        newSub = await self.registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey })
+      }
+      // A live PushSubscription isn't structured-cloneable — postMessage
+      // throws DataCloneError and the whole self-heal silently dies. Send
+      // the plain JSON shape instead (matches what usePushSubscription's
+      // upsertSubscription already expects from sub.toJSON()).
       const list = await clients.matchAll({ type: 'window', includeUncontrolled: true })
-      list.forEach((c) => c.postMessage({ type: 'PUSH_SUBSCRIPTION_CHANGED', subscription: newSub }))
+      list.forEach((c) => c.postMessage({ type: 'PUSH_SUBSCRIPTION_CHANGED', subscription: newSub.toJSON() }))
     })()
   )
 })

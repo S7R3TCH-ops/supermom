@@ -1,7 +1,7 @@
 {
   "name": "supermom",
   "private": true,
-  "version": "0.13.71",
+  "version": "0.13.72",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -23,7 +23,8 @@
     "nodemailer": "^9.0.3",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
-    "react-router-dom": "^7.18.1"
+    "react-router-dom": "^7.18.1",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",

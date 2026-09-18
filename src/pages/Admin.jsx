@@ -75,6 +75,9 @@ export default function Admin() {
   const [requests, setRequests] = useState([]);
   const [requestsLoading, setRequestsLoading] = useState(true);
   const [expandedRequestId, setExpandedRequestId] = useState(null);
+  const [pushLog, setPushLog] = useState([]);
+  const [pushLogLoading, setPushLogLoading] = useState(true);
+  const [remindersHeartbeat, setRemindersHeartbeat] = useState(null);
 
   useEffect(() => {
     if (!isSuperAdmin) return;
@@ -101,6 +104,25 @@ export default function Admin() {
       .limit(50)
       .then(({ data }) => setErrorLogs(data || []))
       .finally(() => setErrorLogsLoading(false));
+  }, [isSuperAdmin]);
+
+  // "is this feature working" check for lockscreen push — same role the
+  // error-logs viewer plays. Runs once the migration + cron are live; empty
+  // tail + a stale/null heartbeat pre-migration is expected, not a bug.
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+    supabase.from('push_log')
+      .select('id, business_id, job_id, kind, fired_at, title, body, sent_count, failed_count, businesses(name)')
+      .order('fired_at', { ascending: false })
+      .limit(50)
+      .then(({ data }) => setPushLog(data || []))
+      .finally(() => setPushLogLoading(false));
+
+    supabase.from('app_settings')
+      .select('reminders_last_sweep_at, reminders_last_sweep_error')
+      .eq('id', 1)
+      .maybeSingle()
+      .then(({ data }) => setRemindersHeartbeat(data || null));
   }, [isSuperAdmin]);
 
   useEffect(() => {
@@ -552,6 +574,47 @@ export default function Admin() {
                       </div>
                     );
                   })}
+                </div>
+              )}
+            </div>
+
+            <SectionLabel>Super Admin: Job Alerts (Push)</SectionLabel>
+            <div style={{ background: 'var(--plum-dark)', border: '1.5px solid var(--pink-mid)', borderRadius: 16, padding: '14px', marginBottom: 20 }}>
+              <div style={{ fontSize: 11, color: 'var(--pink-label)', marginBottom: 12, fontWeight: 600 }}>
+                Last 50 dispatched leave/wrap-up alerts, across all businesses.
+              </div>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', marginBottom: 12 }}>
+                {remindersHeartbeat?.reminders_last_sweep_at ? (
+                  <>Sweep last checked in: {new Date(remindersHeartbeat.reminders_last_sweep_at).toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</>
+                ) : (
+                  <>Sweep has never checked in — migration/cron not run yet, or nothing has ticked.</>
+                )}
+                {remindersHeartbeat?.reminders_last_sweep_error && (
+                  <div style={{ color: '#FCA5A5', marginTop: 4 }}>Last sweep error: {remindersHeartbeat.reminders_last_sweep_error}</div>
+                )}
+              </div>
+              {pushLogLoading ? (
+                <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, textAlign: 'center', padding: '10px 0' }}>Loading…</div>
+              ) : pushLog.length === 0 ? (
+                <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, textAlign: 'center', padding: '10px 0' }}>No push alerts dispatched yet.</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 340, overflowY: 'auto' }}>
+                  {pushLog.map(p => (
+                    <div key={p.id} style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)', padding: '10px 12px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                            <span style={{ fontSize: 9, fontWeight: 800, color: 'var(--pink)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{p.kind}</span>
+                            <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)' }}>· {p.businesses?.name ?? p.business_id}</span>
+                            <span style={{ fontSize: 9, color: p.failed_count > 0 ? '#FCA5A5' : '#86EFAC' }}>· sent {p.sent_count} / failed {p.failed_count}</span>
+                          </div>
+                          <div style={{ color: 'white', fontSize: 12.5, fontWeight: 500 }}>{p.title}</div>
+                          <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: 11, marginTop: 2, whiteSpace: 'pre-wrap' }}>{p.body}</div>
+                        </div>
+                        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', whiteSpace: 'nowrap' }}>{new Date(p.fired_at).toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

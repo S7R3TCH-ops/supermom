@@ -8,6 +8,7 @@ import { useToast } from '../context/ToastContext';
 import { getCurrentBusinessId } from '../data/currentBusiness';
 import { uploadAsset, getSignedUrl } from '../lib/storage';
 import { useKeyboardFocus } from '../hooks/useKeyboardFocus';
+import { usePushSubscription } from '../hooks/usePushSubscription';
 import { SectionLabel } from '../components/ui/typography';
 import WorkerCatalogSheet from '../components/sheets/WorkerCatalogSheet';
 import { triggerHaptic } from '../lib/haptics';
@@ -74,7 +75,7 @@ export default function Settings() {
   const toast = useToast();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, signOut } = useAuth();
+  const { user, signOut, profile } = useAuth();
   const { business, loading: bizLoading, error: bizError, refresh: refreshBusiness } = useBusiness();
   const isKeyboardFocused = useKeyboardFocus();
 
@@ -301,6 +302,52 @@ export default function Settings() {
   async function handleSignOut() {
     await signOut();
     navigate('/login');
+  }
+
+  // ── Job alerts (lockscreen push) ──────────────────────────────────────────
+  const pushSub = usePushSubscription();
+  const [pushBizBusy, setPushBizBusy] = useState(false);
+  const [pushTestBusy, setPushTestBusy] = useState(false);
+
+  async function handleTogglePushAlertsEnabled(value) {
+    setPushBizBusy(true);
+    try {
+      const bid = await getCurrentBusinessId();
+      const { error } = await supabase.from('businesses').update({ push_alerts_enabled: value }).eq('id', bid);
+      if (error) throw error;
+      await refreshBusiness();
+      toast.success(value ? 'Job alerts turned on for this business.' : 'Job alerts turned off for this business.');
+    } catch {
+      toast.error('Could not update job alerts.');
+    } finally {
+      setPushBizBusy(false);
+    }
+  }
+
+  async function handleTogglePushDevice(nextOn) {
+    if (nextOn) {
+      const ok = await pushSub.enable();
+      if (!ok && pushSub.permission === 'denied') {
+        // No toast — the section renders its own "blocked in phone settings" copy.
+      } else if (!ok) {
+        toast.error('Could not enable job alerts on this device.');
+      }
+    } else {
+      const ok = await pushSub.disable();
+      if (!ok) toast.error('Could not disable job alerts on this device.');
+    }
+  }
+
+  async function handleSendTestPush() {
+    setPushTestBusy(true);
+    try {
+      await pushSub.sendTest();
+      toast.success('Test alert sent — check your lock screen.');
+    } catch (e) {
+      toast.error(e.message || 'Could not send a test alert.');
+    } finally {
+      setPushTestBusy(false);
+    }
   }
 
   const isDirty = form && business && (
@@ -532,6 +579,67 @@ export default function Settings() {
             </div>
           </div>
         </div>
+
+        {/* Job alerts (lockscreen push). Hidden for super-admin accounts —
+            push_subscriptions' RLS requires a business scope Joel's unlinked
+            admin row doesn't have; QA via the Bright Path owner account. */}
+        {profile?.role !== 'admin' && (
+          <>
+            <SectionLabel>Job alerts</SectionLabel>
+            <div style={cardStyle}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0' }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: T.ink }}>Job alerts on this phone</div>
+                  <div style={{ fontSize: 10, color: T.inkMuted, marginTop: 2 }}>
+                    {typeof Notification === 'undefined'
+                      ? "Not supported in this browser."
+                      : pushSub.permission === 'denied'
+                        ? "Blocked for this app in your phone's settings."
+                        : 'A nudge when it\'s time to leave, and before each job wraps up.'}
+                  </div>
+                </div>
+                {typeof Notification !== 'undefined' && pushSub.permission !== 'denied' && (
+                  <ToggleSwitch
+                    checked={pushSub.subscribed}
+                    onChange={handleTogglePushDevice}
+                    pink={T.pink}
+                    inkMuted={T.inkMuted}
+                  />
+                )}
+              </div>
+              {pushSub.subscribed && (
+                <button
+                  type="button"
+                  onClick={handleSendTestPush}
+                  disabled={pushTestBusy}
+                  style={{
+                    width: '100%', marginTop: 10, padding: '10px 12px',
+                    borderRadius: 'var(--r-input)', border: `1.5px solid ${T.cardBorder}`,
+                    background: T.card, color: T.ink, fontSize: 12, fontWeight: 700,
+                    cursor: pushTestBusy ? 'default' : 'pointer', opacity: pushTestBusy ? 0.6 : 1,
+                    minHeight: 44,
+                  }}
+                >
+                  {pushTestBusy ? 'Sending…' : 'Send me a test'}
+                </button>
+              )}
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0 4px', borderTop: `1px solid ${T.cardBorder}`, marginTop: 12 }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: T.ink }}>Job alerts for this business</div>
+                  <div style={{ fontSize: 10, color: T.inkMuted, marginTop: 2 }}>Master switch — turn off to stop all leave-time and wrap-up alerts.</div>
+                </div>
+                <ToggleSwitch
+                  checked={business?.push_alerts_enabled ?? true}
+                  onChange={handleTogglePushAlertsEnabled}
+                  pink={T.pink}
+                  inkMuted={T.inkMuted}
+                />
+              </div>
+              {pushBizBusy && <div style={{ fontSize: 10, color: T.inkMuted, marginTop: 4 }}>Saving…</div>}
+            </div>
+          </>
+        )}
 
         <SectionLabel>Integrations</SectionLabel>
         <div style={{ ...cardStyle, borderColor: gcalExpired ? T.amberFg : T.cardBorder }}>

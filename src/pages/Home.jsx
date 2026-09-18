@@ -1,5 +1,5 @@
 import { useMemo, useEffect, useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppTheme } from '../context/AppThemeContext';
 import { Title, Subheading, Text, Caption, SectionLabel } from '../components/ui/typography';
 import { useJobs, useBusiness, notifyDataChanged } from '../data/useData';
@@ -19,6 +19,7 @@ import NoteCallout from '../components/ui/NoteCallout';
 import { useGeofence } from '../context/GeofenceContext';
 import { useToast } from '../context/ToastContext';
 import { useKeyboardFocus } from '../hooks/useKeyboardFocus';
+import { usePushSubscription } from '../hooks/usePushSubscription';
 import { sameDay, getWeekRange, fmtTime12, dateBrief, fmtDuration } from '../lib/dateUtils';
 import { computeJobTotal } from '../lib/financialMath';
 import { getWorkerLabel } from '../lib/labels';
@@ -44,6 +45,7 @@ export default function Home() {
   const toast = useToast();
   const bizCtx = useBusiness();
   const isKeyboardFocused = useKeyboardFocus();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // Use a stable reference for "today"
   const [today, setToday] = useState(() => new Date());
@@ -417,42 +419,28 @@ export default function Home() {
   }, [currentWindowJobId]);
 
   const [locationDrives, setLocationDrives] = useState({});
-  const [notifPermission, setNotifPermission] = useState(() =>
-    typeof Notification !== 'undefined' ? Notification.permission : 'denied'
-  );
+  const pushSub = usePushSubscription();
   const [notifBannerDismissed, setNotifBannerDismissed] = useState(() =>
     localStorage.getItem('notif-banner-dismissed') === 'true'
   );
 
-  // Schedule leave-time notifications whenever jobs or drive times update
-  useEffect(() => {
-    if (notifPermission !== 'granted') return;
-    const sw = navigator.serviceWorker?.controller;
-    if (!sw) return;
-
-    const now = Date.now();
-    const jobs = todayJobs
-      .filter(j => j.status === 'Scheduled')
-      .flatMap(j => {
-        const driveValue =
-          locationDrives[j.id]?.durationValue ??
-          j.raw?.ai_context?.drive_to?.durationValue;
-        if (!driveValue) return [];
-        const fireAt = j.start.getTime() - driveValue * 1000 - 15 * 60 * 1000;
-        if (fireAt <= now) return [];
-        const driveMins = Math.round(driveValue / 60);
-        return [{
-          id: j.id,
-          clientName: j.client_name || 'your client',
-          fireAt,
-          body: `${driveMins} min drive · job at ${j.start.toLocaleTimeString('en-CA', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/Toronto' })}`,
-        }];
-      });
-
-    sw.postMessage({ type: 'SCHEDULE_LEAVE_NOTIFICATIONS', jobs });
-  }, [todayJobs, locationDrives, notifPermission]);
-
   const openJob = detailSheet?.openJob;
+
+  // ?job=<id> deep link — from a tapped push notification (either cold-start
+  // via sw.js's notificationclick -> clients.openWindow, or the app already
+  // open and App.jsx's global OPEN_JOB listener navigating here). Deliberately
+  // NOT routed through useBackClose (flag-only/do-not-touch) — a plain
+  // setSearchParams(..., {replace:true}) doesn't push a history entry, so it
+  // doesn't interact with that hook's back-button handling.
+  useEffect(() => {
+    const jobId = searchParams.get('job');
+    if (jobId && openJob) {
+      openJob(jobId);
+      const next = new URLSearchParams(searchParams);
+      next.delete('job');
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, openJob, setSearchParams]);
   const openPostJob = postJobSheet?.openPostJob;
   const openDetail = financeSheet?.open;
 
@@ -785,8 +773,12 @@ export default function Home() {
           </div>
         )}
 
-        {/* Notification permission banner — shown once until dismissed */}
-        {notifPermission === 'default' && !notifBannerDismissed && (
+        {/* Job-alerts (push) permission banner — shown once until dismissed.
+            Hidden for super-admin accounts (role 'admin'): push_subscriptions'
+            RLS requires business_id = my_business_id(), which is NULL for an
+            unlinked admin row — Joel QAs via the Bright Path owner account
+            instead (jlundie+supermom-qa@gmail.com), same as v0.13.69. */}
+        {authCtx?.profile?.role !== 'admin' && pushSub.permission === 'default' && !notifBannerDismissed && (
           <div style={{
             background: T.card, border: `1.5px solid ${T.cardBorder}`,
             borderRadius: 14, padding: '12px 14px',
@@ -795,26 +787,27 @@ export default function Home() {
           }}>
             <span style={{ fontSize: 20 }}>🔔</span>
             <div style={{ flex: 1 }}>
-              <div style={{ font: `600 13px/1.2 ${T.font}`, color: T.ink }}>Leave-time reminders</div>
-              <div style={{ font: `12px/1.4 ${T.font}`, color: T.inkSub, marginTop: 2 }}>Get notified 15 mins before you need to leave for each job.</div>
+              <div style={{ font: `600 13px/1.2 ${T.font}`, color: T.ink }}>Job alerts</div>
+              <div style={{ font: `12px/1.4 ${T.font}`, color: T.inkSub, marginTop: 2 }}>Get a nudge when it's time to leave, and 10 minutes before each job wraps up.</div>
             </div>
             <button
               type="button"
+              disabled={pushSub.busy}
               onClick={async () => {
-                const result = await Notification.requestPermission();
-                setNotifPermission(result);
-                if (result !== 'granted') {
+                const ok = await pushSub.enable();
+                if (!ok) {
                   localStorage.setItem('notif-banner-dismissed', 'true');
                   setNotifBannerDismissed(true);
+                  if (pushSub.permission !== 'denied') toast.error('Could not enable job alerts.');
                 }
               }}
               style={{
                 background: T.pink, color: '#fff', border: 'none',
                 borderRadius: 8, padding: '10px 12px',
                 font: `600 12px/1 ${T.font}`, cursor: 'pointer', whiteSpace: 'nowrap',
-                minHeight: 44,
+                minHeight: 44, opacity: pushSub.busy ? 0.6 : 1,
               }}
-            >Enable</button>
+            >{pushSub.busy ? 'Enabling…' : 'Enable'}</button>
             <button
               type="button"
               aria-label="Dismiss notification reminder"

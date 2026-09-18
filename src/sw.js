@@ -40,46 +40,85 @@ registerRoute(
   new CacheFirst()
 )
 
-// ─── Leave-time notification scheduling ────────────────────────────────────
-const pendingTimeouts = new Map()
+// ─── Lockscreen job notifications (server-side Web Push) ───────────────────
+// Replaces the old setTimeout-in-service-worker leave-time scheduling above
+// (removed — a pending setTimeout does not keep a service worker alive once
+// it's idle-terminated, on any platform, so it only ever fired while the app
+// was foregrounded). Alerts now come from api/reminders/[action].js 'sweep'
+// via web-push, which wakes a backgrounded/killed SW on both Android Chrome
+// and iOS Safari (>= 16.4, installed PWA).
+// Design: second-brain/00-inbox/2026-09-18-supermom-lockscreen-notifications-design.md §2.7.
 
-self.addEventListener('message', (event) => {
-  if (event.data?.type !== 'SCHEDULE_LEAVE_NOTIFICATIONS') return
-
-  // Cancel previous schedule
-  for (const tid of pendingTimeouts.values()) clearTimeout(tid)
-  pendingTimeouts.clear()
-
-  const now = Date.now()
-  for (const job of (event.data.jobs ?? [])) {
-    const delay = job.fireAt - now
-    if (delay <= 0 || delay > 24 * 60 * 60 * 1000) continue
-
-    const tid = setTimeout(() => {
-      self.registration.showNotification(`Leave now for ${job.clientName}`, {
-        body: job.body,
-        icon: '/icons/icon-192.png',
-        badge: '/icons/icon-192.png',
-        tag: `leave-${job.id}`,
-        requireInteraction: true,
-        data: { jobId: job.id },
-      })
-      pendingTimeouts.delete(job.id)
-    }, delay)
-
-    pendingTimeouts.set(job.id, tid)
+// Every push event must show a notification, no exceptions — Safari revokes
+// the subscription after a few "silent" pushes, and Chrome shows a generic
+// "This site has been updated in the background" notice otherwise.
+self.addEventListener('push', (event) => {
+  let payload = null
+  try {
+    payload = event.data?.json() ?? null
+  } catch {
+    payload = null
   }
 
-  event.source?.postMessage({ type: 'NOTIFICATIONS_SCHEDULED', count: pendingTimeouts.size })
+  if (!payload) {
+    event.waitUntil(
+      self.registration.showNotification('Supermom', {
+        body: 'Open the app',
+        icon: '/icons/icon-192.png',
+        badge: '/icons/icon-192.png',
+      })
+    )
+    return
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(payload.title, {
+      body: payload.body,
+      tag: payload.tag,
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+      data: { url: payload.url, jobId: payload.jobId },
+      renotify: true,
+      // requireInteraction is not honoured on iOS and is mildly annoying on
+      // Android for a time-sensitive nudge — deliberately omitted (was on
+      // the old mechanism above).
+    })
+  )
 })
 
-// Tapping the notification focuses the app
+// Tap → focus an open window and hand it the job id (Home.jsx's
+// serviceWorker 'message' listener opens JobDetailSheet), or open a fresh
+// window straight at the ?job= deep link if nothing's open.
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
+  const url = event.notification.data?.url || '/'
+  const jobId = event.notification.data?.jobId || null
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
-      if (list.length > 0) return list[0].focus()
-      return clients.openWindow('/')
+      if (list.length > 0) {
+        const client = list[0]
+        client.focus()
+        if (jobId) client.postMessage({ type: 'OPEN_JOB', jobId })
+        return undefined
+      }
+      return clients.openWindow(url)
     })
+  )
+})
+
+// Browser rotated/renewed the push subscription on its own — re-subscribe
+// with the same VAPID key and hand the fresh subscription to any open page
+// to upsert (the SW itself has no Supabase session). If no page is open,
+// usePushSubscription's foreground re-check catches the stale subscription
+// on next app open instead.
+self.addEventListener('pushsubscriptionchange', (event) => {
+  event.waitUntil(
+    (async () => {
+      const applicationServerKey = event.oldSubscription?.options?.applicationServerKey
+      if (!applicationServerKey) return
+      const newSub = await self.registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey })
+      const list = await clients.matchAll({ type: 'window', includeUncontrolled: true })
+      list.forEach((c) => c.postMessage({ type: 'PUSH_SUBSCRIPTION_CHANGED', subscription: newSub }))
+    })()
   )
 })

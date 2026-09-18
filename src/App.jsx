@@ -209,6 +209,26 @@ function GCalExpiredBanner() {
   );
 }
 
+// No UI — listens for sw.js's notificationclick handler posting OPEN_JOB when
+// a lockscreen job-alert is tapped while the app is already open (possibly on
+// a different route, e.g. Calendar). Navigates to Home with ?job=<id>, which
+// Home.jsx's own effect picks up and opens JobDetailSheet — this listener is
+// the one place that needs Router context (useNavigate); the URL-param
+// parsing itself stays a single code path in Home.jsx per the design doc §2.7.
+function PushNavigationListener() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    const onMessage = (event) => {
+      if (event.data?.type === 'OPEN_JOB' && event.data.jobId) {
+        navigate(`/?job=${event.data.jobId}`);
+      }
+    };
+    navigator.serviceWorker?.addEventListener?.('message', onMessage);
+    return () => navigator.serviceWorker?.removeEventListener?.('message', onMessage);
+  }, [navigate]);
+  return null;
+}
+
 function AuthedShell() {
   const { T } = useAppTheme();
   const { viewingAsId } = useViewpoint();
@@ -271,6 +291,7 @@ function AuthedShell() {
         )}
         <ViewpointBanner />
         <GCalExpiredBanner />
+        <PushNavigationListener />
         <OnboardingWalkthrough />
         <LogoBar />
         <div

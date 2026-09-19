@@ -142,6 +142,60 @@ export async function fetchJobById(id) {
   };
 }
 
+/**
+ * Deterministic unpaid-balance lookup for a client's OTHER completed jobs
+ * (excludes `excludeJobId`, typically the job currently open in
+ * JobDetailSheet). Mirrors the shape and math of api/_lib/pushAlerts.js's
+ * server-side `computeUnpaidBalance` (owed = finalized total − non-void
+ * payments, oldest unpaid job's date) — reimplemented here rather than
+ * imported, since that file lives in the Vercel functions tree, not the
+ * frontend bundle. Uses computeJobFinancials() per CLAUDE.md's "never read
+ * total_amount raw" rule rather than the server's raw-column read.
+ * Returns { amount, oldestDate } or null when nothing is owed.
+ */
+export async function fetchClientUnpaidBalance(clientId, excludeJobId, business) {
+  if (!clientId) return null;
+  const businessId = await getCurrentBusinessId();
+  if (!businessId) return null;
+
+  const { data: priorJobs, error: jobsErr } = await supabase
+    .from('jobs')
+    .select('id, scheduled_date, pricing_type, actual_duration, estimated_hours, flat_rate, subtotal, additional_costs_json, additional_cost, additional_cost_notes, tax_enabled, hst_amount, job_status')
+    .eq('client_id', clientId)
+    .eq('business_id', businessId)
+    .eq('job_status', 'Completed')
+    .is('deleted_at', null)
+    .neq('id', excludeJobId || '00000000-0000-0000-0000-000000000000')
+    .order('scheduled_date', { ascending: true });
+  if (jobsErr) throw jobsErr;
+  if (!priorJobs?.length) return null;
+
+  const jobIds = priorJobs.map(j => j.id);
+  const { data: pays, error: paysErr } = await supabase
+    .from('payments')
+    .select('job_id, amount')
+    .in('job_id', jobIds)
+    .eq('is_void', false);
+  if (paysErr) throw paysErr;
+
+  const paidByJob = {};
+  (pays || []).forEach(p => { paidByJob[p.job_id] = (paidByJob[p.job_id] || 0) + Number(p.amount); });
+
+  let total = 0;
+  let oldestDate = null;
+  for (const j of priorJobs) {
+    const jobTotal = computeJobFinancials(j, business).total;
+    const paid = paidByJob[j.id] || 0;
+    const owed = jobTotal - paid;
+    if (owed > 0.005) {
+      total += owed;
+      if (!oldestDate || j.scheduled_date < oldestDate) oldestDate = j.scheduled_date;
+    }
+  }
+  const rounded = Math.round(total * 100) / 100;
+  return rounded > 0.005 ? { amount: rounded, oldestDate } : null;
+}
+
 export async function createJob(payload) {
   const businessId = await getCurrentBusinessId();
   const recurrence = payload.ai_context?.recurrence_rule;

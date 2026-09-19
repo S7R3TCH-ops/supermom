@@ -91,35 +91,12 @@ export function generateCommandBrief(job, businessProfile = null, options = {}) 
     speechText += `Preference note: ${prefs}. `;
   }
 
-  const personal = clientAi.personal || '';
-  if (personal) {
-    bullets.push({ icon: '👤', text: personal });
-    speechText += `Personal note: ${personal}. `;
-  }
-
-  // 5. Learned patterns (auto-enriched after each completed job)
-  const learned = clientAi.learned;
-  if (learned?.synthesis_note) {
-    bullets.push({ icon: '🧠', text: learned.synthesis_note });
-    speechText += `Pattern: ${learned.synthesis_note} `;
-  }
-  if (learned?.behavioral_flags?.length) {
-    learned.behavioral_flags.forEach(f =>
-      bullets.push({ icon: '📊', text: f.replace(/_/g, ' ') })
-    );
-  }
-
-  // 6. Recent completion notes from past visits for this client
-  if (Array.isArray(job.client_recent_notes)) {
-    job.client_recent_notes.forEach(r => {
-      if (r.completion_notes?.trim()) {
-        const dateLabel = r.scheduled_date
-          ? new Date(r.scheduled_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-          : 'Past visit';
-        bullets.push({ icon: '📋', text: `${dateLabel}: ${r.completion_notes.trim()}` });
-      }
-    });
-  }
+  // Personal notes, learned patterns/behavioral flags, and past completion
+  // notes are no longer rendered here as of the agentic-brief rewrite
+  // (Stage C, 2026-09-19, second-brain design doc §3.2) — they're now
+  // client-brief SUMMARY inputs (see api/ai/[action].js's clientBrief),
+  // never displayed raw. generateCommandBrief stays the deterministic
+  // FACTS + SPEECH builder only: service/time, drive, VIP, access, prefs.
 
   // Stylistic closers
   if (style === 'coach') {
@@ -137,28 +114,31 @@ export function generateCommandBrief(job, businessProfile = null, options = {}) 
 }
 
 /**
- * Fetches an AI-generated deep prep note for a client.
- * Calls the backend API which analyzes recent history and notes.
+ * Fetches the cached/generated client brief — { brief, watch_for } — for the
+ * Job Detail card's "Client Brief" block. Replaces fetchDeepPrepNote /
+ * PrepNoteSheet (retired, Stage C of the agentic-brief rebuild,
+ * second-brain design doc §3.2/§4). The server fingerprint-gates
+ * regeneration, so this is safe to call on every sheet open.
  */
-export async function fetchDeepPrepNote(clientId, businessProfile) {
-  if (!clientId) throw new Error('clientId is required for fetchDeepPrepNote');
+export async function fetchClientBrief(clientId, force = false) {
+  if (!clientId) throw new Error('clientId is required for fetchClientBrief');
 
   try {
-    const response = await fetch('/api/ai/prep-note', {
+    const response = await fetch('/api/ai/client-brief', {
       method: 'POST',
       headers: await authHeaders(),
-      body: JSON.stringify({ clientId, businessProfile }),
+      body: JSON.stringify({ clientId, force }),
     });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Failed to fetch AI prep note (${response.status})`);
+      throw new Error(errorData.error || `Failed to fetch client brief (${response.status})`);
     }
 
     const data = await response.json();
-    return data.summary;
+    return data.brief; // { brief: string, watch_for: string[] }
   } catch (error) {
-    console.error('[fetchDeepPrepNote]', error);
+    console.error('[fetchClientBrief]', error);
     throw error;
   }
 }

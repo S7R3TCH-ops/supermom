@@ -174,7 +174,14 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 
 ---
 
-## Current version: 0.13.73 — Sep 19, 2026 (pushed, staged build in progress — see below)
+## Current version: 0.13.74 — Sep 19, 2026 (pushed, staged build in progress — see below)
+
+- **v0.13.74** — Stage 2 of the agentic-AI-summary rebuild: `JobDetailSheet`'s command-brief card rewritten, `PrepNoteSheet` retired. Same design/audit references as v0.13.73 below.
+  - `PrepNoteCard` now renders a deterministic facts strip (service/time, drive time from `job.ai_context.drive_to`, VIP, access, prefs — ≤2 lines) + the cached `client-brief` text (from the Stage 1 action, called on sheet open, server fingerprint-gated so this is a DB round-trip not an Anthropic call when nothing changed) + up to 3 `watch_for` items + a new deterministic "⚑ Owes $X.XX from <date>" line.
+  - **New `fetchClientUnpaidBalance()`** (`src/data/jobsRepo.js`) — client-side unpaid-balance lookup for a client's other completed jobs, using `computeJobFinancials()` (never raw `total_amount`, per this file's own rule) rather than importing the server-side `pushAlerts.js` version (kept out of the frontend bundle on purpose).
+  - **`generateCommandBrief()` (`src/data/ai.js`) trimmed further** — personal notes, learned/synthesis+behavioral-flags, and past completion-notes bullets removed; those are now `client-brief` SUMMARY inputs server-side, never rendered raw on the card. Function is now purely the deterministic facts+speech builder.
+  - **`PrepNoteSheet.jsx` deleted** — "✦ Full History" button removed; the card's header now taps through to `/clients/:id` instead of opening a second sheet. `prep-note`'s server action is untouched (kept as a deprecated alias, nothing calls it from the frontend anymore — confirmed via grep before deleting its caller).
+  - Vitest 195/195 (no new cases — no existing test file covered this component), build clean. **Not live-DOM/device verified before push** — this repo's own device-test-backlog discipline applies; Joel should eyeball the rewritten card on a real job (ideally one with drive time + prefs + a prior unpaid balance + watch_for items all present, worst-case height) shortly after this deploys.
 
 - **v0.13.73** — Stage 1 of the agentic-AI-summary rebuild (full design: `second-brain/00-inbox/2026-09-18-supermom-agentic-ai-summary-design.md`, fresh-context change-auditor verdict: Proceed-with-changes, `second-brain/03-projects/active/supermom/tasks.md` 2026-09-19). Staged deliberately (this repo's blind-push history) — UI not touched yet.
   - **Bug fix (schema-free, shipped first per the audit's condition)**: `generateCommandBrief()` (`src/data/ai.js`) no longer re-lists `job_notes`/`completion_notes` as bullets — `JobDetailSheet.jsx` already hoists both as `NoteCallout`s above this card, so Sandra was seeing every note twice. `prep-note`'s history query (`api/ai/[action].js`) now selects `completion_notes` alongside `job_notes` — previously the deep-summary action had never actually seen a client's wrap-up notes.

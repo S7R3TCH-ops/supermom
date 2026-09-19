@@ -1,10 +1,11 @@
 import { useEffect, useState, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useBackClose } from '../../hooks/useBackClose';
 import { useKeyboardFocus } from '../../hooks/useKeyboardFocus';
-import { fetchJobById, updateJob, softDeleteJob, cancelJob, hardDeleteJob, revertJobToPreCompletion, setJobNoteResolved } from '../../data/jobsRepo';
+import { fetchJobById, updateJob, softDeleteJob, cancelJob, hardDeleteJob, revertJobToPreCompletion, setJobNoteResolved, fetchClientUnpaidBalance } from '../../data/jobsRepo';
 import { isNoteOpen, isNoteDone } from '../../lib/noteState';
 import { markJobWorkerPaid } from '../../data/jobWorkersRepo';
 import { getJobIssuedCredit, reclassifyToTip } from '../../data/creditsRepo';
@@ -16,9 +17,8 @@ import { useToast } from '../../context/ToastContext';
 import { usePostJobSheet } from '../../context/PostJobSheetContext';
 import { RECURRENCE } from '../../data/services';
 import { uploadFile, getSignedUrls, getSignedUrl } from '../../lib/storage';
-import { generateCommandBrief, speakBrief, stopSpeaking, fetchDeepPrepNote } from '../../data/ai';
+import { generateCommandBrief, speakBrief, stopSpeaking, fetchClientBrief } from '../../data/ai';
 import { getWorkerLabel } from '../../lib/labels';
-import PrepNoteSheet from '../sheets/PrepNoteSheet';
 import { queryClient } from '../../lib/queryClient';
 import { supabase } from '../../lib/supabase';
 import GrabBar from '../ui/GrabBar';
@@ -44,6 +44,11 @@ function fmtDate(s) {
   if (!s) return '—';
   const [y, m, d] = s.split('-').map(Number);
   return new Date(y, m - 1, d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+}
+function fmtDateShort(s) {
+  if (!s) return '';
+  const [y, m, d] = s.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 function fmtTime12(s) {
   if (!s) return '—';
@@ -102,7 +107,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
   const [form, setForm] = useState({});
   const [showSeriesPicker, setShowSeriesPicker] = useState(false);
   const [pendingAction, setPendingAction] = useState(null);
-  const [showDeepPrep, setShowDeepPrep] = useState(false);
+  const [priorUnpaid, setPriorUnpaid] = useState(null);
   const [invoiceId, setInvoiceId] = useState(null);
   const [jobPayments, setJobPayments] = useState([]);
   const [prevJobId, setPrevJobId] = useState(jobId);
@@ -179,16 +184,31 @@ export default function JobDetailSheet({ jobId, onClose }) {
     }
   }
 
-  // Prefetch prep note so it's ready when Sandra taps "Client briefing"
+  // Prefetch the client brief so it's ready by the time the card renders.
+  // Server fingerprint-gates regeneration (design doc §3.5), so calling this
+  // on every sheet open is a DB round-trip, not an Anthropic call, when
+  // nothing about the client changed.
   useEffect(() => {
     if (job?.client_id && business) {
       queryClient.prefetchQuery({
-        queryKey: ['prep-note', job.client_id],
-        queryFn: () => fetchDeepPrepNote(job.client_id, business),
+        queryKey: ['client-brief', job.client_id],
+        queryFn: () => fetchClientBrief(job.client_id),
         staleTime: 5 * 60 * 1000,
       });
     }
   }, [job?.client_id, business]);
+
+  // Deterministic watch-for line: unpaid balance from this client's other
+  // completed jobs (never AI-generated — design doc §3.1/§4). Recomputed
+  // whenever the job or client changes.
+  useEffect(() => {
+    if (!job?.client_id) { setPriorUnpaid(null); return; }
+    let alive = true;
+    fetchClientUnpaidBalance(job.client_id, job.id, business)
+      .then(bal => { if (alive) setPriorUnpaid(bal); })
+      .catch(() => { if (alive) setPriorUnpaid(null); });
+    return () => { alive = false; };
+  }, [job?.client_id, job?.id, business]);
 
   function showToast(msg, ok = true) {
     if (ok) toast.success(msg);
@@ -488,7 +508,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
             onEdit={openEditMode}
             onUpdate={(patch) => updateJob(job.id, patch).then(() => notifyDataChanged())}
             onToggleNoteDone={handleToggleNoteDone}
-            onDeepPrep={() => setShowDeepPrep(true)}
+            priorUnpaid={priorUnpaid}
             futureConfirmType={futureConfirmType}
             onFutureConfirmProceed={proceedFutureAction}
             onFutureConfirmCancel={() => setFutureConfirmType(null)}
@@ -507,8 +527,6 @@ export default function JobDetailSheet({ jobId, onClose }) {
             isKeyboardFocused={isKeyboardFocused}
           />
         )}
-
-        {job && <PrepNoteSheet isOpen={showDeepPrep} onClose={() => setShowDeepPrep(false)} clientId={job.client_id} businessProfile={business} />}
       </div>
     </div>
   );
@@ -522,7 +540,7 @@ function ReadMode({
   isAdmin,
   showCancelForm, cancelReason, cancelBusy,
   onSetShowCancelForm, onSetCancelReason, onHandleCancel,
-  onClose, onMarkComplete, onMarkPaid, onMarkWorkerPaid, onCancelConfirm, onConfirmDelete, onDismissConfirm, onEdit, onUpdate, onToggleNoteDone, onDeepPrep,
+  onClose, onMarkComplete, onMarkPaid, onMarkWorkerPaid, onCancelConfirm, onConfirmDelete, onDismissConfirm, onEdit, onUpdate, onToggleNoteDone, priorUnpaid,
   showSeriesPicker, onSeriesChoice, pendingAction,
   hardDeleteConfirm, onHardDeleteConfirm, onHardDeleteCancel, onHardDelete,
   revertConfirm, onRevertConfirm, onRevertCancel, onRevert,
@@ -625,7 +643,11 @@ function ReadMode({
           <NoteCallout T={T} mode={mode} label="Post-Job Notes" text={job.completion_notes} />
         )}
 
-        <PrepNoteCard job={job} T={T} business={business} onDeepPrep={onDeepPrep} />
+        <PrepNoteCard
+          job={job} T={T} mode={mode} business={business}
+          priorUnpaid={priorUnpaid}
+          onOpenClientProfile={job.client_id ? () => { onClose(); navigate('/clients/' + job.client_id); } : null}
+        />
 
         <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', marginBottom: 8, color: T.pink }}>Mission Vitals</div>
         <InfoCard T={T}>
@@ -1251,49 +1273,86 @@ function SeriesBtn({ onClick, disabled, children, T, mode, muted }) {
   );
 }
 
-function PrepNoteCard({ job, T, business, onDeepPrep, mode }) {
-  const brief = generateCommandBrief(job, business);
+// Client Brief card — facts strip (deterministic) + client-brief text (AI,
+// cached server-side) + a deterministic unpaid-balance watch-for line.
+// Replaces the old bullet-dump PrepNoteCard / "Full History" → PrepNoteSheet
+// flow (Stage C of the agentic-brief rebuild, second-brain design doc §4).
+function PrepNoteCard({ job, T, mode, business, priorUnpaid, onOpenClientProfile }) {
+  const driveText = job.ai_context?.drive_to?.duration || null;
+  // generateCommandBrief is now the deterministic FACTS + SPEECH builder only
+  // (service/time, drive, VIP, access, prefs) — see ai.js. Its bullets are
+  // exactly the facts-strip content, no filtering needed here.
+  const facts = generateCommandBrief(job, business, driveText ? { driveText } : {});
   const [isSpeaking, setIsSpeaking] = useState(false);
-  
-  useEffect(() => { 
-    return () => stopSpeaking(); 
+
+  const { data: briefData, isLoading: briefLoading, isError: briefIsError } = useQuery({
+    queryKey: ['client-brief', job.client_id],
+    queryFn: () => fetchClientBrief(job.client_id),
+    enabled: !!job.client_id && !!business,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+
+  useEffect(() => {
+    return () => stopSpeaking();
   }, []);
-  
-  if (!brief) return null;
-  
-  const handleToggleSpeak = (e) => { 
-    e.stopPropagation(); 
-    if (isSpeaking) { 
-      stopSpeaking(); 
-      setIsSpeaking(false); 
-    } else { 
-      setIsSpeaking(true); 
-      speakBrief(brief.speechText, () => setIsSpeaking(false)); 
-    } 
+
+  // Nothing deterministic and no brief in flight/available — same "no card"
+  // behavior as before (e.g. an unassigned/off-client job).
+  if (!facts && !job.client_id) return null;
+
+  const briefText = !briefIsError ? (briefData?.brief || '') : '';
+  const watchFor = !briefIsError && Array.isArray(briefData?.watch_for) ? briefData.watch_for.slice(0, 3) : [];
+
+  const handleToggleSpeak = (e) => {
+    e.stopPropagation();
+    if (isSpeaking) {
+      stopSpeaking();
+      setIsSpeaking(false);
+    } else {
+      // Thread the async client-brief text into the (synchronous) facts
+      // speech, once it's loaded — see design doc §3.2/§7.7. Composed here
+      // at speak-time rather than making generateCommandBrief itself async.
+      const speechFull = [facts?.speechText, briefText].filter(Boolean).join(' ');
+      setIsSpeaking(true);
+      speakBrief(speechFull, () => setIsSpeaking(false));
+    }
   };
-  
+
   return (
-    <div style={{ 
-      background: T.hero, 
-      borderRadius: 16, 
-      padding: '13px 15px', 
-      marginBottom: 10, 
-      position: 'relative', 
+    <div style={{
+      background: T.hero,
+      borderRadius: 16,
+      padding: '13px 15px',
+      marginBottom: 10,
+      position: 'relative',
       overflow: 'hidden',
       border: mode === 'dark' ? 'none' : `1px solid ${T.cardBorder}`
     }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-        <div style={{ fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', color: mode === 'dark' ? '#FF78B0' : T.pink }}>
-          ✦ Command Brief
-        </div>
-        <button 
-          onClick={handleToggleSpeak} 
-          style={{ 
-            background: isSpeaking ? '#FC4693' : (mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'), 
-            border: 'none', 
-            borderRadius: 20, 
-            padding: '4px 10px', 
-            color: isSpeaking ? 'white' : (mode === 'dark' ? 'white' : T.ink), 
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onOpenClientProfile?.(); }}
+          disabled={!onOpenClientProfile}
+          style={{
+            fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase',
+            color: mode === 'dark' ? '#FF78B0' : T.pink,
+            background: 'none', border: 'none', padding: 0,
+            cursor: onOpenClientProfile ? 'pointer' : 'default',
+            textDecoration: onOpenClientProfile ? 'underline' : 'none',
+            textDecorationStyle: 'dotted', textUnderlineOffset: 3,
+          }}
+        >
+          ✦ Client Brief
+        </button>
+        <button
+          onClick={handleToggleSpeak}
+          style={{
+            background: isSpeaking ? '#FC4693' : (mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'),
+            border: 'none',
+            borderRadius: 20,
+            padding: '4px 10px',
+            color: isSpeaking ? 'white' : (mode === 'dark' ? 'white' : T.ink),
             fontSize: 9,
             fontWeight: 700,
             cursor: 'pointer'
@@ -1302,34 +1361,40 @@ function PrepNoteCard({ job, T, business, onDeepPrep, mode }) {
           {isSpeaking ? 'STOP' : 'LISTEN'}
         </button>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {brief.bullets.map((b, i) => (
-          <div key={i} style={{ display: 'flex', gap: 10 }}>
-            <span style={{ fontSize: 14 }}>{b.icon}</span>
-            <span style={{ 
-              fontSize: 12, 
-              color: mode === 'dark' ? 'rgba(255,255,255,0.9)' : T.ink, 
-              lineHeight: 1.5 
-            }}>{b.text}</span>
-          </div>
-        ))}
-      </div>
-      <div style={{ marginTop: 12, textAlign: 'center' }}>
-        <button 
-          onClick={(e) => { e.stopPropagation(); onDeepPrep?.(); }} 
-          style={{ 
-            background: 'none', 
-            border: 'none', 
-            color: mode === 'dark' ? '#FFB2D1' : T.pink, 
-            fontSize: 10.5, 
-            fontWeight: 700, 
-            textTransform: 'uppercase', 
-            cursor: 'pointer' 
-          }}
-        >
-          ✦ Full History
-        </button>
-      </div>
+
+      {facts?.bullets?.length > 0 && (
+        <div style={{
+          fontSize: 11.5, fontWeight: 600, lineHeight: 1.5,
+          color: mode === 'dark' ? 'rgba(255,255,255,0.85)' : T.inkSub,
+          marginBottom: 8,
+          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+        }}>
+          {facts.bullets.map(b => `${b.icon} ${b.text}`).join('   ·   ')}
+        </div>
+      )}
+
+      {briefLoading ? (
+        <div className="sm-pulse" style={{ fontSize: 12.5, color: mode === 'dark' ? 'rgba(255,255,255,0.6)' : T.inkMuted }}>…</div>
+      ) : briefText ? (
+        <div style={{
+          fontSize: 12.5, lineHeight: 1.5,
+          color: mode === 'dark' ? 'rgba(255,255,255,0.9)' : T.ink,
+        }}>{briefText}</div>
+      ) : null}
+
+      {watchFor.length > 0 && (
+        <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 3 }}>
+          {watchFor.map((w, i) => (
+            <div key={i} style={{ fontSize: 11, color: T.amberFg }}>⚑ {w}</div>
+          ))}
+        </div>
+      )}
+
+      {priorUnpaid && (
+        <div style={{ marginTop: 6, fontSize: 11.5, fontWeight: 700, color: T.amberFg }}>
+          ⚑ Owes ${priorUnpaid.amount.toFixed(2)} from {fmtDateShort(priorUnpaid.oldestDate)}
+        </div>
+      )}
     </div>
   );
 }

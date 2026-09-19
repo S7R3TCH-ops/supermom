@@ -90,6 +90,7 @@ A modular, agentic, mobile-first **Solopreneur Operations Platform** — deploye
 | `client_requests` | In-app bug/idea intake from Sandra (`kind`, `title`, `body`, `context` jsonb, `status`). `notified_at`/`exported_at` track the email-Joel + pull-to-second-brain pipeline. Migration `20260918010000_add_client_requests.sql`. |
 | `push_subscriptions` | One row per (user, device/browser) Web Push subscription — `endpoint`/`p256dh`/`auth`, written client-side (RLS insert). `fail_count`/`last_success_at` drive the dead-subscription cleanup in the sweep. Migration `20260918030000_add_push_notifications.sql` — **NOT YET RUN**, Joel runs it manually. |
 | `push_log` | One row per dispatched leave/wrap-up push alert — `kind`, `job_start_at` (reschedule-safe dedupe key), `title`/`body` (exactly what was sent), `sent_count`/`failed_count`. `UNIQUE (job_id, kind, job_start_at)` is also the sweep's double-send guard (claimed via insert before sending). Same migration as `push_subscriptions` — **NOT YET RUN**. |
+| `ai_briefs` | Cached AI-generated day/client briefs — `content` jsonb is the parsed model output, `inputs_hash` (sha256 of the canonicalised input) skips regeneration when nothing changed, `kind` ('day'/'client') deliberately has no check constraint (handler-validated, code-only to extend). `UNIQUE (business_id, kind, subject_id)`. Migration `20260918050000_add_ai_briefs.sql` — **NOT YET RUN**, Joel runs it manually. |
 | `storage.job-assets` | Private bucket for job photos and voice notes. |
 
 ### Critical data layer rules

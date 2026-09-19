@@ -71,7 +71,7 @@ async function enrichClient(req, res, supabase, anthropic) {
 
   const { data: client, error: clientErr } = await supabase
     .from('clients')
-    .select('id, business_id, ai_context')
+    .select('id, business_id, first_name, last_name, ai_context')
     .eq('id', clientId)
     .single();
   if (clientErr || !client) return res.status(404).json({ error: 'Client not found' });
@@ -82,6 +82,7 @@ async function enrichClient(req, res, supabase, anthropic) {
     .eq('id', client.business_id)
     .single();
   const ownerName = business?.owner_name || 'the business owner';
+  const clientName = [client.first_name, client.last_name].filter(Boolean).join(' ') || 'this client';
 
   const { data: jobs, error: jobsErr } = await supabase
     .from('jobs')
@@ -132,7 +133,7 @@ async function enrichClient(req, res, supabase, anthropic) {
     return `- ${j.scheduled_date}: ${j.service_name} (${mins})${j.job_notes ? ` — ${j.job_notes}` : ''}`;
   }).join('\n');
 
-  const prompt = `You are helping ${ownerName} learn client patterns. Pre-computed stats:
+  const prompt = `You are helping ${ownerName} (a solo home-services business owner) understand patterns about their client ${clientName} before a visit. Write about ${clientName}'s patterns and preferences — never about ${ownerName} or anyone else. Pre-computed stats:
 - Jobs completed: ${jobCount}
 - Duration patterns: ${JSON.stringify(duration_patterns)}
 - Payment preference: ${payment_method_preference || 'unknown'}
@@ -141,11 +142,12 @@ async function enrichClient(req, res, supabase, anthropic) {
 Last 5 jobs:
 ${last5}
 
-Current note: "${existing.synthesis_note || ''}"
+Current note about ${clientName}: "${existing.synthesis_note || ''}"
 Current flags: ${JSON.stringify(existing.behavioral_flags || [])}
+If the current note describes ${ownerName} or anyone other than ${clientName}, disregard that part when writing the new note.
 
 Return ONLY valid JSON (no markdown):
-{"synthesis_note":"2-3 sentences about patterns useful before a visit.","behavioral_flags":["snake_case","max_4_words","max_4_items"]}`;
+{"synthesis_note":"2-3 sentences about ${clientName}'s patterns useful before a visit.","behavioral_flags":["snake_case","max_4_words","max_4_items"]}`;
 
   const response = await anthropic.messages.create({
     model: HAIKU_MODEL,

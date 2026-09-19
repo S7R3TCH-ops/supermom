@@ -174,7 +174,11 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 
 ---
 
-## Current version: 0.13.74 — Sep 19, 2026 (pushed, staged build in progress — see below)
+## Current version: 0.13.75 — Sep 19, 2026 (pushed, staged build in progress — see below)
+
+- **v0.13.75** — Fixed a real bug found by Joel live-testing v0.13.74: `enrichClient()` (writes `clients.ai_context.learned.synthesis_note`) never fetched the client's `first_name`/`last_name` and never put the client's name anywhere in its own prompt, only `${ownerName}` — so the AI-generated pattern summary had nothing but the business owner's name to anchor to, and described the owner as if he/she were the client. Surfaced two places: raw on `ClientProfile.jsx:507` ("client summaries") and fed as a "Pattern summary" input into the newer `client-brief` prompt (`api/_lib/briefs.js`, v0.13.73) — one root cause, two symptoms. `client-brief`/`day-brief` themselves already correctly separated `ownerName`/`clientName`, confirmed not the bug.
+  - Fix: query now selects `first_name`/`last_name`, prompt explicitly names the client and instructs the model to write about them, never the owner — plus a defensive clause telling the model to disregard the *existing* cached note if it describes the wrong person, since that stale text gets fed back into every future regeneration as context (a feedback loop that could otherwise perpetuate the corruption indefinitely even after this fix).
+  - Vitest 195/195, build clean. **Existing corrupted `synthesis_note` values in prod client records were cleared this session** (Joel's explicit go-ahead) rather than left to self-heal over the 24h/3-job enrichment throttle.
 
 - **v0.13.74** — Stage 2 of the agentic-AI-summary rebuild: `JobDetailSheet`'s command-brief card rewritten, `PrepNoteSheet` retired. Same design/audit references as v0.13.73 below.
   - `PrepNoteCard` now renders a deterministic facts strip (service/time, drive time from `job.ai_context.drive_to`, VIP, access, prefs — ≤2 lines) + the cached `client-brief` text (from the Stage 1 action, called on sheet open, server fingerprint-gated so this is a DB round-trip not an Anthropic call when nothing changed) + up to 3 `watch_for` items + a new deterministic "⚑ Owes $X.XX from <date>" line.

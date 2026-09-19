@@ -296,7 +296,7 @@ async function prepNote(req, res, supabase, anthropic) {
 
   const { data: jobs, error: jobsErr } = await supabase
     .from('jobs')
-    .select('scheduled_date, scheduled_time, service_name, job_notes')
+    .select('scheduled_date, scheduled_time, service_name, job_notes, completion_notes')
     .eq('client_id', clientId)
     .eq('job_status', 'Completed')
     .is('deleted_at', null)
@@ -309,7 +309,13 @@ async function prepNote(req, res, supabase, anthropic) {
   const ownerName = businessProfile?.owner_name || 'the business owner';
   const clientName = [client.first_name, client.last_name].filter(Boolean).join(' ');
   const historyText = jobs.length > 0
-    ? jobs.map(j => `- ${j.scheduled_date}: ${j.service_name}${j.job_notes ? ` (${j.job_notes})` : ''}`).join('\n')
+    ? jobs.map(j => {
+        const notesParts = [];
+        if (j.job_notes) notesParts.push(`prep: ${j.job_notes}`);
+        if (j.completion_notes) notesParts.push(`wrap: ${j.completion_notes}`);
+        const notesText = notesParts.length > 0 ? ` (${notesParts.join(' | ')})` : '';
+        return `- ${j.scheduled_date}: ${j.service_name}${notesText}`;
+      }).join('\n')
     : 'No previous completed jobs found.';
   const learned = client.ai_context?.learned;
   const learnedBlock = learned?.synthesis_note

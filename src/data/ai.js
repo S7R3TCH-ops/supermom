@@ -109,19 +109,7 @@ export function generateCommandBrief(job, businessProfile = null, options = {}) 
     );
   }
 
-  // 6. Pre-job booking notes
-  const jobNotes = job.job_notes || '';
-  if (jobNotes) {
-    bullets.push({ icon: '📌', text: jobNotes });
-    speechText += `Pre-job note: ${jobNotes}. `;
-  }
-
-  // 7. This job's completion notes (if reviewing after wrap-up)
-  if (job.completion_notes?.trim()) {
-    bullets.push({ icon: '🗒', text: `Wrap-up note: ${job.completion_notes.trim()}` });
-  }
-
-  // 8. Recent completion notes from past visits for this client
+  // 6. Recent completion notes from past visits for this client
   if (Array.isArray(job.client_recent_notes)) {
     job.client_recent_notes.forEach(r => {
       if (r.completion_notes?.trim()) {

@@ -3,12 +3,26 @@ import { createClient } from '@supabase/supabase-js';
 import { requireUser, assertClientAccess, canAccessBusiness } from '../_lib/authGuard.js';
 import { sendMail } from '../_lib/mailer.js';
 import { logServerError } from '../_lib/errorLog.js';
+import { hashInputs, buildClientBriefPrompt, buildDayBriefPrompt } from '../_lib/briefs.js';
+import { computeEndAt, computeUnpaidBalance } from '../_lib/pushAlerts.js';
+import { torontoDateStr, torontoToUtc } from '../_lib/torontoTime.js';
+
+// Single source of truth for the Haiku model id — was previously repeated as
+// a literal 5x in this file (retired-model incident, 2026-09-15). One place
+// to fix on the next retirement.
+const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
 
 // Actions that must work even when the AI kill-switch (app_settings.ai_enabled)
 // is off, and that never touch Anthropic — living under /api/ai/ purely to
 // reuse this router's existing auth/dispatch plumbing without spending a new
 // Vercel serverless function slot.
 const NON_AI_ACTIONS = new Set(['notify-request']);
+
+// Actions that must degrade gracefully instead of hard-failing when the kill
+// switch is off — per design doc §3.6, "no regeneration, but keep rendering
+// the last cached row." These still call Anthropic when ai_enabled is true;
+// the router just skips its blanket 503 for them and lets the handler decide.
+const KILL_SWITCH_FALLBACK_ACTIONS = new Set(['client-brief', 'day-brief']);
 
 function initClients() {
   const supabaseUrl = process.env.VITE_SUPABASE_URL;
@@ -134,7 +148,7 @@ Return ONLY valid JSON (no markdown):
 {"synthesis_note":"2-3 sentences about patterns useful before a visit.","behavioral_flags":["snake_case","max_4_words","max_4_items"]}`;
 
   const response = await anthropic.messages.create({
-    model: 'claude-haiku-4-5-20251001',
+    model: HAIKU_MODEL,
     max_tokens: 150,
     messages: [{ role: 'user', content: prompt }],
   });
@@ -248,7 +262,7 @@ Generate an estimate in hours (decimal). Return ONLY a JSON object in this forma
 
   try {
     const response = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model: HAIKU_MODEL,
       max_tokens: 300,
       messages: [{ role: 'user', content: prompt }],
     });
@@ -336,7 +350,7 @@ Generate the briefing now. Focus on patterns, preferences, or things she should 
 
   try {
     const response = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model: HAIKU_MODEL,
       max_tokens: 300,
       messages: [{ role: 'user', content: prompt }],
     });
@@ -367,7 +381,7 @@ Return ONLY the merged note text, nothing else.`;
 
   try {
     const response = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model: HAIKU_MODEL,
       max_tokens: 150,
       messages: [{ role: 'user', content: prompt }],
     });
@@ -384,6 +398,379 @@ async function transcribeVoiceNote(req, res, supabase) {
   if (!filePath) return res.status(400).json({ error: 'Missing filePath' });
   // TODO: download from job-assets bucket → OpenAI Whisper → return transcript
   return res.json({ transcript: '', note: 'transcription not yet implemented' });
+}
+
+// ── client-brief / day-brief (agentic AI summaries, §3 of the design doc) ──
+
+/**
+ * client-brief: { clientId, force? }. Client-scoped, cached in ai_briefs
+ * (kind='client', subject_id=clientId). requireUser + assertClientAccess
+ * already ran in the router (it checks req.body.clientId generically).
+ */
+async function clientBrief(req, res, supabase, anthropic, aiEnabled) {
+  const { clientId, force } = req.body;
+  if (!clientId) return res.status(400).json({ error: 'Missing clientId' });
+
+  const { data: client, error: clientErr } = await supabase
+    .from('clients')
+    .select('id, business_id, first_name, last_name, notes, ai_context, tags, pending_note, pending_note_source_job_id')
+    .eq('id', clientId)
+    .single();
+  if (clientErr || !client) return res.status(404).json({ error: 'Client not found' });
+
+  const { data: business } = await supabase
+    .from('businesses')
+    .select('owner_name, ai_profile')
+    .eq('id', client.business_id)
+    .single();
+  const ownerName = business?.owner_name || 'the business owner';
+  const style = business?.ai_profile?.style || 'professional';
+
+  // Last 5 completed jobs — both job_notes (pre) and completion_notes (post).
+  // prep-note (the action this replaces) only ever read job_notes; the
+  // design doc's §2.1 finding #3 called that out as a bug this fixes.
+  const { data: jobs, error: jobsErr } = await supabase
+    .from('jobs')
+    .select('scheduled_date, scheduled_time, service_name, job_notes, completion_notes')
+    .eq('client_id', clientId)
+    .eq('job_status', 'Completed')
+    .is('deleted_at', null)
+    .order('scheduled_date', { ascending: false })
+    .order('scheduled_time', { ascending: false })
+    .limit(5);
+  if (jobsErr) throw new Error(`Jobs fetch failed: ${jobsErr.message}`);
+
+  const learned = client.ai_context?.learned || {};
+  const inputs = {
+    ownerName,
+    clientName: [client.first_name, client.last_name].filter(Boolean).join(' ') || 'this client',
+    style,
+    history: (jobs || []).map(j => ({
+      date: j.scheduled_date,
+      service_name: j.service_name,
+      job_notes: j.job_notes,
+      completion_notes: j.completion_notes,
+    })),
+    clientNotes: client.notes || '',
+    access: client.ai_context?.access || '',
+    prefs: client.ai_context?.prefs || '',
+    personal: client.ai_context?.personal || '',
+    tags: client.tags || [],
+    // clients.pending_note is only ever non-null while unconsumed (jobsRepo
+    // clears both pending_note and pending_note_source_job_id together on
+    // consumption) — no extra "unconsumed" check needed here.
+    pendingNote: client.pending_note || '',
+    learned: {
+      synthesis_note: learned.synthesis_note || '',
+      behavioral_flags: learned.behavioral_flags || [],
+      preferred_time_of_day: learned.preferred_time_of_day || '',
+    },
+  };
+
+  const inputsHash = hashInputs(inputs);
+
+  const { data: existingRow, error: existingErr } = await supabase
+    .from('ai_briefs')
+    .select('content, inputs_hash, model, generated_at')
+    .eq('business_id', client.business_id)
+    .eq('kind', 'client')
+    .eq('subject_id', clientId)
+    .maybeSingle();
+  if (existingErr) throw new Error(`ai_briefs read failed: ${existingErr.message}`);
+
+  if (existingRow && existingRow.inputs_hash === inputsHash && !force) {
+    return res.status(200).json({ brief: existingRow.content, cached: true });
+  }
+
+  // Kill switch off: never regenerate, but keep serving the last cached row
+  // (design doc §3.6). Never fabricate a fake summary.
+  if (!aiEnabled) {
+    if (existingRow) return res.status(200).json({ brief: existingRow.content, cached: true });
+    return res.status(503).json({ error: 'AI features are currently turned off.' });
+  }
+
+  const built = buildClientBriefPrompt(inputs);
+
+  // First-visit client (zero completed jobs) — deterministic content, no
+  // Anthropic call, no cost.
+  if (built.skip) {
+    const { error: upsertErr } = await supabase
+      .from('ai_briefs')
+      .upsert({
+        business_id: client.business_id,
+        kind: 'client',
+        subject_id: clientId,
+        content: built.result,
+        inputs_hash: inputsHash,
+        model: 'none',
+        generated_at: new Date().toISOString(),
+      }, { onConflict: 'business_id,kind,subject_id' });
+    if (upsertErr) throw new Error(`ai_briefs upsert failed: ${upsertErr.message}`);
+    return res.status(200).json({ brief: built.result, cached: false });
+  }
+
+  if (!anthropic) {
+    console.warn('[client-brief] No ANTHROPIC_API_KEY found.');
+    if (existingRow) return res.status(200).json({ brief: existingRow.content, cached: true });
+    return res.status(503).json({ error: 'AI is not configured.' });
+  }
+
+  try {
+    const response = await anthropic.messages.create({
+      model: HAIKU_MODEL,
+      max_tokens: built.maxTokens,
+      messages: [{ role: 'user', content: built.prompt }],
+    });
+    const content = response.content[0].text;
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('Claude did not return valid JSON');
+    const parsed = JSON.parse(jsonMatch[0]);
+    const brief = {
+      brief: typeof parsed.brief === 'string' ? parsed.brief : '',
+      watch_for: Array.isArray(parsed.watch_for) ? parsed.watch_for.slice(0, 3) : [],
+    };
+
+    const { error: upsertErr } = await supabase
+      .from('ai_briefs')
+      .upsert({
+        business_id: client.business_id,
+        kind: 'client',
+        subject_id: clientId,
+        content: brief,
+        inputs_hash: inputsHash,
+        model: HAIKU_MODEL,
+        generated_at: new Date().toISOString(),
+      }, { onConflict: 'business_id,kind,subject_id' });
+    if (upsertErr) throw new Error(`ai_briefs upsert failed: ${upsertErr.message}`);
+
+    return res.status(200).json({ brief, cached: false });
+  } catch (e) {
+    await logServerError({
+      severity: 'warning',
+      message: `client-brief generation failed for client ${clientId}: ${e.message}`,
+      stack: e.stack,
+      context: { clientId },
+      businessId: client.business_id,
+      alert: false,
+    });
+    if (existingRow) return res.status(200).json({ brief: existingRow.content, cached: true });
+    return res.status(502).json({ error: 'AI feature is unavailable right now. Try again shortly.' });
+  }
+}
+
+/**
+ * day-brief: { force?, businessId? }. Business-scoped, cached in ai_briefs
+ * (kind='day', subject_id=businessId), valid only for today's Toronto date.
+ * Callable manually/on-demand only at this stage — no sweep wiring yet.
+ */
+async function dayBrief(req, res, supabase, anthropic, auth, aiEnabled) {
+  const { force, businessId: requestedBusinessId } = req.body;
+  const businessId = auth.isAdmin && requestedBusinessId ? requestedBusinessId : auth.businessId;
+  if (!businessId) return res.status(400).json({ error: 'Missing businessId' });
+  if (!canAccessBusiness(auth, businessId)) {
+    return res.status(403).json({ error: 'Forbidden: business not in your scope' });
+  }
+
+  const { data: business } = await supabase
+    .from('businesses')
+    .select('owner_name, ai_profile')
+    .eq('id', businessId)
+    .single();
+  const ownerName = business?.owner_name || 'the business owner';
+  const style = business?.ai_profile?.style || 'professional';
+
+  const today = torontoDateStr(0);
+  const tomorrow = torontoDateStr(1);
+
+  // Today/tomorrow job assembly mirrors api/briefing/daily.js:233-253's shape
+  // (same FK-embed hint, same filters), extended with the fields the day
+  // brief needs (job_notes, notes_resolved_at, ai_context.drive_to, client
+  // tags/pending_note/learned flags).
+  const jobSelect = `id, scheduled_time, service_name, estimated_hours, job_notes, notes_resolved_at, ai_context, client_id,
+        clients!jobs_client_id_fkey(first_name, last_name, tags, pending_note, ai_context)`;
+
+  const [{ data: todayJobsRaw, error: todayErr }, { data: tomorrowJobsRaw, error: tomorrowErr }] = await Promise.all([
+    supabase.from('jobs').select(jobSelect)
+      .eq('business_id', businessId).eq('scheduled_date', today).eq('job_status', 'Scheduled').is('deleted_at', null)
+      .order('scheduled_time', { ascending: true }),
+    supabase.from('jobs').select(jobSelect)
+      .eq('business_id', businessId).eq('scheduled_date', tomorrow).eq('job_status', 'Scheduled').is('deleted_at', null)
+      .order('scheduled_time', { ascending: true }),
+  ]);
+  if (todayErr) throw new Error(`todayJobs query failed: ${todayErr.message}`);
+  if (tomorrowErr) throw new Error(`tomorrowJobs query failed: ${tomorrowErr.message}`);
+
+  const allJobs = [...(todayJobsRaw || []), ...(tomorrowJobsRaw || [])];
+  const clientIds = [...new Set(allJobs.map(j => j.client_id).filter(Boolean))];
+
+  // Batched unpaid-balance lookup — same shape as
+  // api/reminders/[action].js:200-234 (one query per business, not per job).
+  const jobsByClient = {};
+  if (clientIds.length > 0) {
+    const { data: unpaidJobs, error: unpaidErr } = await supabase
+      .from('jobs')
+      .select('id, client_id, scheduled_date, total_amount')
+      .eq('business_id', businessId)
+      .in('client_id', clientIds)
+      .eq('job_status', 'Completed')
+      .neq('payment_status', 'Paid')
+      .is('deleted_at', null);
+    if (unpaidErr) throw new Error(`unpaid-balance jobs query failed: ${unpaidErr.message}`);
+
+    const unpaidJobIds = (unpaidJobs || []).map(j => j.id);
+    const paymentsByJob = {};
+    if (unpaidJobIds.length > 0) {
+      const { data: pmts, error: pmtErr } = await supabase
+        .from('payments').select('job_id, amount, is_void').in('job_id', unpaidJobIds);
+      if (pmtErr) throw new Error(`payments query failed: ${pmtErr.message}`);
+      for (const p of pmts || []) (paymentsByJob[p.job_id] ??= []).push(p);
+    }
+    for (const j of unpaidJobs || []) {
+      (jobsByClient[j.client_id] ??= []).push({
+        scheduled_date: j.scheduled_date,
+        total_amount: j.total_amount,
+        payments: paymentsByJob[j.id] ?? [],
+      });
+    }
+  }
+
+  // First-visit detection: completed-job count per client.
+  const completedCountByClient = {};
+  if (clientIds.length > 0) {
+    const { data: completedJobs, error: completedErr } = await supabase
+      .from('jobs').select('client_id')
+      .eq('business_id', businessId).in('client_id', clientIds)
+      .eq('job_status', 'Completed').is('deleted_at', null);
+    if (completedErr) throw new Error(`completed-count query failed: ${completedErr.message}`);
+    for (const j of completedJobs || []) {
+      completedCountByClient[j.client_id] = (completedCountByClient[j.client_id] || 0) + 1;
+    }
+  }
+
+  // Attention items — server equivalent of Home.jsx:203-223 (past scheduled
+  // end and not marked complete). Scoped to today's jobs only (tomorrow's
+  // can't be past-end yet); "completed but unpaid" is already covered by the
+  // unpaid-balance data above, surfaced per-job in buildJobLine below rather
+  // than duplicated into a second attention-item list.
+  const now = new Date();
+  const attentionItems = [];
+  for (const j of (todayJobsRaw || [])) {
+    if (!j.scheduled_time) continue;
+    const startAt = torontoToUtc(today, j.scheduled_time);
+    const endAt = computeEndAt(startAt, j.estimated_hours);
+    if (endAt && now > endAt) {
+      const c = j.clients ?? {};
+      const clientName = [c.first_name, c.last_name].filter(Boolean).join(' ') || 'client';
+      attentionItems.push({ job_id: j.id, client_name: clientName, why: 'past scheduled end time, not marked complete' });
+    }
+  }
+
+  function buildJobLine(j) {
+    const c = j.clients ?? {};
+    const clientName = [c.first_name, c.last_name].filter(Boolean).join(' ') || 'client';
+    const balance = computeUnpaidBalance(jobsByClient[j.client_id] ?? []);
+    const isFirstVisit = !(completedCountByClient[j.client_id] > 0);
+    const noteOpen = Boolean(j.job_notes) && !j.notes_resolved_at;
+    const driveSeconds = j.ai_context?.drive_to?.durationValue;
+    return {
+      job_id: j.id,
+      time: j.scheduled_time,
+      client_name: clientName,
+      service_name: j.service_name,
+      job_notes: noteOpen ? j.job_notes : null,
+      drive_minutes: typeof driveSeconds === 'number' && driveSeconds > 0 ? Math.round(driveSeconds / 60) : null,
+      tags: c.tags || [],
+      pending_note: c.pending_note || null,
+      behavioral_flags: c.ai_context?.learned?.behavioral_flags || [],
+      unpaid_amount: balance?.amount ?? null,
+      unpaid_since: balance?.oldestDate ?? null,
+      is_first_visit: isFirstVisit,
+    };
+  }
+
+  const inputs = {
+    ownerName,
+    style,
+    nowLabel: new Date().toLocaleString('en-CA', { timeZone: 'America/Toronto', dateStyle: 'full', timeStyle: 'short' }),
+    todayJobs: (todayJobsRaw || []).map(buildJobLine),
+    tomorrowJobs: (tomorrowJobsRaw || []).map(buildJobLine),
+    attentionItems,
+  };
+
+  const inputsHash = hashInputs(inputs);
+
+  const { data: existingRow, error: existingErr } = await supabase
+    .from('ai_briefs')
+    .select('content, inputs_hash, model, subject_date, generated_at')
+    .eq('business_id', businessId)
+    .eq('kind', 'day')
+    .eq('subject_id', businessId)
+    .maybeSingle();
+  if (existingErr) throw new Error(`ai_briefs read failed: ${existingErr.message}`);
+
+  // A day row is only valid for TODAY's date (design doc §3.4) — a stale
+  // date must never be treated as a cache hit even if the hash matches.
+  const rowIsForToday = Boolean(existingRow) && existingRow.subject_date === today;
+
+  if (rowIsForToday && existingRow.inputs_hash === inputsHash && !force) {
+    return res.status(200).json({ brief: existingRow.content, cached: true });
+  }
+
+  if (!aiEnabled) {
+    if (rowIsForToday) return res.status(200).json({ brief: existingRow.content, cached: true });
+    return res.status(503).json({ error: 'AI features are currently turned off.' });
+  }
+
+  if (!anthropic) {
+    console.warn('[day-brief] No ANTHROPIC_API_KEY found.');
+    if (rowIsForToday) return res.status(200).json({ brief: existingRow.content, cached: true });
+    return res.status(503).json({ error: 'AI is not configured.' });
+  }
+
+  const { prompt, maxTokens } = buildDayBriefPrompt(inputs);
+
+  try {
+    const response = await anthropic.messages.create({
+      model: HAIKU_MODEL,
+      max_tokens: maxTokens,
+      messages: [{ role: 'user', content: prompt }],
+    });
+    const content = response.content[0].text;
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('Claude did not return valid JSON');
+    const parsed = JSON.parse(jsonMatch[0]);
+    const brief = {
+      summary: typeof parsed.summary === 'string' ? parsed.summary.slice(0, 160) : '',
+      items: Array.isArray(parsed.items) ? parsed.items : [],
+    };
+
+    const { error: upsertErr } = await supabase
+      .from('ai_briefs')
+      .upsert({
+        business_id: businessId,
+        kind: 'day',
+        subject_id: businessId,
+        subject_date: today,
+        content: brief,
+        inputs_hash: inputsHash,
+        model: HAIKU_MODEL,
+        generated_at: new Date().toISOString(),
+      }, { onConflict: 'business_id,kind,subject_id' });
+    if (upsertErr) throw new Error(`ai_briefs upsert failed: ${upsertErr.message}`);
+
+    return res.status(200).json({ brief, cached: false });
+  } catch (e) {
+    await logServerError({
+      severity: 'warning',
+      message: `day-brief generation failed for business ${businessId}: ${e.message}`,
+      stack: e.stack,
+      context: { businessId },
+      businessId,
+      alert: false,
+    });
+    if (rowIsForToday) return res.status(200).json({ brief: existingRow.content, cached: true });
+    return res.status(502).json({ error: 'AI feature is unavailable right now. Try again shortly.' });
+  }
 }
 
 // Not an AI action — see NON_AI_ACTIONS. Sends Joel an email for a just-submitted
@@ -471,7 +858,7 @@ Write a single, short, quirky 1-sentence greeting using a "${style || 'professio
 Be concise. No intro/outro.`;
 
   const response = await anthropic.messages.create({
-    model: 'claude-haiku-4-5-20251001',
+    model: HAIKU_MODEL,
     max_tokens: 100,
     messages: [{ role: 'user', content: prompt }],
   });
@@ -503,10 +890,14 @@ export default async function handler(req, res) {
     if (!ok) return res.status(403).json({ error: 'Forbidden: client not in your business' });
   }
 
+  let aiEnabled = true;
   if (!NON_AI_ACTIONS.has(action)) {
     const { data: settings, error: settingsErr } = await supabase.from('app_settings').select('ai_enabled').eq('id', 1).single();
     if (settingsErr) return res.status(500).json({ error: 'Could not check AI settings' });
-    if (!settings.ai_enabled) return res.status(503).json({ error: 'AI features are currently turned off.' });
+    aiEnabled = settings.ai_enabled;
+    if (!aiEnabled && !KILL_SWITCH_FALLBACK_ACTIONS.has(action)) {
+      return res.status(503).json({ error: 'AI features are currently turned off.' });
+    }
   }
 
   try {
@@ -517,6 +908,8 @@ export default async function handler(req, res) {
     if (action === 'summarize-carried-note') return await summarizeCarriedNote(req, res, supabase, anthropic);
     if (action === 'transcribe-voice-note') return await transcribeVoiceNote(req, res, supabase);
     if (action === 'notify-request') return await notifyRequest(req, res, supabase, auth);
+    if (action === 'client-brief') return await clientBrief(req, res, supabase, anthropic, aiEnabled);
+    if (action === 'day-brief') return await dayBrief(req, res, supabase, anthropic, auth, aiEnabled);
     return res.status(404).json({ error: `Unknown AI action: ${action}` });
   } catch (error) {
     console.error(`AI handler error [${action}]:`, error);

@@ -164,7 +164,6 @@ export function useAiEnabled() {
       if (error) return false;
       return !!data.ai_enabled;
     },
-    staleTime: 60_000,
   });
   return data ?? false;
 }
@@ -208,4 +207,18 @@ export function useServices() {
     },
   });
   return { services: data ?? [], loading, error, refresh: refetch };
+}
+
+export function useAiBriefs() {
+  const { data, error, isFetching: loading, refetch } = useQuery({
+    queryKey: ['ai-briefs'],
+    queryFn: async () => {
+      const bid = await getCurrentBusinessId().catch(() => null);
+      if (!bid) return [];
+      const { data, error } = await supabase.from('ai_briefs').select('*').eq('business_id', bid);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+  return { briefs: data ?? [], loading, error, refresh: refetch };
 }

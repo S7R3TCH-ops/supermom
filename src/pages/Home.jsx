@@ -2,7 +2,7 @@ import { useMemo, useEffect, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppTheme } from '../context/AppThemeContext';
 import { Title, Subheading, Text, Caption, SectionLabel } from '../components/ui/typography';
-import { useJobs, useBusiness, notifyDataChanged } from '../data/useData';
+import { useJobs, useBusiness, notifyDataChanged, useAiEnabled, useAiBriefs } from '../data/useData';
 import { useAuth } from '../context/AuthContext';
 import { useJobDetailSheet } from '../context/JobDetailSheetContext';
 import { usePostJobSheet } from '../context/PostJobSheetContext';
@@ -44,6 +44,8 @@ export default function Home() {
   const { handleClockOut } = useGeofence();
   const toast = useToast();
   const bizCtx = useBusiness();
+  const aiEnabled = useAiEnabled();
+  const { briefs } = useAiBriefs();
   const isKeyboardFocused = useKeyboardFocus();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -618,6 +620,22 @@ export default function Home() {
     }
   };
 
+  const todayStr = useMemo(() => {
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, '0');
+    const d = String(today.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }, [today]);
+
+  const todayBrief = useMemo(() => {
+    return briefs?.find(b => b.kind === 'day' && b.subject_date === todayStr);
+  }, [briefs, todayStr]);
+
+  const briefText = useMemo(() => {
+    if (!aiEnabled || !todayBrief?.content) return null;
+    return privacyOn ? (todayBrief.content.summary_private || todayBrief.content.summary) : todayBrief.content.summary;
+  }, [aiEnabled, todayBrief, privacyOn, todayStr, briefs]);
+
   // Safety check for context
   if (!themeCtx || !jobsCtx || !authCtx) {
     return <div style={{ padding: 20, color: 'white' }}>Initializing context...</div>;
@@ -648,7 +666,7 @@ export default function Home() {
             <SectionLabel style={{ color: mode === 'dark' ? T.pinkLabel : T.ink, marginBottom: 8 }}>
               Today · {dateBrief(today)}
             </SectionLabel>
-            <div style={{ marginTop: 2 }}>
+            <div className="flex-col" style={{ marginTop: 2, display: 'flex', flexDirection: 'column', minHeight: 64 }}>
               <div style={{
                 fontFamily: T.serif,
                 fontSize: 21,
@@ -656,9 +674,24 @@ export default function Home() {
                 letterSpacing: '-0.3px',
                 color: mode === 'dark' ? 'white' : T.ink,
                 lineHeight: 1.3,
+                marginBottom: 4,
               }}>
                 {briefingMsg}
               </div>
+              {briefText && (
+                <div style={{
+                  fontSize: '13px',
+                  color: mode === 'dark' ? 'rgba(255,255,255,0.7)' : T.inkSub,
+                  lineHeight: 1.4,
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }}>
+                  {briefText}
+                </div>
+              )}
             </div>
           </div>
 

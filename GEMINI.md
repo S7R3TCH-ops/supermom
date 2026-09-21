@@ -55,6 +55,11 @@ only source of truth for what's live — not this file's own prior "Current
 State" tables (that pattern is what caused the file to go stale for a month;
 don't reintroduce it here).
 
+## Verification rule
+
+**Evidence before answers (Double-Check Policy).** Never assume a task list, artifact, or memory file is accurate without checking the actual codebase first. Always do your own research (using `grep_search`, reading source files) to confirm or deny your answer based on actual evidence before presenting it. If you are asked to check tasks, confirm they are actually outstanding in the current codebase before assuming they are. 
+**Crucially:** When you believe a task is complete, or if you are about to claim that something has "happened" or is "done", you MUST double-check your own work by verifying the actual source code or running verification commands. When you do this, explicitly tell the user that you double-checked, and explain exactly what the actual evidence shows (the "actual story"), rather than just blindly asserting it is complete.
+
 ## Second-brain sync
 
 This repo already points back to `C:\Projects\second-brain\03-projects\active\supermom\`

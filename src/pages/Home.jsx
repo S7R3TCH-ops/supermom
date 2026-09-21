@@ -720,8 +720,8 @@ export default function Home() {
               <div style={{ fontSize: 10, fontWeight: 700, color: mode === 'dark' ? T.pinkLabel : T.pink, textTransform: 'uppercase', letterSpacing: '0.6px', marginTop: 3 }}>
                 This Week
               </div>
-              {/* Fixed-height slot (not conditionally-rendered) so "See full schedule"
-                  below doesn't reflow up/down as this line appears/disappears
+              {/* Fixed-height slot (not conditionally-rendered) so the container
+                  doesn't reflow up/down as this line appears/disappears
                   (Joel, 2026-07-15). */}
               <div style={{ minHeight: 16, marginTop: 3 }}>
                 {displayRevenue > 0 && collectedThisWeek > 0 && (
@@ -734,24 +734,6 @@ export default function Home() {
                   </div>
                 )}
               </div>
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/calendar')}
-              aria-label="See full schedule"
-              style={{
-                cursor: 'pointer',
-                marginTop: 4,
-                padding: '4px 0',
-                background: 'none',
-                border: 'none',
-                fontSize: 10,
-                fontWeight: 700,
-                letterSpacing: '0.3px',
-                color: mode === 'dark' ? 'rgba(255,255,255,0.55)' : T.inkMuted,
-              }}
-            >
-              See full schedule →
             </button>
           </div>
         </div>

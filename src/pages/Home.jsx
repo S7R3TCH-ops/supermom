@@ -1,5 +1,6 @@
 import { useMemo, useEffect, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import pkg from '../../package.json';
 import { useAppTheme } from '../context/AppThemeContext';
 import { Title, Subheading, Text, Caption, SectionLabel } from '../components/ui/typography';
 import { useJobs, useBusiness, notifyDataChanged, useAiEnabled, useAiBriefs } from '../data/useData';
@@ -1283,6 +1284,10 @@ export default function Home() {
             ✦ All caught up ✦
           </div>
         )}
+
+        <div style={{ fontFamily: T.font, fontSize: 10, color: T.inkMuted, opacity: 0.5, marginTop: todayJobs.length <= 3 && attentionItems.length === 0 ? 0 : 40, marginBottom: 20, textAlign: 'center' }}>
+          v{pkg.version} ({typeof __COMMIT_SHA__ !== 'undefined' ? __COMMIT_SHA__ : 'dev'})
+        </div>
 
         {isKeyboardFocused > 0 && <div style={{ height: isKeyboardFocused }} aria-hidden="true" />}
       </div>

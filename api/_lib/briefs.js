@@ -1,6 +1,6 @@
 // Pure logic for the agentic AI summaries feature (client brief + day brief) —
 // input hashing and prompt assembly. Deliberately has ZERO imports from
-// @anthropic-ai/sdk or @supabase/* (those live only in api/ai/[action].js) so
+// @google/genai or @supabase/* (those live only in api/ai/[action].js) so
 // every function here is a plain (input) -> output transform, testable
 // without mocking a network client or hitting the DB — mirrors the
 // api/_lib/pushAlerts.js precedent (see briefs.test.js).
@@ -54,7 +54,7 @@ export function hashInputs(inputs) {
 
 /**
  * Deterministic fallback for a client with zero completed jobs — never call
- * Anthropic for this case (no cost for first-visit clients). "Intel notes"
+ * Gemini for this case (no cost for first-visit clients). "Intel notes"
  * (clients.notes) are folded into watch_for when present.
  */
 function buildFirstVisitBrief(clientNotes) {
@@ -77,7 +77,7 @@ function buildFirstVisitBrief(clientNotes) {
  * }
  *
  * Returns either:
- *   { skip: true, result: { brief, watch_for } }          — zero history, no Anthropic call needed
+ *   { skip: true, result: { brief, watch_for } }          — zero history, no Gemini call needed
  *   { skip: false, prompt: string, maxTokens: number }    — real call
  */
 export function buildClientBriefPrompt(inputs) {

@@ -1,4 +1,3 @@
-import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
 import { requireUser, assertClientAccess, canAccessBusiness } from '../_lib/authGuard.js';
 import { sendMail } from '../_lib/mailer.js';
@@ -6,34 +5,29 @@ import { logServerError } from '../_lib/errorLog.js';
 import { hashInputs, buildClientBriefPrompt, buildDayBriefPrompt } from '../_lib/briefs.js';
 import { computeEndAt, computeUnpaidBalance } from '../_lib/pushAlerts.js';
 import { torontoDateStr, torontoToUtc } from '../_lib/torontoTime.js';
-
-// Single source of truth for the Haiku model id — was previously repeated as
-// a literal 5x in this file (retired-model incident, 2026-09-15). One place
-// to fix on the next retirement.
-const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
+import { initGemini, generateText, GEMINI_MODEL } from '../_lib/gemini.js';
 
 // Actions that must work even when the AI kill-switch (app_settings.ai_enabled)
-// is off, and that never touch Anthropic — living under /api/ai/ purely to
+// is off, and that never touch Gemini — living under /api/ai/ purely to
 // reuse this router's existing auth/dispatch plumbing without spending a new
 // Vercel serverless function slot.
 const NON_AI_ACTIONS = new Set(['notify-request']);
 
 // Actions that must degrade gracefully instead of hard-failing when the kill
 // switch is off — per design doc §3.6, "no regeneration, but keep rendering
-// the last cached row." These still call Anthropic when ai_enabled is true;
+// the last cached row." These still call Gemini when ai_enabled is true;
 // the router just skips its blanket 503 for them and lets the handler decide.
 const KILL_SWITCH_FALLBACK_ACTIONS = new Set(['client-brief', 'day-brief']);
 
 function initClients() {
   const supabaseUrl = process.env.VITE_SUPABASE_URL;
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const anthropicKey = process.env.ANTHROPIC_API_KEY;
   if (!supabaseUrl || !supabaseServiceKey) {
     throw new Error('Database configuration missing');
   }
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
-  const anthropic = anthropicKey ? new Anthropic({ apiKey: anthropicKey }) : null;
-  return { supabase, anthropic, anthropicKey };
+  const gemini = initGemini();
+  return { supabase, gemini };
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -60,9 +54,9 @@ function mode(arr) {
 
 // ── handlers ─────────────────────────────────────────────────────────────────
 
-async function enrichClient(req, res, supabase, anthropic) {
-  if (!anthropic) {
-    console.warn('[enrich-client] No ANTHROPIC_API_KEY found. Skipping background synthesis.');
+async function enrichClient(req, res, supabase, gemini) {
+  if (!gemini) {
+    console.warn('[enrich-client] No GEMINI_API_KEY found. Skipping background synthesis.');
     return res.status(200).json({ ok: true, skipped: 'no_api_key' });
   }
 
@@ -149,16 +143,10 @@ If the current note describes ${ownerName} or anyone other than ${clientName}, d
 Return ONLY valid JSON (no markdown):
 {"synthesis_note":"2-3 sentences about ${clientName}'s patterns useful before a visit.","behavioral_flags":["snake_case","max_4_words","max_4_items"]}`;
 
-  const response = await anthropic.messages.create({
-    model: HAIKU_MODEL,
-    max_tokens: 150,
-    messages: [{ role: 'user', content: prompt }],
-  });
-
-  const content = response.content[0].text;
+  const content = await generateText(gemini, prompt, 150);
   const jsonMatch = content.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error('Claude did not return valid JSON');
-  const claudeResult = JSON.parse(jsonMatch[0]);
+  if (!jsonMatch) throw new Error('Gemini did not return valid JSON');
+  const geminiResult = JSON.parse(jsonMatch[0]);
 
   await supabase
     .from('clients')
@@ -173,8 +161,8 @@ Return ONLY valid JSON (no markdown):
           payment_method_preference,
           preferred_time_of_day,
           preferred_day_of_week,
-          behavioral_flags: claudeResult.behavioral_flags || [],
-          synthesis_note: claudeResult.synthesis_note || '',
+          behavioral_flags: geminiResult.behavioral_flags || [],
+          synthesis_note: geminiResult.synthesis_note || '',
         },
       },
     })
@@ -199,12 +187,12 @@ async function localEstimateDuration(supabase, clientId, serviceName) {
   }
 }
 
-async function estimateDuration(req, res, supabase, anthropic) {
+async function estimateDuration(req, res, supabase, gemini) {
   const { clientId, serviceName, businessProfile } = req.body;
   if (!clientId || !serviceName) return res.status(400).json({ error: 'Missing clientId or serviceName' });
 
-  if (!anthropic) {
-    console.warn('[estimate-duration] No ANTHROPIC_API_KEY found. Using local fallback.');
+  if (!gemini) {
+    console.warn('[estimate-duration] No GEMINI_API_KEY found. Using local fallback.');
     return res.status(200).json(await localEstimateDuration(supabase, clientId, serviceName));
   }
 
@@ -263,18 +251,12 @@ Generate an estimate in hours (decimal). Return ONLY a JSON object in this forma
 }`;
 
   try {
-    const response = await anthropic.messages.create({
-      model: HAIKU_MODEL,
-      max_tokens: 300,
-      messages: [{ role: 'user', content: prompt }],
-    });
-
-    const content = response.content[0].text;
+    const content = await generateText(gemini, prompt, 300);
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     const result = JSON.parse(jsonMatch ? jsonMatch[0] : content);
     return res.status(200).json(result);
   } catch (e) {
-    console.warn('[estimate-duration] Anthropic call failed, using local fallback.', e.message);
+    console.warn('[estimate-duration] Gemini call failed, using local fallback.', e.message);
     return res.status(200).json(await localEstimateDuration(supabase, clientId, serviceName));
   }
 }
@@ -293,12 +275,12 @@ async function localPrepNote(supabase, clientId) {
   }
 }
 
-async function prepNote(req, res, supabase, anthropic) {
+async function prepNote(req, res, supabase, gemini) {
   const { clientId, businessProfile } = req.body;
   if (!clientId) return res.status(400).json({ error: 'Missing clientId' });
 
-  if (!anthropic) {
-    console.warn('[prep-note] No ANTHROPIC_API_KEY found. Using simulated briefing fallback.');
+  if (!gemini) {
+    console.warn('[prep-note] No GEMINI_API_KEY found. Using simulated briefing fallback.');
     return res.status(200).json(await localPrepNote(supabase, clientId));
   }
 
@@ -351,26 +333,21 @@ Style Guidance: Use a ${style} tone.
 Generate the briefing now. Focus on patterns, preferences, or things she should remember from last time. Keep it to 3-4 sentences.`;
 
   try {
-    const response = await anthropic.messages.create({
-      model: HAIKU_MODEL,
-      max_tokens: 300,
-      messages: [{ role: 'user', content: prompt }],
-    });
-
-    return res.status(200).json({ summary: response.content[0].text });
+    const summary = await generateText(gemini, prompt, 300);
+    return res.status(200).json({ summary });
   } catch (e) {
-    console.warn('[prep-note] Anthropic call failed, using local fallback.', e.message);
+    console.warn('[prep-note] Gemini call failed, using local fallback.', e.message);
     return res.status(200).json(await localPrepNote(supabase, clientId));
   }
 }
 
-async function summarizeCarriedNote(req, res, supabase, anthropic) {
+async function summarizeCarriedNote(req, res, supabase, gemini) {
   const { priorNote, newNote } = req.body;
   if (!priorNote || !newNote) return res.status(400).json({ error: 'Missing priorNote or newNote' });
 
   const fallback = `${priorNote}\n\n${newNote}`;
-  if (!anthropic) {
-    console.warn('[summarize-carried-note] No ANTHROPIC_API_KEY found. Falling back to plain join.');
+  if (!gemini) {
+    console.warn('[summarize-carried-note] No GEMINI_API_KEY found. Falling back to plain join.');
     return res.status(200).json({ note: fallback, isMock: true });
   }
 
@@ -382,15 +359,10 @@ Note 2 (newer): "${newNote}"
 Return ONLY the merged note text, nothing else.`;
 
   try {
-    const response = await anthropic.messages.create({
-      model: HAIKU_MODEL,
-      max_tokens: 150,
-      messages: [{ role: 'user', content: prompt }],
-    });
-    const note = response.content[0].text.trim();
+    const note = (await generateText(gemini, prompt, 150)).trim();
     return res.status(200).json({ note });
   } catch (e) {
-    console.warn('[summarize-carried-note] Anthropic call failed, using plain join.', e.message);
+    console.warn('[summarize-carried-note] Gemini call failed, using plain join.', e.message);
     return res.status(200).json({ note: fallback, isMock: true });
   }
 }
@@ -409,7 +381,7 @@ async function transcribeVoiceNote(req, res, supabase) {
  * (kind='client', subject_id=clientId). requireUser + assertClientAccess
  * already ran in the router (it checks req.body.clientId generically).
  */
-async function clientBrief(req, res, supabase, anthropic, aiEnabled) {
+async function clientBrief(req, res, supabase, gemini, aiEnabled) {
   const { clientId, force } = req.body;
   if (!clientId) return res.status(400).json({ error: 'Missing clientId' });
 
@@ -494,7 +466,7 @@ async function clientBrief(req, res, supabase, anthropic, aiEnabled) {
   const built = buildClientBriefPrompt(inputs);
 
   // First-visit client (zero completed jobs) — deterministic content, no
-  // Anthropic call, no cost.
+  // Gemini call, no cost.
   if (built.skip) {
     const { error: upsertErr } = await supabase
       .from('ai_briefs')
@@ -511,21 +483,16 @@ async function clientBrief(req, res, supabase, anthropic, aiEnabled) {
     return res.status(200).json({ brief: built.result, cached: false });
   }
 
-  if (!anthropic) {
-    console.warn('[client-brief] No ANTHROPIC_API_KEY found.');
+  if (!gemini) {
+    console.warn('[client-brief] No GEMINI_API_KEY found.');
     if (existingRow) return res.status(200).json({ brief: existingRow.content, cached: true });
     return res.status(503).json({ error: 'AI is not configured.' });
   }
 
   try {
-    const response = await anthropic.messages.create({
-      model: HAIKU_MODEL,
-      max_tokens: built.maxTokens,
-      messages: [{ role: 'user', content: built.prompt }],
-    });
-    const content = response.content[0].text;
+    const content = await generateText(gemini, built.prompt, built.maxTokens);
     const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('Claude did not return valid JSON');
+    if (!jsonMatch) throw new Error('Gemini did not return valid JSON');
     const parsed = JSON.parse(jsonMatch[0]);
     const brief = {
       brief: typeof parsed.brief === 'string' ? parsed.brief : '',
@@ -540,7 +507,7 @@ async function clientBrief(req, res, supabase, anthropic, aiEnabled) {
         subject_id: clientId,
         content: brief,
         inputs_hash: inputsHash,
-        model: HAIKU_MODEL,
+        model: GEMINI_MODEL,
         generated_at: new Date().toISOString(),
       }, { onConflict: 'business_id,kind,subject_id' });
     if (upsertErr) throw new Error(`ai_briefs upsert failed: ${upsertErr.message}`);
@@ -565,7 +532,7 @@ async function clientBrief(req, res, supabase, anthropic, aiEnabled) {
  * (kind='day', subject_id=businessId), valid only for today's Toronto date.
  * Callable manually/on-demand only at this stage — no sweep wiring yet.
  */
-async function dayBrief(req, res, supabase, anthropic, auth, aiEnabled) {
+async function dayBrief(req, res, supabase, gemini, auth, aiEnabled) {
   const { force, businessId: requestedBusinessId } = req.body;
   const businessId = auth.isAdmin && requestedBusinessId ? requestedBusinessId : auth.businessId;
   if (!businessId) return res.status(400).json({ error: 'Missing businessId' });
@@ -723,8 +690,8 @@ async function dayBrief(req, res, supabase, anthropic, auth, aiEnabled) {
     return res.status(503).json({ error: 'AI features are currently turned off.' });
   }
 
-  if (!anthropic) {
-    console.warn('[day-brief] No ANTHROPIC_API_KEY found.');
+  if (!gemini) {
+    console.warn('[day-brief] No GEMINI_API_KEY found.');
     if (rowIsForToday) return res.status(200).json({ brief: existingRow.content, cached: true });
     return res.status(503).json({ error: 'AI is not configured.' });
   }
@@ -732,14 +699,9 @@ async function dayBrief(req, res, supabase, anthropic, auth, aiEnabled) {
   const { prompt, maxTokens } = buildDayBriefPrompt(inputs);
 
   try {
-    const response = await anthropic.messages.create({
-      model: HAIKU_MODEL,
-      max_tokens: maxTokens,
-      messages: [{ role: 'user', content: prompt }],
-    });
-    const content = response.content[0].text;
+    const content = await generateText(gemini, prompt, maxTokens);
     const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('Claude did not return valid JSON');
+    if (!jsonMatch) throw new Error('Gemini did not return valid JSON');
     const parsed = JSON.parse(jsonMatch[0]);
     const brief = {
       summary: typeof parsed.summary === 'string' ? parsed.summary.slice(0, 160) : '',
@@ -755,7 +717,7 @@ async function dayBrief(req, res, supabase, anthropic, auth, aiEnabled) {
         subject_date: today,
         content: brief,
         inputs_hash: inputsHash,
-        model: HAIKU_MODEL,
+        model: GEMINI_MODEL,
         generated_at: new Date().toISOString(),
       }, { onConflict: 'business_id,kind,subject_id' });
     if (upsertErr) throw new Error(`ai_briefs upsert failed: ${upsertErr.message}`);
@@ -844,8 +806,8 @@ async function notifyRequest(req, res, supabase, auth) {
   return res.status(200).json({ ok: true });
 }
 
-async function testPersona(req, res, anthropic) {
-  if (!anthropic) {
+async function testPersona(req, res, gemini) {
+  if (!gemini) {
     const mockGreetings = {
       professional: "Good morning! Ready to tackle today's schedule efficiently.",
       coach: "You've got this, superstar! Let's make today your best one yet!",
@@ -859,13 +821,8 @@ async function testPersona(req, res, anthropic) {
 Write a single, short, quirky 1-sentence greeting using a "${style || 'professional'}" tone to start the day.
 Be concise. No intro/outro.`;
 
-  const response = await anthropic.messages.create({
-    model: HAIKU_MODEL,
-    max_tokens: 100,
-    messages: [{ role: 'user', content: prompt }],
-  });
-
-  return res.status(200).json({ message: response.content[0].text });
+  const message = await generateText(gemini, prompt, 100);
+  return res.status(200).json({ message });
 }
 
 // ── router ────────────────────────────────────────────────────────────────────
@@ -875,9 +832,9 @@ export default async function handler(req, res) {
 
   const { action } = req.query;
 
-  let supabase, anthropic;
+  let supabase, gemini;
   try {
-    ({ supabase, anthropic } = initClients());
+    ({ supabase, gemini } = initClients());
   } catch (e) {
     console.error('Missing Supabase environment variables');
     return res.status(500).json({ error: e.message });
@@ -903,15 +860,15 @@ export default async function handler(req, res) {
   }
 
   try {
-    if (action === 'enrich-client') return await enrichClient(req, res, supabase, anthropic);
-    if (action === 'estimate-duration') return await estimateDuration(req, res, supabase, anthropic);
-    if (action === 'prep-note') return await prepNote(req, res, supabase, anthropic);
-    if (action === 'test-persona') return await testPersona(req, res, anthropic);
-    if (action === 'summarize-carried-note') return await summarizeCarriedNote(req, res, supabase, anthropic);
+    if (action === 'enrich-client') return await enrichClient(req, res, supabase, gemini);
+    if (action === 'estimate-duration') return await estimateDuration(req, res, supabase, gemini);
+    if (action === 'prep-note') return await prepNote(req, res, supabase, gemini);
+    if (action === 'test-persona') return await testPersona(req, res, gemini);
+    if (action === 'summarize-carried-note') return await summarizeCarriedNote(req, res, supabase, gemini);
     if (action === 'transcribe-voice-note') return await transcribeVoiceNote(req, res, supabase);
     if (action === 'notify-request') return await notifyRequest(req, res, supabase, auth);
-    if (action === 'client-brief') return await clientBrief(req, res, supabase, anthropic, aiEnabled);
-    if (action === 'day-brief') return await dayBrief(req, res, supabase, anthropic, auth, aiEnabled);
+    if (action === 'client-brief') return await clientBrief(req, res, supabase, gemini, aiEnabled);
+    if (action === 'day-brief') return await dayBrief(req, res, supabase, gemini, auth, aiEnabled);
     return res.status(404).json({ error: `Unknown AI action: ${action}` });
   } catch (error) {
     console.error(`AI handler error [${action}]:`, error);

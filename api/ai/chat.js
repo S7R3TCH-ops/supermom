@@ -1,6 +1,6 @@
-import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
 import { requireUser, canAccessBusiness } from '../_lib/authGuard.js';
+import { initGemini, GEMINI_MODEL } from '../_lib/gemini.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
@@ -12,12 +12,12 @@ export default async function handler(req, res) {
 
   const supabaseUrl = process.env.VITE_SUPABASE_URL;
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const anthropicKey = process.env.ANTHROPIC_API_KEY;
 
   if (!supabaseUrl || !supabaseServiceKey) {
     return res.status(500).json({ error: 'Database configuration missing' });
   }
-  if (!anthropicKey) {
+  const gemini = initGemini();
+  if (!gemini) {
     return res.status(503).json({ error: 'AI service not configured' });
   }
 
@@ -40,8 +40,6 @@ export default async function handler(req, res) {
   const { data: settings, error: settingsErr } = await supabase.from('app_settings').select('ai_enabled').eq('id', 1).single();
   if (settingsErr) return res.status(500).json({ error: 'Could not check AI settings' });
   if (!settings.ai_enabled) return res.status(503).json({ error: 'AI features are currently turned off.' });
-
-  const anthropic = new Anthropic({ apiKey: anthropicKey });
 
   const systemParts = [
     'You are an AI operations assistant for "Supermom for Hire", a personal-life-operations business in Georgetown, ON.',
@@ -90,15 +88,22 @@ export default async function handler(req, res) {
   }
 
   try {
-    const response = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 800,
-      system: systemParts.join('\n'),
-      messages: messages.slice(-20),
+    const contents = messages.slice(-20).map(m => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }],
+    }));
+    const response = await gemini.models.generateContent({
+      model: GEMINI_MODEL,
+      contents,
+      config: {
+        systemInstruction: systemParts.join('\n'),
+        maxOutputTokens: 800,
+        thinkingConfig: { thinkingBudget: 0 },
+      },
     });
-    return res.status(200).json({ reply: response.content[0].text });
+    return res.status(200).json({ reply: response.text });
   } catch (err) {
-    console.error('[ai/chat] Anthropic error:', err.message);
+    console.error('[ai/chat] Gemini error:', err.message);
     return res.status(502).json({ error: 'AI assistant is unavailable right now. Try again shortly.' });
   }
 }

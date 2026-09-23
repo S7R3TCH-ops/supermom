@@ -11,7 +11,8 @@ import { computeJobSubtotal } from '../lib/financialMath';
 import ServiceCatalogSheet from '../components/sheets/ServiceCatalogSheet';
 import WorkerCatalogSheet from '../components/sheets/WorkerCatalogSheet';
 import { useRequestSheet } from '../context/RequestSheetContext';
-import { listRequestsAdmin, updateRequestStatus } from '../data/requestsRepo';
+import { listRequestsAdmin, updateRequestAdmin } from '../data/requestsRepo';
+import { REQUEST_STATUSES } from '../lib/requestFormatting';
 
 function ToggleBtn({ show, onToggle, color }) {
   return (
@@ -49,7 +50,7 @@ export default function Admin() {
   const { clients, loading: clientsLoading } = useClients();
   const { jobs, loading: jobsLoading } = useJobs();
   const { isSuperAdmin, allBusinesses, switchTo, viewingAsId, refresh } = useViewpoint();
-  const { open: openRequestSheet } = useRequestSheet();
+  const { open: openRequestSheet, openMine: openMyRequestsSheet } = useRequestSheet();
   const navigate = useNavigate();
 
   // SECURITY: Redirect non-superadmins and non-owners back to home
@@ -75,6 +76,9 @@ export default function Admin() {
   const [requests, setRequests] = useState([]);
   const [requestsLoading, setRequestsLoading] = useState(true);
   const [expandedRequestId, setExpandedRequestId] = useState(null);
+  // Per-row unsaved edits: { [id]: { status, admin_notes } }. Status + reply save together.
+  const [requestDrafts, setRequestDrafts] = useState({});
+  const [savingRequestId, setSavingRequestId] = useState(null);
   const [pushLog, setPushLog] = useState([]);
   const [pushLogLoading, setPushLogLoading] = useState(true);
   const [remindersHeartbeat, setRemindersHeartbeat] = useState(null);
@@ -87,12 +91,27 @@ export default function Admin() {
       .finally(() => setRequestsLoading(false));
   }, [isSuperAdmin]);
 
-  async function handleRequestStatusChange(id, status) {
-    setRequests(prev => prev.map(r => (r.id === id ? { ...r, status } : r)));
+  function setRequestDraft(r, field, value) {
+    setRequestDrafts(prev => {
+      const base = prev[r.id] || { status: r.status, admin_notes: r.admin_notes || '' };
+      return { ...prev, [r.id]: { ...base, [field]: value } };
+    });
+  }
+
+  async function handleRequestSave(r) {
+    const draft = requestDrafts[r.id];
+    if (!draft) return;
+    setSavingRequestId(r.id);
     try {
-      await updateRequestStatus(id, status);
+      await updateRequestAdmin(r.id, draft);
+      const admin_notes = draft.admin_notes.trim() || null;
+      setRequests(prev => prev.map(x => (x.id === r.id ? { ...x, status: draft.status, admin_notes } : x)));
+      setRequestDrafts(prev => { const next = { ...prev }; delete next[r.id]; return next; });
+      toast.success('Saved.');
     } catch {
-      toast.error('Could not update status.');
+      toast.error('Could not save request.');
+    } finally {
+      setSavingRequestId(null);
     }
   }
 
@@ -490,6 +509,11 @@ export default function Admin() {
                   {requests.map(r => {
                     const isOpen = expandedRequestId === r.id;
                     const kindColor = r.kind === 'bug' ? '#FBBF24' : 'var(--pink)';
+                    const draft = requestDrafts[r.id];
+                    const draftStatus = draft ? draft.status : r.status;
+                    const draftNotes = draft ? draft.admin_notes : (r.admin_notes || '');
+                    const isDirty = !!draft && (draft.status !== r.status || draft.admin_notes.trim() !== (r.admin_notes || ''));
+                    const isSaving = savingRequestId === r.id;
                     return (
                       <div key={r.id} style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)', padding: '10px 12px' }}>
                         <div
@@ -513,16 +537,38 @@ export default function Admin() {
                             {r.context && (
                               <pre style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: '0 0 8px' }}>{JSON.stringify(r.context, null, 2)}</pre>
                             )}
-                            <select
-                              value={r.status}
-                              onChange={e => handleRequestStatusChange(r.id, e.target.value)}
+                            <label htmlFor={`req-reply-${r.id}`} style={{ display: 'block', fontSize: 9, fontWeight: 700, color: 'var(--pink-label)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>
+                              Reply (visible to the business owner)
+                            </label>
+                            <textarea
+                              id={`req-reply-${r.id}`}
+                              value={draftNotes}
+                              onChange={e => setRequestDraft(r, 'admin_notes', e.target.value)}
                               className="sm-input"
-                              style={{ padding: '6px 10px', borderRadius: 8, background: 'var(--plum-mid)', border: '1px solid var(--pink-mid)', color: 'white', fontSize: 11.5 }}
-                            >
-                              {['new', 'triaged', 'planned', 'done', 'declined'].map(s => (
-                                <option key={s} value={s}>{s}</option>
-                              ))}
-                            </select>
+                              rows={3}
+                              placeholder="Shows as “Joel's reply” in their My requests list"
+                              style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 8, background: 'var(--plum-mid)', border: '1px solid var(--pink-mid)', color: 'white', fontSize: 16, fontFamily: 'inherit', resize: 'vertical', marginBottom: 8 }}
+                            />
+                            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                              <select
+                                value={draftStatus}
+                                onChange={e => setRequestDraft(r, 'status', e.target.value)}
+                                className="sm-input"
+                                style={{ padding: '6px 10px', borderRadius: 8, background: 'var(--plum-mid)', border: '1px solid var(--pink-mid)', color: 'white', fontSize: 11.5 }}
+                              >
+                                {REQUEST_STATUSES.map(s => (
+                                  <option key={s} value={s}>{s}</option>
+                                ))}
+                              </select>
+                              <button
+                                type="button"
+                                onClick={() => handleRequestSave(r)}
+                                disabled={!isDirty || isSaving}
+                                style={{ marginLeft: 'auto', padding: '6px 14px', borderRadius: 8, border: 'none', background: isDirty && !isSaving ? 'var(--pink)' : 'rgba(255,255,255,0.12)', color: 'white', fontSize: 11.5, fontWeight: 700, cursor: isDirty && !isSaving ? 'pointer' : 'default' }}
+                              >
+                                {isSaving ? 'Saving…' : 'Save'}
+                              </button>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -740,6 +786,7 @@ export default function Admin() {
           <ToolRow T={T} icon="👥" label="Staff Management" sub="Workers, staff, skills &amp; pay rates" onClick={() => setShowWorkers(true)} />
           <ToolRow T={T} icon="🗂" label="Service Catalog" sub="Manage defaults, rates, durations" onClick={() => setShowServices(true)} />
           <ToolRow T={T} icon="✎" label="Tell Joel something" sub="Report a problem or suggest an idea" onClick={() => openRequestSheet()} />
+          <ToolRow T={T} icon="📬" label="My requests" sub="What you've sent Joel, and his replies" onClick={() => openMyRequestsSheet()} />
         </div>
 
         <SectionLabel>Security</SectionLabel>

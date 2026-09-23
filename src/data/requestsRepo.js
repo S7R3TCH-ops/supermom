@@ -46,18 +46,42 @@ export async function submitRequest({ kind, body }) {
 export async function listRequestsAdmin() {
   const { data, error } = await supabase
     .from('client_requests')
-    .select('id, business_id, kind, title, body, context, status, notified_at, exported_at, created_at, businesses(name)')
+    .select('id, business_id, kind, title, body, context, status, admin_notes, notified_at, exported_at, created_at, businesses(name)')
     .order('created_at', { ascending: false })
     .limit(50);
   if (error) throw error;
   return data || [];
 }
 
-/** Admin-only (RLS): change a request's triage status. */
-export async function updateRequestStatus(id, status) {
+/**
+ * The current business's own requests ("My requests" sheet). Filtered by
+ * business_id, not submitted_by, so Joel "viewing as" Sandra sees her list.
+ * RLS (client_requests_select) already scopes owners to their business.
+ */
+export async function listMyRequests() {
+  const businessId = await getCurrentBusinessId();
+  if (!businessId) return [];
+  const { data, error } = await supabase
+    .from('client_requests')
+    .select('id, kind, title, body, status, admin_notes, created_at, updated_at')
+    .eq('business_id', businessId)
+    .order('created_at', { ascending: false })
+    .limit(50);
+  if (error) throw error;
+  return data || [];
+}
+
+/**
+ * Admin-only (RLS): save a request's triage status and reply together.
+ * NOTE: admin_notes is CLIENT-VISIBLE — it renders as "Joel's reply" in the
+ * owner's My requests sheet. Never put private triage notes here.
+ * Blank/whitespace notes are stored as null so no empty reply block shows.
+ */
+export async function updateRequestAdmin(id, { status, admin_notes }) {
+  const notes = (admin_notes || '').trim();
   const { error } = await supabase
     .from('client_requests')
-    .update({ status, updated_at: new Date().toISOString() })
+    .update({ status, admin_notes: notes || null, updated_at: new Date().toISOString() })
     .eq('id', id);
   if (error) throw error;
 }

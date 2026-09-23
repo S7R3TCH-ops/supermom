@@ -33,3 +33,18 @@ export function captureContext() {
     app_height: appHeight,
   };
 }
+
+/** Every value the client_requests.status check constraint allows, in triage order. */
+export const REQUEST_STATUSES = ['new', 'triaged', 'planned', 'done', 'declined'];
+
+/**
+ * Owner-facing badge per status (MyRequestsSheet). Plain words — Sandra never
+ * sees the raw triage vocabulary. Colors follow DESIGN.md's badge table.
+ */
+export const REQUEST_STATUS_BADGES = {
+  new:      { label: 'Sent',          bg: '#FFE0EC', fg: '#9B0D3A' },
+  triaged:  { label: 'Seen by Joel',  bg: '#EEF2FF', fg: '#3730A3' },
+  planned:  { label: 'On the list',   bg: '#F5F3FF', fg: '#5B21B6' },
+  done:     { label: 'Done ✓',        bg: '#DCFCE7', fg: '#14532D' },
+  declined: { label: 'Not doing',     bg: '#F3F4F6', fg: '#4B5563' },
+};

@@ -115,7 +115,7 @@ export default function RequestSheet({ isOpen, onClose }) {
           <div style={{ padding: '10px 18px 40px', textAlign: 'center' }}>
             <div style={{ fontSize: 40, marginBottom: 10 }}>✓</div>
             <div style={{ fontFamily: T.font, fontSize: 13, color: T.inkSub, lineHeight: 1.5 }}>
-              Joel will see this today. You'll hear back the usual way.
+              Joel will see this today. His reply shows up under My requests.
             </div>
           </div>
         ) : (

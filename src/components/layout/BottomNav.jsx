@@ -17,7 +17,7 @@ export default function BottomNav() {
   const { T, mode } = useAppTheme();
   const { openBlank } = useNewJobSheet();
   const { open: openNewClient } = useNewClientSheet();
-  const { open: openRequest } = useRequestSheet();
+  const { open: openRequest, openMine: openMyRequests } = useRequestSheet();
   const location = useLocation();
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
@@ -30,12 +30,14 @@ export default function BottomNav() {
         { label: '+ New Job',    action: () => openBlank() },
         { label: '🔍 Search',    action: () => navigate('/search') },
         { label: '✎ Tell Joel',  action: () => openRequest() },
+        { label: '📬 My requests', action: () => openMyRequests() },
       ]
     : [
         { label: '+ New Job',    action: () => openBlank() },
         { label: '+ New Client', action: () => openNewClient() },
         { label: '🔍 Search',    action: () => navigate('/search') },
         { label: '✎ Tell Joel',  action: () => openRequest() },
+        { label: '📬 My requests', action: () => openMyRequests() },
       ];
 
   const handleOptionTap = (action) => {

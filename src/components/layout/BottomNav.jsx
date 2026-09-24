@@ -67,7 +67,7 @@ export default function BottomNav() {
       {/* Options popup — rises from center above nav */}
       <div style={{
         position: 'fixed',
-        bottom: 'calc(70px + env(safe-area-inset-bottom))',
+        bottom: 'calc(70px + env(safe-area-inset-bottom, 0px))',
         left: '50%',
         transform: 'translateX(-50%)',
         zIndex: 30,
@@ -114,7 +114,7 @@ export default function BottomNav() {
         /* max() floors the padding on Android button-nav devices (which report
            inset 0) while still honoring the home-indicator inset on gesture
            nav / iPhone — prevents the nav sitting under the button bar. */
-        paddingBottom: 'calc(max(env(safe-area-inset-bottom), 8px) + 8px)',
+        paddingBottom: 'calc(max(env(safe-area-inset-bottom, 0px), 8px) + 8px)',
         flexShrink: 0,
         overflow: 'visible',
         position: 'relative',

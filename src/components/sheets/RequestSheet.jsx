@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import GrabBar from '../ui/GrabBar';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { submitRequest } from '../../data/requestsRepo';
 import { logClientError } from '../../lib/errorTracking';
@@ -98,10 +99,7 @@ export default function RequestSheet({ isOpen, onClose }) {
           border: `1px solid ${T.cardBorder}`, borderBottom: 'none',
         }}
       >
-        {/* Handle */}
-        <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 8, paddingBottom: 4 }}>
-          <div style={{ width: 40, height: 4, background: '#FFD6E8', borderRadius: 4, opacity: mode === 'dark' ? 0.6 : 1 }} />
-        </div>
+        <GrabBar onDismiss={handleClose} />
 
         {/* Header */}
         <div style={{ padding: '6px 18px 14px' }}>

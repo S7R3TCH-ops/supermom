@@ -295,7 +295,7 @@ function AuthedShell() {
         <OnboardingWalkthrough />
         <LogoBar />
         <div
-          style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}
+          style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}
         >
           <ScrollToTop />
           <Suspense fallback={<div style={{ padding: 20, color: T.inkMuted, fontFamily: T.font, fontSize: 13 }}>Loading...</div>}>

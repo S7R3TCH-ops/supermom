@@ -177,7 +177,9 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 ---
 
 
-## Current version: 0.13.77 — Sep 23, 2026 (on branch `test/my-requests-v0.13.77`, Vercel preview only — NOT on main/production; awaiting Joel's phone test + merge approval)
+## Current version: 0.13.78 - Sep 24, 2026 (on branch `gemini/mobile-fixes`)
+
+**v0.13.78 (this session)**: Mobile layout fixes for v0.13.77. Fixed iPhone PWA bottom nav disappearing by adding `minHeight: 0` to flex layout and 0px fallback to `env()`. Fixed MyRequestsSheet / RequestSheet swipe-to-close by replacing dummy handle with `GrabBar`.
 
 **v0.13.77 (this session)**: "My requests" support-ticket view (Sandra's ask: where do replies to "Tell Joel" show up). New `MyRequestsSheet.jsx` (status badges for all 5 statuses in plain words via `REQUEST_STATUS_BADGES` in `requestFormatting.js`, "Joel's reply" block from `admin_notes`), mounted from the existing `RequestSheetProvider` (`openMine`). Entry points: "📬 My requests" in BottomNav's + menu (both option arrays) and a ToolRow in Admin → Tools. Compose sheet opens **stacked on top** of the list (not swapped — close+open in one tick races `useBackClose`), list refetches via a `refreshToken` prop (not a React `key` — remount would re-run the hook's history pop/push). `listMyRequests()` filters by `business_id` (so "view as" works), `updateRequestAdmin()` saves status + reply together (blank → null). Admin → Super Admin: Requests now has a per-row reply textarea + one Save button (replaced the old immediate-write status select). No migration, no new serverless function. Verified: Playwright against a **production build** (`vite preview`, SW blocked for route mocks) — list, badges, reply block, stacked compose, refetch, Back-close all pass; also a real QA-account read rendered the empty state (RLS ok). **Not verified at all:** the Admin reply editor was never rendered, only built and linted. The section is `isSuperAdmin`-gated and update RLS is `is_admin()` only, so QA can't reach it. Joel tests it on his own account. Push-to-submitter on reply deferred (would need a server action).
 

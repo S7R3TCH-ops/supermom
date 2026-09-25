@@ -825,6 +825,108 @@ Be concise. No intro/outro.`;
   return res.status(200).json({ message });
 }
 
+async function statlerTool(req, res, supabase) {
+  const { action, args, businessId } = req.body;
+
+  if (!businessId) {
+    return res.status(400).json({ error: 'Missing businessId' });
+  }
+
+  if (action === 'leave_note_for_joel') {
+    const { note } = args || {};
+    if (!note) return res.status(400).json({ error: 'Missing note' });
+    
+    const { error: insertErr } = await supabase
+      .from('client_requests')
+      .insert({
+        business_id: businessId,
+        kind: 'idea',
+        title: 'Voice Note from Statler',
+        body: note,
+        context: { source: 'statler' }
+      });
+
+    if (insertErr) return res.status(500).json({ error: `Failed to insert note: ${insertErr.message}` });
+    return res.status(200).json({ result: 'Note successfully left for Joel.' });
+  }
+
+  if (action === 'supermom_schedule_job') {
+    const { clientName, date, time, description } = args || {};
+    if (!clientName || !date) {
+      return res.status(400).json({ error: 'Missing clientName or date' });
+    }
+
+    const sanitizedName = clientName.replace(/[^a-zA-Z \-']/g, '').substring(0, 60);
+
+    const { data: clients, error: clientErr } = await supabase
+      .from('clients')
+      .select('id, business_id, first_name, last_name')
+      .eq('business_id', businessId)
+      .or(`first_name.ilike.%${sanitizedName}%,last_name.ilike.%${sanitizedName}%`);
+
+    if (clientErr) return res.status(500).json({ error: 'Failed to query clients' });
+    if (!clients || clients.length === 0) return res.status(404).json({ error: `Client not found for name: ${sanitizedName}` });
+    
+    if (clients.length > 1) {
+      return res.status(200).json({ 
+        result: "Multiple clients found, please ask the user to clarify.", 
+        candidates: clients.map(c => ({ id: c.id, first_name: c.first_name, last_name: c.last_name })) 
+      });
+    }
+
+    const client = clients[0];
+
+    const { data: existingJobs, error: existingErr } = await supabase
+      .from('jobs')
+      .select('id')
+      .eq('business_id', businessId)
+      .eq('client_id', client.id)
+      .eq('scheduled_date', date)
+      .is('deleted_at', null);
+
+    if (existingErr) return res.status(500).json({ error: 'Failed to check existing jobs' });
+    if (existingJobs && existingJobs.length > 0) {
+      return res.status(200).json({ result: 'A job is already scheduled for this client on this date.', existingJobId: existingJobs[0].id });
+    }
+
+    const aiNotes = `⚠️ BOOKED VIA AI VOICE ASSISTANT - verify with client if unexpected.\n\n${description || ''}`;
+
+    const { data: newJob, error: jobErr } = await supabase
+      .from('jobs')
+      .insert({
+        business_id: businessId,
+        client_id: client.id,
+        scheduled_date: date,
+        scheduled_time: time || '12:00:00',
+        job_notes: aiNotes.trim(),
+        job_status: 'Scheduled',
+        service_name: 'Cleaning'
+      })
+      .select('id')
+      .single();
+
+    if (jobErr) return res.status(500).json({ error: `Failed to insert job: ${jobErr.message}` });
+
+    const { error: auditErr } = await supabase
+      .from('audit_log')
+      .insert({
+        business_id: businessId,
+        action: 'ai_action',
+        entity: 'jobs',
+        entity_id: newJob.id,
+        new_value: JSON.stringify(args)
+      });
+    
+    if (auditErr) {
+      console.error('[statlerTool] Audit log insertion failed:', auditErr.message);
+    }
+
+    return res.status(200).json({ result: `Successfully scheduled job for ${clientName} on ${date}. Job ID: ${newJob.id}` });
+  }
+
+  return res.status(400).json({ error: `Unknown statler action: ${action}` });
+}
+
 // ── router ────────────────────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
@@ -838,6 +940,18 @@ export default async function handler(req, res) {
   } catch (e) {
     console.error('Missing Supabase environment variables');
     return res.status(500).json({ error: e.message });
+  }
+
+  if (action === 'statler-tool') {
+    const secret = process.env.STATLER_SECRET;
+    if (!secret) {
+      return res.status(500).json({ error: 'statler tool not configured' });
+    }
+    const authHeader = req.headers.authorization || '';
+    if (authHeader !== `Bearer ${secret}`) {
+      return res.status(401).json({ error: 'Unauthorized statler action' });
+    }
+    return await statlerTool(req, res, supabase);
   }
 
   // All AI actions run with the service-role key (bypasses RLS) — require a

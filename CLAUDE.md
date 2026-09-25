@@ -266,3 +266,4 @@ Full version-by-version history (v0.13.41 through this version): `git log -- CLA
 ~~Backup zip refresh~~ — **CLOSED 2026-08-16, Joel's call.**
 
 ~~Check for residual fake `ai_context.learned` data on real clients~~ — **DONE 2026-08-07.** Queried `clients` table directly: 2 clients (Ann Rae, Maria Nguyen) had identical templated fake data from the removed `simulateAILearning` button ("After 10 sessions, I've learned that X prefers the back entrance..."). Cleared `ai_context.learned` on both, verified 0 remaining across all 75 clients.
+- v0.13.79: Hardened statler-tool endpoint auth and job scheduling constraints

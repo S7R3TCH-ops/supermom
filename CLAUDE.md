@@ -177,7 +177,7 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 ---
 
 
-## Current version: 0.13.78 - Sep 24, 2026 (on branch `gemini/mobile-fixes`)
+## Current version: 0.13.78 — Sep 25, 2026 (LIVE on main; Joel phone-tested)
 
 **v0.13.78 (this session)**: Mobile layout fixes for v0.13.77. Fixed iPhone PWA bottom nav disappearing by adding `minHeight: 0` to flex layout and 0px fallback to `env()`. Fixed MyRequestsSheet / RequestSheet swipe-to-close by replacing dummy handle with `GrabBar`.
 

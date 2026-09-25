@@ -1001,6 +1001,121 @@ async function statlerTool(req, res, supabase) {
     return res.status(200).json({ result: `Successfully scheduled job for ${clientName} on ${date}. Job ID: ${newJob.id}` });
   }
 
+  if (action === 'supermom_add_client') {
+    const { firstName, lastName, phone, email, notes } = args || {};
+    if (!firstName || !lastName) {
+      return res.status(400).json({ error: 'Missing firstName or lastName' });
+    }
+
+    const { data: client, error: insertErr } = await supabase
+      .from('clients')
+      .insert({
+        business_id: businessId,
+        first_name: firstName,
+        last_name: lastName,
+        phone_number: phone || null,
+        email: email || null,
+        notes: notes || null
+      })
+      .select('id')
+      .single();
+
+    if (insertErr) {
+      console.error('[statlerTool] insert client failed:', insertErr.message);
+      return res.status(500).json({ error: 'Failed to insert client' });
+    }
+
+    return res.status(200).json({ result: `Successfully added client ${firstName} ${lastName}. Client ID: ${client.id}` });
+  }
+
+  if (action === 'supermom_mark_paid') {
+    let { clientName } = args || {};
+    if (!clientName) return res.status(400).json({ error: 'Missing clientName' });
+
+    clientName = clientName.replace(/[^\p{L} \-']/gu, '').trim();
+    if (clientName.length < 2) return res.status(400).json({ error: 'clientName unusable' });
+
+    const tokens = clientName.split(/\s+/);
+    let clients = [];
+
+    if (tokens.length === 1) {
+      const token = tokens[0];
+      const { data, error } = await supabase
+        .from('clients')
+        .select('id, first_name, last_name')
+        .eq('business_id', businessId)
+        .or(`first_name.ilike.%${token}%,last_name.ilike.%${token}%`);
+      if (error) return res.status(500).json({ error: 'Failed to query clients' });
+      clients = data || [];
+    } else {
+      const firstToken = tokens[0];
+      const lastToken = tokens[tokens.length - 1];
+      const { data, error } = await supabase
+        .from('clients')
+        .select('id, first_name, last_name')
+        .eq('business_id', businessId)
+        .ilike('first_name', `${firstToken}%`)
+        .ilike('last_name', `${lastToken}%`);
+      if (error) return res.status(500).json({ error: 'Failed to query clients' });
+      clients = data || [];
+
+      if (clients.length === 0) {
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('clients')
+          .select('id, first_name, last_name')
+          .eq('business_id', businessId)
+          .or(`first_name.ilike.%${firstToken}%,last_name.ilike.%${firstToken}%`);
+        if (fallbackError) return res.status(500).json({ error: 'Failed to query clients' });
+        clients = fallbackData || [];
+      }
+    }
+
+    if (!clients || clients.length === 0) return res.status(404).json({ error: `Client not found for name: ${clientName}` });
+    if (clients.length > 1) {
+      return res.status(200).json({
+        result: `${clients.length} clients match — ask the user which one.`,
+        total: clients.length,
+        candidates: clients.slice(0, 5).map(c => ({ id: c.id, first_name: c.first_name, last_name: c.last_name }))
+      });
+    }
+
+    const client = clients[0];
+
+    const { data: jobs, error: jobsErr } = await supabase
+      .from('jobs')
+      .select('id, total_amount')
+      .eq('business_id', businessId)
+      .eq('client_id', client.id)
+      .eq('job_status', 'Completed')
+      .neq('payment_status', 'Paid')
+      .is('deleted_at', null)
+      .order('scheduled_date', { ascending: false })
+      .order('scheduled_time', { ascending: false })
+      .limit(1);
+
+    if (jobsErr) return res.status(500).json({ error: 'Failed to check existing jobs' });
+    if (!jobs || jobs.length === 0) return res.status(404).json({ error: `No unpaid completed jobs found for ${clientName}` });
+
+    const job = jobs[0];
+
+    if (job.total_amount > 0) {
+      const { error: payErr } = await supabase.from('payments').insert({
+        business_id: businessId,
+        job_id: job.id,
+        client_id: client.id,
+        amount: job.total_amount,
+        payment_method: 'Cash',
+        payment_date: new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Toronto' }).format(new Date()),
+      });
+      if (payErr) return res.status(500).json({ error: 'Failed to insert payment' });
+    }
+
+    const { error: updateErr } = await supabase.from('jobs').update({ payment_status: 'Paid' }).eq('id', job.id);
+    if (updateErr) return res.status(500).json({ error: 'Failed to update job status' });
+
+    return res.status(200).json({ result: `Successfully marked most recent completed job (ID: ${job.id}) as Paid for ${client.first_name} ${client.last_name}.` });
+  }
+
   return res.status(400).json({ error: `Unknown statler action: ${action}` });
 }
 

@@ -220,6 +220,10 @@ Full version-by-version history (v0.13.41 through this version): `git log -- CLA
 > Vercel Hobby: **11 of 12** serverless functions: `maps`, `invoice`, `auth/google/login`, `auth/google/callback`, `briefing/daily`, `sync/gcal`, `ai/[action]`, `ai/chat`, `admin/provision`, `admin/ai-toggle`, `reminders/[action]`. (2026-09-18, v0.13.72 — added `reminders/[action]` for lockscreen push; named generically because the separately-approved SMS-reminders design is built to ride this same function once its own Twilio Phase-0 is done, at no additional slot cost.)
 > Maps quota: Distance Matrix hard-capped at 500 elements/day. Sandra's real usage ~15–30/day. **Don't rapid-redeploy** (resets cron clock).
 
+### ✅ Recent Changes
+
+- **2026-09-25**: Added `supermom_add_client` and `supermom_mark_paid` AI handlers to `api/ai/[action].js` for the Statler voice bridge integration.
+
 ### 🔴 Bugs / Active issues
 
 - **`todayJobs`'s daily drive-time chain includes Completed jobs, not just Scheduled ones (found 2026-09-18, live-tested).** `Home.jsx:131`'s filter is `j.status !== 'Cancelled'` — a Completed job still counts as a stop in `updateDailyRoutes()`'s Home→Job1→Job2→... chain (`maps.js`), so completing an earlier job does NOT remove it from later jobs' drive-time math the way you'd expect (it correctly *does* drop out of the reminders-sweep query, which filters to `Scheduled` only — those two behaviors are inconsistent). Repro: completed a 6am test job, a 9:30am job still computed "Previous Job, 1 min" (i.e., still chained off the completed 6am job's address) until the 6am job was set to `Cancelled` instead. Fix should scope the chain's job list to `Scheduled` only, matching the sweep's own filter. Not yet fixed — found live while device-testing lockscreen push, low urgency (Sandra completes jobs retroactively, rarely mid-day with more jobs still pending after).

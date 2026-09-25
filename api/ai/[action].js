@@ -867,11 +867,13 @@ async function statlerTool(req, res, supabase) {
       const match = time.toLowerCase().trim().match(/^(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)$/);
       if (match) {
         let hour = parseInt(match[1], 10);
-        const min = match[2] || '00';
-        const ampm = match[3].replace(/\./g, '');
-        if (ampm === 'pm' && hour < 12) hour += 12;
-        if (ampm === 'am' && hour === 12) hour = 0;
-        time = `${hour.toString().padStart(2, '0')}:${min}`;
+        if (hour >= 1 && hour <= 12) {
+          const min = match[2] || '00';
+          const ampm = match[3].replace(/\./g, '');
+          if (ampm === 'pm' && hour < 12) hour += 12;
+          if (ampm === 'am' && hour === 12) hour = 0;
+          time = `${hour.toString().padStart(2, '0')}:${min}`;
+        }
       }
     }
 

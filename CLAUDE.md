@@ -177,9 +177,11 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 ---
 
 
-## Current version: 0.13.79 — Sep 25, 2026 (LIVE on main; Statler voice booking)
+## Current version: 0.13.80 — Sep 25, 2026 (LIVE on main; Statler voice booking)
 
-**v0.13.79 (this session)**: Statler-tool candidate-disambigation UX hardening. When `supermom_schedule_job` hits multiple clients matching a name, response now includes `total: <count>` and caps `candidates[]` to the first 5 (prevents oversized payloads if a name is very common). The `result` message is now dynamic (`"${clients.length} clients match — ask the user which one."`), informing the caller how many were found. This is a backend-only change to `api/ai/[action].js`'s `statlerTool` handler, no schema migration, no new serverless function.
+**v0.13.80 (this session)**: Fixed a bug where invalid 12-hour times (e.g. "13pm") were silently parsed into valid 24-hour times ("13:00") by `supermom_schedule_job` instead of being rejected. Added a bounds check (1-12) to the AM/PM parser so out-of-range times fall through to the strict `HH:MM` format validation and return a 400 error.
+
+**v0.13.79**: Statler-tool candidate-disambigation UX hardening. When `supermom_schedule_job` hits multiple clients matching a name, response now includes `total: <count>` and caps `candidates[]` to the first 5 (prevents oversized payloads if a name is very common). The `result` message is now dynamic (`"${clients.length} clients match — ask the user which one."`), informing the caller how many were found. This is a backend-only change to `api/ai/[action].js`'s `statlerTool` handler, no schema migration, no new serverless function.
 
 **v0.13.78**: Mobile layout fixes for v0.13.77. Fixed iPhone PWA bottom nav disappearing by adding `minHeight: 0` to flex layout and 0px fallback to `env()`. Fixed MyRequestsSheet / RequestSheet swipe-to-close by replacing dummy handle with `GrabBar`.
 

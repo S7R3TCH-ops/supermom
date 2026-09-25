@@ -862,6 +862,19 @@ async function statlerTool(req, res, supabase) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       return res.status(400).json({ error: 'date must be YYYY-MM-DD' });
     }
+
+    if (time && typeof time === 'string') {
+      const match = time.toLowerCase().trim().match(/^(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)$/);
+      if (match) {
+        let hour = parseInt(match[1], 10);
+        const min = match[2] || '00';
+        const ampm = match[3].replace(/\./g, '');
+        if (ampm === 'pm' && hour < 12) hour += 12;
+        if (ampm === 'am' && hour === 12) hour = 0;
+        time = `${hour.toString().padStart(2, '0')}:${min}`;
+      }
+    }
+
     if (time && !/^\d{2}:\d{2}(:\d{2})?$/.test(time)) {
       return res.status(400).json({ error: 'time must be HH:MM or HH:MM:SS' });
     }

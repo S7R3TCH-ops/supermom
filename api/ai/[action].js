@@ -846,26 +846,81 @@ async function statlerTool(req, res, supabase) {
         context: { source: 'statler' }
       });
 
-    if (insertErr) return res.status(500).json({ error: `Failed to insert note: ${insertErr.message}` });
+    if (insertErr) {
+      console.error('[statlerTool] leave_note_for_joel insert failed:', insertErr.message);
+      return res.status(500).json({ error: 'Failed to insert note' });
+    }
     return res.status(200).json({ result: 'Note successfully left for Joel.' });
   }
 
   if (action === 'supermom_schedule_job') {
-    const { clientName, date, time, description } = args || {};
+    let { clientName, date, time, description } = args || {};
     if (!clientName || !date) {
       return res.status(400).json({ error: 'Missing clientName or date' });
     }
 
-    const sanitizedName = clientName.replace(/[^a-zA-Z \-']/g, '').substring(0, 60);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({ error: 'date must be YYYY-MM-DD' });
+    }
+    if (time && !/^\d{2}:\d{2}(:\d{2})?$/.test(time)) {
+      return res.status(400).json({ error: 'time must be HH:MM or HH:MM:SS' });
+    }
 
-    const { data: clients, error: clientErr } = await supabase
-      .from('clients')
-      .select('id, business_id, first_name, last_name')
-      .eq('business_id', businessId)
-      .or(`first_name.ilike.%${sanitizedName}%,last_name.ilike.%${sanitizedName}%`);
+    clientName = clientName.replace(/[^\p{L} \-']/gu, '').trim();
+    if (clientName.length < 2) {
+      return res.status(400).json({ error: 'clientName unusable' });
+    }
 
-    if (clientErr) return res.status(500).json({ error: 'Failed to query clients' });
-    if (!clients || clients.length === 0) return res.status(404).json({ error: `Client not found for name: ${sanitizedName}` });
+    const tokens = clientName.split(/\s+/);
+    let clients = [];
+
+    if (tokens.length === 1) {
+      const token = tokens[0];
+      const { data, error } = await supabase
+        .from('clients')
+        .select('id, business_id, first_name, last_name')
+        .eq('business_id', businessId)
+        .or(`first_name.ilike.%${token}%,last_name.ilike.%${token}%`);
+        
+      if (error) {
+        console.error('[statlerTool] single token client query failed:', error.message);
+        return res.status(500).json({ error: 'Failed to query clients' });
+      }
+      clients = data || [];
+    } else {
+      const firstToken = tokens[0];
+      const lastToken = tokens[tokens.length - 1];
+      const { data, error } = await supabase
+        .from('clients')
+        .select('id, business_id, first_name, last_name')
+        .eq('business_id', businessId)
+        .ilike('first_name', `${firstToken}%`)
+        .ilike('last_name', `${lastToken}%`);
+        
+      if (error) {
+        console.error('[statlerTool] multi token client query failed:', error.message);
+        return res.status(500).json({ error: 'Failed to query clients' });
+      }
+      clients = data || [];
+
+      if (clients.length === 0) {
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('clients')
+          .select('id, business_id, first_name, last_name')
+          .eq('business_id', businessId)
+          .or(`first_name.ilike.%${firstToken}%,last_name.ilike.%${firstToken}%`);
+          
+        if (fallbackError) {
+          console.error('[statlerTool] fallback single token query failed:', fallbackError.message);
+          return res.status(500).json({ error: 'Failed to query clients' });
+        }
+        clients = fallbackData || [];
+      }
+    }
+    
+    if (!clients || clients.length === 0) {
+      return res.status(404).json({ error: `Client not found for name: ${clientName}` });
+    }
     
     if (clients.length > 1) {
       return res.status(200).json({ 
@@ -884,7 +939,10 @@ async function statlerTool(req, res, supabase) {
       .eq('scheduled_date', date)
       .is('deleted_at', null);
 
-    if (existingErr) return res.status(500).json({ error: 'Failed to check existing jobs' });
+    if (existingErr) {
+      console.error('[statlerTool] query existing jobs failed:', existingErr.message);
+      return res.status(500).json({ error: 'Failed to check existing jobs' });
+    }
     if (existingJobs && existingJobs.length > 0) {
       return res.status(200).json({ result: 'A job is already scheduled for this client on this date.', existingJobId: existingJobs[0].id });
     }
@@ -905,7 +963,10 @@ async function statlerTool(req, res, supabase) {
       .select('id')
       .single();
 
-    if (jobErr) return res.status(500).json({ error: `Failed to insert job: ${jobErr.message}` });
+    if (jobErr) {
+      console.error('[statlerTool] insert job failed:', jobErr.message);
+      return res.status(500).json({ error: 'Failed to insert job' });
+    }
 
     const { error: auditErr } = await supabase
       .from('audit_log')

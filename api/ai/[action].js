@@ -923,9 +923,10 @@ async function statlerTool(req, res, supabase) {
     }
     
     if (clients.length > 1) {
-      return res.status(200).json({ 
-        result: "Multiple clients found, please ask the user to clarify.", 
-        candidates: clients.map(c => ({ id: c.id, first_name: c.first_name, last_name: c.last_name })) 
+      return res.status(200).json({
+        result: `${clients.length} clients match — ask the user which one.`,
+        total: clients.length,
+        candidates: clients.slice(0, 5).map(c => ({ id: c.id, first_name: c.first_name, last_name: c.last_name }))
       });
     }
 

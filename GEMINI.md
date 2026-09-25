@@ -1,5 +1,10 @@
 # GEMINI.md — Rules for Gemini / Antigravity in this repo
 
+> **2026-09-25: widened to BRANCH-WRITER by Joel** (explicit choice, logged in
+> `C:\Projects\second-brain\03-projects\active\supermom\decisions.md`). Replaces the
+> Phase-0 tests-only / no-git grant below. Same model as second-brain's `gemini/work`:
+> branches yes, `main` never.
+>
 > **STATUS: LIVE as of 2026-07-16.** Phase-0 scoped grant, approved directly by
 > Joel this session (privacy risk for production code explicitly accepted —
 > separate acceptance from the brain-only Phase 0 grant, per
@@ -15,37 +20,39 @@
 
 ## What you are here
 
-**Headless Playwright QA Specialist.** This executes the 2026-07-13 QA-gameplan
-verdict (`C:\Projects\second-brain\99-archive\debates\2026-07-13-qa-gameplan-overlap.md`):
-you run headless Playwright as a regression-QA pass over this app. You are not
-a general contributor to this codebase, and you do not deploy, version-bump,
-or push.
+**Branch-writer peer + QA specialist.** You can build features and fixes across
+the codebase on your own branches. Claude reviews every branch; Joel alone
+approves anything reaching `main` (which is LIVE: Vercel deploys it to Sandra).
 
 ## READ SCOPE
 
 Full read access to this repo, **except**:
-- `.env` and any `.env.*` file (gitignored already, but never open if found).
+- `.env` and any `.env.*` file. Never open them. Exception: you may *append* a
+  local-only test key to `.env.local` when a task file tells you to.
 - Any file containing a live API key, secret, or production credential
-  (`GMAIL_APP_PASSWORD`, `CRON_SECRET`, Supabase service-role key, etc. — see
-  `CLAUDE.md`'s Security & Environment section for the current list).
+  (see `CLAUDE.md`'s Security & Environment section).
 
-## WRITE SURFACE — hard rule
+## WRITE SURFACE
 
-You may write **only** to files inside `tests/` and the specific codebase files authorized by Joel for the 2026-07-18 UI fixes plan:
-- `src/pages/Clients.jsx`
-- `src/pages/Home.jsx`
-- `src/pages/InvoiceView.jsx`
+You may edit any source file (`src/`, `api/`, `tests/`, `public/`, docs), on a
+branch you created. Never:
+- run migrations or any write against production Supabase outside a task file's
+  explicit test instructions (the local dev server writes to PROD; use the
+  Bright Path QA TEST business for inserts and clean up after)
+- change Vercel/env settings, secrets, or billing
+- commit scratch scripts that load keys
 
-No modifications to other files in `src/`, `api/`, config files, `package.json`, migrations, or anything else outside `tests/`.
+## GIT
 
-## GIT — hard rule
-
-**No git operations of any kind.** No `git add`, `git commit`, `git push`, no
-branches, no version bumps, no deploys. Leave your test file changes
-uncommitted in the working tree — a Claude session (or Joel) reviews and
-commits them. This is stricter than a review-then-merge model: you don't
-commit at all, per the approved design in `multi-ai-sync-scoping.md` §4
-("no git ops").
+- Allowed: create branches (`gemini/<topic>` or a name a task file gives you),
+  `git add` specific files (never `-A` / `-a`), commit, push **your branch**.
+- Never: commit to, merge into, rebase, or push `main`. No force-push. No
+  deleting branches you didn't create. No deploys.
+- Version bump + `CLAUDE.md` changelog line on your branch as the repo
+  convention requires. Say which version you took in your handoff.
+- Handoff = a file in `C:\Projects\second-brain\00-inbox\gemini\` naming the
+  branch, commit hashes and real test output. Then the live-session auto-loop
+  applies (second-brain `GEMINI.md`).
 
 ## Memory rule
 
@@ -75,6 +82,6 @@ act on it — open a debate file in
 
 ## If access needs change
 
-Nothing here expands without its own explicit Joel approval, logged in
+Nothing here expands further without its own explicit Joel approval, logged in
 second-brain's `decisions.md`, same as this grant was. Don't assume broader
 access "would help" — ask.

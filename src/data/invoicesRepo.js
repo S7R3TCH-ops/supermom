@@ -130,11 +130,10 @@ const torontoToday = () =>
  *   outstanding job on the invoice (current job + all "also outstanding").
  * @returns {Promise<{settled:number, amount:number}>}
  */
-export async function settleInvoiceOutstanding(invoiceId, method = 'Cash', jobIds = null) {
+export async function settleInvoiceOutstanding(invoiceId, method = 'Cash', jobIds = null, paymentAmount = null) {
   const businessId = await getCurrentBusinessId();
-  const invoice = await fetchInvoiceById(invoiceId); // fresh balances — recompute at call time
+  const invoice = await fetchInvoiceById(invoiceId);
 
-  // Include all invoice-linked jobs (not just first) plus other outstanding
   const candidates = [];
   (invoice.invoiceJobBalances ?? []).forEach(b => {
     if (b.owing > 0.01) candidates.push({ jobId: b.job.id, owing: b.owing });
@@ -148,11 +147,19 @@ export async function settleInvoiceOutstanding(invoiceId, method = 'Cash', jobId
   if (targets.length === 0) return { settled: 0, amount: 0 };
 
   const payDate = torontoToday();
-  let amount = 0;
+  const totalTargetOwing = targets.reduce((sum, t) => sum + t.owing, 0);
+  let remainingPayment = paymentAmount !== null ? Number(paymentAmount) : totalTargetOwing;
+  let amountProcessed = 0;
+  let jobsSettled = 0;
 
   for (const { jobId, owing } of targets) {
-    // Insert a payment for the exact remaining owing. We do NOT recompute/overwrite the job's
-    // subtotal/hst_amount/total_amount here — those are already finalized by recordPayment.
+    if (remainingPayment <= 0.009) break;
+
+    const amountToApply = Math.min(owing, remainingPayment);
+    remainingPayment = Math.max(0, remainingPayment - amountToApply);
+    amountProcessed += amountToApply;
+    jobsSettled++;
+
     const { error: payErr } = await supabase
       .from('payments')
       .insert({
@@ -160,49 +167,53 @@ export async function settleInvoiceOutstanding(invoiceId, method = 'Cash', jobId
         invoice_id: invoiceId,
         job_id: jobId,
         client_id: invoice.client_id,
-        amount: owing,
+        amount: Math.round(amountToApply * 100) / 100,
         payment_method: method,
         payment_date: payDate,
       });
     if (payErr) throw payErr;
 
+    const isPaidInFull = Math.abs(amountToApply - owing) < 0.01;
     const { error: jobErr } = await supabase
       .from('jobs')
-      .update({ payment_status: 'Paid', payment_method: method })
+      .update({ payment_status: isPaidInFull ? 'Paid' : 'Partial', payment_method: method })
       .eq('id', jobId)
       .eq('business_id', businessId);
     if (jobErr) throw jobErr;
 
-    // Flip that job's own invoice to Paid (the current invoice included).
-    const { data: link, error: linkErr } = await supabase
-      .from('invoice_jobs')
-      .select('invoice_id')
-      .eq('job_id', jobId)
-      .eq('business_id', businessId)
-      .maybeSingle();
-    if (linkErr) throw linkErr;
-    if (link?.invoice_id) {
-      const { error: flipErr } = await supabase.from('invoices')
-        .update({ status: 'Paid' })
-        .eq('id', link.invoice_id)
-        .eq('business_id', businessId);
-      if (flipErr) throw flipErr;
+    if (isPaidInFull) {
+      const { data: link, error: linkErr } = await supabase
+        .from('invoice_jobs')
+        .select('invoice_id')
+        .eq('job_id', jobId)
+        .eq('business_id', businessId)
+        .maybeSingle();
+      if (linkErr) throw linkErr;
     }
-
-    amount += owing;
   }
 
-  return { settled: targets.length, amount: Math.round(amount * 100) / 100 };
+  if (remainingPayment > 0.009) {
+    await supabase.from('client_credits').insert({
+      business_id: businessId,
+      client_id: invoice.client_id,
+      amount: Math.round(remainingPayment * 100) / 100,
+      reason: 'Overpayment on Invoice ' + invoice.invoice_number,
+    });
+    amountProcessed += remainingPayment;
+  }
+
+  const updatedInvoice = await fetchInvoiceById(invoiceId);
+  if (updatedInvoice.isPaidInFull) {
+    await supabase.from('invoices').update({ status: 'Paid' }).eq('id', invoiceId).eq('business_id', businessId);
+  } else if (updatedInvoice.amountPaid > 0) {
+    await supabase.from('invoices').update({ status: 'Partial' }).eq('id', invoiceId).eq('business_id', businessId);
+  }
+
+  return { settled: jobsSettled, amount: amountProcessed };
 }
 
-/**
- * Reverses a settlement recorded via settleInvoiceOutstanding by voiding the payments tagged
- * with this invoice id (soft delete — is_void = true, never a hard delete). Each affected
- * job's payment_status and its own invoice status are re-derived from remaining payments.
- *
- * @param {string} invoiceId
- * @param {string|null} jobId - limit the undo to a single job; null = void the whole batch.
- * @returns {Promise<{voided:number}>}
+  /**
+   romise<{voided:number}>}
  */
 export async function voidInvoiceSettlement(invoiceId, jobId = null) {
   const businessId = await getCurrentBusinessId();

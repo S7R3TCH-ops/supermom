@@ -4,33 +4,23 @@ import { fetchInvoiceById, settleInvoiceOutstanding, voidInvoiceSettlement, addJ
 import { computeJobFinancials } from '../lib/financialMath';
 import { useAuth } from '../context/AuthContext';
 import { getCurrentBusinessId } from '../data/currentBusiness';
-import { authHeaders } from '../lib/supabase';
 import { notifyDataChanged } from '../data/useData';
 
-const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const LABEL = { fontSize: 10, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: '1px' };
 
-function formatDate(dateStr) {
-  if (!dateStr) return '';
-  const [y, m, d] = dateStr.split('-');
-  return `${MONTHS[parseInt(m, 10) - 1]} ${parseInt(d, 10)}, ${y}`;
+function formatDate(ds) {
+  if (!ds) return '';
+  const d = new Date(ds + 'T12:00:00Z');
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
-
-// "9:00 AM – 12:30 PM" from a job's scheduled_time + duration (hours).
-// Same-named jobs on the same date stay distinguishable on the document.
-// Mirrored in api/_lib/invoicePdf.ts — keep both in sync.
-function formatJobTime(job) {
-  const t = job?.scheduled_time;
-  if (!t || typeof t !== 'string') return '';
-  const [hh, mm] = t.split(':').map(Number);
-  if (Number.isNaN(hh) || Number.isNaN(mm)) return '';
-  const fmt = (h, m) => `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
-  const hours = Number(job.actual_duration ?? job.estimated_hours ?? 0);
-  if (!hours || hours <= 0) return fmt(hh, mm);
-  const endTotal = hh * 60 + mm + Math.round(hours * 60);
-  return `${fmt(hh, mm)} – ${fmt(Math.floor(endTotal / 60) % 24, endTotal % 60)}`;
+function formatJobTime(j) {
+  if (j.start && j.end) {
+    const s = new Date(j.start).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase().replace(':00', '');
+    const e = new Date(j.end).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase().replace(':00', '');
+    return s + ' - ' + e;
+  }
+  return '';
 }
-
-const LABEL = { fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 8 };
 
 export default function InvoiceView() {
   const { id } = useParams();
@@ -49,6 +39,7 @@ export default function InvoiceView() {
   const [confirmUndo, setConfirmUndo] = useState(false);
   const [addJobIds, setAddJobIds]   = useState(() => new Set());
   const [addState, setAddState]     = useState('idle'); // idle | saving | error
+  const [paymentAmountStr, setPaymentAmountStr] = useState(''); // empty = auto-fill total
   const settlingRef = useRef(false);
   const addingRef   = useRef(false);
   const wrapRef = useRef(null);
@@ -548,10 +539,18 @@ export default function InvoiceView() {
                           <div style={{ fontSize: 11, color: '#999', marginTop: 1 }}>{formatJobTime(j)}</div>
                         )}
                       </td>
-                      <td style={{ padding: '8px 14px', verticalAlign: 'top' }}>
-                        <div>{j.service_name || 'Professional Services'}</div>
-                        {!f.isHourly && <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>Flat rate</div>}
-                      </td>
+                                              <td style={{ padding: '8px 14px', verticalAlign: 'top' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                            <span style={{ color: j.payment_status === 'Paid' ? '#999' : 'inherit' }}>{j.service_name || 'Professional Services'}</span>
+                            {j.payment_status === 'Paid' && (
+                              <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: 'rgba(22,163,74,0.1)', color: '#16A34A', textTransform: 'uppercase', letterSpacing: '0.5px' }}>PAID</span>
+                            )}
+                            {j.payment_status === 'Partial' && (
+                              <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: 'rgba(245,158,11,0.1)', color: '#D97706', textTransform: 'uppercase', letterSpacing: '0.5px' }}>PARTIAL</span>
+                            )}
+                          </div>
+                          {!f.isHourly && <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>Flat rate</div>}
+                        </td>
                       {anyHourly && <td style={{ textAlign: 'center', padding: '8px 14px', color: '#555', verticalAlign: 'top' }}>{f.isHourly ? `$${f.rate.toFixed(2)}` : ''}</td>}
                       {anyHourly && <td style={{ textAlign: 'center', padding: '8px 14px', color: '#555', verticalAlign: 'top' }}>{f.isHourly ? f.hours.toFixed(1) : ''}</td>}
                       <td style={{ textAlign: 'right', padding: '8px 14px', fontWeight: 600, verticalAlign: 'top' }}>

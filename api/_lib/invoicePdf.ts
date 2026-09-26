@@ -237,10 +237,16 @@ function InvoiceDocument({ invoice }) {
               T({ style: s.tdMuted }, job.scheduled_date ? formatDate(job.scheduled_date) : '—'),
               formatJobTime(job) ? T({ style: { fontSize: 7.5, color: LIGHT, marginTop: 1 } }, formatJobTime(job)) : null,
             ),
-            V({ style: s.cDesc },
-              T({ style: { fontSize: 10, color: INK } }, job.service_name || 'Professional Services'),
-              !f.isHourly ? T({ style: { fontSize: 7, color: LIGHT, marginTop: 2 } }, 'Flat rate') : null,
-            ),
+                          V({ style: s.cDesc },
+                V({ style: { flexDirection: 'row', alignItems: 'center' } },
+                  T({ style: { fontSize: 10, color: job.payment_status === 'Paid' ? LIGHT : INK } }, job.service_name || 'Professional Services'),
+                  job.payment_status === 'Paid' ? 
+                    T({ style: { fontSize: 7, fontFamily: 'Helvetica-Bold', padding: '1.5 4', backgroundColor: '#eefcf1', color: PAID, marginLeft: 6 } }, 'PAID') : null,
+                  job.payment_status === 'Partial' ? 
+                    T({ style: { fontSize: 7, fontFamily: 'Helvetica-Bold', padding: '1.5 4', backgroundColor: '#fef3c7', color: '#D97706', marginLeft: 6 } }, 'PARTIAL') : null
+                ),
+                !f.isHourly ? T({ style: { fontSize: 7, color: LIGHT, marginTop: 2 } }, 'Flat rate') : null,
+              ),
             anyHourly ? V({ style: s.cRate  }, f.isHourly ? T({ style: s.tdCenter }, `$${f.rate.toFixed(2)}`) : T({ style: s.tdCenter }, '')) : null,
             anyHourly ? V({ style: s.cHours }, f.isHourly ? T({ style: s.tdCenter }, f.hours.toFixed(1))     : T({ style: s.tdCenter }, '')) : null,
             V({ style: s.cAmt   }, T({ style: s.tdRight  }, `$${f.subtotal.toFixed(2)}`)),

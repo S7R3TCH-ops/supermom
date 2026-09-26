@@ -177,7 +177,7 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 ---
 
 
-## Current version: 0.13.82 — Sep 26, 2026 (LIVE on main; Statler voice booking)
+## Current version: 0.13.83 - Sep 26, 2026 (Statler schedule edits)\n\n**v0.13.83 (this session)**: Added supermom_edit_schedule to pi/ai/[action].js so Statler can edit existing jobs. Also patched supermom_schedule_job to trigger Google Calendar sync.\n\n**v0.13.82 — Sep 26, 2026 (LIVE on main; Statler voice booking)
 
 **v0.13.82 (this session)**: Fixed a follow-up issue with recurring series edits in `jobsRepo.js` where unrelated `ai_context` fields from the edited job (e.g. custom keys) would overwrite those of other jobs in the series. The series update now diffs the incoming `ai_context` patch against the fresh DB state of the job being edited, only propagating keys whose values actually changed, safely avoiding hardcoded exclusions.
 

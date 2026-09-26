@@ -44,15 +44,7 @@ function addMinutes(hhmm, mins) {
   return fmtTime12(`${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`);
 }
 
-// Snap a HH:MM string to the nearest 30-minute mark
-function roundToHalfHour(hhmm) {
-  if (!hhmm) return hhmm;
-  const [h, m] = hhmm.split(':').map(Number);
-  const total = Math.round((h * 60 + m) / 30) * 30;
-  const rh = Math.floor(total / 60) % 24;
-  const rm = total % 60;
-  return `${String(rh).padStart(2, '0')}:${String(rm).padStart(2, '0')}`;
-}
+
 
 // Returns HH:MM string for use in <input type="time">
 function toHHMMStr(startHHMM, mins) {

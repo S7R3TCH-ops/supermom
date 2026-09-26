@@ -177,9 +177,15 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 ---
 
 
-## Current version: 0.13.80 — Sep 25, 2026 (LIVE on main; Statler voice booking)
+## Current version: 0.13.81 — Sep 26, 2026 (LIVE on main; Statler voice booking)
 
-**v0.13.80 (this session)**: Fixed a bug where invalid 12-hour times (e.g. "13pm") were silently parsed into valid 24-hour times ("13:00") by `supermom_schedule_job` instead of being rejected. Added a bounds check (1-12) to the AM/PM parser so out-of-range times fall through to the strict `HH:MM` format validation and return a 400 error.
+**v0.13.81 (this session)**: Fixed two critical phase-2 review findings and performed cleanup:
+1. `jobsRepo.js` series updates now use a read-then-merge per-job approach to prevent wiping out job-specific `ai_context` fields like `gcal_event_id`.
+2. `JobDetailSheet.jsx`'s `drive_to` clear logic now correctly normalizes time strings (e.g. `HH:MM` vs `HH:MM:SS`) for comparison, and properly deletes the `drive_to` key instead of setting it to `null`.
+3. Guarded `limit` argument in `api/ai/[action].js`'s `supermom_read_schedule` with a fallback to the documented default `10` if out-of-range or NaN.
+4. Deleted dead `patch.js` root file and removed unused `roundToHalfHour` functions from detail/new job sheets.
+
+**v0.13.80**: Fixed a bug where invalid 12-hour times (e.g. "13pm") were silently parsed into valid 24-hour times ("13:00") by `supermom_schedule_job` instead of being rejected. Added a bounds check (1-12) to the AM/PM parser so out-of-range times fall through to the strict `HH:MM` format validation and return a 400 error.
 
 **v0.13.79**: Statler-tool candidate-disambigation UX hardening. When `supermom_schedule_job` hits multiple clients matching a name, response now includes `total: <count>` and caps `candidates[]` to the first 5 (prevents oversized payloads if a name is very common). The `result` message is now dynamic (`"${clients.length} clients match — ask the user which one."`), informing the caller how many were found. This is a backend-only change to `api/ai/[action].js`'s `statlerTool` handler, no schema migration, no new serverless function.
 

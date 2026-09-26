@@ -534,7 +534,11 @@ async function clientBrief(req, res, supabase, gemini, aiEnabled) {
  */
 async function dayBrief(req, res, supabase, gemini, auth, aiEnabled) {
   const { force, businessId: requestedBusinessId } = req.body;
-  const businessId = auth.isAdmin && requestedBusinessId ? requestedBusinessId : auth.businessId;
+  let businessId = auth.isAdmin && requestedBusinessId ? requestedBusinessId : auth.businessId;
+  if (auth.isAdmin && !businessId) {
+    const { data: qa } = await supabase.from('businesses').select('id').eq('is_test', true).limit(1).maybeSingle();
+    if (qa) businessId = qa.id;
+  }
   if (!businessId) return res.status(400).json({ error: 'Missing businessId' });
   if (!canAccessBusiness(auth, businessId)) {
     return res.status(403).json({ error: 'Forbidden: business not in your scope' });
@@ -877,8 +881,12 @@ async function statlerTool(req, res, supabase) {
 
     query = query.order('scheduled_date', { ascending: true }).order('scheduled_time', { ascending: true });
     
-    if (limit) {
-       query = query.limit(parseInt(limit, 10));
+    if (limit !== undefined && limit !== null) {
+       let parsedLimit = parseInt(limit, 10);
+       if (isNaN(parsedLimit) || parsedLimit < 1 || parsedLimit > 50) {
+         parsedLimit = 10; // Documented default
+       }
+       query = query.limit(parsedLimit);
     } else if (!date && !startDate && !endDate) {
        const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Toronto' }).format(new Date());
        if (!clientName) {

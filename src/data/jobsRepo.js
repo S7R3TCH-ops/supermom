@@ -335,16 +335,18 @@ export async function updateJob(id, patch, seriesAction = 'this') {
   if (!job.template_id) return updateJob(id, patch, 'this');
 
   // Protect series updates from flattening dates
-  const seriesPatch = { ...cleanPatch };
-  delete seriesPatch.scheduled_date;
-  if (seriesPatch.ai_context) {
-    const { gcal_event_id, gcal_sync_status, gcal_last_sync, ...restAi } = seriesPatch.ai_context;
-    seriesPatch.ai_context = restAi;
+  const seriesPatchBase = { ...cleanPatch };
+  delete seriesPatchBase.scheduled_date;
+  let aiContextPatch = null;
+  if (seriesPatchBase.ai_context) {
+    const { gcal_event_id, gcal_sync_status, gcal_last_sync, ...restAi } = seriesPatchBase.ai_context;
+    aiContextPatch = restAi;
+    delete seriesPatchBase.ai_context;
   }
 
   let query = supabase
     .from('jobs')
-    .update(seriesPatch)
+    .select()
     .eq('template_id', job.template_id)
     .eq('business_id', businessId)
     .eq('job_status', 'Scheduled'); // Only touch upcoming jobs
@@ -353,8 +355,25 @@ export async function updateJob(id, patch, seriesAction = 'this') {
     query = query.gte('scheduled_date', job.scheduled_date);
   }
 
-  const { data, error } = await query.select();
-  if (error) throw error;
+  const { data: targetJobs, error: targetErr } = await query;
+  if (targetErr) throw targetErr;
+
+  const data = await Promise.all(targetJobs.map(async (tj) => {
+    const jobPatch = { ...seriesPatchBase };
+    if (aiContextPatch) {
+      jobPatch.ai_context = { ...(tj.ai_context || {}), ...aiContextPatch };
+    }
+    const { data: updated, error: upErr } = await supabase
+      .from('jobs')
+      .update(jobPatch)
+      .eq('id', tj.id)
+      .eq('business_id', businessId)
+      .select()
+      .single();
+    if (upErr) throw upErr;
+    return updated;
+  }));
+
   assertWrote(data, 'updateJob:series');
 
   if (hasWorkerReassignment) {

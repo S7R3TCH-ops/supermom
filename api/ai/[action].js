@@ -919,7 +919,8 @@ async function statlerTool(req, res, supabase) {
       clients = data || [];
 
       if (clients.length === 0) {
-        const orConditions = tokens.filter(t => t.length > 2).map(t => `first_name.ilike.%${t}%,last_name.ilike.%${t}%`).join(',');
+        const stopWords = new Set(['and', 'the', 'for', 'with', 'to', 'of', 'in', 'at']);
+        const orConditions = tokens.filter(t => t.length > 2 && !stopWords.has(t.toLowerCase())).map(t => `first_name.ilike.%${t}%,last_name.ilike.%${t}%`).join(',');
         if (orConditions) {
           const { data: fallbackData, error: fallbackError } = await supabase
             .from('clients')
@@ -1063,7 +1064,8 @@ async function statlerTool(req, res, supabase) {
       clients = data || [];
 
       if (clients.length === 0) {
-        const orConditions = tokens.filter(t => t.length > 2).map(t => `first_name.ilike.%${t}%,last_name.ilike.%${t}%`).join(',');
+        const stopWords = new Set(['and', 'the', 'for', 'with', 'to', 'of', 'in', 'at']);
+        const orConditions = tokens.filter(t => t.length > 2 && !stopWords.has(t.toLowerCase())).map(t => `first_name.ilike.%${t}%,last_name.ilike.%${t}%`).join(',');
         if (orConditions) {
           const { data: fallbackData, error: fallbackError } = await supabase
             .from('clients')

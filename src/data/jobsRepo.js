@@ -337,6 +337,10 @@ export async function updateJob(id, patch, seriesAction = 'this') {
   // Protect series updates from flattening dates
   const seriesPatch = { ...cleanPatch };
   delete seriesPatch.scheduled_date;
+  if (seriesPatch.ai_context) {
+    const { gcal_event_id, gcal_sync_status, gcal_last_sync, ...restAi } = seriesPatch.ai_context;
+    seriesPatch.ai_context = restAi;
+  }
 
   let query = supabase
     .from('jobs')

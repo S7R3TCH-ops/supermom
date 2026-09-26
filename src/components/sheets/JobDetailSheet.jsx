@@ -355,6 +355,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
           ...(job.ai_context || {}),
           payment_method:  form.payment_method,
           recurrence_rule: form.recurrence || null,
+          ...((form.scheduled_date !== job.scheduled_date || form.scheduled_time !== job.scheduled_time) && { drive_to: null })
         },
       }, action);
       if (invoiceId) await recalcInvoiceTotal(invoiceId);
@@ -1032,7 +1033,7 @@ function EditMode({ job, stage, form, setForm, services, workers, business, T, m
         {activePicker === 'start' && (
           <WheelTimePicker
             value={form.scheduled_time || '09:00'}
-            onConfirm={(hhmm) => { set('scheduled_time', roundToHalfHour(hhmm)); setActivePicker(null); }}
+            onConfirm={(hhmm) => { set('scheduled_time', hhmm); setActivePicker(null); }}
             onCancel={() => setActivePicker(null)}
             T={T}
             mode={mode}
@@ -1042,7 +1043,7 @@ function EditMode({ job, stage, form, setForm, services, workers, business, T, m
           <WheelTimePicker
             value={toHHMMStr(form.scheduled_time, Math.round(parseFloat(form.estimated_hours || 0) * 60)) || form.scheduled_time}
             onConfirm={(hhmm) => {
-              const mins = diffMinutes(form.scheduled_time, roundToHalfHour(hhmm));
+              const mins = diffMinutes(form.scheduled_time, hhmm);
               if (mins != null) { set('estimated_hours', (mins / 60).toFixed(2)); set('hoursTouched', true); }
               setActivePicker(null);
             }}

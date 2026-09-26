@@ -488,7 +488,7 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
       {activePicker === 'start' && (
         <WheelTimePicker
           value={time || '09:00'}
-          onConfirm={(hhmm) => { setTime(roundToHalfHour(hhmm)); setActivePicker(null); }}
+          onConfirm={(hhmm) => { setTime(hhmm); setActivePicker(null); }}
           onCancel={() => setActivePicker(null)}
           T={T}
           mode={mode}
@@ -498,7 +498,7 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
         <WheelTimePicker
           value={toHHMMStr(time, duration) || time}
           onConfirm={(hhmm) => {
-            const mins = diffMinutes(time, roundToHalfHour(hhmm));
+            const mins = diffMinutes(time, hhmm);
             if (mins != null) setDuration(mins);
             setActivePicker(null);
           }}

@@ -327,7 +327,7 @@ export async function updateJob(id, patch, seriesAction = 'this') {
   // For 'future' or 'all', we need context from the current job
   const { data: job, error: fErr } = await supabase
     .from('jobs')
-    .select('template_id, scheduled_date')
+    .select('template_id, scheduled_date, ai_context')
     .eq('id', id)
     .eq('business_id', businessId)
     .single();
@@ -339,8 +339,14 @@ export async function updateJob(id, patch, seriesAction = 'this') {
   delete seriesPatchBase.scheduled_date;
   let aiContextPatch = null;
   if (seriesPatchBase.ai_context) {
-    const { gcal_event_id, gcal_sync_status, gcal_last_sync, ...restAi } = seriesPatchBase.ai_context;
-    aiContextPatch = restAi;
+    const before = job.ai_context || {};
+    const after = seriesPatchBase.ai_context;
+    aiContextPatch = {};
+    for (const key of Object.keys(after)) {
+      if (JSON.stringify(after[key]) !== JSON.stringify(before[key])) {
+        aiContextPatch[key] = after[key];
+      }
+    }
     delete seriesPatchBase.ai_context;
   }
 

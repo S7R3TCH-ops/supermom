@@ -177,9 +177,11 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 ---
 
 
-## Current version: 0.13.81 — Sep 26, 2026 (LIVE on main; Statler voice booking)
+## Current version: 0.13.82 — Sep 26, 2026 (LIVE on main; Statler voice booking)
 
-**v0.13.81 (this session)**: Fixed two critical phase-2 review findings and performed cleanup:
+**v0.13.82 (this session)**: Fixed a follow-up issue with recurring series edits in `jobsRepo.js` where unrelated `ai_context` fields from the edited job (e.g. custom keys) would overwrite those of other jobs in the series. The series update now diffs the incoming `ai_context` patch against the fresh DB state of the job being edited, only propagating keys whose values actually changed, safely avoiding hardcoded exclusions.
+
+**v0.13.81**: Fixed two critical phase-2 review findings and performed cleanup:
 1. `jobsRepo.js` series updates now use a read-then-merge per-job approach to prevent wiping out job-specific `ai_context` fields like `gcal_event_id`.
 2. `JobDetailSheet.jsx`'s `drive_to` clear logic now correctly normalizes time strings (e.g. `HH:MM` vs `HH:MM:SS`) for comparison, and properly deletes the `drive_to` key instead of setting it to `null`.
 3. Guarded `limit` argument in `api/ai/[action].js`'s `supermom_read_schedule` with a fallback to the documented default `10` if out-of-range or NaN.

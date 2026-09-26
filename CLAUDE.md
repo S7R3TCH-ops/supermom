@@ -222,6 +222,7 @@ Full version-by-version history (v0.13.41 through this version): `git log -- CLA
 
 ### ✅ Recent Changes
 
+- **2026-09-26**: Added stopword filter ("and", "the", "for", etc.) to the fuzzy client-search fallback to stop connector words causing false-positive matches (e.g. "and" matching "Alexander").
 - **2026-09-25**: Fixed fuzzy client search in `supermom_schedule_job` and `supermom_mark_paid` to check all name tokens instead of just the first, fixing edge cases with complex names.
 - **2026-09-25**: Added `supermom_add_client` and `supermom_mark_paid` AI handlers to `api/ai/[action].js` for the Statler voice bridge integration.
 

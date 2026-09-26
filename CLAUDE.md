@@ -225,6 +225,7 @@ Full version-by-version history (v0.13.41 through this version): `git log -- CLA
 - **2026-09-26**: Fixed Phase 1 High-Friction UI Bugs: Removed time picker snapping to :00/:30 increments in `NewJobSheet.jsx`/`JobDetailSheet.jsx`; fixed a `gcal_event_id` copying bug during series edits in `jobsRepo.js` that caused orphaned duplicates on Google Calendar; ensured `drive_to` is cleared on time/date changes to force recalculation and prevent stale push reminders; fixed "Calculating drive time..." getting stuck indefinitely in `Home.jsx` when location fails by falling back to "Drive time unavailable".
 - **2026-09-26**: Added stopword filter ("and", "the", "for", etc.) to the fuzzy client-search fallback to stop connector words causing false-positive matches (e.g. "and" matching "Alexander").
 - **2026-09-25**: Fixed fuzzy client search in `supermom_schedule_job` and `supermom_mark_paid` to check all name tokens instead of just the first, fixing edge cases with complex names.
+- **2026-09-26**: Added `supermom_read_schedule` AI handler to `api/ai/[action].js` for the Statler voice bridge integration to allow schedule reading.
 - **2026-09-25**: Added `supermom_add_client` and `supermom_mark_paid` AI handlers to `api/ai/[action].js` for the Statler voice bridge integration.
 
 ### 🔴 Bugs / Active issues

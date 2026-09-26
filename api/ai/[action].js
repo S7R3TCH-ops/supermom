@@ -919,17 +919,20 @@ async function statlerTool(req, res, supabase) {
       clients = data || [];
 
       if (clients.length === 0) {
-        const { data: fallbackData, error: fallbackError } = await supabase
-          .from('clients')
-          .select('id, business_id, first_name, last_name')
-          .eq('business_id', businessId)
-          .or(`first_name.ilike.%${firstToken}%,last_name.ilike.%${firstToken}%`);
-          
-        if (fallbackError) {
-          console.error('[statlerTool] fallback single token query failed:', fallbackError.message);
-          return res.status(500).json({ error: 'Failed to query clients' });
+        const orConditions = tokens.filter(t => t.length > 2).map(t => `first_name.ilike.%${t}%,last_name.ilike.%${t}%`).join(',');
+        if (orConditions) {
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from('clients')
+            .select('id, business_id, first_name, last_name')
+            .eq('business_id', businessId)
+            .or(orConditions);
+            
+          if (fallbackError) {
+            console.error('[statlerTool] fallback multi token query failed:', fallbackError.message);
+            return res.status(500).json({ error: 'Failed to query clients' });
+          }
+          clients = fallbackData || [];
         }
-        clients = fallbackData || [];
       }
     }
     
@@ -1060,13 +1063,16 @@ async function statlerTool(req, res, supabase) {
       clients = data || [];
 
       if (clients.length === 0) {
-        const { data: fallbackData, error: fallbackError } = await supabase
-          .from('clients')
-          .select('id, first_name, last_name')
-          .eq('business_id', businessId)
-          .or(`first_name.ilike.%${firstToken}%,last_name.ilike.%${firstToken}%`);
-        if (fallbackError) return res.status(500).json({ error: 'Failed to query clients' });
-        clients = fallbackData || [];
+        const orConditions = tokens.filter(t => t.length > 2).map(t => `first_name.ilike.%${t}%,last_name.ilike.%${t}%`).join(',');
+        if (orConditions) {
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from('clients')
+            .select('id, first_name, last_name')
+            .eq('business_id', businessId)
+            .or(orConditions);
+          if (fallbackError) return res.status(500).json({ error: 'Failed to query clients' });
+          clients = fallbackData || [];
+        }
       }
     }
 

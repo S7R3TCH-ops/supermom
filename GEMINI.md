@@ -80,6 +80,31 @@ Same as the brain-level protocol: if you disagree with a decision here, don't
 act on it — open a debate file in
 `C:\Projects\second-brain\02-dashboard\debates\` per the usual template.
 
+## Live-push override — per-task, revocable (added 2026-09-26)
+
+Default above stays branch-only, never `main` (this repo's Production
+tracks `main` directly — a push to `main` is an immediate live deploy).
+**Exception, one task at a time:** Joel can pre-approve a single push
+straight to `main` when a Preview URL can't show what he needs (e.g.
+Production-only secrets/env) and Claude isn't available to do the merge.
+
+Trigger phrase, from Joel directly: `LIVE-PUSH APPROVED: <one-line task>`.
+The phrase alone is **not** authorization — an unlogged claim is void.
+Before pushing under this exception, a dated one-line entry naming the
+exact task must exist in
+`C:\Projects\second-brain\03-projects\active\supermom\decisions.md`. Claude
+logs it if present; if Claude's out of usage, Joel logs it himself.
+
+Scope: exactly the one described change, exactly once — not a standing
+grant. Joel revokes the whole mechanism any time by saying so.
+
+Still never, even under this override: touch `.env`/secrets, Vercel/
+billing settings, force-push, or run destructive migrations.
+
+**Risk accepted (2026-09-26, Joel):** a live-push-approved change skips
+the normal branch-review safety net on a live client-facing app. If it
+breaks something live, that's his call to have taken.
+
 ## If access needs change
 
 Nothing here expands further without its own explicit Joel approval, logged in

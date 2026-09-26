@@ -177,9 +177,17 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 ---
 
 
-## Current version: 0.13.80 — Sep 25, 2026 (LIVE on main; Statler voice booking)
+## Current version: 0.13.82 — Sep 26, 2026 (LIVE on main; Statler voice booking)
 
-**v0.13.80 (this session)**: Fixed a bug where invalid 12-hour times (e.g. "13pm") were silently parsed into valid 24-hour times ("13:00") by `supermom_schedule_job` instead of being rejected. Added a bounds check (1-12) to the AM/PM parser so out-of-range times fall through to the strict `HH:MM` format validation and return a 400 error.
+**v0.13.82 (this session)**: Fixed a follow-up issue with recurring series edits in `jobsRepo.js` where unrelated `ai_context` fields from the edited job (e.g. custom keys) would overwrite those of other jobs in the series. The series update now diffs the incoming `ai_context` patch against the fresh DB state of the job being edited, only propagating keys whose values actually changed, safely avoiding hardcoded exclusions.
+
+**v0.13.81**: Fixed two critical phase-2 review findings and performed cleanup:
+1. `jobsRepo.js` series updates now use a read-then-merge per-job approach to prevent wiping out job-specific `ai_context` fields like `gcal_event_id`.
+2. `JobDetailSheet.jsx`'s `drive_to` clear logic now correctly normalizes time strings (e.g. `HH:MM` vs `HH:MM:SS`) for comparison, and properly deletes the `drive_to` key instead of setting it to `null`.
+3. Guarded `limit` argument in `api/ai/[action].js`'s `supermom_read_schedule` with a fallback to the documented default `10` if out-of-range or NaN.
+4. Deleted dead `patch.js` root file and removed unused `roundToHalfHour` functions from detail/new job sheets.
+
+**v0.13.80**: Fixed a bug where invalid 12-hour times (e.g. "13pm") were silently parsed into valid 24-hour times ("13:00") by `supermom_schedule_job` instead of being rejected. Added a bounds check (1-12) to the AM/PM parser so out-of-range times fall through to the strict `HH:MM` format validation and return a 400 error.
 
 **v0.13.79**: Statler-tool candidate-disambigation UX hardening. When `supermom_schedule_job` hits multiple clients matching a name, response now includes `total: <count>` and caps `candidates[]` to the first 5 (prevents oversized payloads if a name is very common). The `result` message is now dynamic (`"${clients.length} clients match — ask the user which one."`), informing the caller how many were found. This is a backend-only change to `api/ai/[action].js`'s `statlerTool` handler, no schema migration, no new serverless function.
 
@@ -222,8 +230,10 @@ Full version-by-version history (v0.13.41 through this version): `git log -- CLA
 
 ### ✅ Recent Changes
 
+- **2026-09-26**: Fixed Phase 1 High-Friction UI Bugs: Removed time picker snapping to :00/:30 increments in `NewJobSheet.jsx`/`JobDetailSheet.jsx`; fixed a `gcal_event_id` copying bug during series edits in `jobsRepo.js` that caused orphaned duplicates on Google Calendar; ensured `drive_to` is cleared on time/date changes to force recalculation and prevent stale push reminders; fixed "Calculating drive time..." getting stuck indefinitely in `Home.jsx` when location fails by falling back to "Drive time unavailable".
 - **2026-09-26**: Added stopword filter ("and", "the", "for", etc.) to the fuzzy client-search fallback to stop connector words causing false-positive matches (e.g. "and" matching "Alexander").
 - **2026-09-25**: Fixed fuzzy client search in `supermom_schedule_job` and `supermom_mark_paid` to check all name tokens instead of just the first, fixing edge cases with complex names.
+- **2026-09-26**: Added `supermom_read_schedule` AI handler to `api/ai/[action].js` for the Statler voice bridge integration to allow schedule reading.
 - **2026-09-25**: Added `supermom_add_client` and `supermom_mark_paid` AI handlers to `api/ai/[action].js` for the Statler voice bridge integration.
 
 ### 🔴 Bugs / Active issues

@@ -395,10 +395,11 @@ export default function Home() {
 
   useEffect(() => {
     if (!loading && todayJobs.length > 0 && !routesFetchedRef.current) {
-      const needsUpdate = todayJobs.some(j => j.ai_context?.drive_to === undefined);
+      const scheduledJobs = todayJobs.filter(j => j.status === 'Scheduled');
+      const needsUpdate = scheduledJobs.some(j => j.ai_context?.drive_to === undefined);
       if (needsUpdate) {
         routesFetchedRef.current = true;
-        updateDailyRoutes(todayJobs);
+        updateDailyRoutes(scheduledJobs);
       }
     }
   }, [todayJobs, loading]);
@@ -510,7 +511,7 @@ export default function Home() {
     e.stopPropagation();
     setIsRefreshingTraffic(true);
     try {
-      await updateDailyRoutes(todayJobs);
+      await updateDailyRoutes(todayJobs.filter(j => j.status === 'Scheduled'));
       notifyDataChanged();
     } catch {
       /* ignore */
@@ -1057,7 +1058,7 @@ export default function Home() {
                       let driveLabel;
                       if (locationLoading) driveLabel = 'Getting your location…';
                       else if (leaveBy) driveLabel = leaveBy.text;
-                      else if (next.address) driveLabel = 'Calculating drive time…';
+                      else if (next.address) driveLabel = 'Drive time unavailable…';
                       else driveLabel = 'No address on file';
                       const arrivalTime = (() => {
                         const secs = locDrive?.durationValue ?? fallbackValue ?? null;
@@ -1373,4 +1374,5 @@ export default function Home() {
     </div>
   );
 }
+
 

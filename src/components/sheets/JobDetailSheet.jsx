@@ -78,13 +78,7 @@ function diffMinutes(startHHMM, endHHMM) {
   const diff = (eh * 60 + em) - (sh * 60 + sm);
   return diff >= 15 ? diff : null;
 }
-function roundToHalfHour(hhmm) {
-  if (!hhmm) return hhmm;
-  const [h, m] = hhmm.split(':').map(Number);
-  const total = Math.round((h * 60 + m) / 30) * 30;
-  const rh = Math.floor(total / 60) % 24, rm = total % 60;
-  return `${String(rh).padStart(2, '0')}:${String(rm).padStart(2, '0')}`;
-}
+
 
 /* ============= ROOT COMPONENT ============= */
 export default function JobDetailSheet({ jobId, onClose }) {
@@ -332,6 +326,19 @@ export default function JobDetailSheet({ jobId, onClose }) {
       // so a series-wide note edit reopens all of them, not just this one —
       // intentional, not a bug (design doc §9 correction #5).
       const noteTextChanged = (form.job_notes || '') !== (job.job_notes || '');
+      
+      const nextAiContext = {
+        ...(job.ai_context || {}),
+        payment_method:  form.payment_method,
+        recurrence_rule: form.recurrence || null,
+      };
+      
+      const oldTime = job.scheduled_time?.slice(0, 5);
+      const newTime = form.scheduled_time?.slice(0, 5);
+      if (form.scheduled_date !== job.scheduled_date || newTime !== oldTime) {
+        delete nextAiContext.drive_to;
+      }
+
       await updateJob(job.id, {
         scheduled_date:  form.scheduled_date,
         scheduled_time:  form.scheduled_time,
@@ -351,11 +358,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
           additionalCosts: form.additional_costs_json,
           taxEnabled: form.tax_enabled,
         }, business),
-        ai_context: {
-          ...(job.ai_context || {}),
-          payment_method:  form.payment_method,
-          recurrence_rule: form.recurrence || null,
-        },
+        ai_context: nextAiContext,
       }, action);
       if (invoiceId) await recalcInvoiceTotal(invoiceId);
       setShowSeriesPicker(false);
@@ -1032,7 +1035,7 @@ function EditMode({ job, stage, form, setForm, services, workers, business, T, m
         {activePicker === 'start' && (
           <WheelTimePicker
             value={form.scheduled_time || '09:00'}
-            onConfirm={(hhmm) => { set('scheduled_time', roundToHalfHour(hhmm)); setActivePicker(null); }}
+            onConfirm={(hhmm) => { set('scheduled_time', hhmm); setActivePicker(null); }}
             onCancel={() => setActivePicker(null)}
             T={T}
             mode={mode}
@@ -1042,7 +1045,7 @@ function EditMode({ job, stage, form, setForm, services, workers, business, T, m
           <WheelTimePicker
             value={toHHMMStr(form.scheduled_time, Math.round(parseFloat(form.estimated_hours || 0) * 60)) || form.scheduled_time}
             onConfirm={(hhmm) => {
-              const mins = diffMinutes(form.scheduled_time, roundToHalfHour(hhmm));
+              const mins = diffMinutes(form.scheduled_time, hhmm);
               if (mins != null) { set('estimated_hours', (mins / 60).toFixed(2)); set('hoursTouched', true); }
               setActivePicker(null);
             }}

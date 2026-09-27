@@ -41,6 +41,7 @@ export default function PostJobSheet({ jobId, onClose }) {
   // showing — see showNoteGate below (design doc §3.4).
   const [noteChoice, setNoteChoice] = useState(null);
   const noteGateRef = useRef(null);
+  const applyingSpilloverRef = useRef(false);
   // True when this job already had a note carried forward to the client's next
   // booking (client.pending_note_source_job_id === this job, not yet consumed)
   // *before* this sheet session — used to prompt keep/remove once this job is
@@ -226,6 +227,7 @@ export default function PostJobSheet({ jobId, onClose }) {
               .from('payments')
               .select('job_id, amount')
               .in('job_id', outstanding.map(j => j.id))
+              .eq('business_id', business.id)
               .eq('is_void', false);
             const paidByJob = {};
             (pays || []).forEach(p => { paidByJob[p.job_id] = (paidByJob[p.job_id] || 0) + Number(p.amount); });
@@ -587,15 +589,23 @@ export default function PostJobSheet({ jobId, onClose }) {
                     type="button"
                     disabled={surplusSpilloverBusy || allocations.length === 0}
                     onClick={async () => {
+                      if (applyingSpilloverRef.current) return;
+                      applyingSpilloverRef.current = true;
                       setSurplusSpilloverBusy(true);
                       try {
-                        await applyCreditToJobs(business.id, job.client_id, allocations);
-                        setAppliedReceipt({ amount: appliedTotal, allocations });
+                        const res = await applyCreditToJobs(business.id, job.client_id, allocations);
+                        if (res.totalApplied > 0.009) {
+                          setAppliedReceipt({
+                            amount: res.totalApplied,
+                            allocations: res.applied.map(a => ({ jobId: a.jobId, amount: a.amount })),
+                          });
+                        }
                         notifyDataChangedNow();
                         setPhase('nudge');
                       } catch (err) {
                         toast.error(err.message || 'Failed to apply credit to other jobs.');
                       } finally {
+                        applyingSpilloverRef.current = false;
                         setSurplusSpilloverBusy(false);
                       }
                     }}

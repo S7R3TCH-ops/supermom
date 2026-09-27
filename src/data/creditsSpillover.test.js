@@ -172,6 +172,96 @@ describe('applyCreditToJobs', () => {
     expect(db.client_credits.filter(c => c.kind === 'applied')).toHaveLength(0);
     expect(db.jobs.find(j => j.id === 'job-1').payment_status).toBe('');
   });
+
+  it('skips job 1 if already fully paid (owing <= 0) and applies remaining to job 2', async () => {
+    db.client_credits.push({
+      id: 'cc-1',
+      business_id: 'biz-1',
+      client_id: 'client-1',
+      amount: 100,
+      kind: 'issued',
+    });
+    // job-1 is already fully paid ($60 total, $60 paid)
+    db.jobs.push(
+      { id: 'job-1', business_id: 'biz-1', client_id: 'client-1', pricing_type: 'Flat', flat_rate: 60, payment_status: 'Paid' },
+      { id: 'job-2', business_id: 'biz-1', client_id: 'client-1', pricing_type: 'Flat', flat_rate: 80, payment_status: '' }
+    );
+    db.payments.push({
+      id: 'pay-existing-1',
+      business_id: 'biz-1',
+      client_id: 'client-1',
+      job_id: 'job-1',
+      amount: 60,
+      payment_method: 'Cash',
+      is_void: false,
+    });
+
+    const allocations = [
+      { jobId: 'job-1', amount: 30 },
+      { jobId: 'job-2', amount: 40 },
+    ];
+
+    const res = await applyCreditToJobs('biz-1', 'client-1', allocations);
+
+    // job-1 was skipped (owing <= 0), only job-2 received payment
+    expect(res.payments).toHaveLength(1);
+    expect(res.ledgers).toHaveLength(1);
+    expect(res.applied).toHaveLength(1);
+    expect(res.applied[0].jobId).toBe('job-2');
+    expect(res.applied[0].amount).toBe(40);
+    expect(res.totalApplied).toBe(40);
+
+    // Verify payments in DB: job-1 still only has its original cash payment
+    const j1Payments = db.payments.filter(p => p.job_id === 'job-1' && !p.is_void);
+    expect(j1Payments).toHaveLength(1);
+    expect(j1Payments[0].payment_method).toBe('Cash');
+
+    // job-2 has credit payment
+    const j2Payments = db.payments.filter(p => p.job_id === 'job-2' && !p.is_void);
+    expect(j2Payments).toHaveLength(1);
+    expect(j2Payments[0].payment_method).toBe('Credit');
+    expect(j2Payments[0].amount).toBe(40);
+
+    // Verify client_credits in DB: only applied for job-2
+    const appliedRows = db.client_credits.filter(c => c.kind === 'applied');
+    expect(appliedRows).toHaveLength(1);
+    expect(appliedRows[0].job_id).toBe('job-2');
+    expect(appliedRows[0].amount).toBe(-40);
+
+    // Verify status
+    expect(db.jobs.find(j => j.id === 'job-1').payment_status).toBe('Paid');
+    expect(db.jobs.find(j => j.id === 'job-2').payment_status).toBe('Partial');
+  });
+
+  it('clamps credit allocation to job current owing', async () => {
+    db.client_credits.push({
+      id: 'cc-1',
+      business_id: 'biz-1',
+      client_id: 'client-1',
+      amount: 100,
+      kind: 'issued',
+    });
+    db.jobs.push(
+      { id: 'job-1', business_id: 'biz-1', client_id: 'client-1', pricing_type: 'Flat', flat_rate: 50, payment_status: '' }
+    );
+    db.payments.push({
+      id: 'pay-part',
+      business_id: 'biz-1',
+      client_id: 'client-1',
+      job_id: 'job-1',
+      amount: 30,
+      payment_method: 'Cash',
+      is_void: false,
+    });
+
+    // Allocates 40, but owing is only 20
+    const allocations = [{ jobId: 'job-1', amount: 40 }];
+    const res = await applyCreditToJobs('biz-1', 'client-1', allocations);
+
+    expect(res.totalApplied).toBe(20);
+    expect(res.applied[0].amount).toBe(20);
+    expect(db.jobs.find(j => j.id === 'job-1').payment_status).toBe('Paid');
+  });
 });
 
 describe('moveCreditBackFromJob', () => {

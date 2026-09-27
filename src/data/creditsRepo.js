@@ -89,7 +89,7 @@ export async function reclassifyToTip(businessId, clientId, jobId, amount) {
 
 export async function applyCreditToJobs(businessId, clientId, allocations) {
   if (!businessId || !clientId || !allocations || allocations.length === 0) {
-    return { payments: [], ledgers: [] };
+    return { payments: [], ledgers: [], applied: [], totalApplied: 0 };
   }
   const totalAllocations = allocations.reduce((s, a) => s + round2(a.amount), 0);
   const balance = await getClientCreditBalance(businessId, clientId);
@@ -99,37 +99,54 @@ export async function applyCreditToJobs(businessId, clientId, allocations) {
 
   const createdPayments = [];
   const createdLedgers = [];
+  const applied = [];
 
   for (const alloc of allocations) {
-    const payDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Toronto' }).format(new Date());
-    const { data: pData, error: pErr } = await supabase.from('payments').insert({
-      business_id: businessId,
-      client_id: clientId,
-      job_id: alloc.jobId,
-      amount: round2(alloc.amount),
-      payment_method: 'Credit',
-      payment_date: payDate,
-    }).select().single();
-    if (pErr) throw pErr;
-    createdPayments.push(pData);
-
-    const cData = await applyCredit(businessId, clientId, alloc.jobId, alloc.amount);
-    createdLedgers.push(cData);
-
     const [{ data: job, error: jobErr }, { data: existingPayments, error: paymentsErr }] = await Promise.all([
       supabase.from('jobs').select('*').eq('id', alloc.jobId).eq('business_id', businessId).single(),
       supabase.from('payments').select('amount').eq('job_id', alloc.jobId).eq('business_id', businessId).eq('is_void', false),
     ]);
     if (jobErr) throw jobErr;
     if (paymentsErr) throw paymentsErr;
-    const paid = (existingPayments ?? []).reduce((s, p) => s + Number(p.amount), 0);
+
+    const alreadyPaid = (existingPayments ?? []).reduce((s, p) => s + Number(p.amount), 0);
     const total = Math.round(computeJobTotal(job) * 100) / 100;
-    const status = paid >= total - 0.01 && paid > 0 ? 'Paid' : paid > 0 ? 'Partial' : '';
+    const currentOwing = Math.max(0, Math.round((total - alreadyPaid) * 100) / 100);
+
+    if (currentOwing <= 0.009) continue;
+
+    const amountToApply = round2(Math.min(alloc.amount, currentOwing));
+    if (amountToApply <= 0.009) continue;
+
+    const payDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Toronto' }).format(new Date());
+    const { data: pData, error: pErr } = await supabase.from('payments').insert({
+      business_id: businessId,
+      client_id: clientId,
+      job_id: alloc.jobId,
+      amount: amountToApply,
+      payment_method: 'Credit',
+      payment_date: payDate,
+    }).select().single();
+    if (pErr) throw pErr;
+    createdPayments.push(pData);
+
+    const cData = await applyCredit(businessId, clientId, alloc.jobId, amountToApply);
+    createdLedgers.push(cData);
+
+    const newPaid = alreadyPaid + amountToApply;
+    const status = newPaid >= total - 0.01 && newPaid > 0 ? 'Paid' : newPaid > 0 ? 'Partial' : '';
     const { error: statusErr } = await supabase.from('jobs').update({ payment_status: status }).eq('id', alloc.jobId).eq('business_id', businessId);
     if (statusErr) throw statusErr;
+
+    applied.push({ jobId: alloc.jobId, amount: amountToApply, payment: pData, ledger: cData });
   }
 
-  return { payments: createdPayments, ledgers: createdLedgers };
+  return {
+    payments: createdPayments,
+    ledgers: createdLedgers,
+    applied,
+    totalApplied: round2(applied.reduce((s, a) => s + a.amount, 0)),
+  };
 }
 
 export async function moveCreditBackFromJob(businessId, clientId, jobId) {

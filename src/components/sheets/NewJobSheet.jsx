@@ -758,7 +758,7 @@ function Step2What({
           <button
             type="button"
             aria-label="Decrease duration"
-            onClick={() => setDuration(d => Math.max(30, (d || 30) - 30))}
+            onClick={() => setDuration(d => Math.max(15, (d || 60) - 15))}
             style={{ width: 44, height: 44, borderRadius: 12, border: `1.5px solid ${T.cardBorder}`, background: T.card, color: T.ink, fontSize: 20, fontWeight: 600, cursor: 'pointer' }}
           >–</button>
           <div style={{ flex: 1, textAlign: 'center', background: T.card, border: `1.5px solid ${duration ? T.cardBorder : T.pink}`, borderRadius: 12, padding: '10px 0' }}>
@@ -770,7 +770,7 @@ function Step2What({
           <button
             type="button"
             aria-label="Increase duration"
-            onClick={() => setDuration(d => (d || 0) + 30)}
+            onClick={() => setDuration(d => (d || 0) + 15)}
             style={{ width: 44, height: 44, borderRadius: 12, border: `1.5px solid ${T.cardBorder}`, background: T.card, color: T.ink, fontSize: 20, fontWeight: 600, cursor: 'pointer' }}
           >+</button>
         </div>

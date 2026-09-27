@@ -106,8 +106,9 @@ export default function MyRequestsSheet({ isOpen, onClose, onNewRequest, refresh
                 const kind = KIND_META[r.kind] || KIND_META.idea;
                 const badge = REQUEST_STATUS_BADGES[r.status] || REQUEST_STATUS_BADGES.new;
                 const isOpen = expandedId === r.id;
+                const isNudgeable = isOpen && r.status !== "done" && r.status !== "declined" && !r.body.includes("[Follow up]") && (Date.now() - new Date(r.created_at).getTime() > 48 * 60 * 60 * 1000);
                 return (
-                  <button
+                  <div
                     key={r.id}
                     type="button"
                     aria-expanded={isOpen}
@@ -140,7 +141,31 @@ export default function MyRequestsSheet({ isOpen, onClose, onNewRequest, refresh
                         <div style={{ fontFamily: T.font, fontSize: 12.5, color: T.ink, whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.45 }}>{r.admin_notes}</div>
                       </div>
                     )}
-                  </button>
+                                      {isNudgeable && (
+                      <button
+                        type="button"
+                        disabled={nudgingId === r.id}
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          setNudgingId(r.id);
+                          try {
+                            await nudgeRequest(r.id, r.body);
+                            setRequests(prev => prev.map(x => x.id === r.id ? { ...x, body: x.body + "\n\n[Follow up]: Can I get an update on this?" } : x));
+                          } catch (err) {
+                            console.error(err);
+                          } finally {
+                            setNudgingId(null);
+                          }
+                        }}
+                        style={{
+                          marginTop: 6, width: "100%", padding: "10px", borderRadius: 8, border: `1.5px solid ${T.cardBorder}`,
+                          background: T.bg, color: T.ink, fontFamily: T.font, fontSize: 12.5, fontWeight: 600, cursor: nudgingId === r.id ? "default" : "pointer"
+                        }}
+                      >
+                        {nudgingId === r.id ? "Sending..." : "Nudge Joel for an update"}
+                      </button>
+                    )}
+                  </div>
                 );
               })}
             </div>
@@ -168,3 +193,4 @@ export default function MyRequestsSheet({ isOpen, onClose, onNewRequest, refresh
     </div>
   );
 }
+

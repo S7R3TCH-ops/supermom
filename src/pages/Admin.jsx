@@ -584,7 +584,7 @@ export default function Admin() {
                               </button>
                             </div>
                           </div>
-                        )}
+                        </div></div></div>
                       </div>
                     );
                   })}
@@ -643,7 +643,7 @@ export default function Admin() {
                               <pre style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0 }}>{e.stack}</pre>
                             )}
                           </div>
-                        )}
+                        </div></div></div>
                       </div>
                     );
                   })}

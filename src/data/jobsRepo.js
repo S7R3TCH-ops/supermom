@@ -564,12 +564,23 @@ export async function hardDeleteJob(id) {
 export async function revertJobToPreCompletion(id) {
   const businessId = await getCurrentBusinessId();
 
-  // 1. Hard-delete all payments for this job
-  const { error: delPayErr } = await supabase
-    .from('payments').delete().eq('job_id', id).eq('business_id', businessId);
-  if (delPayErr) throw delPayErr;
+  // 1. Void all payments for this job (never hard-delete)
+  const { error: voidPayErr } = await supabase
+    .from('payments')
+    .update({ is_void: true })
+    .eq('job_id', id)
+    .eq('business_id', businessId);
+  if (voidPayErr) throw voidPayErr;
 
-  // 2. Find all invoices linked to this job and clean them up
+  // 2. Delete all client_credits ledger rows associated with this job (issued, applied, reclassified_to_tip)
+  const { error: delCreditsErr } = await supabase
+    .from('client_credits')
+    .delete()
+    .eq('job_id', id)
+    .eq('business_id', businessId);
+  if (delCreditsErr) throw delCreditsErr;
+
+  // 3. Find all invoices linked to this job and clean them up
   // A failed read here must throw, not fall through to the Void branch below
   // (an empty `links` from a failed read would wrongly look like "no invoices left").
   const { data: links, error: linksErr } = await supabase
@@ -603,7 +614,7 @@ export async function revertJobToPreCompletion(id) {
     }
   }
 
-  // 3. Revert job to pre-completion state
+  // 4. Revert job to pre-completion state
   const { error } = await supabase.from('jobs')
     .update({
       job_status: 'Scheduled',

@@ -4,6 +4,7 @@ import {
   buildPaymentReceipt,
   getLastPaymentRound,
   splitSurplusToJobs,
+  calculateSpilloverAmount,
 } from './paymentPreview';
 
 describe('buildPaymentPreview', () => {
@@ -155,6 +156,24 @@ describe('splitSurplusToJobs', () => {
       '✓ Fri Sep 25 — paid in full ($100.00)',
       '✓ Mon Sep 28 — paid in full ($30.00)',
     ]);
+  });
+});
+
+describe('calculateSpilloverAmount', () => {
+  it('surplus 50 with balance 0 -> 0', () => {
+    expect(calculateSpilloverAmount(50, 0)).toBe(0);
+  });
+
+  it('surplus 50 with balance 20 -> 20', () => {
+    expect(calculateSpilloverAmount(50, 20)).toBe(20);
+  });
+
+  it('surplus 50 with balance 100 -> 50', () => {
+    expect(calculateSpilloverAmount(50, 100)).toBe(50);
+  });
+
+  it('surplus 50 with negative balance -> 0', () => {
+    expect(calculateSpilloverAmount(50, -10)).toBe(0);
   });
 });
 

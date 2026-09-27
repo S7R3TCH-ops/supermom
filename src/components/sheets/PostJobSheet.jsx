@@ -16,7 +16,7 @@ import { triggerHaptic } from '../../lib/haptics';
 import { getWorkerLabel } from '../../lib/labels';
 import { validatePaymentAmount } from '../../lib/jobDraftPolicy';
 import { getClientCreditBalance, applyCreditToJobs, moveCreditBackFromJob } from '../../data/creditsRepo';
-import { splitSurplusToJobs } from '../../lib/paymentPreview';
+import { splitSurplusToJobs, calculateSpilloverAmount } from '../../lib/paymentPreview';
 import { setPendingNote, fetchClientById } from '../../data/clientsRepo';
 import { setJobNoteResolved } from '../../data/jobsRepo';
 import { isNoteOpen } from '../../lib/noteState';
@@ -68,6 +68,7 @@ export default function PostJobSheet({ jobId, onClose }) {
   const [undoCreditBusy, setUndoCreditBusy] = useState(false);
   const [recordedPaidAmt, setRecordedPaidAmt] = useState(0);
   const [savedSurplus, setSavedSurplus] = useState(0);
+  const [surplusAmount, setSurplusAmount] = useState(0);
 
   // Derived state defined early to satisfy linter and simplify logic
   // Use flat_rate (pre-tax base set at booking) or subtotal DB column (pre-tax base written by recordPayment).
@@ -123,7 +124,7 @@ export default function PostJobSheet({ jobId, onClose }) {
   const creditToApply = useMemo(() => {
     if (jobPayments.some(p => p.payment_method === 'Credit')) return 0;
     const remaining = Math.max(0, Math.round((liveTotal - realPaid) * 100) / 100);
-    return Math.min(availableCredit, remaining);
+    return Math.min(Math.max(0, availableCredit), remaining);
   }, [availableCredit, jobPayments, liveTotal, realPaid]);
 
   const alreadyPaid = realPaid + creditToApply;
@@ -220,7 +221,9 @@ export default function PostJobSheet({ jobId, onClose }) {
           setPhase('nudge');
         }
       } else {
-        if (currentSurplus > 0.009) {
+        const clientCredit = await getClientCreditBalance(business.id, job.client_id);
+        const spill = Math.min(currentSurplus, Math.max(0, clientCredit));
+        if (spill > 0.009) {
           let jobsWithOwing = outstanding;
           if (outstanding.length > 0) {
             const { data: pays } = await supabase
@@ -243,12 +246,13 @@ export default function PostJobSheet({ jobId, onClose }) {
             }).filter(j => j.owing > 0.009);
           }
 
+          setSurplusAmount(spill);
           if (jobsWithOwing.length > 0) {
             setClientOutstanding(jobsWithOwing);
             setPhase('surplus-spillover');
           } else {
             setPhase('nudge');
-            setSurplusNotice(currentSurplus);
+            setSurplusNotice(spill);
           }
         } else {
           setPhase('nudge');
@@ -538,10 +542,9 @@ export default function PostJobSheet({ jobId, onClose }) {
         ) : isSurplusSpillover ? (
           /* ── Surplus spillover panel ── */
           (() => {
-            const activeSurplus = savedSurplus || surplus;
             const clientName = job?.client_name || 'This client';
             const totalPaidOnJob = recordedPaidAmt + alreadyPaid;
-            const { allocations, leftoverCredit, lines, appliedTotal } = splitSurplusToJobs(clientOutstanding, activeSurplus);
+            const { allocations, leftoverCredit, lines, appliedTotal } = splitSurplusToJobs(clientOutstanding, surplusAmount);
 
             return (
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '24px 20px', gap: 16 }}>
@@ -550,7 +553,7 @@ export default function PostJobSheet({ jobId, onClose }) {
                     {clientName} has other open invoices
                   </div>
                   <div style={{ fontSize: 13, color: T.inkMuted, lineHeight: 1.45 }}>
-                    ${totalPaidOnJob.toFixed(2)} covers this job (${liveTotal.toFixed(2)}). ${activeSurplus.toFixed(2)} left over.
+                    ${totalPaidOnJob.toFixed(2)} covers this job (${liveTotal.toFixed(2)}). ${surplusAmount.toFixed(2)} left over.
                   </div>
                 </div>
 
@@ -624,7 +627,7 @@ export default function PostJobSheet({ jobId, onClose }) {
                     type="button"
                     disabled={surplusSpilloverBusy}
                     onClick={() => {
-                      toast.success(`Kept $${activeSurplus.toFixed(2)} as credit for ${clientName}'s next job.`);
+                      toast.success(`Kept $${surplusAmount.toFixed(2)} as credit for ${clientName}'s next job.`);
                       setPhase('nudge');
                     }}
                     style={{
@@ -634,7 +637,7 @@ export default function PostJobSheet({ jobId, onClose }) {
                       cursor: 'pointer', minHeight: 44,
                     }}
                   >
-                    Keep ${activeSurplus.toFixed(2)} as credit instead
+                    Keep ${surplusAmount.toFixed(2)} as credit instead
                   </button>
                 </div>
               </div>

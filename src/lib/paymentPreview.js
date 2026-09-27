@@ -202,3 +202,14 @@ export function splitSurplusToJobs(otherJobs, surplus) {
   };
 }
 
+/**
+ * Calculates the valid spillover amount capped to available client credit.
+ *
+ * @param {number|string} surplus
+ * @param {number|string} creditBalance
+ * @returns {number}
+ */
+export function calculateSpilloverAmount(surplus, creditBalance) {
+  return Math.max(0, Math.min(Number(surplus) || 0, Math.max(0, Number(creditBalance) || 0)));
+}
+

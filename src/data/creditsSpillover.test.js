@@ -79,6 +79,7 @@ vi.mock('../lib/supabase', () => {
         q.filters.push([col, val]);
         return b;
       },
+      order: () => b,
       then: (resolve, reject) => exec().then(resolve, reject),
     };
     return b;
@@ -86,13 +87,21 @@ vi.mock('../lib/supabase', () => {
   return { supabase: { from } };
 });
 
-const { applyCreditToJobs, moveCreditBackFromJob } = await import('./creditsRepo');
+vi.mock('./currentBusiness', () => ({
+  getCurrentBusinessId: vi.fn(async () => 'biz-1'),
+}));
+
+const { applyCreditToJobs, moveCreditBackFromJob, getJobIssuedCredit } = await import('./creditsRepo');
+const { revertJobToPreCompletion } = await import('./jobsRepo');
 
 beforeEach(() => {
   db = {
     jobs: [],
     payments: [],
     client_credits: [],
+    invoice_jobs: [],
+    invoices: [],
+    clients: [],
   };
   calls = [];
 });
@@ -335,3 +344,124 @@ describe('moveCreditBackFromJob', () => {
     expect(db.jobs.find(j => j.id === 'job-2').payment_status).toBe('Paid');
   });
 });
+
+describe('revertJobToPreCompletion', () => {
+  it('voids payments for the job (update is_void: true, does not delete)', async () => {
+    db.jobs.push({
+      id: 'job-1',
+      business_id: 'biz-1',
+      client_id: 'client-1',
+      job_status: 'Completed',
+      payment_status: 'Paid',
+    });
+    db.payments.push({
+      id: 'pay-1',
+      business_id: 'biz-1',
+      job_id: 'job-1',
+      client_id: 'client-1',
+      amount: 150,
+      payment_method: 'E-Transfer',
+      is_void: false,
+    });
+
+    await revertJobToPreCompletion('job-1');
+
+    // Payments must NOT be hard-deleted, but marked is_void: true
+    expect(db.payments).toHaveLength(1);
+    expect(db.payments[0].id).toBe('pay-1');
+    expect(db.payments[0].is_void).toBe(true);
+
+    // Job reverted to Scheduled with empty payment status
+    const j1 = db.jobs.find(j => j.id === 'job-1');
+    expect(j1.job_status).toBe('Scheduled');
+    expect(j1.payment_status).toBe('');
+  });
+
+  it('deletes all client_credits ledger rows where job_id = id (issued, applied, reclassified_to_tip)', async () => {
+    db.jobs.push({
+      id: 'job-1',
+      business_id: 'biz-1',
+      client_id: 'client-1',
+      job_status: 'Completed',
+    });
+    db.client_credits.push(
+      { id: 'cc-1', business_id: 'biz-1', client_id: 'client-1', job_id: 'job-1', amount: 50, kind: 'issued' },
+      { id: 'cc-2', business_id: 'biz-1', client_id: 'client-1', job_id: 'job-1', amount: -20, kind: 'applied' },
+      { id: 'cc-3', business_id: 'biz-1', client_id: 'client-1', job_id: 'job-1', amount: -30, kind: 'reclassified_to_tip' }
+    );
+
+    await revertJobToPreCompletion('job-1');
+
+    // All ledger rows for job-1 must be deleted
+    const remainingJob1Credits = db.client_credits.filter(c => c.job_id === 'job-1');
+    expect(remainingJob1Credits).toHaveLength(0);
+  });
+
+  it("does not touch other jobs' ledger rows or payments", async () => {
+    db.jobs.push(
+      { id: 'job-1', business_id: 'biz-1', client_id: 'client-1', job_status: 'Completed' },
+      { id: 'job-2', business_id: 'biz-1', client_id: 'client-1', job_status: 'Completed' }
+    );
+    db.payments.push(
+      { id: 'pay-1', business_id: 'biz-1', job_id: 'job-1', amount: 100, is_void: false },
+      { id: 'pay-2', business_id: 'biz-1', job_id: 'job-2', amount: 80, is_void: false }
+    );
+    db.client_credits.push(
+      { id: 'cc-1', business_id: 'biz-1', client_id: 'client-1', job_id: 'job-1', amount: 20, kind: 'issued' },
+      { id: 'cc-2', business_id: 'biz-1', client_id: 'client-1', job_id: 'job-2', amount: 30, kind: 'issued' },
+      { id: 'cc-3', business_id: 'biz-1', client_id: 'client-1', job_id: 'job-2', amount: -15, kind: 'applied' }
+    );
+
+    await revertJobToPreCompletion('job-1');
+
+    // job-1 payment is voided, job-2 payment is untouched
+    const p1 = db.payments.find(p => p.id === 'pay-1');
+    const p2 = db.payments.find(p => p.id === 'pay-2');
+    expect(p1.is_void).toBe(true);
+    expect(p2.is_void).toBe(false);
+
+    // job-1 ledger deleted, job-2 ledgers untouched
+    expect(db.client_credits.filter(c => c.job_id === 'job-1')).toHaveLength(0);
+    const j2Credits = db.client_credits.filter(c => c.job_id === 'job-2');
+    expect(j2Credits).toHaveLength(2);
+    expect(j2Credits.map(c => c.id)).toEqual(['cc-2', 'cc-3']);
+  });
+
+  it('revert then re-complete: getJobIssuedCredit(businessId, jobId) returns null after revert', async () => {
+    db.jobs.push({
+      id: 'job-1',
+      business_id: 'biz-1',
+      client_id: 'client-1',
+      job_status: 'Completed',
+    });
+    db.payments.push({
+      id: 'pay-1',
+      business_id: 'biz-1',
+      job_id: 'job-1',
+      client_id: 'client-1',
+      amount: 150,
+      is_void: false,
+    });
+    db.client_credits.push({
+      id: 'cc-1',
+      business_id: 'biz-1',
+      client_id: 'client-1',
+      job_id: 'job-1',
+      amount: 50,
+      kind: 'issued',
+    });
+
+    // Before revert: issued credit exists
+    const beforeCredit = await getJobIssuedCredit('biz-1', 'job-1');
+    expect(beforeCredit).not.toBeNull();
+    expect(beforeCredit.amount).toBe(50);
+
+    // Revert job
+    await revertJobToPreCompletion('job-1');
+
+    // After revert: getJobIssuedCredit returns null so re-complete can re-issue credit
+    const afterCredit = await getJobIssuedCredit('biz-1', 'job-1');
+    expect(afterCredit).toBeNull();
+  });
+});
+

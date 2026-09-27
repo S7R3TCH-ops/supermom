@@ -177,7 +177,13 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 ---
 
 
-## Current version: 0.13.91 - Sep 27, 2026 (overpayment spillover)
+## Current version: 0.13.92 - Sep 27, 2026 (credit cleanup on revert and spillover cap)
+
+**v0.13.92**: Clean up credit on job revert and cap spillover to available balance:
+- Updated `revertJobToPreCompletion` in `jobsRepo.js` to void payments (`is_void: true`) instead of hard-deleting, and delete all associated `client_credits` ledger rows (`issued`, `applied`, `reclassified_to_tip`) keyed to the reverted job.
+- Added immediate `notifyDataChanged()` call in `JobDetailSheet.jsx` on revert and clarified confirm text ("Void payments and revert this job to Scheduled? The invoice will be voided.").
+- Capped spillover in `PostJobSheet.jsx` to fresh `getClientCreditBalance` via `calculateSpilloverAmount(surplus, creditBalance)` so negative or zero credit balance never offers phantom spillover or displays surplus notices; all spillover copy, helper calls, and button labels strictly use `surplusAmount`.
+- Added unit tests for `calculateSpilloverAmount` in `paymentPreview.test.js` and `revertJobToPreCompletion` in `creditsSpillover.test.js`.
 
 **v0.13.91**: Overpayment at completion spills over to client's next unpaid job(s) per Joel's decision (automatic spillover with option to keep as credit):
 - Added `applyCreditToJobs` and `moveCreditBackFromJob` in `creditsRepo.js`: atomic payments insertion with `payment_method = 'Credit'`, ledger tracking with `client_credits` (`kind: 'applied'`), and dynamic status re-derivation from non-void payments.

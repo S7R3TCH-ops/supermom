@@ -282,6 +282,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
     setBusy(true); setMutErr(null);
     try {
       await revertJobToPreCompletion(job.id);
+      notifyDataChanged();
       showToast('Job reverted to scheduled');
     } catch (e) { setMutErr(e.message || String(e)); setBusy(false); }
   }
@@ -895,7 +896,7 @@ function ReadMode({
                       ) : (
                         <div style={{ background: 'rgba(180,83,9,0.08)', border: '1px solid rgba(180,83,9,0.3)', borderRadius: 10, padding: '10px 12px' }}>
                           <div style={{ fontFamily: T.font, fontSize: 11, color: '#B45309', marginBottom: 8, fontWeight: 600 }}>
-                            Delete all payments and revert this job to Scheduled? The invoice will be voided.
+                            Void payments and revert this job to Scheduled? The invoice will be voided.
                           </div>
                           <div style={{ display: 'flex', gap: 8 }}>
                             <button

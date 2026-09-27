@@ -177,7 +177,13 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 ---
 
 
-## Current version: 0.13.92 - Sep 27, 2026 (credit cleanup on revert and spillover cap)
+## Current version: 0.13.93 - Sep 27, 2026 (unwind spent credit on job revert)
+
+**v0.13.93**: Unwind spent credit on job revert to eliminate ledger deficit:
+- Updated `revertJobToPreCompletion` in `jobsRepo.js`: fetches `client_id` before mutation; after voiding payments and deleting this job's credit ledger rows, checks client credit balance. If balance is in deficit (< -$0.009), iteratively unwinds newest applied credit rows via `moveCreditBackFromJob` until deficit is eliminated (capped at 50 iterations); returns `{ unwoundJobIds }`.
+- Updated `JobDetailSheet.jsx`'s `handleRevertJob` to display an info toast when credit from other jobs was unwound (`Also removed credit from N other job(s) — it came from this job's payment.`).
+- Enhanced mock Supabase builder in `creditsSpillover.test.js` to support `.order(col, opts)` and `.limit(n)`.
+- Added unit tests for unwinding spent credit on revert (single job unwind, balance >= 0 no-op, and newest-first multi-job unwind with overshoot).
 
 **v0.13.92**: Clean up credit on job revert and cap spillover to available balance:
 - Updated `revertJobToPreCompletion` in `jobsRepo.js` to void payments (`is_void: true`) instead of hard-deleting, and delete all associated `client_credits` ledger rows (`issued`, `applied`, `reclassified_to_tip`) keyed to the reverted job.

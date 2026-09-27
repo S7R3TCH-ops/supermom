@@ -281,9 +281,12 @@ export default function JobDetailSheet({ jobId, onClose }) {
     triggerHaptic('medium');
     setBusy(true); setMutErr(null);
     try {
-      await revertJobToPreCompletion(job.id);
-      notifyDataChanged();
+      const res = await revertJobToPreCompletion(job.id);
       showToast('Job reverted to scheduled');
+      if (res?.unwoundJobIds?.length > 0) {
+        toast.info(`Also removed credit from ${res.unwoundJobIds.length} other job(s) — it came from this job's payment.`);
+      }
+      notifyDataChanged();
     } catch (e) { setMutErr(e.message || String(e)); setBusy(false); }
   }
 

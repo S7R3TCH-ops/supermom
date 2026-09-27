@@ -10,7 +10,7 @@ import { computeJobFinancials } from '../lib/financialMath';
 import { MONEY_FIELDS } from '../lib/jobDraftPolicy';
 import { composeTorontoISO as _composeTorontoISO } from '../lib/dateUtils';
 import { setJobWorkers, markJobWorkerPaid, fetchJobWorkers, fetchJobWorkersForJobs } from './jobWorkersRepo';
-import { getClientCreditBalance, getJobIssuedCredit, applyCredit, issueCredit } from './creditsRepo';
+import { getClientCreditBalance, getJobIssuedCredit, applyCredit, issueCredit, moveCreditBackFromJob } from './creditsRepo';
 import { logClientError } from '../lib/errorTracking';
 export { composeTorontoISO } from '../lib/dateUtils';
 
@@ -564,6 +564,15 @@ export async function hardDeleteJob(id) {
 export async function revertJobToPreCompletion(id) {
   const businessId = await getCurrentBusinessId();
 
+  const { data: targetJob, error: targetJobErr } = await supabase
+    .from('jobs')
+    .select('client_id')
+    .eq('id', id)
+    .eq('business_id', businessId)
+    .single();
+  if (targetJobErr) throw targetJobErr;
+  const clientId = targetJob?.client_id;
+
   // 1. Void all payments for this job (never hard-delete)
   const { error: voidPayErr } = await supabase
     .from('payments')
@@ -579,6 +588,37 @@ export async function revertJobToPreCompletion(id) {
     .eq('job_id', id)
     .eq('business_id', businessId);
   if (delCreditsErr) throw delCreditsErr;
+
+  // If reverting this job leaves the client's credit ledger in deficit (because credit
+  // issued by this job was already consumed by other jobs), unwind those applications
+  // newest-first using moveCreditBackFromJob until the deficit is eliminated.
+  const unwoundJobIds = [];
+  if (clientId) {
+    let balance = await getClientCreditBalance(businessId, clientId);
+    let iterations = 0;
+    while (balance < -0.009) {
+      iterations++;
+      if (iterations > 50) {
+        throw new Error('Exceeded maximum iterations while unwinding spent credit deficit');
+      }
+      const { data: appliedRows, error: appliedErr } = await supabase
+        .from('client_credits')
+        .select('job_id, created_at')
+        .eq('business_id', businessId)
+        .eq('client_id', clientId)
+        .eq('kind', 'applied')
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (appliedErr) throw appliedErr;
+      if (!appliedRows || appliedRows.length === 0) {
+        break;
+      }
+      const thatJobId = appliedRows[0].job_id;
+      await moveCreditBackFromJob(businessId, clientId, thatJobId);
+      unwoundJobIds.push(thatJobId);
+      balance = await getClientCreditBalance(businessId, clientId);
+    }
+  }
 
   // 3. Find all invoices linked to this job and clean them up
   // A failed read here must throw, not fall through to the Void branch below
@@ -640,6 +680,8 @@ export async function revertJobToPreCompletion(id) {
     .eq('business_id', businessId)
     .eq('pending_note_source_job_id', id);
   if (noteErr) throw noteErr;
+
+  return { unwoundJobIds };
 }
 
 /**

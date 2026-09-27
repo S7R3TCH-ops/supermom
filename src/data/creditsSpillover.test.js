@@ -61,6 +61,21 @@ vi.mock('../lib/supabase', () => {
           matching = matching.filter(row => row[col] === val);
         }
       }
+      if (q.order && q.order.col) {
+        const { col, ascending } = q.order;
+        matching.sort((a, b) => {
+          const valA = a[col];
+          const valB = b[col];
+          if (valA === valB) return 0;
+          if (valA === undefined || valA === null) return ascending ? 1 : -1;
+          if (valB === undefined || valB === null) return ascending ? -1 : 1;
+          if (valA < valB) return ascending ? -1 : 1;
+          return ascending ? 1 : -1;
+        });
+      }
+      if (typeof q.limit === 'number') {
+        matching = matching.slice(0, q.limit);
+      }
       return Promise.resolve({
         data: q.isSingle ? (matching[0] ?? null) : matching,
         error: null,
@@ -79,7 +94,16 @@ vi.mock('../lib/supabase', () => {
         q.filters.push([col, val]);
         return b;
       },
-      order: () => b,
+      order: (col, opts) => {
+        if (col) {
+          q.order = { col, ascending: opts?.ascending ?? true };
+        }
+        return b;
+      },
+      limit: n => {
+        q.limit = n;
+        return b;
+      },
       then: (resolve, reject) => exec().then(resolve, reject),
     };
     return b;
@@ -91,7 +115,7 @@ vi.mock('./currentBusiness', () => ({
   getCurrentBusinessId: vi.fn(async () => 'biz-1'),
 }));
 
-const { applyCreditToJobs, moveCreditBackFromJob, getJobIssuedCredit } = await import('./creditsRepo');
+const { applyCreditToJobs, moveCreditBackFromJob, getJobIssuedCredit, getClientCreditBalance } = await import('./creditsRepo');
 const { revertJobToPreCompletion } = await import('./jobsRepo');
 
 beforeEach(() => {
@@ -462,6 +486,301 @@ describe('revertJobToPreCompletion', () => {
     // After revert: getJobIssuedCredit returns null so re-complete can re-issue credit
     const afterCredit = await getJobIssuedCredit('biz-1', 'job-1');
     expect(afterCredit).toBeNull();
+  });
+
+  it('unwinds spent credit when revert leaves deficit: A issued $50, B applied $50 -> voids B Credit payment, deletes B applied row, re-derives B status, returns unwoundJobIds: [job-B], balance is 0', async () => {
+    db.jobs.push(
+      {
+        id: 'job-A',
+        business_id: 'biz-1',
+        client_id: 'client-1',
+        job_status: 'Completed',
+        pricing_type: 'Flat',
+        flat_rate: 100,
+        payment_status: 'Paid',
+      },
+      {
+        id: 'job-B',
+        business_id: 'biz-1',
+        client_id: 'client-1',
+        job_status: 'Completed',
+        pricing_type: 'Flat',
+        flat_rate: 50,
+        payment_status: 'Paid',
+      }
+    );
+    // Job A had payment $150 (overpaid $50)
+    db.payments.push(
+      {
+        id: 'pay-A',
+        business_id: 'biz-1',
+        job_id: 'job-A',
+        client_id: 'client-1',
+        amount: 150,
+        payment_method: 'E-Transfer',
+        is_void: false,
+      },
+      // Job B had $50 Credit payment
+      {
+        id: 'pay-B',
+        business_id: 'biz-1',
+        job_id: 'job-B',
+        client_id: 'client-1',
+        amount: 50,
+        payment_method: 'Credit',
+        is_void: false,
+      }
+    );
+    db.client_credits.push(
+      {
+        id: 'cc-A',
+        business_id: 'biz-1',
+        client_id: 'client-1',
+        job_id: 'job-A',
+        amount: 50,
+        kind: 'issued',
+        created_at: '2026-09-20T10:00:00.000Z',
+      },
+      {
+        id: 'cc-B',
+        business_id: 'biz-1',
+        client_id: 'client-1',
+        job_id: 'job-B',
+        amount: -50,
+        kind: 'applied',
+        created_at: '2026-09-21T10:00:00.000Z',
+      }
+    );
+
+    const res = await revertJobToPreCompletion('job-A');
+
+    expect(res).toEqual({ unwoundJobIds: ['job-B'] });
+
+    // Job B's Credit payment should be voided
+    const payB = db.payments.find(p => p.id === 'pay-B');
+    expect(payB.is_void).toBe(true);
+
+    // Job B's applied ledger row should be deleted
+    const remainingCredits = db.client_credits.filter(c => c.client_id === 'client-1');
+    expect(remainingCredits).toHaveLength(0);
+
+    // Job B's status should be re-derived to '' (unpaid)
+    const jobB = db.jobs.find(j => j.id === 'job-B');
+    expect(jobB.payment_status).toBe('');
+
+    // Final balance is 0
+    const finalBalance = await getClientCreditBalance('biz-1', 'client-1');
+    expect(finalBalance).toBe(0);
+  });
+
+  it('does not unwind credit when balance >= 0 after ledger delete (credit not spent)', async () => {
+    db.jobs.push(
+      {
+        id: 'job-A',
+        business_id: 'biz-1',
+        client_id: 'client-1',
+        job_status: 'Completed',
+        pricing_type: 'Flat',
+        flat_rate: 100,
+        payment_status: 'Paid',
+      },
+      {
+        id: 'job-B',
+        business_id: 'biz-1',
+        client_id: 'client-1',
+        job_status: 'Completed',
+        pricing_type: 'Flat',
+        flat_rate: 50,
+        payment_status: 'Paid',
+      }
+    );
+    db.payments.push(
+      {
+        id: 'pay-A',
+        business_id: 'biz-1',
+        job_id: 'job-A',
+        client_id: 'client-1',
+        amount: 150,
+        payment_method: 'E-Transfer',
+        is_void: false,
+      },
+      {
+        id: 'pay-B',
+        business_id: 'biz-1',
+        job_id: 'job-B',
+        client_id: 'client-1',
+        amount: 30,
+        payment_method: 'Credit',
+        is_void: false,
+      }
+    );
+    // Prior credit of 100 existed before A, B applied 30, A issued 50. Total balance before revert: 100 + 50 - 30 = 120.
+    // After A's 50 is deleted, balance is 70 >= 0, so no unwinding occurs.
+    db.client_credits.push(
+      {
+        id: 'cc-prior',
+        business_id: 'biz-1',
+        client_id: 'client-1',
+        job_id: null,
+        amount: 100,
+        kind: 'issued',
+        created_at: '2026-09-10T10:00:00.000Z',
+      },
+      {
+        id: 'cc-A',
+        business_id: 'biz-1',
+        client_id: 'client-1',
+        job_id: 'job-A',
+        amount: 50,
+        kind: 'issued',
+        created_at: '2026-09-20T10:00:00.000Z',
+      },
+      {
+        id: 'cc-B',
+        business_id: 'biz-1',
+        client_id: 'client-1',
+        job_id: 'job-B',
+        amount: -30,
+        kind: 'applied',
+        created_at: '2026-09-21T10:00:00.000Z',
+      }
+    );
+
+    const res = await revertJobToPreCompletion('job-A');
+
+    expect(res).toEqual({ unwoundJobIds: [] });
+
+    // Job B's Credit payment remains active
+    const payB = db.payments.find(p => p.id === 'pay-B');
+    expect(payB.is_void).toBe(false);
+
+    // Job B's applied ledger row remains
+    const bApplied = db.client_credits.find(c => c.id === 'cc-B');
+    expect(bApplied).toBeDefined();
+
+    // Final balance is 100 - 30 = 70
+    const finalBalance = await getClientCreditBalance('biz-1', 'client-1');
+    expect(finalBalance).toBe(70);
+  });
+
+  it('unwinds newest-first across multiple applied jobs: $30 older on B, $40 newer on C, deficit -$50 -> unwinds C first then B, final balance +$20', async () => {
+    db.jobs.push(
+      {
+        id: 'job-A',
+        business_id: 'biz-1',
+        client_id: 'client-1',
+        job_status: 'Completed',
+        pricing_type: 'Flat',
+        flat_rate: 100,
+        payment_status: 'Paid',
+      },
+      {
+        id: 'job-B',
+        business_id: 'biz-1',
+        client_id: 'client-1',
+        job_status: 'Completed',
+        pricing_type: 'Flat',
+        flat_rate: 30,
+        payment_status: 'Paid',
+      },
+      {
+        id: 'job-C',
+        business_id: 'biz-1',
+        client_id: 'client-1',
+        job_status: 'Completed',
+        pricing_type: 'Flat',
+        flat_rate: 40,
+        payment_status: 'Paid',
+      }
+    );
+    db.payments.push(
+      {
+        id: 'pay-A',
+        business_id: 'biz-1',
+        job_id: 'job-A',
+        client_id: 'client-1',
+        amount: 150,
+        payment_method: 'Cash',
+        is_void: false,
+      },
+      {
+        id: 'pay-B',
+        business_id: 'biz-1',
+        job_id: 'job-B',
+        client_id: 'client-1',
+        amount: 30,
+        payment_method: 'Credit',
+        is_void: false,
+      },
+      {
+        id: 'pay-C',
+        business_id: 'biz-1',
+        job_id: 'job-C',
+        client_id: 'client-1',
+        amount: 40,
+        payment_method: 'Credit',
+        is_void: false,
+      }
+    );
+    // Client had $20 baseline credit + $50 issued by A = $70 credit total.
+    // Job B applied $30 (older), Job C applied $40 (newer).
+    // Balance before revert: 20 + 50 - 30 - 40 = 0.
+    // Reverting A removes $50 issued row -> balance is 20 - 30 - 40 = -$50 deficit.
+    db.client_credits.push(
+      {
+        id: 'cc-base',
+        business_id: 'biz-1',
+        client_id: 'client-1',
+        job_id: null,
+        amount: 20,
+        kind: 'issued',
+        created_at: '2026-09-01T10:00:00.000Z',
+      },
+      {
+        id: 'cc-A',
+        business_id: 'biz-1',
+        client_id: 'client-1',
+        job_id: 'job-A',
+        amount: 50,
+        kind: 'issued',
+        created_at: '2026-09-10T10:00:00.000Z',
+      },
+      {
+        id: 'cc-B',
+        business_id: 'biz-1',
+        client_id: 'client-1',
+        job_id: 'job-B',
+        amount: -30,
+        kind: 'applied',
+        created_at: '2026-09-15T10:00:00.000Z',
+      },
+      {
+        id: 'cc-C',
+        business_id: 'biz-1',
+        client_id: 'client-1',
+        job_id: 'job-C',
+        amount: -40,
+        kind: 'applied',
+        created_at: '2026-09-20T10:00:00.000Z',
+      }
+    );
+
+    const res = await revertJobToPreCompletion('job-A');
+
+    // Job C ($40, newer) unwound first, deficit was -$10, then Job B ($30, older) unwound
+    expect(res).toEqual({ unwoundJobIds: ['job-C', 'job-B'] });
+
+    // Both Credit payments voided
+    expect(db.payments.find(p => p.id === 'pay-C').is_void).toBe(true);
+    expect(db.payments.find(p => p.id === 'pay-B').is_void).toBe(true);
+
+    // Both applied rows deleted; cc-base remains
+    const remainingCredits = db.client_credits.filter(c => c.client_id === 'client-1');
+    expect(remainingCredits.map(c => c.id)).toEqual(['cc-base']);
+
+    // Final balance is +$20
+    const finalBalance = await getClientCreditBalance('biz-1', 'client-1');
+    expect(finalBalance).toBe(20);
   });
 });
 

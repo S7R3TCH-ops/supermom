@@ -3,15 +3,18 @@
 
 import { patchJobAiContext } from '../data/jobsRepo';
 
-const HOME_ADDRESS = "Georgetown, ON, Canada"; // Default base for Sandra
+const DEFAULT_HOME_ADDRESS = "Georgetown, ON, Canada"; // town-level fallback when businesses.address is empty
 
 /**
  * Calculates and stores drive estimates for a day's worth of jobs.
  * Follows "Option C" logic: Home -> Job 1 -> Job 2 -> ... -> Home.
  * @param {Array} jobsForDay - Display jobs (toDisplayJob shape) — must have `id` and `address`.
+ * @param {string|null} homeAddress - start/end of the chain, from businesses.address
+ *   (never hardcode a street address — this repo is public). Falls back to town-level.
  */
-export async function updateDailyRoutes(jobsForDay) {
+export async function updateDailyRoutes(jobsForDay, homeAddress = null) {
   if (!jobsForDay || jobsForDay.length === 0) return;
+  const HOME_ADDRESS = homeAddress || DEFAULT_HOME_ADDRESS;
 
   // Gather stop addresses from display jobs (address is already joined from clients via toDisplayJob)
   const stops = [HOME_ADDRESS];

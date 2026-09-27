@@ -21,7 +21,7 @@ import { torontoDateStr, torontoToUtc } from '../_lib/torontoTime.js';
 import {
   TTL_SEC,
   computeLeaveAt, computeEndAt, isLeaveDue, isWrapupDue,
-  buildLeaveBody, buildWrapupBody, computeUnpaidBalance,
+  buildLeaveBody, buildWrapupBody, computeUnpaidBalance, resolveDriveSeconds,
 } from '../_lib/pushAlerts.js';
 
 export const config = { maxDuration: 30 };
@@ -238,7 +238,7 @@ async function runPushSweep(sb) {
       const clientName = clientDisplayName(client);
       const startAt = torontoToUtc(job.scheduled_date, job.scheduled_time);
       if (!startAt) continue;
-      const driveSeconds = job.ai_context?.drive_to?.durationValue;
+      const driveSeconds = resolveDriveSeconds(job.ai_context, now);
       const leaveAt = computeLeaveAt(startAt, driveSeconds);
       const endAt = computeEndAt(startAt, job.estimated_hours);
 

@@ -12,7 +12,7 @@ import { useNewJobSheet } from '../context/NewJobSheetContext';
 import { generateCommandBrief, speakBrief, stopSpeaking } from '../data/ai';
 import { updateDailyRoutes } from '../lib/maps';
 import { getBriefingMessage } from '../lib/briefingMessages';
-import { updateJob, setJobNoteResolved } from '../data/jobsRepo';
+import { updateJob, setJobNoteResolved, patchJobAiContext } from '../data/jobsRepo';
 import { notifyDataChangedNow } from '../data/events';
 import { isNoteOpen, isNoteDone } from '../lib/noteState';
 import { triggerHaptic } from '../lib/haptics';
@@ -93,6 +93,11 @@ export default function Home() {
   const { business } = bizCtx || {};
   
   const persona = business?.ai_profile?.style || 'professional';
+  // Start/end of the static drive chain. Only used when a street address is set —
+  // city alone is no better than maps.js's own town-level fallback.
+  const homeAddress = business?.address
+    ? [business.address, business.city, business.province, business.postal_code].filter(Boolean).join(', ')
+    : null;
   
   const firstName = useMemo(() => {
     try {
@@ -408,10 +413,10 @@ export default function Home() {
       });
       if (needsUpdate) {
         routesFetchedRef.current = true;
-        updateDailyRoutes(scheduledJobs);
+        updateDailyRoutes(scheduledJobs, homeAddress);
       }
     }
-  }, [todayJobs, loading]);
+  }, [todayJobs, loading, homeAddress]);
 
   useEffect(() => {
     if (!loading && todayJobs.length > 0 && !locationFetchedRef.current) {
@@ -521,7 +526,7 @@ export default function Home() {
     e.stopPropagation();
     setIsRefreshingTraffic(true);
     try {
-      await updateDailyRoutes(todayJobs.filter(j => j.status === 'Scheduled'));
+      await updateDailyRoutes(todayJobs.filter(j => j.status === 'Scheduled'), homeAddress);
       notifyDataChanged();
     } catch {
       /* ignore */
@@ -561,6 +566,19 @@ export default function Home() {
       });
       setLocationDrives(newDrives);
       lastFetchTimeRef.current = Date.now();
+
+      // Persist the live reading for the next job she's actually driving to, so the
+      // lockscreen leave-alert (reminders sweep → resolveDriveSeconds) can use real
+      // GPS + traffic. Only that one job — GPS-now → job 3 while still at job 1 is
+      // worse than the chain's job 2 → job 3 leg. Separate key: never overwrite
+      // drive_to, whose recompute relies on it.
+      const driveTarget = targets.find(j => j.start > now);
+      const live = driveTarget && newDrives[driveTarget.id];
+      if (live) {
+        patchJobAiContext(driveTarget.id, {
+          drive_to_live: { durationValue: live.durationValue, duration: live.duration, computed_at: new Date().toISOString() },
+        }).catch(() => { /* best-effort — the alert falls back to the static chain */ });
+      }
     } catch (err) {
       // silently fail — drive time is best-effort
     } finally {

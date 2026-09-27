@@ -12,6 +12,8 @@ export const WRAPUP_LEAD_MIN = 10;
 export const TICK_MIN = 5;
 export const DEFAULT_DRIVE_MIN = 30;
 export const TTL_SEC = 600;
+/** A live GPS drive reading older than this falls back to the static chain. */
+export const LIVE_DRIVE_MAX_AGE_MIN = 180;
 
 const MS_PER_MIN = 60_000;
 
@@ -53,6 +55,32 @@ export function capBody(body, max = 160) {
   const str = String(body ?? '');
   if (str.length <= max) return str;
   return `${str.slice(0, max - 1).trimEnd()}…`;
+}
+
+// ── drive time selection ────────────────────────────────────────────────────
+
+/**
+ * Which drive estimate a leave alert should use, in priority order:
+ *   1. ai_context.drive_to_live — real GPS + traffic, persisted by Home.jsx for
+ *      the next job she's driving to — if younger than LIVE_DRIVE_MAX_AGE_MIN;
+ *   2. ai_context.drive_to — the static Home→Job1→Job2… chain (maps.js);
+ *   3. null → computeLeaveAt falls back to DEFAULT_DRIVE_MIN.
+ * Returns seconds or null.
+ */
+export function resolveDriveSeconds(aiContext, now) {
+  const positive = v => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null);
+
+  const live = aiContext?.drive_to_live;
+  const liveSecs = positive(live?.durationValue);
+  const computedMs = live?.computed_at ? new Date(live.computed_at).getTime() : NaN;
+  if (liveSecs && now && Number.isFinite(computedMs)) {
+    const ageMs = now.getTime() - computedMs;
+    // Small negative age tolerated (client clock a bit ahead of the server).
+    if (ageMs >= -5 * MS_PER_MIN && ageMs <= LIVE_DRIVE_MAX_AGE_MIN * MS_PER_MIN) return liveSecs;
+  }
+
+  const staticTo = aiContext?.drive_to;
+  return positive(staticTo && typeof staticTo === 'object' ? staticTo.durationValue : null);
 }
 
 // ── window math ─────────────────────────────────────────────────────────────

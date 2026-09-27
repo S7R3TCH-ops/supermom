@@ -4,6 +4,7 @@ import {
   computeLeaveAt, computeEndAt, isLeaveDue, isWrapupDue,
   buildLeaveBody, buildWrapupBody, computeUnpaidBalance, capBody,
   formatTorontoTime, formatTorontoDateShort,
+  resolveDriveSeconds, LIVE_DRIVE_MAX_AGE_MIN,
 } from './pushAlerts.js';
 
 // A 2:00 PM Toronto EDT job (Sep 18 is within DST) = 18:00 UTC.
@@ -263,5 +264,49 @@ describe('formatTorontoDateShort', () => {
 
   it('returns empty string for falsy input', () => {
     expect(formatTorontoDateShort(null)).toBe('');
+  });
+});
+
+describe('resolveDriveSeconds', () => {
+  const NOW = new Date('2026-09-18T17:00:00Z');
+  const minsAgo = m => new Date(NOW.getTime() - m * 60_000).toISOString();
+  const live = (secs, ago) => ({ durationValue: secs, duration: `${secs / 60} mins`, computed_at: minsAgo(ago) });
+  const chain = secs => ({ from: 'Previous Job', durationValue: secs });
+
+  it('prefers a fresh live GPS reading over the static chain', () => {
+    expect(resolveDriveSeconds({ drive_to_live: live(1500, 20), drive_to: chain(600) }, NOW)).toBe(1500);
+  });
+  it('uses live even when there is no static chain at all', () => {
+    expect(resolveDriveSeconds({ drive_to_live: live(900, 5) }, NOW)).toBe(900);
+  });
+  it('accepts live right at the staleness cutoff', () => {
+    expect(resolveDriveSeconds({ drive_to_live: live(900, LIVE_DRIVE_MAX_AGE_MIN), drive_to: chain(600) }, NOW)).toBe(900);
+  });
+  it('falls back to the static chain once live is older than the cutoff', () => {
+    expect(resolveDriveSeconds({ drive_to_live: live(900, LIVE_DRIVE_MAX_AGE_MIN + 1), drive_to: chain(600) }, NOW)).toBe(600);
+  });
+  it('tolerates a slightly-ahead client clock, rejects one far in the future', () => {
+    expect(resolveDriveSeconds({ drive_to_live: live(900, -3), drive_to: chain(600) }, NOW)).toBe(900);
+    expect(resolveDriveSeconds({ drive_to_live: live(900, -60), drive_to: chain(600) }, NOW)).toBe(600);
+  });
+  it('ignores malformed live readings', () => {
+    for (const bad of [
+      { durationValue: 0, computed_at: minsAgo(1) },
+      { durationValue: 'fast', computed_at: minsAgo(1) },
+      { durationValue: 900 },
+      { durationValue: 900, computed_at: 'not a date' },
+      null,
+    ]) {
+      expect(resolveDriveSeconds({ drive_to_live: bad, drive_to: chain(600) }, NOW)).toBe(600);
+    }
+  });
+  it('returns null when nothing usable (static false = attempted, no route)', () => {
+    expect(resolveDriveSeconds({ drive_to: false }, NOW)).toBeNull();
+    expect(resolveDriveSeconds({}, NOW)).toBeNull();
+    expect(resolveDriveSeconds(null, NOW)).toBeNull();
+  });
+  it('feeds computeLeaveAt: live 25 min → leave 25 min before start', () => {
+    const secs = resolveDriveSeconds({ drive_to_live: live(1500, 10), drive_to: chain(600) }, NOW);
+    expect(computeLeaveAt(START, secs).toISOString()).toBe('2026-09-18T17:35:00.000Z');
   });
 });

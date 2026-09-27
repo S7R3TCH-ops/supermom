@@ -6,6 +6,7 @@ import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useBackClose } from '../../hooks/useBackClose';
 import { useKeyboardFocus } from '../../hooks/useKeyboardFocus';
 import { useToast } from '../../context/ToastContext';
+import { notifyDataChanged } from '../../data/useData';
 import GrabBar from '../ui/GrabBar';
 
 const STATUS_OPTIONS = [
@@ -93,6 +94,7 @@ export default function NewClientSheet({ onClose, onCreated }) {
           personal: personal.trim() || null,
         },
       });
+      notifyDataChanged();
       toast.success(`${first.trim()} added!`);
       if (onCreated) onCreated(created);
       onClose();

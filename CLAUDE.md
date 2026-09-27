@@ -177,7 +177,15 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 ---
 
 
-## Current version: 0.13.89 - Sep 27, 2026 (client list refresh fix)
+## Current version: 0.13.90 - Sep 27, 2026 (payment clarity & bundling UX)
+
+**v0.13.90**: Payment clarity and bundling UX improvements:
+- Live payment breakdown preview under amount input showing exactly how payments allocate per job.
+- Persistent post-settlement receipt box on the invoice screen detailing the payment breakdown per job with dismiss button.
+- Plain invoice summary row (`Total · Paid · Still owing`) at the top of line items, and persistent per-job status badges (`Paid in full ✓` / `Paid $X · Owing $Y`) visible even when fully paid.
+- Replaced generic "Tap again to undo" with exact dollar amount and date (`Undo the $X.XX payment recorded Mmm D?`) via `getLastPaymentRound`.
+- Clarified completion bundle copy in `PostJobSheet.jsx` (unpaid vs paid/partial) with feedback toast on add.
+- Clarified other unpaid jobs section on invoice with client-specific heading and auto-hide when empty.
 
 **v0.13.89**: Fixed bug where newly added clients wouldn't immediately appear in the client list by adding missing `notifyDataChanged` call in `NewClientSheet.jsx`.
 

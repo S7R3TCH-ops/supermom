@@ -492,8 +492,8 @@ export default function PostJobSheet({ jobId, onClose }) {
               </div>
               <div style={{ fontSize: 13, color: T.inkMuted, lineHeight: 1.45 }}>
                 {savedPs !== 'Paid' && savedPs !== 'Partial'
-                  ? 'Do you want to bundle these on the same invoice?'
-                  : 'Did this payment also cover any of these?'}
+                  ? `Add these to the same invoice, so ${job?.client_name || 'the client'} gets one bill?`
+                  : `Did ${job?.client_name || 'the client'} also pay for any of these? Tick only the ones that are now paid in full.`}
               </div>
             </div>
 
@@ -555,6 +555,7 @@ export default function PostJobSheet({ jobId, onClose }) {
                     const ids = [...bundleSelected];
                     if (savedPs !== 'Paid' && savedPs !== 'Partial') {
                       await addJobsToInvoice(invoiceId, ids);
+                      toast.success(`Done: these jobs are on ${job?.client_name || 'the client'}'s invoice now. You don't need to add them again.`);
                     } else {
                       await settleInvoiceOutstanding(invoiceId, method, ids);
                     }

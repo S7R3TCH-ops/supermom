@@ -1,9 +1,9 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { fetchInvoiceById, settleInvoiceOutstanding, voidInvoiceSettlement, addJobsToInvoice } from '../data/invoicesRepo';
+import { fetchInvoiceById, settleInvoiceOutstanding, voidInvoiceSettlement, addJobsToInvoice, LAST_ROUND_WINDOW_MS } from '../data/invoicesRepo';
 import { computeJobFinancials } from '../lib/financialMath';
-import { jobPaymentBadge } from '../lib/invoiceBalances';
-import { parsePaymentAmount } from '../lib/paymentWaterfall';
+import { allocatePayment, parsePaymentAmount } from '../lib/paymentWaterfall';
+import { buildPaymentPreview, buildPaymentReceipt, getLastPaymentRound } from '../lib/paymentPreview';
 import { useAuth } from '../context/AuthContext';
 import { getCurrentBusinessId } from '../data/currentBusiness';
 import { authHeaders } from '../lib/supabase';
@@ -52,6 +52,7 @@ export default function InvoiceView() {
   const [confirmUndo, setConfirmUndo] = useState(false);
   const [addJobIds, setAddJobIds]   = useState(() => new Set());
   const [addState, setAddState]     = useState('idle'); // idle | saving | error
+  const [settlementReceipt, setSettlementReceipt] = useState(null);
   const settlingRef = useRef(false);
   const addingRef   = useRef(false);
   const wrapRef = useRef(null);
@@ -152,6 +153,13 @@ export default function InvoiceView() {
   const isPartialPay = parsedAmount !== null && !amountError && Math.round(parsedAmount * 100) < Math.round(selectedTotal * 100);
   const showSettlePanel = isOwner && outstandingJobs.length > 0 && !!(invoiceSentAt || receiptSentAt);
   const showUndo = isOwner && (invoice.settlementCount || 0) > 0;
+  const selectedTargets = outstandingJobs.filter(j => selectedIds.has(j.id));
+  const paymentPreview = selectedTargets.length > 0 && !amountError
+    ? buildPaymentPreview(selectedTargets, parsedAmount)
+    : null;
+  const lastRound = getLastPaymentRound(invoice.payments, invoice.id, LAST_ROUND_WINDOW_MS);
+  const allInvoiceJobIdSet = new Set(allInvoiceJobs.map(j => j.id));
+  const otherUnpaidJobs = (invoice.otherOutstanding ?? []).filter(b => !allInvoiceJobIdSet.has(b.job.id));
 
   function toggleJob(jobId) {
     setSelectedIds(prev => {
@@ -192,8 +200,15 @@ export default function InvoiceView() {
     settlingRef.current = true;
     setSettleState('saving');
     try {
+      const targets = outstandingJobs.filter(j => selectedIds.has(j.id));
+      const normalizedTargets = targets.map(j => ({ jobId: j.id, owing: j.owing, date: j.date }));
+      const allocations = allocatePayment(normalizedTargets, parsedAmount);
+      const totalPaid = allocations.reduce((s, a) => s + a.amount, 0);
+      const receipt = buildPaymentReceipt(allocations, totalPaid, targets);
+
       await settleInvoiceOutstanding(id, method, [...selectedIds], parsedAmount);
       setAmountStr('');
+      setSettlementReceipt(receipt);
       await reload();
       notifyDataChanged();
       setSettleState('idle');
@@ -407,19 +422,28 @@ export default function InvoiceView() {
                 padding: '8px 14px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer',
               }}
             >
-              {settleState === 'saving' ? 'Working…' : settleState === 'error' ? '✗ Failed — retry' : confirmUndo ? 'Tap again to undo' : '↩ Undo last payment'}
+              {settleState === 'saving'
+                ? 'Working…'
+                : settleState === 'error'
+                  ? '✗ Failed — retry'
+                  : confirmUndo
+                    ? lastRound
+                      ? `Undo the $${lastRound.amount.toFixed(2)} payment recorded ${lastRound.dateStr}?`
+                      : 'Tap again to undo'
+                    : '↩ Undo last payment'}
             </button>
           )}
         </div>
       </div>
 
       {/* Owner-only: add other outstanding jobs to this invoice as line items */}
-      {isOwner && !invoice.isPaidInFull && (invoice.otherOutstanding?.length ?? 0) > 0 && (
+      {isOwner && !invoice.isPaidInFull && otherUnpaidJobs.length > 0 && (
         <div className="no-print" style={{ maxWidth: 800, margin: '0 auto 15px', background: 'white', border: '1.5px solid #EAE2D8', borderRadius: 12, padding: '14px 16px' }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 4 }}>Add to this invoice</div>
-          <div style={{ fontSize: 12, color: '#888', marginBottom: 10 }}>Include outstanding jobs as line items before sending</div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 10 }}>
+            {client.first_name || client.name ? `${client.first_name || client.name}'s other unpaid jobs (not on this invoice yet)` : "Other unpaid jobs (not on this invoice yet)"}
+          </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
-            {(invoice.otherOutstanding ?? []).map(b => (
+            {otherUnpaidJobs.map(b => (
               <label key={b.job.id} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, color: '#333' }}>
                 <input type="checkbox" checked={addJobIds.has(b.job.id)} onChange={() => toggleAddJob(b.job.id)} style={{ width: 18, height: 18, accentColor: '#FC4693' }} />
                 <span style={{ flex: 1, minWidth: 0 }}>
@@ -501,11 +525,53 @@ export default function InvoiceView() {
               Payment saved, but a status didn't update — check the jobs before recording again.
             </div>
           )}
-          {(amountError || isPartialPay) && (
-            <div style={{ marginTop: 8, fontSize: 12, fontWeight: 600, color: amountError ? '#DC2626' : '#92400E' }}>
-              {amountError || 'Partial payment — applied to the oldest job first.'}
+          {amountError ? (
+            <div style={{ marginTop: 8, fontSize: 12, fontWeight: 600, color: '#DC2626' }}>
+              {amountError}
             </div>
-          )}
+          ) : paymentPreview && (paymentPreview.summary || paymentPreview.lines.length > 0) ? (
+            <div style={{ marginTop: 8, fontSize: 12, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {paymentPreview.summary ? (
+                <div style={{ fontWeight: 600, color: '#16A34A' }}>{paymentPreview.summary}</div>
+              ) : (
+                paymentPreview.lines.map((line, idx) => (
+                  <div key={idx} style={{ fontWeight: 600, color: line.startsWith('✓') ? '#16A34A' : '#92400E' }}>
+                    {line}
+                  </div>
+                ))
+              )}
+            </div>
+          ) : null}
+        </div>
+      )}
+
+      {settlementReceipt && (
+        <div className="no-print" style={{
+          maxWidth: 800, margin: '0 auto 15px', background: '#F0FDF4', border: '1.5px solid #86EFAC',
+          borderRadius: 12, padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+        }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#166534', marginBottom: 6 }}>
+              {settlementReceipt.title}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
+              {settlementReceipt.lines.map((line, idx) => (
+                <div key={idx} style={{ fontWeight: 600, color: line.startsWith('✓') ? '#166534' : '#92400E' }}>
+                  {line}
+                </div>
+              ))}
+            </div>
+          </div>
+          <button
+            onClick={() => setSettlementReceipt(null)}
+            style={{
+              background: 'white', border: '1px solid #86EFAC', borderRadius: 6,
+              color: '#166534', fontSize: 12, fontWeight: 600, padding: '4px 10px',
+              cursor: 'pointer', marginLeft: 12, whiteSpace: 'nowrap',
+            }}
+          >
+            Dismiss ✕
+          </button>
         </div>
       )}
 
@@ -577,6 +643,11 @@ export default function InvoiceView() {
               </tr>
             </thead>
             <tbody style={{ fontSize: 13, lineHeight: 1.4 }}>
+              <tr style={{ background: '#f9fafb', borderBottom: '1.5px solid #e5e7eb', fontSize: 11, fontWeight: 700, color: '#4b5563' }}>
+                <td colSpan={anyHourly ? 5 : 3} style={{ padding: '8px 14px' }}>
+                  Total ${aggTotal.toFixed(2)} · Paid ${(invoice.amountPaid ?? 0).toFixed(2)} · Still owing ${(invoice.balanceOwing ?? 0).toFixed(2)}
+                </td>
+              </tr>
               {allInvoiceJobs.map((j, idx) => {
                 const f = allFinancials[idx];
                 return (
@@ -592,11 +663,12 @@ export default function InvoiceView() {
                         <div>{j.service_name || 'Professional Services'}</div>
                         {!f.isHourly && <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>Flat rate</div>}
                         {(() => {
-                          const badge = jobPaymentBadge(invoice, j.id);
-                          if (!badge) return null;
+                          const bal = (invoice.invoiceJobBalances || []).find(b => b.job?.id === j.id);
+                          if (!bal || !bal.paid || bal.paid <= 0) return null;
+                          const isFullyPaid = bal.owing <= 0.01;
                           return (
-                            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.5px', marginTop: 3, color: badge.kind === 'paid' ? '#16A34A' : '#B45309' }}>
-                              {badge.kind === 'paid' ? 'PAID' : `PARTIAL · $${badge.paid.toFixed(2)} paid`}
+                            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.5px', marginTop: 3, color: isFullyPaid ? '#16A34A' : '#B45309' }}>
+                              {isFullyPaid ? 'Paid in full ✓' : `Paid $${bal.paid.toFixed(2)} · Owing $${bal.owing.toFixed(2)}`}
                             </div>
                           );
                         })()}

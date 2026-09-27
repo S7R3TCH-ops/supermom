@@ -113,7 +113,7 @@ export async function fetchInvoiceById(id) {
   return res.json();
 }
 
-const LAST_ROUND_WINDOW_MS = 10_000;
+export const LAST_ROUND_WINDOW_MS = 10_000;
 
 const torontoToday = () =>
   new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Toronto' }).format(new Date());

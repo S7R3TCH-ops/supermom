@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import GrabBar from '../ui/GrabBar';
 import { useAppTheme } from '../../context/AppThemeContext';
-import { listMyRequests } from '../../data/requestsRepo';
+import { listMyRequests, nudgeRequest } from '../../data/requestsRepo';
 import { REQUEST_STATUS_BADGES } from '../../lib/requestFormatting';
 import { logClientError } from '../../lib/errorTracking';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
@@ -19,7 +19,7 @@ function formatDate(iso) {
 // Owner-facing list of what they've sent via "Tell Joel", with status and
 // Joel's reply (client_requests.admin_notes). Read-only — replies are written
 // from Admin → Super Admin: Requests.
-export default function MyRequestsSheet({ isOpen, onClose, onNewRequest, refreshToken }) {
+export default function MyRequestsSheet({ isOpen, onClose, onNewRequest, refreshToken , isClosing}) {
   const { T, mode } = useAppTheme();
   const sheetRef = useRef(null);
   useFocusTrap(sheetRef, isOpen, onClose);
@@ -28,6 +28,7 @@ export default function MyRequestsSheet({ isOpen, onClose, onNewRequest, refresh
   const [requests, setRequests] = useState(null);
   const [loadErr, setLoadErr] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
+  const [nudgingId, setNudgingId] = useState(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -59,13 +60,15 @@ export default function MyRequestsSheet({ isOpen, onClose, onNewRequest, refresh
         position: 'fixed', inset: 0, zIndex: 300,
         display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
         background: 'rgba(0,0,0,0.5)',
-        animation: 'myReqFade 180ms ease-out',
+        animation: isClosing ? 'myReqFadeOut 200ms ease-in forwards' : 'myReqFade 180ms ease-out',
       }}
       onClick={onClose}
     >
       <style>{`
         @keyframes myReqFade  { from { opacity: 0; } to { opacity: 1; } }
         @keyframes myReqSlide { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        @keyframes myReqSlideOut { from { transform: translateY(0); } to { transform: translateY(100%); } }
+        @keyframes myReqFadeOut { from { opacity: 1; } to { opacity: 0; } }
       `}</style>
 
       <div
@@ -75,7 +78,7 @@ export default function MyRequestsSheet({ isOpen, onClose, onNewRequest, refresh
           borderRadius: '24px 24px 0 0',
           boxShadow: '0 -10px 40px rgba(0,0,0,0.38)',
           maxHeight: 'calc(var(--app-height, 100dvh) * 0.92)', display: 'flex', flexDirection: 'column',
-          animation: 'myReqSlide 260ms cubic-bezier(0.2,0.8,0.2,1)',
+          animation: isClosing ? 'myReqSlideOut 260ms cubic-bezier(0.8,0.2,0.8,1) forwards' : 'myReqSlide 260ms cubic-bezier(0.2,0.8,0.2,1)',
           border: `1px solid ${T.cardBorder}`, borderBottom: 'none',
         }}
       >
@@ -103,8 +106,9 @@ export default function MyRequestsSheet({ isOpen, onClose, onNewRequest, refresh
                 const kind = KIND_META[r.kind] || KIND_META.idea;
                 const badge = REQUEST_STATUS_BADGES[r.status] || REQUEST_STATUS_BADGES.new;
                 const isOpen = expandedId === r.id;
+                const isNudgeable = isOpen && r.status !== "done" && r.status !== "declined" && !r.body.includes("[Follow up]") && (Date.now() - new Date(r.created_at).getTime() > 48 * 60 * 60 * 1000);
                 return (
-                  <button
+                  <div
                     key={r.id}
                     type="button"
                     aria-expanded={isOpen}
@@ -137,7 +141,31 @@ export default function MyRequestsSheet({ isOpen, onClose, onNewRequest, refresh
                         <div style={{ fontFamily: T.font, fontSize: 12.5, color: T.ink, whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.45 }}>{r.admin_notes}</div>
                       </div>
                     )}
-                  </button>
+                                      {isNudgeable && (
+                      <button
+                        type="button"
+                        disabled={nudgingId === r.id}
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          setNudgingId(r.id);
+                          try {
+                            await nudgeRequest(r.id, r.body);
+                            setRequests(prev => prev.map(x => x.id === r.id ? { ...x, body: x.body + "\n\n[Follow up]: Can I get an update on this?" } : x));
+                          } catch (err) {
+                            console.error(err);
+                          } finally {
+                            setNudgingId(null);
+                          }
+                        }}
+                        style={{
+                          marginTop: 6, width: "100%", padding: "10px", borderRadius: 8, border: `1.5px solid ${T.cardBorder}`,
+                          background: T.bg, color: T.ink, fontFamily: T.font, fontSize: 12.5, fontWeight: 600, cursor: nudgingId === r.id ? "default" : "pointer"
+                        }}
+                      >
+                        {nudgingId === r.id ? "Sending..." : "Nudge Joel for an update"}
+                      </button>
+                    )}
+                  </div>
                 );
               })}
             </div>
@@ -165,3 +193,4 @@ export default function MyRequestsSheet({ isOpen, onClose, onNewRequest, refresh
     </div>
   );
 }
+

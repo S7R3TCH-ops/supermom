@@ -149,7 +149,7 @@ A modular, agentic, mobile-first **Solopreneur Operations Platform** — deploye
 - `src/pages/InvoiceView.jsx` — web preview. "Download PDF" → `GET /api/invoice?id=`. "Print" → `window.print()`.
 - `src/data/invoicesRepo.js` — `generateInvoiceForJob(jobId)`, `fetchInvoiceById(id)`, `fetchInvoices()`, `settleInvoiceOutstanding()`, `voidInvoiceSettlement()`, `addJobsToInvoice()`
 - `api/invoice.js` — GET `?id=<invoiceId>` → PDF download; POST → email send. Env vars: `GMAIL_USER`, `GMAIL_APP_PASSWORD`. Filename: `LastName_Invoice_YYYY-NNN.pdf` or `LastName_Receipt_YYYY-NNN.pdf`.
-- `api/_lib/invoicePdf.js` — react-pdf builder. Address blocks use single `<Text>` with `\n`-joined children — **intentional**; stacked `<Text>` elements each get their own font-metrics line-box.
+- `api/_lib/invoicePdf.ts` — react-pdf builder. Address blocks use single `<Text>` with `\n`-joined children — **intentional**; stacked `<Text>` elements each get their own font-metrics line-box.
 - Logo files: `logo-banner.png` (app bar) vs `logo-final-white-bg.png` (invoice/email, 492KB, white background) — never mix. `logo-final-tansparent.png` is a separate transparent-bg export, cut for a realtor of Sandra's to use on her own website — not used anywhere in-app.
 - Settlement payments tagged `payments.invoice_id = <this invoice>` so `decorateInvoiceWithBalances` finds jobs paid via this invoice. Multi-job invoices supported: `decorateInvoiceWithBalances` aggregates across all `invoice_jobs`; `invoiceJobBalances[]` exposed. Single-job assumption removed in v0.12.67.
 
@@ -177,9 +177,11 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 ---
 
 
-## Current version: 0.13.86 - Sep 26, 2026 (5 small Sandra UI fixes)
+## Current version: 0.13.87 - Sep 27, 2026 (superadmin AI chat scope)
 
-**v0.13.86 (this session)**: Fixed the geolocation timeout race in `Home.jsx` (`fetchLocationDrives`) that was causing native valid fixes to get rejected by an overly aggressive JS fallback timer.
+**v0.13.87 (this session)**: Merged `gemini/phase4` (Phase 4 Item 8) plus a fix-up. Gemini's patch inferred `scopeBusinessId` for a global admin (no viewpoint → `businessId: null`) but the business-details block still read the raw `businessId` param, so owner name/persona never reached the prompt — the fix did nothing. Now `api/ai/chat.js` infers scope from the client (via `assertClientAccess`) or job, and the business block keys off `scopeBusinessId` (non-admins also now always get their own business's persona). Gemini's QA-business fallback for subject-less admin chat was **dropped per Joel** — generic admin chat stays persona-less (unlike `dayBrief`, which keeps its `is_test` fallback). `[action].js` untouched. `gemini/phase4-item9-invoice-waterfall` (partial-payment waterfall) **reviewed and bounced back to Gemini, NOT merged** — 10 findings incl. broken Email (dropped `authHeaders` import), overpayment credit insert violating `client_credits` schema, `invoices.status='Partial'` violating the CHECK, amount input never wired, and a v0.13.67 regression in InvoiceView's date/time helpers. Handoff: `docs/handoffs/2026-09-27-item9-invoice-waterfall-review.md`.
+
+**v0.13.86**: Fixed the geolocation timeout race in `Home.jsx` (`fetchLocationDrives`) that was causing native valid fixes to get rejected by an overly aggressive JS fallback timer.
 
 **v0.13.85 (this session)**: Fixed 5 small UI bugs reported by Sandra captures:
 1. `LogoBar.jsx`: Added `flexShrink: 0` to prevent the AI chat button from pushing the avatar out of bounds on smaller screens.
@@ -241,7 +243,7 @@ Full version-by-version history (v0.13.41 through this version): `git log -- CLA
 
 ## Open items
 
-> **Sync rule**: every change to `api/_lib/invoicePdf.js` must be mirrored in `InvoiceView.jsx` before commit.
+> **Sync rule**: every change to `api/_lib/invoicePdf.ts` must be mirrored in `InvoiceView.jsx` before commit.
 > Vercel Hobby: **11 of 12** serverless functions: `maps`, `invoice`, `auth/google/login`, `auth/google/callback`, `briefing/daily`, `sync/gcal`, `ai/[action]`, `ai/chat`, `admin/provision`, `admin/ai-toggle`, `reminders/[action]`. (2026-09-18, v0.13.72 — added `reminders/[action]` for lockscreen push; named generically because the separately-approved SMS-reminders design is built to ride this same function once its own Twilio Phase-0 is done, at no additional slot cost.)
 > Maps quota: Distance Matrix hard-capped at 500 elements/day. Sandra's real usage ~15–30/day. **Don't rapid-redeploy** (resets cron clock).
 

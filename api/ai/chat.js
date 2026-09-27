@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { requireUser, canAccessBusiness } from '../_lib/authGuard.js';
+import { requireUser, canAccessBusiness, assertClientAccess } from '../_lib/authGuard.js';
 import { initGemini, GEMINI_MODEL } from '../_lib/gemini.js';
 
 export default async function handler(req, res) {
@@ -31,16 +31,17 @@ export default async function handler(req, res) {
   // Scope context lookups to the caller's business (admins keep the requested scope).
   let scopeBusinessId = auth.isAdmin ? businessId : auth.businessId;
 
+  // A global admin with no viewpoint selected sends businessId: null — infer the
+  // scope from the client/job being discussed so the prompt still gets that
+  // business's owner/persona. Generic chat with no subject stays persona-less
+  // (deliberately no QA-business fallback here, unlike dayBrief).
   if (auth.isAdmin && !scopeBusinessId) {
     if (clientId) {
-      const { data: c } = await supabase.from('clients').select('business_id').eq('id', clientId).single();
-      if (c) scopeBusinessId = c.business_id;
+      scopeBusinessId = await assertClientAccess(supabase, auth, clientId);
     } else if (jobId) {
-      const { data: j } = await supabase.from('jobs').select('business_id').eq('id', jobId).single();
-      if (j) scopeBusinessId = j.business_id;
-    } else {
-      const { data: qa } = await supabase.from('businesses').select('id').eq('is_test', true).limit(1).maybeSingle();
-      if (qa) scopeBusinessId = qa.id;
+      const { data: j, error: jobScopeErr } = await supabase.from('jobs').select('business_id').eq('id', jobId).maybeSingle();
+      if (jobScopeErr) console.error('[ai/chat] job scope lookup failed:', jobScopeErr.message);
+      scopeBusinessId = j?.business_id ?? null;
     }
   }
   // A non-admin with no resolvable business_id must never fall through to an
@@ -61,11 +62,11 @@ export default async function handler(req, res) {
     'Tone: warm, direct, capable — like a brilliant operations partner. Be concise. No fluff. Real answers.',
   ];
 
-  if (businessId) {
+  if (scopeBusinessId) {
     const { data: biz } = await supabase
       .from('businesses')
       .select('owner_name, ai_profile')
-      .eq('id', businessId)
+      .eq('id', scopeBusinessId)
       .single();
     if (biz?.owner_name) systemParts.push(`Owner: ${biz.owner_name}.`);
     if (biz?.ai_profile?.style) systemParts.push(`Preferred style: ${biz.ai_profile.style}.`);

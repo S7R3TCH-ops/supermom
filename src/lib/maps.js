@@ -45,6 +45,9 @@ export async function updateDailyRoutes(jobsForDay) {
       if (elementTo && elementTo.status === 'OK') {
         driveTo = {
           from: i === 0 ? "Home" : "Previous Job",
+          // Which stop this leg was measured from — lets callers detect a stale
+          // chain (e.g. the previous job was completed/cancelled since).
+          from_job_id: i === 0 ? null : jobsForDay[i - 1].id,
           duration: elementTo.duration.text,
           distance: elementTo.distance.text,
           durationValue: elementTo.duration.value,

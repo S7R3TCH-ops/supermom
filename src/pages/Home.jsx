@@ -396,7 +396,16 @@ export default function Home() {
   useEffect(() => {
     if (!loading && todayJobs.length > 0 && !routesFetchedRef.current) {
       const scheduledJobs = todayJobs.filter(j => j.status === 'Scheduled');
-      const needsUpdate = scheduledJobs.some(j => j.ai_context?.drive_to === undefined);
+      const needsUpdate = scheduledJobs.some((j, i) => {
+        const driveTo = j.ai_context?.drive_to;
+        if (driveTo === undefined) return true;
+        // Chain changed since this leg was computed (earlier job completed or
+        // cancelled) — recompute. Legs from before from_job_id existed recompute once.
+        if (driveTo && typeof driveTo === 'object') {
+          return driveTo.from_job_id !== (i === 0 ? null : scheduledJobs[i - 1].id);
+        }
+        return false;
+      });
       if (needsUpdate) {
         routesFetchedRef.current = true;
         updateDailyRoutes(scheduledJobs);
@@ -1035,7 +1044,7 @@ export default function Home() {
                     })()}
 
                     {isNowWindow ? (() => {
-                      const afterNext = todayJobs.find(tj => tj.start > next.start && tj.id !== next.id);
+                      const afterNext = todayJobs.find(tj => tj.status === 'Scheduled' && tj.start > next.start && tj.id !== next.id);
                       const driveToNext = afterNext ? (locationDrives[afterNext.id]?.duration ?? afterNext.ai_context?.drive_to?.duration) : null;
                       if (!afterNext && !driveToNext) return null;
                       return (

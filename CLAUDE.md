@@ -179,7 +179,7 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 
 ## Current version: 0.13.83 — Sep 26, 2026 (Statler schedule edits)
 
-**v0.13.83 (this session)**: Added `supermom_edit_schedule` to `api/ai/[action].js` so Statler can edit existing jobs. Also patched `supermom_schedule_job` to trigger Google Calendar sync.
+**v0.13.83**: Added `supermom_edit_schedule` to `api/ai/[action].js` so Statler can edit existing jobs. Also patched `supermom_schedule_job` to trigger Google Calendar sync.
 
 **v0.13.82 — Sep 26, 2026 (LIVE on main; Statler voice booking)
 

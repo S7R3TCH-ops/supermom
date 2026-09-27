@@ -107,7 +107,8 @@ export default function Admin() {
       const admin_notes = draft.admin_notes.trim() || null;
       setRequests(prev => prev.map(x => (x.id === r.id ? { ...x, status: draft.status, admin_notes } : x)));
       setRequestDrafts(prev => { const next = { ...prev }; delete next[r.id]; return next; });
-      toast.success('Saved.');
+      setExpandedRequestId(null);
+        toast.success('Saved.');
     } catch {
       toast.error('Could not save request.');
     } finally {
@@ -531,7 +532,20 @@ export default function Admin() {
                           </div>
                           <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', whiteSpace: 'nowrap' }}>{new Date(r.created_at).toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</div>
                         </div>
-                        {isOpen && (
+                        
+<div style={{
+  display: 'grid',
+  gridTemplateRows: isOpen ? '1fr' : '0fr',
+  transition: 'grid-template-rows 200ms ease-out',
+}}>
+  <div style={{ overflow: 'hidden' }}>
+    <div style={{
+      marginTop: isOpen ? 8 : 0,
+      paddingTop: isOpen ? 8 : 0,
+      borderTop: isOpen ? '1px solid rgba(255,255,255,0.08)' : '1px solid transparent',
+      transition: 'all 200ms ease-out'
+    }}>
+
                           <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
                             <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', marginBottom: 8 }}>{r.body}</div>
                             {r.context && (
@@ -607,7 +621,20 @@ export default function Admin() {
                           </div>
                           <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', whiteSpace: 'nowrap' }}>{new Date(e.created_at).toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</div>
                         </div>
-                        {isOpen && (
+                        
+<div style={{
+  display: 'grid',
+  gridTemplateRows: isOpen ? '1fr' : '0fr',
+  transition: 'grid-template-rows 200ms ease-out',
+}}>
+  <div style={{ overflow: 'hidden' }}>
+    <div style={{
+      marginTop: isOpen ? 8 : 0,
+      paddingTop: isOpen ? 8 : 0,
+      borderTop: isOpen ? '1px solid rgba(255,255,255,0.08)' : '1px solid transparent',
+      transition: 'all 200ms ease-out'
+    }}>
+
                           <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
                             {e.context && (
                               <pre style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: '0 0 6px' }}>{JSON.stringify(e.context, null, 2)}</pre>

@@ -18,7 +18,7 @@ const PLACEHOLDERS = {
   idea: 'What would make your day easier?',
 };
 
-export default function RequestSheet({ isOpen, onClose }) {
+export default function RequestSheet({ isOpen, isClosing, onClose }) {
   const { T, mode } = useAppTheme();
   const isKeyboardFocused = useKeyboardFocus();
   const sheetRef = useRef(null);
@@ -79,13 +79,15 @@ export default function RequestSheet({ isOpen, onClose }) {
         position: 'fixed', inset: 0, zIndex: 300,
         display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
         background: 'rgba(0,0,0,0.5)',
-        animation: 'reqFade 180ms ease-out',
+        animation: isClosing ? 'reqFadeOut 200ms ease-in forwards' : 'reqFade 180ms ease-out',
       }}
       onClick={handleClose}
     >
       <style>{`
         @keyframes reqFade  { from { opacity: 0; } to { opacity: 1; } }
         @keyframes reqSlide { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        @keyframes reqSlideOut { from { transform: translateY(0); } to { transform: translateY(100%); } }
+        @keyframes reqFadeOut { from { opacity: 1; } to { opacity: 0; } }
       `}</style>
 
       <div
@@ -95,7 +97,7 @@ export default function RequestSheet({ isOpen, onClose }) {
           borderRadius: '24px 24px 0 0',
           boxShadow: '0 -10px 40px rgba(0,0,0,0.38)',
           maxHeight: 'calc(var(--app-height, 100dvh) * 0.92)', display: 'flex', flexDirection: 'column',
-          animation: 'reqSlide 260ms cubic-bezier(0.2,0.8,0.2,1)',
+          animation: isClosing ? 'reqSlideOut 260ms cubic-bezier(0.8,0.2,0.8,1) forwards' : 'reqSlide 260ms cubic-bezier(0.2,0.8,0.2,1)',
           border: `1px solid ${T.cardBorder}`, borderBottom: 'none',
         }}
       >

@@ -85,3 +85,19 @@ export async function updateRequestAdmin(id, { status, admin_notes }) {
     .eq('id', id);
   if (error) throw error;
 }
+
+export async function nudgeRequest(id, oldBody) {
+  const newBody = oldBody + '\n\n[Follow up]: Can I get an update on this?';
+  const { error } = await supabase
+    .from('client_requests')
+    .update({ body: newBody, updated_at: new Date().toISOString() })
+    .eq('id', id);
+    
+  if (error) throw error;
+  
+  fetch('/api/ai/notify-request', {
+    method: 'POST',
+    headers: await authHeaders(),
+    body: JSON.stringify({ requestId: id, nudge: true }),
+  }).catch(() => {});
+}

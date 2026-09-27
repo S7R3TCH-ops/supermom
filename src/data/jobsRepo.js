@@ -924,7 +924,20 @@ export function findConflicts(allJobs, scheduledAtISO, durationMin, windowMinute
 // Use this instead of updateJob when only updating route/drive data.
 // Does a fresh DB read before merging to avoid clobbering gcal_event_id
 // written concurrently by the GCal sync handler.
-export async function patchJobAiContext(id, contextPatch, columnPatch = {}) {
+// Per-job serialization for patchJobAiContext's read-merge-write. Home fires
+// updateDailyRoutes (drive_to) and the live-GPS write (drive_to_live) at the
+// same job on load; unserialized, whichever finishes last drops the other's key.
+const aiContextQueues = new Map();
+
+export function patchJobAiContext(id, contextPatch, columnPatch = {}) {
+  const prev = aiContextQueues.get(id) ?? Promise.resolve();
+  const run = prev.catch(() => {}).then(() => patchJobAiContextNow(id, contextPatch, columnPatch));
+  aiContextQueues.set(id, run);
+  run.finally(() => { if (aiContextQueues.get(id) === run) aiContextQueues.delete(id); }).catch(() => {});
+  return run;
+}
+
+async function patchJobAiContextNow(id, contextPatch, columnPatch) {
   const businessId = await getCurrentBusinessId();
   const { data: current, error: readErr } = await supabase
     .from('jobs')

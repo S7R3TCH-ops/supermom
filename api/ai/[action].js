@@ -1119,7 +1119,7 @@ async function statlerTool(req, res, supabase) {
 
     const { data: job, error: jobErr } = await supabase
       .from('jobs')
-      .select('id, client_id, scheduled_date, scheduled_time, job_status, service_name, job_notes')
+      .select('id, client_id, scheduled_date, scheduled_time, job_status, service_name, job_notes, ai_context')
       .eq('business_id', businessId)
       .eq('id', job_id)
       .is('deleted_at', null)
@@ -1149,6 +1149,13 @@ async function statlerTool(req, res, supabase) {
     const updates = {};
     if (date) updates.scheduled_date = date;
     if (time) updates.scheduled_time = time;
+    // Moved in time → drive estimates are for the old slot (same rule as JobDetailSheet).
+    const moved = (date && date !== job.scheduled_date) ||
+      (time && time.slice(0, 5) !== (job.scheduled_time || '').slice(0, 5));
+    if (moved && job.ai_context && ('drive_to' in job.ai_context || 'drive_to_live' in job.ai_context)) {
+      const { drive_to: _dt, drive_to_live: _dtl, ...restCtx } = job.ai_context;
+      updates.ai_context = restCtx;
+    }
     if (description) {
       const oldNotes = job.job_notes || '';
       updates.job_notes = oldNotes ? `${oldNotes}\n\n[AI Edit]: ${description}` : `[AI Edit]: ${description}`;

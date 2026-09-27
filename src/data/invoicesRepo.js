@@ -113,6 +113,8 @@ export async function fetchInvoiceById(id) {
   return res.json();
 }
 
+const LAST_ROUND_WINDOW_MS = 10_000;
+
 const torontoToday = () =>
   new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Toronto' }).format(new Date());
 
@@ -144,7 +146,6 @@ export async function settleInvoiceOutstanding(invoiceId, method = 'Cash', jobId
   const businessId = await getCurrentBusinessId();
   const invoice = await fetchInvoiceById(invoiceId); // fresh balances — recompute at call time
 
-  const invoiceJobIds = new Set((invoice.invoiceJobBalances ?? []).map(b => b.job.id));
   const candidates = [...(invoice.invoiceJobBalances ?? []), ...(invoice.otherOutstanding ?? [])]
     .filter(b => b.owing > 0.01)
     .map(b => ({ jobId: b.job.id, owing: b.owing, date: b.job.scheduled_date }));
@@ -168,44 +169,16 @@ export async function settleInvoiceOutstanding(invoiceId, method = 'Cash', jobId
   })));
   if (payErr) throw payErr;
 
-  for (const a of allocations) {
-    const { error: jobErr } = await supabase
-      .from('jobs')
-      .update({ payment_status: a.paidInFull ? 'Paid' : 'Partial', payment_method: method })
-      .eq('id', a.jobId)
-      .eq('business_id', businessId);
-    if (jobErr) throw jobErr;
-
-    // A fully-paid job from another invoice (bundle settle) — flip that job's own invoice.
-    if (!a.paidInFull || invoiceJobIds.has(a.jobId)) continue;
-    const { data: link, error: linkErr } = await supabase
-      .from('invoice_jobs')
-      .select('invoice_id')
-      .eq('job_id', a.jobId)
-      .eq('business_id', businessId)
-      .maybeSingle();
-    if (linkErr) throw linkErr;
-    if (link?.invoice_id && link.invoice_id !== invoiceId) {
-      const { error: flipErr } = await supabase.from('invoices')
-        .update({ status: 'Paid' })
-        .eq('id', link.invoice_id)
-        .eq('business_id', businessId);
-      if (flipErr) throw flipErr;
-    }
-  }
-
-  // This invoice is Paid only once every job on it is — derived from the balances
-  // fetched above plus what was just applied (no second fetch needed). Partial
-  // progress is shown from payments, not stored (invoices.status has no 'Partial').
-  const paidNow = new Map(allocations.map(a => [a.jobId, a.paidInFull]));
-  const invoiceFullyPaid = (invoice.invoiceJobBalances ?? []).length > 0 &&
-    (invoice.invoiceJobBalances ?? []).every(b => b.owing <= 0.01 || paidNow.get(b.job.id) === true);
-  if (invoiceFullyPaid) {
-    const { error: flipErr } = await supabase.from('invoices')
-      .update({ status: 'Paid' })
-      .eq('id', invoiceId)
-      .eq('business_id', businessId);
-    if (flipErr) throw flipErr;
+  // Payments are the source of truth and are already saved. If a status write below
+  // fails, flag it so the UI reloads instead of offering a retry that would record
+  // the same money twice.
+  try {
+    await applySettlementStatuses({ businessId, invoiceId, invoice, allocations, method });
+  } catch (e) {
+    const err = new Error('Payment saved, but updating job/invoice status failed — reload to check.');
+    err.paymentRecorded = true;
+    err.cause = e;
+    throw err;
   }
 
   const cents = allocations.reduce((s, a) => s + Math.round(a.amount * 100), 0);
@@ -217,6 +190,64 @@ export async function settleInvoiceOutstanding(invoiceId, method = 'Cash', jobId
 }
 
 /**
+ * Job + invoice status writes for a settlement whose payments are already inserted.
+ * Batched (.in) so a bundle costs a few round trips, not 2 per job.
+ */
+async function applySettlementStatuses({ businessId, invoiceId, invoice, allocations, method }) {
+  const paidIds = allocations.filter(a => a.paidInFull).map(a => a.jobId);
+  const partialIds = allocations.filter(a => !a.paidInFull).map(a => a.jobId);
+  for (const [ids, status] of [[paidIds, 'Paid'], [partialIds, 'Partial']]) {
+    if (ids.length === 0) continue;
+    const { error } = await supabase.from('jobs')
+      .update({ payment_status: status, payment_method: method })
+      .in('id', ids)
+      .eq('business_id', businessId);
+    if (error) throw error;
+  }
+
+  const paidNow = new Set(paidIds);
+  const invoiceJobIds = new Set((invoice.invoiceJobBalances ?? []).map(b => b.job.id));
+  const invoicesToPay = [];
+
+  // This invoice is Paid only once every job on it is — from the balances fetched
+  // before the settle plus what was just applied. Partial progress is shown from
+  // payments, not stored (invoices.status has no 'Partial').
+  const current = invoice.invoiceJobBalances ?? [];
+  if (current.length > 0 && current.every(b => b.owing <= 0.01 || paidNow.has(b.job.id))) {
+    invoicesToPay.push(invoiceId);
+  }
+
+  // Bundled jobs from other invoices: flip such an invoice only if none of its
+  // still-owing jobs (all of which are in otherOutstanding) is left unpaid.
+  const otherOwingIds = (invoice.otherOutstanding ?? []).map(b => b.job.id).filter(id => !invoiceJobIds.has(id));
+  const bundledPaid = paidIds.filter(id => !invoiceJobIds.has(id));
+  if (bundledPaid.length > 0 && otherOwingIds.length > 0) {
+    const { data: links, error: linkErr } = await supabase.from('invoice_jobs')
+      .select('job_id, invoice_id')
+      .in('job_id', otherOwingIds)
+      .eq('business_id', businessId);
+    if (linkErr) throw linkErr;
+    const jobsByInvoice = new Map();
+    for (const l of links ?? []) {
+      if (!l.invoice_id || l.invoice_id === invoiceId) continue;
+      if (!jobsByInvoice.has(l.invoice_id)) jobsByInvoice.set(l.invoice_id, []);
+      jobsByInvoice.get(l.invoice_id).push(l.job_id);
+    }
+    for (const [otherInvoiceId, jobIds] of jobsByInvoice) {
+      if (jobIds.some(id => paidNow.has(id)) && jobIds.every(id => paidNow.has(id))) invoicesToPay.push(otherInvoiceId);
+    }
+  }
+
+  if (invoicesToPay.length > 0) {
+    const { error: flipErr } = await supabase.from('invoices')
+      .update({ status: 'Paid' })
+      .in('id', invoicesToPay)
+      .eq('business_id', businessId);
+    if (flipErr) throw flipErr;
+  }
+}
+
+/**
  * Reverses a settlement recorded via settleInvoiceOutstanding by voiding the payments tagged
  * with this invoice id (soft delete — is_void = true, never a hard delete). Each affected
  * job's payment_status and its own invoice status are re-derived from remaining payments.
@@ -225,7 +256,8 @@ export async function settleInvoiceOutstanding(invoiceId, method = 'Cash', jobId
  * @param {string|null} jobId - limit the undo to a single job; null = every job.
  * @param {{lastRoundOnly?: boolean}} [opts] - lastRoundOnly: void only the most recent
  *   settle call's payments (they share one created_at — single insert), not earlier
- *   partial rounds. Default false = void the whole batch (legacy behaviour).
+ *   partial rounds; legacy row-by-row settles are grouped by a 10s window).
+ *   Default false = void the whole batch.
  * @returns {Promise<{voided:number}>}
  */
 export async function voidInvoiceSettlement(invoiceId, jobId = null, { lastRoundOnly = false } = {}) {
@@ -241,8 +273,12 @@ export async function voidInvoiceSettlement(invoiceId, jobId = null, { lastRound
   if (paysErr) throw paysErr;
   let pays = allPays ?? [];
   if (lastRoundOnly && pays.length > 0) {
-    const latest = pays.reduce((m, p) => (p.created_at > m ? p.created_at : m), pays[0].created_at);
-    pays = pays.filter(p => p.created_at === latest);
+    // New settles share one created_at (single insert). Settles recorded before that
+    // inserted row-by-row a few hundred ms apart, so treat anything within
+    // LAST_ROUND_WINDOW_MS of the newest payment as the same round.
+    const ts = p => new Date(p.created_at).getTime();
+    const latest = Math.max(...pays.map(ts));
+    pays = pays.filter(p => latest - ts(p) <= LAST_ROUND_WINDOW_MS);
   }
   if (pays.length === 0) return { voided: 0 };
 
@@ -258,7 +294,7 @@ export async function voidInvoiceSettlement(invoiceId, jobId = null, { lastRound
   for (const jid of affectedJobIds) {
     const [{ data: job, error: jobErr }, { data: remaining, error: remainingErr }] = await Promise.all([
       supabase.from('jobs').select('*').eq('id', jid).eq('business_id', businessId).single(),
-      supabase.from('payments').select('amount').eq('job_id', jid).eq('is_void', false),
+      supabase.from('payments').select('amount').eq('job_id', jid).eq('business_id', businessId).eq('is_void', false),
     ]);
     if (jobErr) throw jobErr;
     if (remainingErr) throw remainingErr;

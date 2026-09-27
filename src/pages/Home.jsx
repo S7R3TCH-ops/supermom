@@ -10,7 +10,7 @@ import { usePostJobSheet } from '../context/PostJobSheetContext';
 import { useFinanceDetailSheet } from '../context/FinanceDetailSheetContext';
 import { useNewJobSheet } from '../context/NewJobSheetContext';
 import { generateCommandBrief, speakBrief, stopSpeaking } from '../data/ai';
-import { updateDailyRoutes } from '../lib/maps';
+import { updateDailyRoutes, DEFAULT_HOME_ADDRESS } from '../lib/maps';
 import { getBriefingMessage } from '../lib/briefingMessages';
 import { updateJob, setJobNoteResolved, patchJobAiContext } from '../data/jobsRepo';
 import { notifyDataChangedNow } from '../data/events';
@@ -399,7 +399,9 @@ export default function Home() {
   }
 
   useEffect(() => {
-    if (!loading && todayJobs.length > 0 && !routesFetchedRef.current) {
+    // Wait for the business row too — computing with a not-yet-loaded address would
+    // bake the town-level fallback into job 1's leg.
+    if (!loading && !bizCtx?.loading && todayJobs.length > 0 && !routesFetchedRef.current) {
       const scheduledJobs = todayJobs.filter(j => j.status === 'Scheduled');
       const needsUpdate = scheduledJobs.some((j, i) => {
         const driveTo = j.ai_context?.drive_to;
@@ -407,7 +409,8 @@ export default function Home() {
         // Chain changed since this leg was computed (earlier job completed or
         // cancelled) — recompute. Legs from before from_job_id existed recompute once.
         if (driveTo && typeof driveTo === 'object') {
-          return driveTo.from_job_id !== (i === 0 ? null : scheduledJobs[i - 1].id);
+          if (i === 0) return driveTo.from_job_id !== null || driveTo.from_home !== (homeAddress || DEFAULT_HOME_ADDRESS);
+          return driveTo.from_job_id !== scheduledJobs[i - 1].id;
         }
         return false;
       });
@@ -416,7 +419,7 @@ export default function Home() {
         updateDailyRoutes(scheduledJobs, homeAddress);
       }
     }
-  }, [todayJobs, loading, homeAddress]);
+  }, [todayJobs, loading, homeAddress, bizCtx?.loading]);
 
   useEffect(() => {
     if (!loading && todayJobs.length > 0 && !locationFetchedRef.current) {

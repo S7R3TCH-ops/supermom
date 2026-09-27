@@ -310,3 +310,26 @@ describe('resolveDriveSeconds', () => {
     expect(computeLeaveAt(START, secs).toISOString()).toBe('2026-09-18T17:35:00.000Z');
   });
 });
+
+describe('isLeaveDue — live estimate grows (running late, not a late booking)', () => {
+  // 10:00 job (14:00Z). Static 15 min → leave 9:45. Live 45 min → leave 9:15.
+  const start = new Date('2026-09-18T14:00:00Z');
+  const staticLeave = computeLeaveAt(start, 15 * 60);
+  const liveLeave = computeLeaveAt(start, 45 * 60);
+  const at = hhmm => new Date(`2026-09-18T${hhmm}:00Z`);
+
+  it('without a gate baseline the grown estimate is suppressed (old behaviour)', () => {
+    expect(isLeaveDue({ now: at('13:35'), startAt: start, leaveAt: liveLeave })).toBe(false);
+  });
+  it('with the static baseline it fires on the next tick', () => {
+    expect(isLeaveDue({ now: at('13:35'), startAt: start, leaveAt: liveLeave, gateLeaveAt: staticLeave })).toBe(true);
+  });
+  it('a genuine late booking is still gated (static leave time long past too)', () => {
+    expect(isLeaveDue({ now: at('13:55'), startAt: start, leaveAt: liveLeave, gateLeaveAt: staticLeave })).toBe(false);
+  });
+  it('resolveDriveSeconds liveAllowed:false ignores the live tier', () => {
+    const ctx = { drive_to_live: { durationValue: 2700, computed_at: '2026-09-18T13:30:00Z' }, drive_to: { durationValue: 900 } };
+    expect(resolveDriveSeconds(ctx, at('13:35'), { liveAllowed: false })).toBe(900);
+    expect(resolveDriveSeconds(ctx, at('13:35'))).toBe(2700);
+  });
+});

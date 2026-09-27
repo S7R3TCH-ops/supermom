@@ -199,8 +199,17 @@ export default function InvoiceView() {
       setSettleState('idle');
     } catch (e) {
       console.error('Settle error:', e);
-      setSettleState('error');
-      setTimeout(() => setSettleState('idle'), 4000);
+      if (e?.paymentRecorded) {
+        // Money is already recorded — never leave a retry that would record it twice.
+        setAmountStr('');
+        await reload().catch(() => {});
+        notifyDataChanged();
+        setSettleState('saved-warn');
+        setTimeout(() => setSettleState('idle'), 8000);
+      } else {
+        setSettleState('error');
+        setTimeout(() => setSettleState('idle'), 4000);
+      }
     } finally {
       settlingRef.current = false;
     }
@@ -487,6 +496,11 @@ export default function InvoiceView() {
               {settleState === 'saving' ? 'Saving…' : settleState === 'error' ? '✗ Failed — retry' : isPartialPay ? `Record $${payTotal.toFixed(2)} payment` : `Mark Paid — $${payTotal.toFixed(2)}`}
             </button>
           </div>
+          {settleState === 'saved-warn' && (
+            <div style={{ marginTop: 8, fontSize: 12, fontWeight: 600, color: '#92400E' }}>
+              Payment saved, but a status didn't update — check the jobs before recording again.
+            </div>
+          )}
           {(amountError || isPartialPay) && (
             <div style={{ marginTop: 8, fontSize: 12, fontWeight: 600, color: amountError ? '#DC2626' : '#92400E' }}>
               {amountError || 'Partial payment — applied to the oldest job first.'}

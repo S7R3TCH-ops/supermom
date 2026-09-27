@@ -337,6 +337,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
       const newTime = form.scheduled_time?.slice(0, 5);
       if (form.scheduled_date !== job.scheduled_date || newTime !== oldTime) {
         delete nextAiContext.drive_to;
+        delete nextAiContext.drive_to_live;
       }
 
       await updateJob(job.id, {

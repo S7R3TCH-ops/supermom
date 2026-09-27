@@ -65,15 +65,16 @@ export function capBody(body, max = 160) {
  *      the next job she's driving to — if younger than LIVE_DRIVE_MAX_AGE_MIN;
  *   2. ai_context.drive_to — the static Home→Job1→Job2… chain (maps.js);
  *   3. null → computeLeaveAt falls back to DEFAULT_DRIVE_MIN.
- * Returns seconds or null.
+ * Returns seconds or null. liveAllowed:false skips tier 1 (the sweep's
+ * late-booking gate baseline).
  */
-export function resolveDriveSeconds(aiContext, now) {
+export function resolveDriveSeconds(aiContext, now, { liveAllowed = true } = {}) {
   const positive = v => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null);
 
   const live = aiContext?.drive_to_live;
   const liveSecs = positive(live?.durationValue);
   const computedMs = live?.computed_at ? new Date(live.computed_at).getTime() : NaN;
-  if (liveSecs && now && Number.isFinite(computedMs)) {
+  if (liveAllowed && liveSecs && now && Number.isFinite(computedMs)) {
     const ageMs = now.getTime() - computedMs;
     // Small negative age tolerated (client clock a bit ahead of the server).
     if (ageMs >= -5 * MS_PER_MIN && ageMs <= LIVE_DRIVE_MAX_AGE_MIN * MS_PER_MIN) return liveSecs;
@@ -108,17 +109,23 @@ export function computeEndAt(startAt, estimatedHours) {
 
 /**
  * Due when now >= leave_at - (LEAVE_LEAD_MIN + TICK_MIN) AND now < start_at,
- * with a same-day-booking gate: skip if leave_at is already more than
+ * with a same-day-booking gate: skip if the leave time is already more than
  * TICK_MIN in the past (a job booked 20-30 min out shouldn't fire a
  * "leave now" for a time that's already passed by the first tick that sees it).
+ *
+ * gateLeaveAt (optional) is the leave time from the static estimate. The gate
+ * checks it instead of leaveAt so that a live GPS reading that *lengthens* the
+ * drive (pulling leaveAt into the past) still fires — that's her running late,
+ * not a late booking.
  */
-export function isLeaveDue({ now, startAt, leaveAt }) {
+export function isLeaveDue({ now, startAt, leaveAt, gateLeaveAt = null }) {
   if (!now || !startAt || !leaveAt) return false;
   const nowMs = now.getTime();
   const dueAt = leaveAt.getTime() - (LEAVE_LEAD_MIN + TICK_MIN) * MS_PER_MIN;
   if (nowMs < dueAt) return false;
   if (nowMs >= startAt.getTime()) return false;
-  if (leaveAt.getTime() < nowMs - TICK_MIN * MS_PER_MIN) return false;
+  const gate = gateLeaveAt ?? leaveAt;
+  if (gate.getTime() < nowMs - TICK_MIN * MS_PER_MIN) return false;
   return true;
 }
 

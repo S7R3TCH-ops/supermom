@@ -240,10 +240,11 @@ async function runPushSweep(sb) {
       if (!startAt) continue;
       const driveSeconds = resolveDriveSeconds(job.ai_context, now);
       const leaveAt = computeLeaveAt(startAt, driveSeconds);
+      const gateLeaveAt = computeLeaveAt(startAt, resolveDriveSeconds(job.ai_context, now, { liveAllowed: false }));
       const endAt = computeEndAt(startAt, job.estimated_hours);
 
       // Leave alert
-      if (isLeaveDue({ now, startAt, leaveAt })) {
+      if (isLeaveDue({ now, startAt, leaveAt, gateLeaveAt })) {
         candidateCount += 1;
         const { title, body } = buildLeaveBody({
           clientName, startAt, leaveAt, driveSeconds, address: clientAddress(client),

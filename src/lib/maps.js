@@ -3,7 +3,7 @@
 
 import { patchJobAiContext } from '../data/jobsRepo';
 
-const DEFAULT_HOME_ADDRESS = "Georgetown, ON, Canada"; // town-level fallback when businesses.address is empty
+export const DEFAULT_HOME_ADDRESS = "Georgetown, ON, Canada"; // town-level fallback when businesses.address is empty
 
 /**
  * Calculates and stores drive estimates for a day's worth of jobs.
@@ -51,6 +51,7 @@ export async function updateDailyRoutes(jobsForDay, homeAddress = null) {
           // Which stop this leg was measured from — lets callers detect a stale
           // chain (e.g. the previous job was completed/cancelled since).
           from_job_id: i === 0 ? null : jobsForDay[i - 1].id,
+          ...(i === 0 ? { from_home: HOME_ADDRESS } : {}),
           duration: elementTo.duration.text,
           distance: elementTo.distance.text,
           durationValue: elementTo.duration.value,

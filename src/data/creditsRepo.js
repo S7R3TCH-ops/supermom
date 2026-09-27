@@ -5,6 +5,7 @@
 // design, 2026-08-26).
 
 import { supabase } from '../lib/supabase';
+import { computeJobTotal } from '../lib/financialMath';
 
 function round2(n) {
   return Math.round((Number(n) || 0) * 100) / 100;
@@ -85,3 +86,102 @@ export async function reclassifyToTip(businessId, clientId, jobId, amount) {
   if (error) throw error;
   return data;
 }
+
+export async function applyCreditToJobs(businessId, clientId, allocations) {
+  if (!businessId || !clientId || !allocations || allocations.length === 0) {
+    return { payments: [], ledgers: [] };
+  }
+  const totalAllocations = allocations.reduce((s, a) => s + round2(a.amount), 0);
+  const balance = await getClientCreditBalance(businessId, clientId);
+  if (totalAllocations > balance + 0.009) {
+    throw new Error('Allocated amount exceeds available credit');
+  }
+
+  const createdPayments = [];
+  const createdLedgers = [];
+
+  for (const alloc of allocations) {
+    const payDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Toronto' }).format(new Date());
+    const { data: pData, error: pErr } = await supabase.from('payments').insert({
+      business_id: businessId,
+      client_id: clientId,
+      job_id: alloc.jobId,
+      amount: round2(alloc.amount),
+      payment_method: 'Credit',
+      payment_date: payDate,
+    }).select().single();
+    if (pErr) throw pErr;
+    createdPayments.push(pData);
+
+    const cData = await applyCredit(businessId, clientId, alloc.jobId, alloc.amount);
+    createdLedgers.push(cData);
+
+    const [{ data: job, error: jobErr }, { data: existingPayments, error: paymentsErr }] = await Promise.all([
+      supabase.from('jobs').select('*').eq('id', alloc.jobId).eq('business_id', businessId).single(),
+      supabase.from('payments').select('amount').eq('job_id', alloc.jobId).eq('business_id', businessId).eq('is_void', false),
+    ]);
+    if (jobErr) throw jobErr;
+    if (paymentsErr) throw paymentsErr;
+    const paid = (existingPayments ?? []).reduce((s, p) => s + Number(p.amount), 0);
+    const total = Math.round(computeJobTotal(job) * 100) / 100;
+    const status = paid >= total - 0.01 && paid > 0 ? 'Paid' : paid > 0 ? 'Partial' : '';
+    const { error: statusErr } = await supabase.from('jobs').update({ payment_status: status }).eq('id', alloc.jobId).eq('business_id', businessId);
+    if (statusErr) throw statusErr;
+  }
+
+  return { payments: createdPayments, ledgers: createdLedgers };
+}
+
+export async function moveCreditBackFromJob(businessId, clientId, jobId) {
+  const { data: pays, error: paysErr } = await supabase.from('payments')
+    .select('id, amount')
+    .eq('business_id', businessId)
+    .eq('job_id', jobId)
+    .eq('payment_method', 'Credit')
+    .eq('is_void', false);
+  if (paysErr) throw paysErr;
+
+  const { data: ledgers, error: ledgersErr } = await supabase.from('client_credits')
+    .select('id, amount')
+    .eq('business_id', businessId)
+    .eq('job_id', jobId)
+    .eq('kind', 'applied');
+  if (ledgersErr) throw ledgersErr;
+
+  if ((!pays || pays.length === 0) && (!ledgers || ledgers.length === 0)) {
+    return { voidedPayments: 0, deletedLedgerRows: 0 };
+  }
+
+  if (pays && pays.length > 0) {
+    const { error: voidErr } = await supabase.from('payments')
+      .update({ is_void: true })
+      .in('id', pays.map(p => p.id))
+      .eq('business_id', businessId);
+    if (voidErr) throw voidErr;
+  }
+
+  if (ledgers && ledgers.length > 0) {
+    const { error: delErr } = await supabase.from('client_credits')
+      .delete()
+      .in('id', ledgers.map(l => l.id))
+      .eq('business_id', businessId);
+    if (delErr) throw delErr;
+  }
+
+  const [{ data: job, error: jobErr }, { data: remaining, error: remErr }] = await Promise.all([
+    supabase.from('jobs').select('*').eq('id', jobId).eq('business_id', businessId).single(),
+    supabase.from('payments').select('amount').eq('job_id', jobId).eq('business_id', businessId).eq('is_void', false),
+  ]);
+  if (jobErr) throw jobErr;
+  if (remErr) throw remErr;
+  if (job) {
+    const paid = (remaining ?? []).reduce((s, p) => s + Number(p.amount), 0);
+    const total = Math.round(computeJobTotal(job) * 100) / 100;
+    const status = paid >= total - 0.01 && paid > 0 ? 'Paid' : paid > 0 ? 'Partial' : '';
+    const { error: statusErr } = await supabase.from('jobs').update({ payment_status: status }).eq('id', jobId).eq('business_id', businessId);
+    if (statusErr) throw statusErr;
+  }
+
+  return { voidedPayments: pays?.length || 0, deletedLedgerRows: ledgers?.length || 0 };
+}
+

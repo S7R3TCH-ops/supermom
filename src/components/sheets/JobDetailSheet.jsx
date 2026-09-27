@@ -8,7 +8,7 @@ import { useKeyboardFocus } from '../../hooks/useKeyboardFocus';
 import { fetchJobById, updateJob, softDeleteJob, cancelJob, hardDeleteJob, revertJobToPreCompletion, setJobNoteResolved, fetchClientUnpaidBalance } from '../../data/jobsRepo';
 import { isNoteOpen, isNoteDone } from '../../lib/noteState';
 import { markJobWorkerPaid } from '../../data/jobWorkersRepo';
-import { getJobIssuedCredit, reclassifyToTip } from '../../data/creditsRepo';
+import { getJobIssuedCredit, reclassifyToTip, moveCreditBackFromJob } from '../../data/creditsRepo';
 import { recalcInvoiceTotal } from '../../data/invoicesRepo';
 import { deriveJobStage, getPolicyMessage, validateJobDraft, buildFinancialPatch, isHoursLocked, resolveBillableHours } from '../../lib/jobDraftPolicy';
 import { useAuth } from '../../context/AuthContext';
@@ -155,6 +155,18 @@ export default function JobDetailSheet({ jobId, onClose }) {
     getJobIssuedCredit(business.id, jobId)
       .then(row => setIssuedCredit(row))
       .catch(() => setIssuedCredit(null));
+  }
+
+  function reloadJobData() {
+    if (!jobId) return;
+    fetchJobById(jobId).then(j => { if (j) setJob(j); });
+    supabase
+      .from('payments')
+      .select('amount, payment_date, payment_method')
+      .eq('job_id', jobId)
+      .eq('is_void', false)
+      .order('payment_date', { ascending: true })
+      .then(({ data }) => { setJobPayments(data ?? []); });
   }
 
   useEffect(() => {
@@ -516,6 +528,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
             futureConfirmType={futureConfirmType}
             onFutureConfirmProceed={proceedFutureAction}
             onFutureConfirmCancel={() => setFutureConfirmType(null)}
+            onReload={reloadJobData}
           />
         )}
 
@@ -549,10 +562,23 @@ function ReadMode({
   hardDeleteConfirm, onHardDeleteConfirm, onHardDeleteCancel, onHardDelete,
   revertConfirm, onRevertConfirm, onRevertCancel, onRevert,
   futureConfirmType, onFutureConfirmProceed, onFutureConfirmCancel,
+  onReload,
 }) {
   const navigate = useNavigate();
+  const toast = useToast();
   const [showEditWarn, setShowEditWarn] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
+  const [confirmCreditBack, setConfirmCreditBack] = useState(false);
+  const [creditBackBusy, setCreditBackBusy] = useState(false);
+
+  useEffect(() => {
+    if (!confirmCreditBack) return;
+    const timer = setTimeout(() => setConfirmCreditBack(false), 4000);
+    return () => clearTimeout(timer);
+  }, [confirmCreditBack]);
+
+  const creditPayments = (jobPayments || []).filter(p => !p.is_void && p.payment_method === 'Credit');
+  const creditPaidTotal = creditPayments.reduce((s, p) => s + Number(p.amount), 0);
   const statusC = STATUS_COLORS[job.job_status] || STATUS_COLORS.Scheduled;
   const payKey  = job.payment_status || '';
   const payC    = PAY_COLORS[payKey] || PAY_COLORS[''];
@@ -683,6 +709,41 @@ function ReadMode({
             </div>
             <Btn onClick={onReclassifyToTip} disabled={reclassifyBusy} bg={T.card} border={`1px solid ${T.cardBorder}`} color={T.inkSub} T={T}>
               {reclassifyBusy ? 'Working…' : 'Mark as a tip instead'}
+            </Btn>
+          </InfoCard>
+        )}
+
+        {creditPaidTotal > 0.009 && (
+          <InfoCard T={T}>
+            <div style={{ fontFamily: T.font, fontSize: 12.5, color: T.ink, marginBottom: 8 }}>
+              Paid <strong>${creditPaidTotal.toFixed(2)}</strong> from {job.client_name || 'client'}'s credit
+            </div>
+            <Btn
+              onClick={async () => {
+                if (!confirmCreditBack) {
+                  setConfirmCreditBack(true);
+                  return;
+                }
+                setCreditBackBusy(true);
+                try {
+                  await moveCreditBackFromJob(business.id, job.client_id, job.id);
+                  toast.success(`Moved back: $${creditPaidTotal.toFixed(2)} is now credit for ${job.client_name || 'the client'}'s next job.`);
+                  notifyDataChanged();
+                  if (onReload) onReload();
+                } catch (e) {
+                  toast.error(e.message || 'Failed to move credit back');
+                } finally {
+                  setCreditBackBusy(false);
+                  setConfirmCreditBack(false);
+                }
+              }}
+              disabled={creditBackBusy}
+              bg={confirmCreditBack ? '#FC4693' : T.card}
+              border={`1px solid ${confirmCreditBack ? '#FC4693' : T.cardBorder}`}
+              color={confirmCreditBack ? 'white' : T.inkSub}
+              T={T}
+            >
+              {creditBackBusy ? 'Working…' : confirmCreditBack ? 'Tap again to confirm' : 'Change back to credit'}
             </Btn>
           </InfoCard>
         )}

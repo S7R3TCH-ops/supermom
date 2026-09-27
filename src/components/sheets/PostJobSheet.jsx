@@ -15,7 +15,8 @@ import FinancialMathBreakdown from '../ui/FinancialMathBreakdown';
 import { triggerHaptic } from '../../lib/haptics';
 import { getWorkerLabel } from '../../lib/labels';
 import { validatePaymentAmount } from '../../lib/jobDraftPolicy';
-import { getClientCreditBalance } from '../../data/creditsRepo';
+import { getClientCreditBalance, applyCreditToJobs, moveCreditBackFromJob } from '../../data/creditsRepo';
+import { splitSurplusToJobs } from '../../lib/paymentPreview';
 import { setPendingNote, fetchClientById } from '../../data/clientsRepo';
 import { setJobNoteResolved } from '../../data/jobsRepo';
 import { isNoteOpen } from '../../lib/noteState';
@@ -60,6 +61,12 @@ export default function PostJobSheet({ jobId, onClose }) {
   const [workerPaid, setWorkerPaid] = useState(false);
   const [taxEnabled, setTaxEnabled] = useState(false);
   const [availableCredit, setAvailableCredit] = useState(0);
+  const [surplusNotice, setSurplusNotice] = useState(null);
+  const [appliedReceipt, setAppliedReceipt] = useState(null);
+  const [surplusSpilloverBusy, setSurplusSpilloverBusy] = useState(false);
+  const [undoCreditBusy, setUndoCreditBusy] = useState(false);
+  const [recordedPaidAmt, setRecordedPaidAmt] = useState(0);
+  const [savedSurplus, setSavedSurplus] = useState(0);
 
   // Derived state defined early to satisfy linter and simplify logic
   // Use flat_rate (pre-tax base set at booking) or subtotal DB column (pre-tax base written by recordPayment).
@@ -119,6 +126,8 @@ export default function PostJobSheet({ jobId, onClose }) {
   }, [availableCredit, jobPayments, liveTotal, realPaid]);
 
   const alreadyPaid = realPaid + creditToApply;
+  const isPaidRecord = job?.payment_status === 'Paid';
+  const surplus = Math.max(0, Math.round(((isPaidRecord ? 0 : parseFloat(amount) || 0) + alreadyPaid - liveTotal) * 100) / 100);
 
   const displayPayments = useMemo(() => {
     if (creditToApply <= 0.009) return jobPayments;
@@ -194,17 +203,54 @@ export default function PostJobSheet({ jobId, onClose }) {
   // Runs after payment is recorded (and, if applicable, after the carried-note
   // keep/remove decision is resolved) — checks for other open invoices for the
   // same client before landing on the success/nudge screen.
-  async function advanceToOutstandingCheck() {
+  async function advanceToOutstandingCheck(explicitPs, explicitSurplus) {
+    const ps = explicitPs ?? savedPs;
+    const currentSurplus = explicitSurplus ?? savedSurplus ?? surplus;
     setPhase('checking');
     triggerHaptic('success');
     try {
       const outstanding = await fetchOutstandingJobsForClient(job.client_id, jobId);
-      if (outstanding.length > 0) {
-        setClientOutstanding(outstanding);
-        setBundleSelected(new Set(outstanding.map(j => j.id)));
-        setPhase('bundle');
+      if (ps !== 'Paid' && ps !== 'Partial') {
+        if (outstanding.length > 0) {
+          setClientOutstanding(outstanding);
+          setBundleSelected(new Set(outstanding.map(j => j.id)));
+          setPhase('bundle');
+        } else {
+          setPhase('nudge');
+        }
       } else {
-        setPhase('nudge');
+        if (currentSurplus > 0.009) {
+          let jobsWithOwing = outstanding;
+          if (outstanding.length > 0) {
+            const { data: pays } = await supabase
+              .from('payments')
+              .select('job_id, amount')
+              .in('job_id', outstanding.map(j => j.id))
+              .eq('is_void', false);
+            const paidByJob = {};
+            (pays || []).forEach(p => { paidByJob[p.job_id] = (paidByJob[p.job_id] || 0) + Number(p.amount); });
+            jobsWithOwing = outstanding.map(j => {
+              const tot = computeJobTotal(j);
+              const paid = paidByJob[j.id] || 0;
+              const owing = Math.max(0, Math.round((tot - paid) * 100) / 100);
+              return {
+                ...j,
+                owing,
+                service_name: j.services?.name || 'Service',
+              };
+            }).filter(j => j.owing > 0.009);
+          }
+
+          if (jobsWithOwing.length > 0) {
+            setClientOutstanding(jobsWithOwing);
+            setPhase('surplus-spillover');
+          } else {
+            setPhase('nudge');
+            setSurplusNotice(currentSurplus);
+          }
+        } else {
+          setPhase('nudge');
+        }
       }
     } catch {
       setPhase('nudge');
@@ -262,9 +308,13 @@ export default function PostJobSheet({ jobId, onClose }) {
       }
 
       const paidAmt = isPaidRecord ? 0 : (payStatus === 'paid' || payStatus === 'partial') ? (parseFloat(amount) || 0) : 0;
+      setRecordedPaidAmt(paidAmt);
       let ps = payStatus === 'paid' ? 'Paid' : payStatus === 'partial' ? 'Partial' : '';
       if (ps === 'Paid' && alreadyPaid + paidAmt < liveTotal - 0.01) ps = 'Partial';
       if (ps === 'Partial' && alreadyPaid + paidAmt >= liveTotal - 0.01) ps = 'Paid';
+
+      const curSurplus = Math.max(0, Math.round((paidAmt + alreadyPaid - liveTotal) * 100) / 100);
+      setSavedSurplus(curSurplus);
 
       const validCosts = costs
         .filter(c => parseFloat(c.amount) > 0)
@@ -313,7 +363,7 @@ export default function PostJobSheet({ jobId, onClose }) {
         return;
       }
 
-      await advanceToOutstandingCheck();
+      await advanceToOutstandingCheck(ps, curSurplus);
       setBusy(false);
     } catch (e) {
       const msg = e.message || String(e);
@@ -333,7 +383,6 @@ export default function PostJobSheet({ jobId, onClose }) {
     return `${h}h ${m}m`;
   }
 
-  const isPaidRecord = job?.payment_status === 'Paid';
   // Exactly: job.job_status === 'Scheduled' && job.job_notes?.trim() &&
   // !job.notes_resolved_at (design doc §3.4) — isNoteOpen() is the same
   // check. Never shows on a partial→final re-entry or isPaidRecord since
@@ -344,6 +393,7 @@ export default function PostJobSheet({ jobId, onClose }) {
   const isBundle = phase === 'bundle';
   const isChecking = phase === 'checking';
   const isCarriedNoteCheck = phase === 'carried-note-check';
+  const isSurplusSpillover = phase === 'surplus-spillover';
 
   return (
     <div ref={sheetRef} role="dialog" aria-modal="true" aria-label="Complete job" style={{
@@ -483,6 +533,104 @@ export default function PostJobSheet({ jobId, onClose }) {
             <div style={{ fontSize: 14, color: T.inkMuted }}>Checking outstanding invoices…</div>
           </div>
 
+        ) : isSurplusSpillover ? (
+          /* ── Surplus spillover panel ── */
+          (() => {
+            const activeSurplus = savedSurplus || surplus;
+            const clientName = job?.client_name || 'This client';
+            const totalPaidOnJob = recordedPaidAmt + alreadyPaid;
+            const { allocations, leftoverCredit, lines, appliedTotal } = splitSurplusToJobs(clientOutstanding, activeSurplus);
+
+            return (
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '24px 20px', gap: 16 }}>
+                <div>
+                  <div style={{ fontFamily: T.serif, fontSize: 20, fontWeight: 500, color: T.ink, marginBottom: 6 }}>
+                    {clientName} has other open invoices
+                  </div>
+                  <div style={{ fontSize: 13, color: T.inkMuted, lineHeight: 1.45 }}>
+                    ${totalPaidOnJob.toFixed(2)} covers this job (${liveTotal.toFixed(2)}). ${activeSurplus.toFixed(2)} left over.
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: T.inkMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
+                    It will go toward:
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 220, overflowY: 'auto' }}>
+                    {lines.map((line, idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          background: T.card,
+                          border: `1.5px solid ${T.cardBorder}`,
+                          borderRadius: 12,
+                          padding: '12px 14px',
+                          fontSize: 13,
+                          fontWeight: 600,
+                          color: T.ink,
+                          fontFamily: T.font,
+                        }}
+                      >
+                        {line}
+                      </div>
+                    ))}
+                  </div>
+                  {leftoverCredit > 0 && (
+                    <div style={{ fontSize: 12.5, color: T.inkMuted, marginTop: 10 }}>
+                      ${leftoverCredit.toFixed(2)} stays as credit for {clientName}'s next job.
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ paddingTop: 8, display: 'flex', flexDirection: 'column', gap: 10, marginTop: 'auto' }}>
+                  <button
+                    type="button"
+                    disabled={surplusSpilloverBusy || allocations.length === 0}
+                    onClick={async () => {
+                      setSurplusSpilloverBusy(true);
+                      try {
+                        await applyCreditToJobs(business.id, job.client_id, allocations);
+                        setAppliedReceipt({ amount: appliedTotal, allocations });
+                        notifyDataChangedNow();
+                        setPhase('nudge');
+                      } catch (err) {
+                        toast.error(err.message || 'Failed to apply credit to other jobs.');
+                      } finally {
+                        setSurplusSpilloverBusy(false);
+                      }
+                    }}
+                    style={{
+                      width: '100%', padding: '14px', borderRadius: 12,
+                      background: T.pink, color: 'white', border: 'none',
+                      fontFamily: T.font, fontSize: 14, fontWeight: 700,
+                      cursor: surplusSpilloverBusy ? 'default' : 'pointer',
+                      boxShadow: '0 4px 12px rgba(233,30,106,0.3)',
+                      minHeight: 44,
+                    }}
+                  >
+                    {surplusSpilloverBusy ? 'Applying…' : `Apply $${appliedTotal.toFixed(2)} to these jobs`}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={surplusSpilloverBusy}
+                    onClick={() => {
+                      toast.success(`Kept $${activeSurplus.toFixed(2)} as credit for ${clientName}'s next job.`);
+                      setPhase('nudge');
+                    }}
+                    style={{
+                      width: '100%', padding: '13px', borderRadius: 12,
+                      background: 'transparent', border: `1.5px solid ${T.cardBorder}`,
+                      color: T.inkMuted, fontFamily: T.font, fontSize: 14, fontWeight: 600,
+                      cursor: 'pointer', minHeight: 44,
+                    }}
+                  >
+                    Keep ${activeSurplus.toFixed(2)} as credit instead
+                  </button>
+                </div>
+              </div>
+            );
+          })()
+
         ) : isBundle ? (
           /* ── Bundle outstanding jobs pre-flight ── */
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '24px 20px', gap: 0 }}>
@@ -491,9 +639,7 @@ export default function PostJobSheet({ jobId, onClose }) {
                 {job?.client_name || 'This client'} has other open invoices
               </div>
               <div style={{ fontSize: 13, color: T.inkMuted, lineHeight: 1.45 }}>
-                {savedPs !== 'Paid' && savedPs !== 'Partial'
-                  ? `Add these to the same invoice, so ${job?.client_name || 'the client'} gets one bill?`
-                  : `Did ${job?.client_name || 'the client'} also pay for any of these? Tick only the ones that are now paid in full.`}
+                Add these to the same invoice, so {job?.client_name || 'the client'} gets one bill?
               </div>
             </div>
 
@@ -553,15 +699,11 @@ export default function PostJobSheet({ jobId, onClose }) {
                   setBundleBusy(true);
                   try {
                     const ids = [...bundleSelected];
-                    if (savedPs !== 'Paid' && savedPs !== 'Partial') {
-                      await addJobsToInvoice(invoiceId, ids);
-                      toast.success(`Done: these jobs are on ${job?.client_name || 'the client'}'s invoice now. You don't need to add them again.`);
-                    } else {
-                      await settleInvoiceOutstanding(invoiceId, method, ids);
-                    }
+                    await addJobsToInvoice(invoiceId, ids);
+                    toast.success(`Done: these jobs are on ${job?.client_name || 'the client'}'s invoice now. You don't need to add them again.`);
                     notifyDataChangedNow();
                   } catch (err) {
-                    toast.error(err.message || 'Failed to mark bundled jobs paid.');
+                    toast.error(err.message || 'Failed to add jobs to invoice.');
                   }
                   setBundleBusy(false);
                   setPhase('nudge');
@@ -576,9 +718,7 @@ export default function PostJobSheet({ jobId, onClose }) {
                   minHeight: 44,
                 }}
               >
-                {bundleBusy ? 'Saving…' : savedPs !== 'Paid' && savedPs !== 'Partial'
-                  ? `Add ${bundleSelected.size} job${bundleSelected.size !== 1 ? 's' : ''} to invoice`
-                  : `Yes, mark ${bundleSelected.size} paid`}
+                {bundleBusy ? 'Saving…' : `Add ${bundleSelected.size} job${bundleSelected.size !== 1 ? 's' : ''} to invoice`}
               </button>
               <button
                 type="button"
@@ -598,7 +738,7 @@ export default function PostJobSheet({ jobId, onClose }) {
 
         ) : isNudge ? (
           /* ── Success + send nudge ── */
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '32px 24px', gap: 24, textAlign: 'center' }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '32px 24px', gap: 20, textAlign: 'center' }}>
             <div style={{ fontSize: 48 }}>✓</div>
             <div>
               <div style={{ fontFamily: T.serif, fontSize: 22, fontWeight: 500, color: T.ink, marginBottom: 6 }}>
@@ -612,6 +752,77 @@ export default function PostJobSheet({ jobId, onClose }) {
                 </div>
               )}
             </div>
+
+            {/* Receipt banner or Surplus notice */}
+            {appliedReceipt && (
+              <div style={{
+                background: T.card,
+                border: `1.5px solid ${T.cardBorder}`,
+                borderRadius: 12,
+                padding: '10px 14px',
+                fontSize: 13,
+                color: T.ink,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                flexWrap: 'wrap',
+                width: '100%',
+                maxWidth: 400,
+              }}>
+                <span>✓ ${appliedReceipt.amount.toFixed(2)} went to other jobs.</span>
+                <button
+                  type="button"
+                  disabled={undoCreditBusy}
+                  onClick={async () => {
+                    setUndoCreditBusy(true);
+                    try {
+                      for (const a of (appliedReceipt.allocations || [])) {
+                        await moveCreditBackFromJob(business.id, job.client_id, a.jobId);
+                      }
+                      const movedAmt = appliedReceipt.amount;
+                      setAppliedReceipt(null);
+                      setSurplusNotice(movedAmt);
+                      notifyDataChangedNow();
+                      toast.success(`Moved back: $${movedAmt.toFixed(2)} is now credit for ${job?.client_name || 'the client'}'s next job.`);
+                    } catch (err) {
+                      toast.error(err.message || 'Failed to move credit back.');
+                    } finally {
+                      setUndoCreditBusy(false);
+                    }
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    color: T.pink,
+                    fontFamily: T.font,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    textDecoration: 'underline',
+                    cursor: undoCreditBusy ? 'default' : 'pointer',
+                  }}
+                >
+                  {undoCreditBusy ? 'Moving…' : 'Change to credit instead'}
+                </button>
+              </div>
+            )}
+            {surplusNotice && !appliedReceipt && (
+              <div style={{
+                background: T.card,
+                border: `1.5px solid ${T.cardBorder}`,
+                borderRadius: 12,
+                padding: '10px 14px',
+                fontSize: 13,
+                color: T.ink,
+                textAlign: 'center',
+                width: '100%',
+                maxWidth: 400,
+              }}>
+                ${surplusNotice.toFixed(2)} extra saved as credit for {job?.client_name || 'the client'}'s next job.
+              </div>
+            )}
+
             {invoiceId ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
                 <button

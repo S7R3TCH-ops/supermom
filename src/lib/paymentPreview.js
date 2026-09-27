@@ -144,3 +144,61 @@ export function getLastPaymentRound(payments, invoiceId, windowMs = DEFAULT_ROUN
 
   return { amount, dateStr, count: roundPayments.length };
 }
+
+/**
+ * Splits a surplus payment across other unpaid jobs (oldest first).
+ *
+ * @param {Array<{ id?: string, jobId?: string, owing: number, scheduled_date?: string, date?: string, service_name?: string, label?: string }>} otherJobs
+ * @param {number} surplus
+ * @returns {{ allocations: Array<{ jobId: string, amount: number, owing: number, paidInFull: boolean }>, leftoverCredit: number, lines: string[], totalOwing: number, appliedTotal: number }}
+ */
+export function splitSurplusToJobs(otherJobs, surplus) {
+  const numSurplus = Number(surplus) || 0;
+  const surplusCents = Math.max(0, Math.round(numSurplus * 100));
+
+  const targets = (otherJobs || []).map(j => ({
+    jobId: j.jobId || j.id,
+    owing: Number(j.owing) || 0,
+    date: j.date || j.scheduled_date || '',
+    service_name: j.service_name || j.label || '',
+  }));
+
+  const eligibleTargets = targets.filter(t => Math.round(t.owing * 100) > 0);
+  const totalOwingCents = eligibleTargets.reduce((s, t) => s + Math.round(t.owing * 100), 0);
+  const totalOwing = totalOwingCents / 100;
+
+  const toApplyCents = Math.min(surplusCents, totalOwingCents);
+  const toApply = toApplyCents / 100;
+
+  let allocations = [];
+  if (toApplyCents > 0 && eligibleTargets.length > 0) {
+    allocations = allocatePayment(eligibleTargets, toApply);
+  }
+
+  const appliedTotal = allocations.reduce((s, a) => s + Math.round(a.amount * 100), 0) / 100;
+  const leftoverCredit = Math.max(0, surplusCents - Math.round(appliedTotal * 100)) / 100;
+
+  const targetMap = new Map(targets.map(t => [t.jobId, t]));
+  const lines = allocations.map(a => {
+    const t = targetMap.get(a.jobId);
+    const rawDate = t?.date;
+    const dateLabel = rawDate
+      ? formatPreviewDate(rawDate, { withWeekday: true })
+      : (t?.service_name || '');
+    const prefix = dateLabel ? `${dateLabel} — ` : '';
+    if (a.paidInFull) {
+      return `✓ ${prefix}paid in full ($${a.amount.toFixed(2)})`;
+    }
+    const stillOwes = Math.max(0, Math.round((a.owing - a.amount) * 100) / 100);
+    return `◐ ${prefix}$${a.amount.toFixed(2)} of $${a.owing.toFixed(2)} (still owes $${stillOwes.toFixed(2)})`;
+  });
+
+  return {
+    allocations,
+    leftoverCredit,
+    lines,
+    totalOwing,
+    appliedTotal,
+  };
+}
+

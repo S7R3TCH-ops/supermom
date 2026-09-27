@@ -3,6 +3,7 @@ import {
   buildPaymentPreview,
   buildPaymentReceipt,
   getLastPaymentRound,
+  splitSurplusToJobs,
 } from './paymentPreview';
 
 describe('buildPaymentPreview', () => {
@@ -117,3 +118,43 @@ describe('getLastPaymentRound', () => {
     expect(getLastPaymentRound([{ id: 'p1', invoice_id: 'inv-other', created_at: '2026-09-27T14:00:00.000Z' }], 'inv-1')).toBeNull();
   });
 });
+
+describe('splitSurplusToJobs', () => {
+  it('$150 on $100 with others [$100, $30] -> [$50 to oldest job, 0 leftover]', () => {
+    // $150 on $100 job -> $50 surplus
+    const otherJobs = [
+      { id: 'j1', owing: 100, scheduled_date: '2026-09-25' },
+      { id: 'j2', owing: 30, scheduled_date: '2026-09-28' },
+    ];
+    const res = splitSurplusToJobs(otherJobs, 50);
+    expect(res.appliedTotal).toBe(50);
+    expect(res.leftoverCredit).toBe(0);
+    expect(res.totalOwing).toBe(130);
+    expect(res.allocations).toEqual([
+      { jobId: 'j1', amount: 50, owing: 100, paidInFull: false },
+    ]);
+    expect(res.lines).toEqual([
+      '◐ Fri Sep 25 — $50.00 of $100.00 (still owes $50.00)',
+    ]);
+  });
+
+  it('surplus larger than all owing -> leftover credit reported', () => {
+    const otherJobs = [
+      { id: 'j1', owing: 100, scheduled_date: '2026-09-25' },
+      { id: 'j2', owing: 30, scheduled_date: '2026-09-28' },
+    ];
+    const res = splitSurplusToJobs(otherJobs, 150);
+    expect(res.appliedTotal).toBe(130);
+    expect(res.leftoverCredit).toBe(20);
+    expect(res.totalOwing).toBe(130);
+    expect(res.allocations).toEqual([
+      { jobId: 'j1', amount: 100, owing: 100, paidInFull: true },
+      { jobId: 'j2', amount: 30, owing: 30, paidInFull: true },
+    ]);
+    expect(res.lines).toEqual([
+      '✓ Fri Sep 25 — paid in full ($100.00)',
+      '✓ Mon Sep 28 — paid in full ($30.00)',
+    ]);
+  });
+});
+

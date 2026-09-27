@@ -177,7 +177,13 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 ---
 
 
-## Current version: 0.13.90 - Sep 27, 2026 (payment clarity & bundling UX)
+## Current version: 0.13.91 - Sep 27, 2026 (overpayment spillover)
+
+**v0.13.91**: Overpayment at completion spills over to client's next unpaid job(s) per Joel's decision (automatic spillover with option to keep as credit):
+- Added `applyCreditToJobs` and `moveCreditBackFromJob` in `creditsRepo.js`: atomic payments insertion with `payment_method = 'Credit'`, ledger tracking with `client_credits` (`kind: 'applied'`), and dynamic status re-derivation from non-void payments.
+- Added `splitSurplusToJobs` in `paymentPreview.js`: allocates surplus across older unpaid jobs first with human-readable preview lines and leftover credit calculation.
+- Replaced completion bundling tickbox on Paid/Partial in `PostJobSheet.jsx` with an automatic surplus spillover panel allowing one-tap allocation or keeping as client credit. Added receipt banner with "Change to credit instead" undo.
+- Added credit return card in `JobDetailSheet.jsx` (`ReadMode`) with two-tap confirmation to reverse applied credit back to client balance via `moveCreditBackFromJob`.
 
 **v0.13.90**: Payment clarity and bundling UX improvements:
 - Live payment breakdown preview under amount input showing exactly how payments allocate per job.

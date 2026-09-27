@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { getCurrentBusinessId } from './currentBusiness';
 import { computeJobTotal, computeJobFinancials } from '../lib/financialMath';
+import { allocatePayment } from '../lib/paymentWaterfall';
 
 /**
  * Generates a formal invoice for a job if one doesn't already exist.
@@ -116,83 +117,103 @@ const torontoToday = () =>
   new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Toronto' }).format(new Date());
 
 /**
- * Records full payment for one or more of a client's outstanding jobs in a single batch,
+ * Records a payment for one or more of a client's outstanding jobs in a single batch,
  * tagging each payment with this invoice's id (payments.invoice_id = invoiceId) so the
- * receipt can later show an "Also Paid for This Client" section. Each settled job is marked
- * Paid and its own auto-generated invoice flipped to 'Paid'.
+ * receipt can later show an "Also Paid for This Client" section.
  *
- * Owing is recomputed fresh from the DB (never trusts a caller-supplied amount), so the call
- * is idempotent — jobs already settled (owing <= $0.01) are skipped, making it safe to re-run.
+ * paymentAmount = null pays every selected job in full. A smaller amount is applied
+ * oldest-job-first (allocatePayment) — the last job it reaches may end up Partial.
+ * Overpayment is rejected here; overpay → client credit only happens via recordPayment.
+ *
+ * Owing is recomputed fresh from the DB (never trusts a caller-supplied owing), so a
+ * full-payment call is idempotent — jobs already settled (owing <= $0.01) are skipped.
+ * We do NOT recompute/overwrite any job's subtotal/hst_amount/total_amount here — those
+ * are already finalized by recordPayment (single-writer rule, buildFinancialPatch).
+ *
+ * All payment rows of one call are written in a single insert, so they share a
+ * created_at — that's what lets voidInvoiceSettlement undo just the last round.
  *
  * @param {string} invoiceId
  * @param {string} method - 'Cash' | 'e-Transfer'
  * @param {string[]|null} jobIds - allow-list of job ids to settle. null = settle every
  *   outstanding job on the invoice (current job + all "also outstanding").
- * @returns {Promise<{settled:number, amount:number}>}
+ * @param {number|null} paymentAmount - dollars to apply; null = full owing of the targets.
+ * @returns {Promise<{settled:number, partial:number, amount:number}>}
  */
-export async function settleInvoiceOutstanding(invoiceId, method = 'Cash', jobIds = null) {
+export async function settleInvoiceOutstanding(invoiceId, method = 'Cash', jobIds = null, paymentAmount = null) {
   const businessId = await getCurrentBusinessId();
   const invoice = await fetchInvoiceById(invoiceId); // fresh balances — recompute at call time
 
-  // Include all invoice-linked jobs (not just first) plus other outstanding
-  const candidates = [];
-  (invoice.invoiceJobBalances ?? []).forEach(b => {
-    if (b.owing > 0.01) candidates.push({ jobId: b.job.id, owing: b.owing });
-  });
-  (invoice.otherOutstanding ?? []).forEach(b => {
-    if (b.owing > 0.01) candidates.push({ jobId: b.job.id, owing: b.owing });
-  });
+  const invoiceJobIds = new Set((invoice.invoiceJobBalances ?? []).map(b => b.job.id));
+  const candidates = [...(invoice.invoiceJobBalances ?? []), ...(invoice.otherOutstanding ?? [])]
+    .filter(b => b.owing > 0.01)
+    .map(b => ({ jobId: b.job.id, owing: b.owing, date: b.job.scheduled_date }));
 
   const allow = jobIds ? new Set(jobIds) : null;
   const targets = candidates.filter(c => !allow || allow.has(c.jobId));
-  if (targets.length === 0) return { settled: 0, amount: 0 };
+  if (targets.length === 0) return { settled: 0, partial: 0, amount: 0 };
+
+  const allocations = allocatePayment(targets, paymentAmount); // throws on invalid/overpay
+  if (allocations.length === 0) return { settled: 0, partial: 0, amount: 0 };
 
   const payDate = torontoToday();
-  let amount = 0;
+  const { error: payErr } = await supabase.from('payments').insert(allocations.map(a => ({
+    business_id: businessId,
+    invoice_id: invoiceId,
+    job_id: a.jobId,
+    client_id: invoice.client_id,
+    amount: a.amount,
+    payment_method: method,
+    payment_date: payDate,
+  })));
+  if (payErr) throw payErr;
 
-  for (const { jobId, owing } of targets) {
-    // Insert a payment for the exact remaining owing. We do NOT recompute/overwrite the job's
-    // subtotal/hst_amount/total_amount here — those are already finalized by recordPayment.
-    const { error: payErr } = await supabase
-      .from('payments')
-      .insert({
-        business_id: businessId,
-        invoice_id: invoiceId,
-        job_id: jobId,
-        client_id: invoice.client_id,
-        amount: owing,
-        payment_method: method,
-        payment_date: payDate,
-      });
-    if (payErr) throw payErr;
-
+  for (const a of allocations) {
     const { error: jobErr } = await supabase
       .from('jobs')
-      .update({ payment_status: 'Paid', payment_method: method })
-      .eq('id', jobId)
+      .update({ payment_status: a.paidInFull ? 'Paid' : 'Partial', payment_method: method })
+      .eq('id', a.jobId)
       .eq('business_id', businessId);
     if (jobErr) throw jobErr;
 
-    // Flip that job's own invoice to Paid (the current invoice included).
+    // A fully-paid job from another invoice (bundle settle) — flip that job's own invoice.
+    if (!a.paidInFull || invoiceJobIds.has(a.jobId)) continue;
     const { data: link, error: linkErr } = await supabase
       .from('invoice_jobs')
       .select('invoice_id')
-      .eq('job_id', jobId)
+      .eq('job_id', a.jobId)
       .eq('business_id', businessId)
       .maybeSingle();
     if (linkErr) throw linkErr;
-    if (link?.invoice_id) {
+    if (link?.invoice_id && link.invoice_id !== invoiceId) {
       const { error: flipErr } = await supabase.from('invoices')
         .update({ status: 'Paid' })
         .eq('id', link.invoice_id)
         .eq('business_id', businessId);
       if (flipErr) throw flipErr;
     }
-
-    amount += owing;
   }
 
-  return { settled: targets.length, amount: Math.round(amount * 100) / 100 };
+  // This invoice is Paid only once every job on it is — derived from the balances
+  // fetched above plus what was just applied (no second fetch needed). Partial
+  // progress is shown from payments, not stored (invoices.status has no 'Partial').
+  const paidNow = new Map(allocations.map(a => [a.jobId, a.paidInFull]));
+  const invoiceFullyPaid = (invoice.invoiceJobBalances ?? []).length > 0 &&
+    (invoice.invoiceJobBalances ?? []).every(b => b.owing <= 0.01 || paidNow.get(b.job.id) === true);
+  if (invoiceFullyPaid) {
+    const { error: flipErr } = await supabase.from('invoices')
+      .update({ status: 'Paid' })
+      .eq('id', invoiceId)
+      .eq('business_id', businessId);
+    if (flipErr) throw flipErr;
+  }
+
+  const cents = allocations.reduce((s, a) => s + Math.round(a.amount * 100), 0);
+  return {
+    settled: allocations.filter(a => a.paidInFull).length,
+    partial: allocations.filter(a => !a.paidInFull).length,
+    amount: cents / 100,
+  };
 }
 
 /**
@@ -201,21 +222,29 @@ export async function settleInvoiceOutstanding(invoiceId, method = 'Cash', jobId
  * job's payment_status and its own invoice status are re-derived from remaining payments.
  *
  * @param {string} invoiceId
- * @param {string|null} jobId - limit the undo to a single job; null = void the whole batch.
+ * @param {string|null} jobId - limit the undo to a single job; null = every job.
+ * @param {{lastRoundOnly?: boolean}} [opts] - lastRoundOnly: void only the most recent
+ *   settle call's payments (they share one created_at — single insert), not earlier
+ *   partial rounds. Default false = void the whole batch (legacy behaviour).
  * @returns {Promise<{voided:number}>}
  */
-export async function voidInvoiceSettlement(invoiceId, jobId = null) {
+export async function voidInvoiceSettlement(invoiceId, jobId = null, { lastRoundOnly = false } = {}) {
   const businessId = await getCurrentBusinessId();
 
   let q = supabase.from('payments')
-    .select('id, job_id')
+    .select('id, job_id, created_at')
     .eq('invoice_id', invoiceId)
     .eq('business_id', businessId)
     .eq('is_void', false);
   if (jobId) q = q.eq('job_id', jobId);
-  const { data: pays, error: paysErr } = await q;
+  const { data: allPays, error: paysErr } = await q;
   if (paysErr) throw paysErr;
-  if (!pays || pays.length === 0) return { voided: 0 };
+  let pays = allPays ?? [];
+  if (lastRoundOnly && pays.length > 0) {
+    const latest = pays.reduce((m, p) => (p.created_at > m ? p.created_at : m), pays[0].created_at);
+    pays = pays.filter(p => p.created_at === latest);
+  }
+  if (pays.length === 0) return { voided: 0 };
 
   const ids = pays.map(p => p.id);
   const { error: voidErr } = await supabase
@@ -244,9 +273,11 @@ export async function voidInvoiceSettlement(invoiceId, jobId = null) {
     const { data: link, error: linkErr } = await supabase.from('invoice_jobs')
       .select('invoice_id').eq('job_id', jid).eq('business_id', businessId).maybeSingle();
     if (linkErr) throw linkErr;
-    if (link?.invoice_id) {
+    // Undo can only make an invoice less paid: a job that is still Paid leaves its
+    // invoice alone (on a multi-job invoice the others may still owe).
+    if (link?.invoice_id && status !== 'Paid') {
       const { error: flipErr } = await supabase.from('invoices')
-        .update({ status: status === 'Paid' ? 'Paid' : 'Draft' })
+        .update({ status: 'Draft' })
         .eq('id', link.invoice_id).eq('business_id', businessId);
       if (flipErr) throw flipErr;
     }

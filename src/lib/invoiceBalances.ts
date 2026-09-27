@@ -105,3 +105,18 @@ export async function decorateInvoiceWithBalances(supabase, invoice) {
     creditRemaining,
   };
 }
+
+/**
+ * Per-job payment badge for a line item on a decorated invoice (web view + PDF —
+ * both must render it the same way). Only shown while the invoice is still open
+ * (a receipt is all-paid by definition) and the job has money against it.
+ * Derived from payments via invoiceJobBalances, never from jobs.payment_status.
+ *
+ * @returns {null | {kind: 'paid'|'partial', paid: number, owing: number}}
+ */
+export function jobPaymentBadge(invoice, jobId) {
+  if (!invoice || invoice.isPaidInFull) return null;
+  const b = (invoice.invoiceJobBalances || []).find(x => x.job?.id === jobId);
+  if (!b || !(b.paid > 0.009)) return null;
+  return { kind: b.owing <= 0.01 ? 'paid' : 'partial', paid: b.paid, owing: b.owing };
+}

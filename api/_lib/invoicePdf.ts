@@ -1,6 +1,7 @@
 import React from 'react';
 import { Document, Page, View, Text, Image, StyleSheet, renderToBuffer } from '@react-pdf/renderer';
 import { computeJobFinancials } from '../../src/lib/financialMath.js';
+import { jobPaymentBadge } from '../../src/lib/invoiceBalances.js';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
@@ -240,6 +241,13 @@ function InvoiceDocument({ invoice }) {
             V({ style: s.cDesc },
               T({ style: { fontSize: 10, color: INK } }, job.service_name || 'Professional Services'),
               !f.isHourly ? T({ style: { fontSize: 7, color: LIGHT, marginTop: 2 } }, 'Flat rate') : null,
+              // Mirrors the PAID / PARTIAL badge in InvoiceView.jsx — keep both in sync.
+              (() => {
+                const badge = jobPaymentBadge(invoice, job.id);
+                if (!badge) return null;
+                return T({ style: { fontSize: 7, fontFamily: 'Helvetica-Bold', letterSpacing: 0.5, marginTop: 3, color: badge.kind === 'paid' ? PAID : '#B45309' } },
+                  badge.kind === 'paid' ? 'PAID' : `PARTIAL · $${badge.paid.toFixed(2)} paid`);
+              })(),
             ),
             anyHourly ? V({ style: s.cRate  }, f.isHourly ? T({ style: s.tdCenter }, `$${f.rate.toFixed(2)}`) : T({ style: s.tdCenter }, '')) : null,
             anyHourly ? V({ style: s.cHours }, f.isHourly ? T({ style: s.tdCenter }, f.hours.toFixed(1))     : T({ style: s.tdCenter }, '')) : null,

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { decorateInvoiceWithBalances } from './invoiceBalances';
+import { decorateInvoiceWithBalances, jobPaymentBadge } from './invoiceBalances';
 
 // Stub of the two queries decorateInvoiceWithBalances makes: the client's
 // completed jobs and their non-void payments. The stub ignores filters (the
@@ -147,5 +147,28 @@ describe('decorateInvoiceWithBalances', () => {
     const inv = await decorateInvoiceWithBalances(sb, invoiceFor(['j1', 'j2', 'j3']));
     expect(inv.amountPaid).toBe(22.22);
     expect(inv.balanceOwing).toBe(77.77);
+  });
+});
+
+describe('jobPaymentBadge', () => {
+  const inv = (balances, isPaidInFull = false) => ({
+    isPaidInFull,
+    invoiceJobBalances: balances.map(([id, paid, owing]) => ({ job: { id }, paid, owing })),
+  });
+
+  it('marks a fully paid job on an open multi-job invoice as paid', () => {
+    expect(jobPaymentBadge(inv([['a', 100, 0], ['b', 0, 50]]), 'a')).toEqual({ kind: 'paid', paid: 100, owing: 0 });
+  });
+  it('marks a partly paid job as partial', () => {
+    expect(jobPaymentBadge(inv([['a', 40, 60]]), 'a')).toEqual({ kind: 'partial', paid: 40, owing: 60 });
+  });
+  it('no badge for an unpaid job', () => {
+    expect(jobPaymentBadge(inv([['a', 0, 60]]), 'a')).toBeNull();
+  });
+  it('no badges on a receipt', () => {
+    expect(jobPaymentBadge(inv([['a', 100, 0]], true), 'a')).toBeNull();
+  });
+  it('no badge for a job not on the invoice', () => {
+    expect(jobPaymentBadge(inv([['a', 100, 0]]), 'zzz')).toBeNull();
   });
 });

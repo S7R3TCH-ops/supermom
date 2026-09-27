@@ -2,6 +2,8 @@ import { Fragment, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchInvoiceById, settleInvoiceOutstanding, voidInvoiceSettlement, addJobsToInvoice } from '../data/invoicesRepo';
 import { computeJobFinancials } from '../lib/financialMath';
+import { jobPaymentBadge } from '../lib/invoiceBalances';
+import { parsePaymentAmount } from '../lib/paymentWaterfall';
 import { useAuth } from '../context/AuthContext';
 import { getCurrentBusinessId } from '../data/currentBusiness';
 import { authHeaders } from '../lib/supabase';
@@ -46,6 +48,7 @@ export default function InvoiceView() {
   const [settleState, setSettleState] = useState('idle'); // idle | saving | error
   const [method, setMethod]         = useState('e-Transfer');
   const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [amountStr, setAmountStr]   = useState(''); // blank = pay selected jobs in full
   const [confirmUndo, setConfirmUndo] = useState(false);
   const [addJobIds, setAddJobIds]   = useState(() => new Set());
   const [addState, setAddState]     = useState('idle'); // idle | saving | error
@@ -138,6 +141,15 @@ export default function InvoiceView() {
   const selectedTotal = outstandingJobs
     .filter(j => selectedIds.has(j.id))
     .reduce((s, j) => s + j.owing, 0);
+  // Optional partial amount — applied oldest job first; can't exceed what's selected.
+  const parsedAmount = parsePaymentAmount(amountStr);
+  const amountError = Number.isNaN(parsedAmount)
+    ? 'Enter a dollar amount'
+    : parsedAmount !== null && Math.round(parsedAmount * 100) > Math.round(selectedTotal * 100)
+      ? `More than the $${selectedTotal.toFixed(2)} owing`
+      : null;
+  const payTotal = parsedAmount ?? selectedTotal;
+  const isPartialPay = parsedAmount !== null && !amountError && Math.round(parsedAmount * 100) < Math.round(selectedTotal * 100);
   const showSettlePanel = isOwner && outstandingJobs.length > 0 && !!(invoiceSentAt || receiptSentAt);
   const showUndo = isOwner && (invoice.settlementCount || 0) > 0;
 
@@ -176,11 +188,12 @@ export default function InvoiceView() {
   }
 
   async function handleSettle() {
-    if (settlingRef.current || selectedIds.size === 0) return;
+    if (settlingRef.current || selectedIds.size === 0 || amountError) return;
     settlingRef.current = true;
     setSettleState('saving');
     try {
-      await settleInvoiceOutstanding(id, method, [...selectedIds]);
+      await settleInvoiceOutstanding(id, method, [...selectedIds], parsedAmount);
+      setAmountStr('');
       await reload();
       notifyDataChanged();
       setSettleState('idle');
@@ -200,7 +213,7 @@ export default function InvoiceView() {
     settlingRef.current = true;
     setSettleState('saving');
     try {
-      await voidInvoiceSettlement(id);
+      await voidInvoiceSettlement(id, null, { lastRoundOnly: true });
       await reload();
       notifyDataChanged();
       setSettleState('idle');
@@ -385,7 +398,7 @@ export default function InvoiceView() {
                 padding: '8px 14px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer',
               }}
             >
-              {settleState === 'saving' ? 'Working…' : settleState === 'error' ? '✗ Failed — retry' : confirmUndo ? 'Tap again to undo' : '↩ Undo'}
+              {settleState === 'saving' ? 'Working…' : settleState === 'error' ? '✗ Failed — retry' : confirmUndo ? 'Tap again to undo' : '↩ Undo last payment'}
             </button>
           )}
         </div>
@@ -451,20 +464,34 @@ export default function InvoiceView() {
               <option value="e-Transfer">e-Transfer</option>
               <option value="Cash">Cash</option>
             </select>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={amountStr}
+              onChange={e => setAmountStr(e.target.value)}
+              placeholder={`$${selectedTotal.toFixed(2)}`}
+              aria-label="Amount received (leave blank for full amount)"
+              style={{ width: 110, padding: '8px 10px', borderRadius: 8, border: `1.5px solid ${amountError ? '#DC2626' : '#ddd'}`, fontSize: 13, fontWeight: 600, color: '#333' }}
+            />
             <button
               onClick={handleSettle}
-              disabled={selectedIds.size === 0 || settleState === 'saving'}
+              disabled={selectedIds.size === 0 || settleState === 'saving' || !!amountError}
               style={{
                 flex: 1, minWidth: 180,
-                background: settleState === 'saving' ? '#ccc' : selectedIds.size === 0 ? '#eee' : '#16A34A',
-                color: selectedIds.size === 0 ? '#aaa' : 'white', border: 'none',
+                background: settleState === 'saving' ? '#ccc' : selectedIds.size === 0 || amountError ? '#eee' : '#16A34A',
+                color: selectedIds.size === 0 || amountError ? '#aaa' : 'white', border: 'none',
                 padding: '10px 14px', borderRadius: 8, fontSize: 14, fontWeight: 700,
-                cursor: selectedIds.size === 0 || settleState === 'saving' ? 'not-allowed' : 'pointer',
+                cursor: selectedIds.size === 0 || settleState === 'saving' || amountError ? 'not-allowed' : 'pointer',
               }}
             >
-              {settleState === 'saving' ? 'Saving…' : settleState === 'error' ? '✗ Failed — retry' : `Mark Paid — $${selectedTotal.toFixed(2)}`}
+              {settleState === 'saving' ? 'Saving…' : settleState === 'error' ? '✗ Failed — retry' : isPartialPay ? `Record $${payTotal.toFixed(2)} payment` : `Mark Paid — $${payTotal.toFixed(2)}`}
             </button>
           </div>
+          {(amountError || isPartialPay) && (
+            <div style={{ marginTop: 8, fontSize: 12, fontWeight: 600, color: amountError ? '#DC2626' : '#92400E' }}>
+              {amountError || 'Partial payment — applied to the oldest job first.'}
+            </div>
+          )}
         </div>
       )}
 
@@ -550,6 +577,15 @@ export default function InvoiceView() {
                       <td style={{ padding: '8px 14px', verticalAlign: 'top' }}>
                         <div>{j.service_name || 'Professional Services'}</div>
                         {!f.isHourly && <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>Flat rate</div>}
+                        {(() => {
+                          const badge = jobPaymentBadge(invoice, j.id);
+                          if (!badge) return null;
+                          return (
+                            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.5px', marginTop: 3, color: badge.kind === 'paid' ? '#16A34A' : '#B45309' }}>
+                              {badge.kind === 'paid' ? 'PAID' : `PARTIAL · $${badge.paid.toFixed(2)} paid`}
+                            </div>
+                          );
+                        })()}
                       </td>
                       {anyHourly && <td style={{ textAlign: 'center', padding: '8px 14px', color: '#555', verticalAlign: 'top' }}>{f.isHourly ? `$${f.rate.toFixed(2)}` : ''}</td>}
                       {anyHourly && <td style={{ textAlign: 'center', padding: '8px 14px', color: '#555', verticalAlign: 'top' }}>{f.isHourly ? f.hours.toFixed(1) : ''}</td>}

@@ -87,4 +87,14 @@ describe('buildInvoicePdfBuffer', () => {
     const buf = await buildInvoicePdfBuffer(invoice);
     expect(buf.subarray(0, 5).toString('latin1')).toBe('%PDF-');
   }, 30000);
+
+  it('renders PAID / PARTIAL line-item badges on an open multi-job invoice', async () => {
+    const invoice = makeInvoice();
+    invoice.invoiceJobBalances = [
+      { job: { id: 'job-a' }, total: 169.5, paid: 169.5, owing: 0 },
+      { job: { id: 'job-b' }, total: 169.5, paid: 50, owing: 119.5 },
+    ];
+    const buf = await buildInvoicePdfBuffer(invoice);
+    expect(buf.subarray(0, 5).toString('latin1')).toBe('%PDF-');
+  }, 30000);
 });

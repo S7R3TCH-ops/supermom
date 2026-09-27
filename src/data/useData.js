@@ -87,7 +87,7 @@ export function useJobs() {
         fetchActiveJobs(),
         fetchClients(),
         fetchWorkers({ includeArchived: true }).catch(() => []),
-        supabase.from('payments').select('job_id, amount').eq('business_id', businessId).eq('is_void', false),
+        supabase.from('payments').select('job_id, amount, payment_method').eq('business_id', businessId).eq('is_void', false),
         supabase.from('client_credits').select('job_id, amount').eq('business_id', businessId).eq('kind', 'issued'),
       ]);
       return { rows: js, clientRows: cs, workerRows: ws, paymentRows: pmtResult.data || [], creditRows: creditResult.data || [] };
@@ -102,14 +102,18 @@ export function useJobs() {
   const clientLookup = Object.fromEntries(clientRows.map(c => [c.id, toDisplayClient(c, [])]));
   const workerLookup = Object.fromEntries(workerRows.map(w => [w.id, w]));
   const paymentsByJobId = {};
+  const creditPaidByJobId = {};
   paymentRows.forEach(p => {
     paymentsByJobId[p.job_id] = (paymentsByJobId[p.job_id] || 0) + Number(p.amount || 0);
+    if (p.payment_method === 'Credit') {
+      creditPaidByJobId[p.job_id] = (creditPaidByJobId[p.job_id] || 0) + Number(p.amount || 0);
+    }
   });
   const creditsByJobId = {};
   creditRows.forEach(c => {
     creditsByJobId[c.job_id] = (creditsByJobId[c.job_id] || 0) + Number(c.amount || 0);
   });
-  const display = rows.map(j => toDisplayJob(j, clientLookup, paymentsByJobId, creditsByJobId));
+  const display = rows.map(j => toDisplayJob(j, clientLookup, paymentsByJobId, creditsByJobId, creditPaidByJobId));
   return { jobs: display, raw: rows, clients: clientLookup, workers: workerLookup, loading, error, refresh: refetch };
 }
 

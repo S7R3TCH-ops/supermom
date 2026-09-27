@@ -719,7 +719,7 @@ function ReadMode({
 
         {creditPaidTotal > 0.009 && (
           <InfoCard T={T}>
-            <div style={{ fontFamily: T.font, fontSize: 12.5, color: T.ink, marginBottom: 8 }}>
+            <div style={{ fontFamily: T.font, fontSize: 12.5, color: T.ink, fontWeight: 700, marginBottom: 8 }}>
               Paid <strong>${creditPaidTotal.toFixed(2)}</strong> from {job.client_name || 'client'}'s credit
             </div>
             <Btn
@@ -743,8 +743,9 @@ function ReadMode({
               }}
               disabled={creditBackBusy}
               bg={confirmCreditBack ? '#FC4693' : T.card}
-              border={`1px solid ${confirmCreditBack ? '#FC4693' : T.cardBorder}`}
-              color={confirmCreditBack ? 'white' : T.inkSub}
+              border="1.5px solid #FC4693"
+              color={confirmCreditBack ? 'white' : '#FC4693'}
+              style={{ fontWeight: 700 }}
               T={T}
             >
               {creditBackBusy ? 'Working…' : confirmCreditBack ? 'Tap again to confirm' : 'Change back to credit'}

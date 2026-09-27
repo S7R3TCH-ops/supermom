@@ -74,3 +74,18 @@ describe('toDisplayClient — pending note', () => {
     expect(d.pendingNoteSourceJobId).toBeNull();
   });
 });
+
+describe('toDisplayJob — credit_paid', () => {
+  it('maps credit_paid from creditPaidByJobId lookup', () => {
+    const d = toDisplayJob({ id: 'j1' }, {}, {}, {}, { j1: 45 })!;
+    expect(d.credit_paid).toBe(45);
+  });
+
+  it('defaults to 0 when creditPaidByJobId is omitted or job not present', () => {
+    const d1 = toDisplayJob({ id: 'j1' })!;
+    expect(d1.credit_paid).toBe(0);
+
+    const d2 = toDisplayJob({ id: 'j1' }, {}, {}, {}, {})!;
+    expect(d2.credit_paid).toBe(0);
+  });
+});

@@ -41,8 +41,12 @@ export default function JobCard({
   const dateLabel = j.start ? dateBrief(j.start) + (staleness ? ` · ${staleness}` : '') : '';
 
   // Outstanding balance takes priority over the gross total once something's owed —
-  // that's the actionable number. Wrap-up jobs show no $ at all (nothing's final yet).
-  const amountToShow = wrapUp ? 0 : (isOwing && remaining != null) ? remaining : total;
+  // that's the actionable number. Wrap-up cards show remaining owing (or total if remaining is unset).
+  const rawJob = j.raw || j;
+  const isHourlyWithoutActual = (rawJob.pricing_type === 'Hourly' || rawJob.services?.pricing_type === 'Hourly') && !rawJob.actual_duration;
+  const isEstimated = wrapUp && isHourlyWithoutActual;
+  const prefix = isEstimated ? '~' : '';
+  const amountToShow = (isOwing && remaining != null) ? remaining : wrapUp ? (remaining != null ? remaining : total) : total;
 
   // Owing cards (unpaid/overdue/partial) get a bold solid fill — switch body text to white for contrast
   const nameColor = isOwing ? S.fg : T.ink;
@@ -85,26 +89,23 @@ export default function JobCard({
         </span>
       </div>
 
-      {/* Row 2: date | amount */}
+      {/* Row 2: date | amount + paid */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
         <div style={{ fontSize: 11, fontWeight: 500, color: dateColor }}>{dateLabel}</div>
-        {amountToShow > 0 && (
-          <div style={{
-            fontFamily: T.serif, fontSize: 14,
-            fontWeight: isOwing ? 700 : 600,
-            color: amountColor, fontVariantNumeric: 'tabular-nums',
-          }}>
-            {privacyOn ? '•••' : `$${amountToShow.toFixed(0)}`}
-          </div>
-        )}
-      </div>
-
-      {/* Partial: what's already been paid, next to the outstanding figure above */}
-      {isPartial && paidSoFar > 0 && !privacyOn && (
-        <div style={{ fontSize: 10.5, fontWeight: 600, color: mutedColor, marginTop: -3, marginBottom: 5 }}>
-          ${paidSoFar.toFixed(0)} paid already
+        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+          {amountToShow > 0 && (
+            <div style={{ fontFamily: T.serif, fontSize: 14, fontWeight: isOwing ? 700 : 600, color: amountColor, fontVariantNumeric: 'tabular-nums' }}>
+              {privacyOn ? '•••' : `${prefix}$${amountToShow.toFixed(0)}`}
+              {isEstimated && !privacyOn && <span style={{ fontSize: 10, fontWeight: 500, opacity: 0.85, marginLeft: 2 }}>est.</span>}
+            </div>
+          )}
+          {paidSoFar > 0 && !privacyOn && (isPartial || wrapUp) && (
+            <div style={{ fontSize: 10.5, fontWeight: 600, color: isOwing ? 'rgba(255,255,255,0.9)' : T.inkSub, marginTop: 1 }}>
+              ${paidSoFar.toFixed(0)} paid{Number(j.credit_paid) > 0 ? ` · incl. $${Number(j.credit_paid).toFixed(0)} credit` : ''}
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Row 3: service tag */}
       <div style={{

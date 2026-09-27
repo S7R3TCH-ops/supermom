@@ -50,7 +50,7 @@ export default function NoteCallout({ T, mode, label, text, compact = false, onD
             <span style={{ fontSize: 10, color: onDark ? '#fff' : T.pink, flexShrink: 0, lineHeight: 1.4 }}>✦</span>
           )}
           <span style={{
-            fontSize: 11, fontWeight: 500, color: textColor, lineHeight: 1.4,
+            fontSize: 12.5, fontWeight: 600, color: onDark ? '#fff' : T.ink, lineHeight: 1.4,
             display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
           }}>
             {text}

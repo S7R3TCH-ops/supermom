@@ -177,7 +177,15 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 ---
 
 
-## Current version: 0.13.93 - Sep 27, 2026 (unwind spent credit on job revert)
+## Current version: 0.13.94 - Sep 27, 2026 (home card money clarity, louder notes & credit button)
+
+**v0.13.94**: Home card money clarity, louder notes, and louder credit button:
+- Wrap-up job cards on Home now show the amount owing (`remaining`, or `total` if uncomputed). If hourly without actual duration recorded yet, prefixes `~` and appends `est.` (`computeJobFinancials` falls back to `estimated_hours`).
+- Moved paid/credit breakdown into a right-aligned vertical stack directly beneath the amount in Row 2 of `JobCard` (`$X paid · incl. $Y credit`). Removed legacy separate left-aligned paid line.
+- Exposed `credit_paid` on `DisplayJob` (queried from `payments` where `payment_method = 'Credit' && !is_void` in `useJobs` via `selectors.ts` `toDisplayJob`). Added unit tests in `selectors.test.ts`.
+- Made `NoteCallout` in compact mode (on cards) more prominent: increased font size to 12.5px, weight to 600, with full ink color contrast (`T.ink` or white on dark cards).
+- Styled "Change back to credit" button in `JobDetailSheet.jsx` with prominent pink outline (`1.5px solid #FC4693`), bold text, and bold pink header ("Paid $X from {client}'s credit").
+- UI-only update: no DB writes, no alterations to payment/credit math.
 
 **v0.13.93**: Unwind spent credit on job revert to eliminate ledger deficit:
 - Updated `revertJobToPreCompletion` in `jobsRepo.js`: fetches `client_id` before mutation; after voiding payments and deleting this job's credit ledger rows, checks client credit balance. If balance is in deficit (< -$0.009), iteratively unwinds newest applied credit rows via `moveCreditBackFromJob` until deficit is eliminated (capped at 50 iterations); returns `{ unwoundJobIds }`.

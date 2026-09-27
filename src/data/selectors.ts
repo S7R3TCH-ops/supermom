@@ -166,6 +166,7 @@ export interface DisplayJob {
   gcal_event_id: string | null;
   is_deleted: boolean;
   issued_credit: number;
+  credit_paid: number;
 }
 
 // ---------- helpers ----------
@@ -307,7 +308,8 @@ export function toDisplayJob(
   jobRow: JobInput & Record<string, unknown>,
   clientLookup: ClientLookup = {},
   paymentsByJobId: PaymentsByJobId = {},
-  creditsByJobId: CreditsByJobId = {}
+  creditsByJobId: CreditsByJobId = {},
+  creditPaidByJobId: PaymentsByJobId = {}
 ): DisplayJob | null {
   if (!jobRow) return null;
   const c = clientLookup[jobRow.client_id as string] || null;
@@ -347,6 +349,7 @@ export function toDisplayJob(
     gcal_event_id: (jobRow.calendar_event_id as string) ?? null,
     is_deleted: !!(jobRow.deleted_at),
     issued_credit: creditsByJobId[jobRow.id as string] || 0,
+    credit_paid: (creditPaidByJobId && creditPaidByJobId[jobRow.id as string]) || 0,
   };
 }
 

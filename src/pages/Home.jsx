@@ -527,10 +527,9 @@ export default function Home() {
     setLocationLoading(true);
     try {
       const position = await new Promise((resolve, reject) => {
-        const timeoutId = setTimeout(() => reject(new Error('Geolocation timeout')), 6000);
         navigator.geolocation.getCurrentPosition(
-          (pos) => { clearTimeout(timeoutId); resolve(pos); },
-          (err) => { clearTimeout(timeoutId); reject(err); },
+          resolve,
+          reject,
           { timeout: 12000, maximumAge: 90000 }
         );
       });

@@ -177,12 +177,14 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 ---
 
 
-## Current version: 0.13.85 - Sep 26, 2026 (5 small Sandra UI fixes)
+## Current version: 0.13.86 - Sep 26, 2026 (5 small Sandra UI fixes)
+
+**v0.13.86 (this session)**: Fixed the geolocation timeout race in `Home.jsx` (`fetchLocationDrives`) that was causing native valid fixes to get rejected by an overly aggressive JS fallback timer.
 
 **v0.13.85 (this session)**: Fixed 5 small UI bugs reported by Sandra captures:
 1. `LogoBar.jsx`: Added `flexShrink: 0` to prevent the AI chat button from pushing the avatar out of bounds on smaller screens.
 2. `Home.jsx`: Changed weekly revenue logic to explicitly check `weekOwed <= 0` instead of `collectedThisWeek >= displayRevenue`.
-3. `Home.jsx`: Added timeout fallbacks to `navigator.geolocation.getCurrentPosition` calls in `handleSupermomGo` and `fetchLocationDrives` to prevent infinite hangs.
+3. `Home.jsx`: Added timeout fallbacks to `navigator.geolocation.getCurrentPosition` calls in `handleSupermomGo` and `fetchLocationDrives` to prevent infinite hangs. (Note: `fetchLocationDrives` fallback removed in v0.13.86).
 4. `InvoiceView.jsx`: Moved the `handleUndo` button inside the main toolbar flex container to fix misalignment.
 5. `NewJobSheet.jsx`: Updated the duration stepper to use 15-minute increments instead of 30.
 

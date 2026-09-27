@@ -29,7 +29,20 @@ export default async function handler(req, res) {
     return res.status(403).json({ error: 'Forbidden: business mismatch' });
   }
   // Scope context lookups to the caller's business (admins keep the requested scope).
-  const scopeBusinessId = auth.isAdmin ? businessId : auth.businessId;
+  let scopeBusinessId = auth.isAdmin ? businessId : auth.businessId;
+
+  if (auth.isAdmin && !scopeBusinessId) {
+    if (clientId) {
+      const { data: c } = await supabase.from('clients').select('business_id').eq('id', clientId).single();
+      if (c) scopeBusinessId = c.business_id;
+    } else if (jobId) {
+      const { data: j } = await supabase.from('jobs').select('business_id').eq('id', jobId).single();
+      if (j) scopeBusinessId = j.business_id;
+    } else {
+      const { data: qa } = await supabase.from('businesses').select('id').eq('is_test', true).limit(1).maybeSingle();
+      if (qa) scopeBusinessId = qa.id;
+    }
+  }
   // A non-admin with no resolvable business_id must never fall through to an
   // unscoped lookup below — that runs on the service-role client (bypasses RLS)
   // and would leak any tenant's client/job notes into the prompt.

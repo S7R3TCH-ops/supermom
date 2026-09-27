@@ -488,13 +488,14 @@ export default function Home() {
     // Same-tab navigation (not window.open) — immune to popup/"tab-under" blocking
     // that browsers apply to a blank window redirected after a delay. iOS/Android
     // universal-link interception still fires on a plain location.href navigation.
-    const gpsPromise = new Promise(resolve =>
+    const gpsPromise = new Promise(resolve => {
+      const timeoutId = setTimeout(() => resolve(null), 1000);
       navigator.geolocation.getCurrentPosition(
-        pos => resolve(`${pos.coords.latitude},${pos.coords.longitude}`),
-        () => resolve(null),
+        pos => { clearTimeout(timeoutId); resolve(`${pos.coords.latitude},${pos.coords.longitude}`); },
+        () => { clearTimeout(timeoutId); resolve(null); },
         { timeout: 1000, maximumAge: 30000 }
-      )
-    );
+      );
+    });
     setTimeout(async () => {
       const freshOrigin = await gpsPromise;
       const origin = freshOrigin ?? lastKnownOrigin;
@@ -525,9 +526,14 @@ export default function Home() {
     if (!targets.length) return;
     setLocationLoading(true);
     try {
-      const position = await new Promise((resolve, reject) =>
-        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 12000, maximumAge: 90000 })
-      );
+      const position = await new Promise((resolve, reject) => {
+        const timeoutId = setTimeout(() => reject(new Error('Geolocation timeout')), 6000);
+        navigator.geolocation.getCurrentPosition(
+          (pos) => { clearTimeout(timeoutId); resolve(pos); },
+          (err) => { clearTimeout(timeoutId); reject(err); },
+          { timeout: 12000, maximumAge: 90000 }
+        );
+      });
       const origin = `${position.coords.latitude},${position.coords.longitude}`;
       setLastKnownOrigin(origin);
       const destinations = targets.map(j => j.address).join('|');
@@ -729,7 +735,7 @@ export default function Home() {
                 {displayRevenue > 0 && collectedThisWeek > 0 && (
                   <div style={{ fontSize: 10, fontWeight: 700, color: '#16A34A', letterSpacing: '0.3px' }}>
                     {privacyOn ? '•••' : (
-                      collectedThisWeek >= displayRevenue
+                      weekOwed <= 0
                         ? '✓ all collected'
                         : `$${Math.round(collectedThisWeek).toLocaleString('en-CA')} collected`
                     )}

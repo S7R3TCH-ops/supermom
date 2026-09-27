@@ -125,7 +125,7 @@ export default function LogoBar() {
         </>
       )}
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0 }}>
         {aiChat && aiEnabled && (
           <button
             type="button"

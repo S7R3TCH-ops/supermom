@@ -375,6 +375,19 @@ export default function InvoiceView() {
           >
             Print
           </button>
+          {showUndo && (
+            <button
+              onClick={handleUndo}
+              disabled={settleState === 'saving'}
+              style={{
+                background: 'white', color: confirmUndo ? '#DC2626' : 'var(--ink-muted)',
+                border: `1.5px solid ${confirmUndo ? '#DC2626' : '#ddd'}`,
+                padding: '8px 14px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+              }}
+            >
+              {settleState === 'saving' ? 'Working…' : settleState === 'error' ? '✗ Failed — retry' : confirmUndo ? 'Tap again to undo' : '↩ Undo'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -455,21 +468,7 @@ export default function InvoiceView() {
         </div>
       )}
 
-      {showUndo && (
-        <div className="no-print" style={{ maxWidth: 800, margin: '0 auto 15px', display: 'flex', justifyContent: 'flex-end' }}>
-          <button
-            onClick={handleUndo}
-            disabled={settleState === 'saving'}
-            style={{
-              background: 'white', color: confirmUndo ? '#DC2626' : 'var(--ink-muted)',
-              border: `1.5px solid ${confirmUndo ? '#DC2626' : '#ddd'}`,
-              padding: '7px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer',
-            }}
-          >
-            {settleState === 'saving' ? 'Working…' : settleState === 'error' ? '✗ Failed — retry' : confirmUndo ? 'Tap again to undo payment' : '↩ Undo Payment'}
-          </button>
-        </div>
-      )}
+
 
       <div ref={wrapRef} className="invoice-scale-wrap" style={{ overflowX: 'hidden', height: scale < 1 && boxNaturalH ? boxNaturalH * scale : 'auto' }}>
       <div ref={boxRef} className="invoice-box" style={scale < 1 ? { transform: `scale(${scale})`, transformOrigin: 'top left', width: 800, maxWidth: 'none' } : {}}>

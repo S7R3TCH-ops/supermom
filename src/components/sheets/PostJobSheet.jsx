@@ -550,16 +550,16 @@ export default function PostJobSheet({ jobId, onClose }) {
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '24px 20px', gap: 16 }}>
                 <div>
                   <div style={{ fontFamily: T.serif, fontSize: 20, fontWeight: 500, color: T.ink, marginBottom: 6 }}>
-                    {clientName} has other open invoices
+                    {clientName}'s account now has ${surplusAmount.toFixed(2)} in credit
                   </div>
                   <div style={{ fontSize: 13, color: T.inkMuted, lineHeight: 1.45 }}>
-                    ${totalPaidOnJob.toFixed(2)} covers this job (${liveTotal.toFixed(2)}). ${surplusAmount.toFixed(2)} left over.
+                    ${totalPaidOnJob.toFixed(2)} covers this job (${liveTotal.toFixed(2)}) — the extra ${surplusAmount.toFixed(2)} is already saved as credit. Send it to other open jobs now, or leave it for next time.
                   </div>
                 </div>
 
                 <div>
                   <div style={{ fontSize: 11, fontWeight: 700, color: T.inkMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
-                    It will go toward:
+                    Send it toward:
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 220, overflowY: 'auto' }}>
                     {lines.map((line, idx) => (
@@ -621,13 +621,13 @@ export default function PostJobSheet({ jobId, onClose }) {
                       minHeight: 44,
                     }}
                   >
-                    {surplusSpilloverBusy ? 'Applying…' : `Apply $${appliedTotal.toFixed(2)} to these jobs`}
+                    {surplusSpilloverBusy ? 'Sending…' : `Send $${appliedTotal.toFixed(2)} to these jobs`}
                   </button>
                   <button
                     type="button"
                     disabled={surplusSpilloverBusy}
                     onClick={() => {
-                      toast.success(`Kept $${surplusAmount.toFixed(2)} as credit for ${clientName}'s next job.`);
+                      toast.success(`Left $${surplusAmount.toFixed(2)} as credit for ${clientName}'s next job.`);
                       setPhase('nudge');
                     }}
                     style={{
@@ -637,7 +637,7 @@ export default function PostJobSheet({ jobId, onClose }) {
                       cursor: 'pointer', minHeight: 44,
                     }}
                   >
-                    Keep ${surplusAmount.toFixed(2)} as credit instead
+                    Leave ${surplusAmount.toFixed(2)} as credit
                   </button>
                 </div>
               </div>

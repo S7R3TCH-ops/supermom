@@ -63,12 +63,93 @@ export async function listMyRequests() {
   if (!businessId) return [];
   const { data, error } = await supabase
     .from('client_requests')
-    .select('id, kind, title, body, status, admin_notes, created_at, updated_at')
+    .select('id, business_id, kind, title, body, status, admin_notes, created_at, updated_at')
     .eq('business_id', businessId)
     .order('created_at', { ascending: false })
     .limit(50);
   if (error) throw error;
   return data || [];
+}
+
+/**
+ * Thread messages for a request (both Joel and reporter replies).
+ */
+export async function listRequestMessages(requestId) {
+  if (!requestId) return [];
+  const { data, error } = await supabase
+    .from('request_messages')
+    .select('id, request_id, author_role, author_id, body, created_at')
+    .eq('request_id', requestId)
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return data || [];
+}
+
+/**
+ * Owner reply to a request.
+ * Database trigger automatically reopens status from 'done' to 'triaged'.
+ */
+export async function replyToRequest(requestId, businessId, body) {
+  if (!body?.trim()) return null;
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data, error } = await supabase
+    .from('request_messages')
+    .insert({
+      request_id: requestId,
+      business_id: businessId,
+      author_role: 'owner',
+      author_id: user?.id ?? null,
+      body: body.trim(),
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Combined Admin save action:
+ * 1. Inserts replyBody to request_messages if non-empty
+ * 2. Updates client_requests.status if changed (leaving admin_notes untouched)
+ * 3. Dispatches exactly one notification (done or reply) if applicable
+ */
+export async function saveRequestAdmin(id, businessId, { status, oldStatus, replyBody }) {
+  const trimmedReply = replyBody?.trim();
+  if (trimmedReply) {
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error: msgErr } = await supabase
+      .from('request_messages')
+      .insert({
+        request_id: id,
+        business_id: businessId,
+        author_role: 'admin',
+        author_id: user?.id ?? null,
+        body: trimmedReply,
+      });
+    if (msgErr) throw msgErr;
+  }
+
+  if (status && status !== oldStatus) {
+    const { error: reqErr } = await supabase
+      .from('client_requests')
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq('id', id);
+    if (reqErr) throw reqErr;
+  }
+
+  if (status === 'done' && oldStatus !== 'done') {
+    fetch('/api/ai/notify-request-done', {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify({ requestId: id, replyBody: trimmedReply || null }),
+    }).catch(e => logClientError(e, { type: 'notify-request-done', requestId: id }));
+  } else if (trimmedReply) {
+    fetch('/api/ai/notify-request-reply', {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify({ requestId: id, replyBody: trimmedReply }),
+    }).catch(e => logClientError(e, { type: 'notify-request-reply', requestId: id }));
+  }
 }
 
 /**

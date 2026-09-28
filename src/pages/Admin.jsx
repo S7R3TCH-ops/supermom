@@ -11,7 +11,7 @@ import { computeJobSubtotal } from '../lib/financialMath';
 import ServiceCatalogSheet from '../components/sheets/ServiceCatalogSheet';
 import WorkerCatalogSheet from '../components/sheets/WorkerCatalogSheet';
 import { useRequestSheet } from '../context/RequestSheetContext';
-import { listRequestsAdmin, updateRequestAdmin } from '../data/requestsRepo';
+import { listRequestsAdmin, saveRequestAdmin, listRequestMessages } from '../data/requestsRepo';
 import { REQUEST_STATUSES } from '../lib/requestFormatting';
 
 function ToggleBtn({ show, onToggle, color }) {
@@ -79,6 +79,7 @@ export default function Admin() {
   // Per-row unsaved edits: { [id]: { status, admin_notes } }. Status + reply save together.
   const [requestDrafts, setRequestDrafts] = useState({});
   const [savingRequestId, setSavingRequestId] = useState(null);
+  const [threadMessages, setThreadMessages] = useState({});
   const [pushLog, setPushLog] = useState([]);
   const [pushLogLoading, setPushLogLoading] = useState(true);
   const [remindersHeartbeat, setRemindersHeartbeat] = useState(null);
@@ -91,9 +92,22 @@ export default function Admin() {
       .finally(() => setRequestsLoading(false));
   }, [isSuperAdmin]);
 
+  useEffect(() => {
+    if (!expandedRequestId) return;
+    let cancelled = false;
+    listRequestMessages(expandedRequestId)
+      .then(msgs => {
+        if (!cancelled) {
+          setThreadMessages(prev => ({ ...prev, [expandedRequestId]: msgs }));
+        }
+      })
+      .catch(e => console.error('Failed to load thread messages:', e));
+    return () => { cancelled = true; };
+  }, [expandedRequestId]);
+
   function setRequestDraft(r, field, value) {
     setRequestDrafts(prev => {
-      const base = prev[r.id] || { status: r.status, admin_notes: r.admin_notes || '' };
+      const base = prev[r.id] || { status: r.status, admin_notes: '' };
       return { ...prev, [r.id]: { ...base, [field]: value } };
     });
   }
@@ -103,12 +117,20 @@ export default function Admin() {
     if (!draft) return;
     setSavingRequestId(r.id);
     try {
-      await updateRequestAdmin(r.id, draft);
-      const admin_notes = draft.admin_notes.trim() || null;
-      setRequests(prev => prev.map(x => (x.id === r.id ? { ...x, status: draft.status, admin_notes } : x)));
+      await saveRequestAdmin(r.id, r.business_id, {
+        status: draft.status,
+        oldStatus: r.status,
+        replyBody: draft.admin_notes,
+      });
+      setRequests(prev => prev.map(x => (x.id === r.id ? { ...x, status: draft.status } : x)));
       setRequestDrafts(prev => { const next = { ...prev }; delete next[r.id]; return next; });
-      setExpandedRequestId(null);
-        toast.success('Saved.');
+      try {
+        const msgs = await listRequestMessages(r.id);
+        setThreadMessages(prev => ({ ...prev, [r.id]: msgs }));
+      } catch (err) {
+        console.error('Failed to refresh thread messages:', err);
+      }
+      toast.success('Saved.');
     } catch {
       toast.error('Could not save request.');
     } finally {
@@ -512,8 +534,8 @@ export default function Admin() {
                     const kindColor = r.kind === 'bug' ? '#FBBF24' : 'var(--pink)';
                     const draft = requestDrafts[r.id];
                     const draftStatus = draft ? draft.status : r.status;
-                    const draftNotes = draft ? draft.admin_notes : (r.admin_notes || '');
-                    const isDirty = !!draft && (draft.status !== r.status || draft.admin_notes.trim() !== (r.admin_notes || ''));
+                    const draftNotes = draft ? draft.admin_notes : '';
+                    const isDirty = !!draft && (draft.status !== r.status || (draft.admin_notes || '').trim().length > 0);
                     const isSaving = savingRequestId === r.id;
                     return (
                       <div key={r.id} style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)', padding: '10px 12px' }}>
@@ -551,6 +573,42 @@ export default function Admin() {
                             {r.context && (
                               <pre style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: '0 0 8px' }}>{JSON.stringify(r.context, null, 2)}</pre>
                             )}
+
+                            {/* Prior thread messages */}
+                            {r.admin_notes && (
+                              <div style={{ marginBottom: 8, padding: '8px 10px', borderRadius: 8, background: 'rgba(252,70,147,0.12)', borderLeft: '3px solid var(--pink)' }}>
+                                <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--pink)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 2 }}>Joel's reply (admin_notes)</div>
+                                <div style={{ fontSize: 12, color: 'white', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{r.admin_notes}</div>
+                              </div>
+                            )}
+                            {threadMessages[r.id] === undefined ? (
+                              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 8 }}>Loading thread…</div>
+                            ) : (threadMessages[r.id] || []).length > 0 && (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
+                                {(threadMessages[r.id] || []).map(msg => {
+                                  const isJoel = msg.author_role === 'admin';
+                                  const label = isJoel ? 'Joel (Admin)' : 'Owner';
+                                  const timeStr = new Date(msg.created_at).toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+                                  return (
+                                    <div
+                                      key={msg.id}
+                                      style={{
+                                        padding: '8px 10px', borderRadius: 8,
+                                        background: isJoel ? 'rgba(252,70,147,0.12)' : 'rgba(255,255,255,0.06)',
+                                        borderLeft: `3px solid ${isJoel ? 'var(--pink)' : 'rgba(255,255,255,0.4)'}`,
+                                      }}
+                                    >
+                                      <div style={{ fontSize: 9, fontWeight: 700, color: isJoel ? 'var(--pink)' : 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 2, display: 'flex', justifyContent: 'space-between' }}>
+                                        <span>{label}</span>
+                                        <span style={{ fontWeight: 400, textTransform: 'none', color: 'rgba(255,255,255,0.4)' }}>{timeStr}</span>
+                                      </div>
+                                      <div style={{ fontSize: 12, color: 'white', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{msg.body}</div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+
                             <label htmlFor={`req-reply-${r.id}`} style={{ display: 'block', fontSize: 9, fontWeight: 700, color: 'var(--pink-label)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>
                               Reply (visible to the business owner)
                             </label>
@@ -560,7 +618,7 @@ export default function Admin() {
                               onChange={e => setRequestDraft(r, 'admin_notes', e.target.value)}
                               className="sm-input"
                               rows={3}
-                              placeholder="Shows as “Joel's reply” in their My requests list"
+                              placeholder="Type a reply to send to the thread..."
                               style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 8, background: 'var(--plum-mid)', border: '1px solid var(--pink-mid)', color: 'white', fontSize: 16, fontFamily: 'inherit', resize: 'vertical', marginBottom: 8 }}
                             />
                             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>

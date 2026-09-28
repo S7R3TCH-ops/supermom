@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import GrabBar from '../ui/GrabBar';
 import { useAppTheme } from '../../context/AppThemeContext';
-import { listMyRequests, nudgeRequest } from '../../data/requestsRepo';
+import { listMyRequests, nudgeRequest, listRequestMessages, replyToRequest } from '../../data/requestsRepo';
+import { getCurrentBusinessId } from '../../data/currentBusiness';
 import { REQUEST_STATUS_BADGES } from '../../lib/requestFormatting';
 import { logClientError } from '../../lib/errorTracking';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
@@ -14,6 +15,17 @@ const KIND_META = {
 
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString('en-CA', { timeZone: 'America/Toronto', month: 'short', day: 'numeric' });
+}
+
+function formatDateTime(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleDateString('en-CA', {
+    timeZone: 'America/Toronto',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
 }
 
 // Owner-facing list of what they've sent via "Tell Joel", with status and
@@ -29,6 +41,45 @@ export default function MyRequestsSheet({ isOpen, onClose, onNewRequest, refresh
   const [loadErr, setLoadErr] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
   const [nudgingId, setNudgingId] = useState(null);
+  const [messagesByReq, setMessagesByReq] = useState({});
+  const [replyTextByReq, setReplyTextByReq] = useState({});
+  const [sendingReply, setSendingReply] = useState({});
+  const [mountedAt] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (!expandedId) return;
+    let cancelled = false;
+    listRequestMessages(expandedId)
+      .then(msgs => {
+        if (!cancelled) {
+          setMessagesByReq(prev => ({ ...prev, [expandedId]: msgs }));
+        }
+      })
+      .catch(e => {
+        logClientError(e, { type: 'list_request_messages', requestId: expandedId });
+      });
+    return () => { cancelled = true; };
+  }, [expandedId]);
+
+  const handleSendReply = async (r, e) => {
+    e.stopPropagation();
+    const text = (replyTextByReq[r.id] || '').trim();
+    if (!text) return;
+    setSendingReply(prev => ({ ...prev, [r.id]: true }));
+    try {
+      const bizId = r.business_id || (await getCurrentBusinessId());
+      await replyToRequest(r.id, bizId, text);
+      setReplyTextByReq(prev => ({ ...prev, [r.id]: '' }));
+      const msgs = await listRequestMessages(r.id);
+      setMessagesByReq(prev => ({ ...prev, [r.id]: msgs }));
+      const rows = await listMyRequests();
+      setRequests(rows);
+    } catch (err) {
+      logClientError(err, { type: 'reply_to_request', requestId: r.id });
+    } finally {
+      setSendingReply(prev => ({ ...prev, [r.id]: false }));
+    }
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -106,7 +157,7 @@ export default function MyRequestsSheet({ isOpen, onClose, onNewRequest, refresh
                 const kind = KIND_META[r.kind] || KIND_META.idea;
                 const badge = REQUEST_STATUS_BADGES[r.status] || REQUEST_STATUS_BADGES.new;
                 const isOpen = expandedId === r.id;
-                const isNudgeable = isOpen && r.status !== "done" && r.status !== "declined" && !r.body.includes("[Follow up]") && (Date.now() - new Date(r.created_at).getTime() > 48 * 60 * 60 * 1000);
+                const isNudgeable = isOpen && r.status !== "done" && r.status !== "declined" && !r.body.includes("[Follow up]") && (mountedAt - new Date(r.created_at).getTime() > 48 * 60 * 60 * 1000);
                 return (
                   <div
                     key={r.id}
@@ -132,14 +183,85 @@ export default function MyRequestsSheet({ isOpen, onClose, onNewRequest, refresh
                       width: '100%', fontFamily: T.font, fontSize: 13, fontWeight: 600, color: T.ink,
                       overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: isOpen ? 'normal' : 'nowrap',
                     }}>{r.title}</div>
-                    {isOpen && r.body.trim() !== r.title && (
-                      <div style={{ fontFamily: T.font, fontSize: 12.5, color: T.inkSub, whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.45 }}>{r.body}</div>
-                    )}
-                    {r.admin_notes && (
-                      <div style={{ width: '100%', boxSizing: 'border-box', marginTop: 2, padding: '9px 12px', borderRadius: 10, background: mode === 'dark' ? 'rgba(255,112,166,0.12)' : '#FFF0F7', borderLeft: `3px solid ${T.pink}` }}>
-                        <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.4px', textTransform: 'uppercase', color: T.pink, marginBottom: 3 }}>Joel's reply</div>
-                        <div style={{ fontFamily: T.font, fontSize: 12.5, color: T.ink, whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.45 }}>{r.admin_notes}</div>
-                      </div>
+                    {isOpen && (
+                      <>
+                        {r.body.trim() !== r.title && (
+                          <div style={{ fontFamily: T.font, fontSize: 12.5, color: T.inkSub, whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.45 }}>{r.body}</div>
+                        )}
+                        {r.admin_notes && (
+                          <div style={{ width: '100%', boxSizing: 'border-box', marginTop: 2, padding: '9px 12px', borderRadius: 10, background: mode === 'dark' ? 'rgba(255,112,166,0.12)' : '#FFF0F7', borderLeft: `3px solid ${T.pink}` }}>
+                            <div style={{ fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.4px', textTransform: 'uppercase', color: T.pink, marginBottom: 3 }}>Joel's reply</div>
+                            <div style={{ fontFamily: T.font, fontSize: 12.5, color: T.ink, whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.45 }}>{r.admin_notes}</div>
+                          </div>
+                        )}
+                        {messagesByReq[r.id] === undefined ? (
+                          <div style={{ fontFamily: T.font, fontSize: 11.5, color: T.inkMuted, padding: '4px 0' }}>Loading messages…</div>
+                        ) : (messagesByReq[r.id] || []).length > 0 && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4, width: '100%' }}>
+                            {(messagesByReq[r.id] || []).map(msg => {
+                              const isJoel = msg.author_role === 'admin';
+                              const authorLabel = isJoel ? 'Joel' : 'You';
+                              const timeLabel = formatDateTime(msg.created_at);
+                              return (
+                                <div
+                                  key={msg.id}
+                                  style={{
+                                    width: '100%', boxSizing: 'border-box', padding: '9px 12px', borderRadius: 10,
+                                    background: isJoel
+                                      ? (mode === 'dark' ? 'rgba(255,112,166,0.12)' : '#FFF0F7')
+                                      : (mode === 'dark' ? 'rgba(255,255,255,0.06)' : '#F3F4F6'),
+                                    borderLeft: `3px solid ${isJoel ? T.pink : (mode === 'dark' ? '#6B7280' : '#9CA3AF')}`,
+                                  }}
+                                >
+                                  <div style={{
+                                    fontFamily: T.font, fontSize: 9, fontWeight: 700, letterSpacing: '0.4px', textTransform: 'uppercase',
+                                    color: isJoel ? T.pink : T.inkMuted, marginBottom: 3, display: 'flex', justifyContent: 'space-between',
+                                  }}>
+                                    <span>{authorLabel}</span>
+                                    <span style={{ fontWeight: 500, textTransform: 'none' }}>{timeLabel}</span>
+                                  </div>
+                                  <div style={{ fontFamily: T.font, fontSize: 12.5, color: T.ink, whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.45 }}>{msg.body}</div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                        {r.status === 'done' && (
+                          <div onClick={e => e.stopPropagation()} style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <div style={{ fontFamily: T.font, fontSize: 11, fontWeight: 600, color: T.inkSub }}>
+                              Still need help with this? Reply to reopen:
+                            </div>
+                            <textarea
+                              value={replyTextByReq[r.id] || ''}
+                              onChange={e => setReplyTextByReq(prev => ({ ...prev, [r.id]: e.target.value }))}
+                              placeholder="Type your reply here..."
+                              rows={3}
+                              style={{
+                                width: '100%', boxSizing: 'border-box',
+                                borderRadius: 8, border: `1.5px solid ${T.cardBorder}`,
+                                background: T.bg, color: T.ink,
+                                fontFamily: T.font, fontSize: 12.5, padding: '8px 10px',
+                                resize: 'vertical',
+                              }}
+                            />
+                            <button
+                              type="button"
+                              disabled={sendingReply[r.id] || !(replyTextByReq[r.id] || '').trim()}
+                              onClick={e => handleSendReply(r, e)}
+                              style={{
+                                alignSelf: 'flex-end',
+                                padding: '8px 16px', borderRadius: 8, border: 'none',
+                                background: !(replyTextByReq[r.id] || '').trim() ? (mode === 'dark' ? '#374151' : '#E5E7EB') : '#FC4693',
+                                color: !(replyTextByReq[r.id] || '').trim() ? T.inkMuted : 'white',
+                                fontFamily: T.font, fontSize: 12.5, fontWeight: 700,
+                                cursor: sendingReply[r.id] || !(replyTextByReq[r.id] || '').trim() ? 'default' : 'pointer',
+                              }}
+                            >
+                              {sendingReply[r.id] ? 'Sending…' : 'Send reply'}
+                            </button>
+                          </div>
+                        )}
+                      </>
                     )}
                                       {isNudgeable && (
                       <button

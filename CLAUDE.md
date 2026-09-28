@@ -90,6 +90,7 @@ A modular, agentic, mobile-first **Solopreneur Operations Platform** — deploye
 | `integrations` | OAuth tokens (Google Calendar). |
 | `error_logs` | Client + server error capture (source, severity, message, stack, context). Append-only, admin-viewable in Admin page. Migration run 2026-07-15. |
 | `client_requests` | In-app bug/idea intake from Sandra (`kind`, `title`, `body`, `context` jsonb, `status`). `notified_at`/`exported_at` track the email-Joel + pull-to-second-brain pipeline. **`admin_notes` is CLIENT-VISIBLE** (v0.13.77) — renders as "Joel's reply" in the owner's My requests sheet; never put private triage notes there. Migration `20260918010000_add_client_requests.sql`. |
+| `request_messages` | Message thread per client request (`request_id`, `business_id`, `author_role`, `author_id`, `body`). Auto-reopens `done` request to `triaged` on owner reply via trigger `trg_reopen_request_on_owner_reply`. Migration `20260927060000_add_request_messages.sql` — **NOT YET RUN**, Joel runs it manually. |
 | `push_subscriptions` | One row per (user, device/browser) Web Push subscription — `endpoint`/`p256dh`/`auth`, written client-side (RLS insert). `fail_count`/`last_success_at` drive the dead-subscription cleanup in the sweep. Migration `20260918030000_add_push_notifications.sql` — **NOT YET RUN**, Joel runs it manually. |
 | `push_log` | One row per dispatched leave/wrap-up push alert — `kind`, `job_start_at` (reschedule-safe dedupe key), `title`/`body` (exactly what was sent), `sent_count`/`failed_count`. `UNIQUE (job_id, kind, job_start_at)` is also the sweep's double-send guard (claimed via insert before sending). Same migration as `push_subscriptions` — **NOT YET RUN**. |
 | `ai_briefs` | Cached AI-generated day/client briefs — `content` jsonb is the parsed model output, `inputs_hash` (sha256 of the canonicalised input) skips regeneration when nothing changed, `kind` ('day'/'client') deliberately has no check constraint (handler-validated, code-only to extend). `UNIQUE (business_id, kind, subject_id)`. Migration `20260918050000_add_ai_briefs.sql` — **NOT YET RUN**, Joel runs it manually. |
@@ -177,7 +178,17 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 ---
 
 
-## Current version: 0.13.94 - Sep 27, 2026 (home card money clarity, louder notes & credit button)
+## Current version: 0.13.95 - Sep 27, 2026 (bug-report reply loop, thread table, and branded notifications)
+
+**v0.13.95**: Bug-report reply loop, thread table, and branded notifications (task 9):
+- Added migration `supabase/migrations/20260927060000_add_request_messages.sql`: `request_messages` table for request conversation threads with RLS (`is_admin()` or `my_business_id()`), explicit Data API grants, and security definer trigger `trg_reopen_request_on_owner_reply` auto-reopening requests from `done` to `triaged` on owner reply. Includes commented `-- DOWN:` block. (Not yet run — Joel runs manually).
+- Updated `api/_lib/mailer.js`: `sendMail` accepts optional `from` address, defaulting to `"Supermom Alerts" <${gmailUser}>`.
+- Added `api/_lib/brandedEmail.js`: `buildRequestEmailHtml` generates clean branded HTML emails matching `api/invoice.ts` aesthetic (`#FC4693`, logo) for `done` ("Your bug report / idea is fixed") and `reply` ("Joel replied to your request") notifications.
+- Updated `api/ai/[action].js`: added `notify-request-done` and `notify-request-reply` to `NON_AI_ACTIONS` and router. Sends branded email `From: "Supermom Support" <support@supermomforhire.com>` to the submitter and dispatches lockscreen push to owner subscriptions.
+- Updated `src/data/requestsRepo.js`: added `listRequestMessages(requestId)`, `replyToRequest(requestId, businessId, body)`, and combined `saveRequestAdmin(id, businessId, { status, oldStatus, replyBody })` which updates status, appends reply to thread, and fires exactly one notification (`done` or `reply`).
+- Updated `src/components/sheets/MyRequestsSheet.jsx`: lazy-loads and renders thread messages chronologically under request body, preserving historical `admin_notes` at the top; displays reply box with Send reply button only on `done` requests, auto-refreshing list to `triaged` upon send.
+- Updated `src/pages/Admin.jsx`: renders read-only thread messages above reply textarea; Save button executes `saveRequestAdmin`, updates local status, clears draft, and refreshes thread.
+- Added unit tests in `src/data/requestsRepo.test.js` validating `saveRequestAdmin` notify dispatch branching (all 19 test files pass).
 
 **v0.13.94**: Home card money clarity, louder notes, and louder credit button:
 - Wrap-up job cards on Home now show the amount owing (`remaining`, or `total` if uncomputed). If hourly without actual duration recorded yet, prefixes `~` and appends `est.` (`computeJobFinancials` falls back to `estimated_hours`).

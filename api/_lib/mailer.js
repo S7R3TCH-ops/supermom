@@ -11,9 +11,10 @@ import nodemailer from 'nodemailer';
  * @param {string} params.subject
  * @param {string} params.text
  * @param {string} [params.html]
+ * @param {string} [params.from]
  * @throws if GMAIL_USER/GMAIL_APP_PASSWORD are missing or the send fails.
  */
-export async function sendMail({ to, subject, text, html }) {
+export async function sendMail({ to, subject, text, html, from }) {
   const gmailUser = process.env.GMAIL_USER;
   const gmailPass = process.env.GMAIL_APP_PASSWORD;
   if (!gmailUser || !gmailPass) {
@@ -26,7 +27,7 @@ export async function sendMail({ to, subject, text, html }) {
   });
 
   await transporter.sendMail({
-    from: `"Supermom Alerts" <${gmailUser}>`,
+    from: from || `"Supermom Alerts" <${gmailUser}>`,
     to,
     subject,
     text,

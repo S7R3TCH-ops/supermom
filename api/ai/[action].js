@@ -6,12 +6,14 @@ import { hashInputs, buildClientBriefPrompt, buildDayBriefPrompt } from '../_lib
 import { computeEndAt, computeUnpaidBalance } from '../_lib/pushAlerts.js';
 import { torontoDateStr, torontoToUtc } from '../_lib/torontoTime.js';
 import { initGemini, generateText, GEMINI_MODEL } from '../_lib/gemini.js';
+import webpush from 'web-push';
+import { buildRequestEmailHtml } from '../_lib/brandedEmail.js';
 
 // Actions that must work even when the AI kill-switch (app_settings.ai_enabled)
 // is off, and that never touch Gemini — living under /api/ai/ purely to
 // reuse this router's existing auth/dispatch plumbing without spending a new
 // Vercel serverless function slot.
-const NON_AI_ACTIONS = new Set(['notify-request']);
+const NON_AI_ACTIONS = new Set(['notify-request', 'notify-request-done', 'notify-request-reply']);
 
 // Actions that must degrade gracefully instead of hard-failing when the kill
 // switch is off — per design doc §3.6, "no regeneration, but keep rendering
@@ -810,6 +812,197 @@ async function notifyRequest(req, res, supabase, auth) {
   return res.status(200).json({ ok: true });
 }
 
+function configureWebPush() {
+  const publicKey = process.env.VITE_VAPID_PUBLIC_KEY;
+  const privateKey = process.env.VAPID_PRIVATE_KEY;
+  const subject = process.env.VAPID_SUBJECT;
+  if (!publicKey || !privateKey || !subject) return false;
+  try {
+    webpush.setVapidDetails(subject, publicKey, privateKey);
+    return true;
+  } catch (err) {
+    console.warn('Failed to set VAPID details:', err);
+    return false;
+  }
+}
+
+async function dispatchRequestPush(supabase, { businessId, requestId, title, body }) {
+  if (!configureWebPush()) {
+    console.warn('[notify-request] VAPID env vars not configured; skipping push');
+    return;
+  }
+
+  try {
+    const { data: owners, error: ownersErr } = await supabase
+      .from('users')
+      .select('id')
+      .eq('business_id', businessId)
+      .eq('role', 'owner');
+    if (ownersErr) {
+      console.warn(`[notify-request] Owners query failed for business ${businessId}:`, ownersErr.message);
+      return;
+    }
+    const ownerIds = (owners ?? []).map(u => u.id);
+    if (ownerIds.length === 0) return;
+
+    const { data: subs, error: subsErr } = await supabase
+      .from('push_subscriptions')
+      .select('id, endpoint, p256dh, auth, fail_count')
+      .eq('business_id', businessId)
+      .in('user_id', ownerIds);
+    if (subsErr) {
+      console.warn(`[notify-request] Push subscriptions query failed for business ${businessId}:`, subsErr.message);
+      return;
+    }
+
+    const payload = JSON.stringify({
+      kind: 'request',
+      requestId,
+      tag: `request-${requestId}`,
+      title,
+      body,
+      url: '/',
+    });
+
+    for (const sub of subs ?? []) {
+      try {
+        await webpush.sendNotification(
+          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+          payload,
+          { TTL: 600, urgency: 'high' }
+        );
+        await supabase
+          .from('push_subscriptions')
+          .update({ last_success_at: new Date().toISOString(), fail_count: 0 })
+          .eq('id', sub.id);
+      } catch (err) {
+        const statusCode = err?.statusCode;
+        if (statusCode === 404 || statusCode === 410) {
+          await supabase.from('push_subscriptions').delete().eq('id', sub.id);
+        } else {
+          const nextFailCount = (sub.fail_count ?? 0) + 1;
+          if (nextFailCount >= 5) {
+            await supabase.from('push_subscriptions').delete().eq('id', sub.id);
+            await logServerError({
+              severity: 'warning',
+              message: 'Push subscription removed after 5 consecutive failures',
+              context: { subscriptionId: sub.id, businessId, lastError: String(err?.message ?? err) },
+              businessId,
+            });
+          } else {
+            await supabase.from('push_subscriptions').update({ fail_count: nextFailCount }).eq('id', sub.id);
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[notify-request] Error sending push notification:', err);
+    await logServerError({
+      severity: 'warning',
+      message: 'Failed to send request push notification',
+      stack: err?.stack,
+      context: { businessId, requestId },
+      businessId,
+    });
+  }
+}
+
+async function handleNotifyRequest(req, res, supabase, auth, variant) {
+  const { requestId, replyBody } = req.body || {};
+  if (!requestId) return res.status(400).json({ error: 'Missing requestId' });
+
+  const { data: row, error: fetchErr } = await supabase
+    .from('client_requests')
+    .select('id, business_id, kind, title, body, submitted_by')
+    .eq('id', requestId)
+    .single();
+  if (fetchErr || !row) return res.status(404).json({ error: 'Request not found' });
+  if (!canAccessBusiness(auth, row.business_id)) {
+    return res.status(403).json({ error: 'Forbidden: request not in your business' });
+  }
+
+  const [{ data: business }, { data: submitter }] = await Promise.all([
+    supabase.from('businesses').select('name, push_alerts_enabled').eq('id', row.business_id).single(),
+    row.submitted_by
+      ? supabase.from('users').select('email, first_name').eq('id', row.submitted_by).single()
+      : Promise.resolve({ data: null }),
+  ]);
+
+  const isDone = variant === 'done';
+  const emailSubject = isDone ? `[Supermom] Fixed: ${row.title}` : `[Supermom] Reply: ${row.title}`;
+  const sender = '"Supermom Support" <support@supermomforhire.com>';
+
+  if (submitter?.email) {
+    const textLines = [
+      isDone ? 'Your bug report / idea is fixed' : 'Joel replied to your request',
+      '',
+      `Request: ${row.title}`,
+      '',
+    ];
+    if (replyBody?.trim()) {
+      textLines.push("Joel's reply:", replyBody.trim(), '');
+    }
+    textLines.push('You can check this under "My requests" in the Supermom app.');
+    if (isDone) {
+      textLines.push('If something still is not working, you can reply directly from the app to reopen it.');
+    }
+
+    const html = buildRequestEmailHtml({
+      kind: row.kind,
+      title: row.title,
+      body: replyBody?.trim() || null,
+      variant,
+      recipientName: submitter?.first_name || '',
+    });
+
+    try {
+      await sendMail({
+        from: sender,
+        to: submitter.email,
+        subject: emailSubject,
+        text: textLines.join('\n'),
+        html,
+      });
+    } catch (e) {
+      await logServerError({
+        severity: 'error',
+        message: `Failed to email client_requests ${variant} notification for ${requestId}`,
+        stack: e?.stack,
+        context: { requestId, to: submitter.email, variant },
+        businessId: row.business_id,
+        alert: true,
+      });
+    }
+  } else {
+    console.warn(`[notify-request-${variant}] No submitter email on file for request ${requestId}`);
+  }
+
+  // Push notification
+  if (business?.push_alerts_enabled !== false) {
+    const pushTitle = isDone ? `Fixed: ${row.title}` : `Reply: ${row.title}`;
+    const pushBody = replyBody?.trim()
+      ? (replyBody.trim().length > 160 ? replyBody.trim().slice(0, 159) + '…' : replyBody.trim())
+      : (isDone ? 'Your bug report or idea has been resolved.' : 'Joel replied to your request.');
+
+    await dispatchRequestPush(supabase, {
+      businessId: row.business_id,
+      requestId: row.id,
+      title: pushTitle,
+      body: pushBody,
+    });
+  }
+
+  return res.status(200).json({ ok: true });
+}
+
+async function notifyRequestDone(req, res, supabase, auth) {
+  return handleNotifyRequest(req, res, supabase, auth, 'done');
+}
+
+async function notifyRequestReply(req, res, supabase, auth) {
+  return handleNotifyRequest(req, res, supabase, auth, 'reply');
+}
+
 async function testPersona(req, res, gemini) {
   if (!gemini) {
     const mockGreetings = {
@@ -1378,6 +1571,8 @@ export default async function handler(req, res) {
     if (action === 'summarize-carried-note') return await summarizeCarriedNote(req, res, supabase, gemini);
     if (action === 'transcribe-voice-note') return await transcribeVoiceNote(req, res, supabase);
     if (action === 'notify-request') return await notifyRequest(req, res, supabase, auth);
+    if (action === 'notify-request-done') return await notifyRequestDone(req, res, supabase, auth);
+    if (action === 'notify-request-reply') return await notifyRequestReply(req, res, supabase, auth);
     if (action === 'client-brief') return await clientBrief(req, res, supabase, gemini, aiEnabled);
     if (action === 'day-brief') return await dayBrief(req, res, supabase, gemini, auth, aiEnabled);
     return res.status(404).json({ error: `Unknown AI action: ${action}` });

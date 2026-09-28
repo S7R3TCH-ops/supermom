@@ -178,7 +178,9 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 ---
 
 
-## Current version: 0.13.95 - Sep 27, 2026 (bug-report reply loop, thread table, and branded notifications)
+## Current version: 0.13.96 - Sep 27, 2026 (notify Joel when a reporter reopens a done request)
+
+**v0.13.96**: QA on v0.13.95 (real device test, `jlundie+test@gmail.com`) surfaced a gap: an owner's reply auto-reopens `done → triaged` but Joel had no way to know it happened short of checking Admin. Added `notify-request-reopened` to `api/ai/[action].js`'s `NON_AI_ACTIONS`/router — a plain-text alert email to `ALERT_EMAIL` (same style as the existing `notify-request` new-submission email), fired from `replyToRequest` in `src/data/requestsRepo.js` (fire-and-forget, only ever called from a `done` request's reply box, so every call is a reopen). Does not touch the owner-facing notify rule from `decisions.md` 2026-09-27 (her own reply is still never re-emailed to her — that was deliberate, not this gap).
 
 **v0.13.95**: Bug-report reply loop, thread table, and branded notifications (task 9):
 - Added migration `supabase/migrations/20260927060000_add_request_messages.sql`: `request_messages` table for request conversation threads with RLS (`is_admin()` or `my_business_id()`), explicit Data API grants, and security definer trigger `trg_reopen_request_on_owner_reply` auto-reopening requests from `done` to `triaged` on owner reply. Includes commented `-- DOWN:` block. (Not yet run — Joel runs manually).

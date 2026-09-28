@@ -13,7 +13,7 @@ import { buildRequestEmailHtml } from '../_lib/brandedEmail.js';
 // is off, and that never touch Gemini — living under /api/ai/ purely to
 // reuse this router's existing auth/dispatch plumbing without spending a new
 // Vercel serverless function slot.
-const NON_AI_ACTIONS = new Set(['notify-request', 'notify-request-done', 'notify-request-reply']);
+const NON_AI_ACTIONS = new Set(['notify-request', 'notify-request-done', 'notify-request-reply', 'notify-request-reopened']);
 
 // Actions that must degrade gracefully instead of hard-failing when the kill
 // switch is off — per design doc §3.6, "no regeneration, but keep rendering
@@ -1003,6 +1003,63 @@ async function notifyRequestReply(req, res, supabase, auth) {
   return handleNotifyRequest(req, res, supabase, auth, 'reply');
 }
 
+// Internal alert to Joel only (plain text, same style as notifyRequest) — the
+// owner's reply itself is never re-emailed to her (decisions.md 2026-09-27:
+// notifying her own reply back to her is noise), but a done->triaged reopen
+// is otherwise invisible unless Joel is staring at Admin, so he gets pinged.
+async function notifyRequestReopened(req, res, supabase, auth) {
+  const { requestId, replyBody } = req.body || {};
+  if (!requestId) return res.status(400).json({ error: 'Missing requestId' });
+
+  const { data: row, error: fetchErr } = await supabase
+    .from('client_requests')
+    .select('id, business_id, title, submitted_by')
+    .eq('id', requestId)
+    .single();
+  if (fetchErr || !row) return res.status(404).json({ error: 'Request not found' });
+  if (!canAccessBusiness(auth, row.business_id)) {
+    return res.status(403).json({ error: 'Forbidden: request not in your business' });
+  }
+
+  const [{ data: business }, { data: submitter }] = await Promise.all([
+    supabase.from('businesses').select('name').eq('id', row.business_id).single(),
+    row.submitted_by
+      ? supabase.from('users').select('email, first_name').eq('id', row.submitted_by).single()
+      : Promise.resolve({ data: null }),
+  ]);
+
+  const text = [
+    `Business: ${business?.name || row.business_id}`,
+    `From: ${submitter?.first_name || 'Unknown'} (${submitter?.email || 'no email on file'})`,
+    '',
+    row.title,
+    '',
+    replyBody?.trim() || '(no reply text)',
+    '',
+    'This request was marked done and has been reopened to Triaged.',
+  ].join('\n');
+
+  try {
+    await sendMail({
+      to: process.env.ALERT_EMAIL || 'jlundie@gmail.com',
+      subject: `[Supermom request] REOPENED: ${row.title}`,
+      text,
+    });
+  } catch (e) {
+    await logServerError({
+      severity: 'error',
+      message: `Failed to email reopen notification for ${requestId}`,
+      stack: e?.stack,
+      context: { requestId },
+      businessId: row.business_id,
+      alert: true,
+    });
+    return res.status(502).json({ error: 'Could not send notification email' });
+  }
+
+  return res.status(200).json({ ok: true });
+}
+
 async function testPersona(req, res, gemini) {
   if (!gemini) {
     const mockGreetings = {
@@ -1573,6 +1630,7 @@ export default async function handler(req, res) {
     if (action === 'notify-request') return await notifyRequest(req, res, supabase, auth);
     if (action === 'notify-request-done') return await notifyRequestDone(req, res, supabase, auth);
     if (action === 'notify-request-reply') return await notifyRequestReply(req, res, supabase, auth);
+    if (action === 'notify-request-reopened') return await notifyRequestReopened(req, res, supabase, auth);
     if (action === 'client-brief') return await clientBrief(req, res, supabase, gemini, aiEnabled);
     if (action === 'day-brief') return await dayBrief(req, res, supabase, gemini, auth, aiEnabled);
     return res.status(404).json({ error: `Unknown AI action: ${action}` });

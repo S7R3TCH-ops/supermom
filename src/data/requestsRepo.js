@@ -88,9 +88,13 @@ export async function listRequestMessages(requestId) {
 /**
  * Owner reply to a request.
  * Database trigger automatically reopens status from 'done' to 'triaged'.
+ * Only ever called from a 'done' request's reply box (MyRequestsSheet), so
+ * every call here is a reopen — Joel gets a fire-and-forget email alert since
+ * the status flip is otherwise invisible unless he's in Admin.
  */
 export async function replyToRequest(requestId, businessId, body) {
   if (!body?.trim()) return null;
+  const trimmed = body.trim();
   const { data: { user } } = await supabase.auth.getUser();
   const { data, error } = await supabase
     .from('request_messages')
@@ -99,11 +103,18 @@ export async function replyToRequest(requestId, businessId, body) {
       business_id: businessId,
       author_role: 'owner',
       author_id: user?.id ?? null,
-      body: body.trim(),
+      body: trimmed,
     })
     .select()
     .single();
   if (error) throw error;
+
+  fetch('/api/ai/notify-request-reopened', {
+    method: 'POST',
+    headers: await authHeaders(),
+    body: JSON.stringify({ requestId, replyBody: trimmed }),
+  }).catch(e => logClientError(e, { type: 'notify-request-reopened', requestId }));
+
   return data;
 }
 

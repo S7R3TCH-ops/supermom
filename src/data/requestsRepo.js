@@ -152,21 +152,6 @@ export async function saveRequestAdmin(id, businessId, { status, oldStatus, repl
   }
 }
 
-/**
- * Admin-only (RLS): save a request's triage status and reply together.
- * NOTE: admin_notes is CLIENT-VISIBLE — it renders as "Joel's reply" in the
- * owner's My requests sheet. Never put private triage notes here.
- * Blank/whitespace notes are stored as null so no empty reply block shows.
- */
-export async function updateRequestAdmin(id, { status, admin_notes }) {
-  const notes = (admin_notes || '').trim();
-  const { error } = await supabase
-    .from('client_requests')
-    .update({ status, admin_notes: notes || null, updated_at: new Date().toISOString() })
-    .eq('id', id);
-  if (error) throw error;
-}
-
 export async function nudgeRequest(id, oldBody) {
   const newBody = oldBody + '\n\n[Follow up]: Can I get an update on this?';
   const { error } = await supabase

@@ -369,6 +369,30 @@ Return ONLY the merged note text, nothing else.`;
   }
 }
 
+// Email subject only — client_requests.title (deriveTitle, requestFormatting.js)
+// is a raw first-line-truncated-to-79-chars headline, fine for the in-app UI
+// but reads as a mechanical repeat-and-cut in a subject line, especially next
+// to the body's own "Request: {title}" callout. Summarizes down to a short,
+// human subject phrase; non-fatal, falls back to the raw title on any Gemini
+// failure/missing key so a notification email is never blocked by this.
+async function summarizeSubject(gemini, title, body) {
+  const fallback = title;
+  if (!gemini) return fallback;
+  const prompt = `Rewrite this support-ticket title as a short, plain-English email subject line fragment — max 8 words, no quotes, no trailing punctuation, no prefix like "Re:" or "Bug:".
+
+Title: "${title}"
+${body ? `Full report: "${body.slice(0, 400)}"` : ''}
+
+Return ONLY the rewritten fragment, nothing else.`;
+  try {
+    const text = (await generateText(gemini, prompt, 40)).trim().replace(/^["']|["']$/g, '');
+    return text || fallback;
+  } catch (e) {
+    console.warn('[summarizeSubject] Gemini call failed, using raw title.', e.message);
+    return fallback;
+  }
+}
+
 async function transcribeVoiceNote(req, res, supabase) {
   const { filePath } = req.body;
   if (!filePath) return res.status(400).json({ error: 'Missing filePath' });
@@ -746,7 +770,7 @@ async function dayBrief(req, res, supabase, gemini, auth, aiEnabled) {
 // Not an AI action — see NON_AI_ACTIONS. Sends Joel an email for a just-submitted
 // client_requests row and stamps notified_at. The row write itself already
 // happened client-side (RLS insert); this is best-effort notification only.
-async function notifyRequest(req, res, supabase, auth) {
+async function notifyRequest(req, res, supabase, auth, gemini) {
   const { requestId } = req.body;
   if (!requestId) return res.status(400).json({ error: 'Missing requestId' });
 
@@ -771,6 +795,7 @@ async function notifyRequest(req, res, supabase, auth) {
     timeZone: 'America/Toronto', dateStyle: 'medium', timeStyle: 'short',
   });
   const kindLabel = row.kind === 'bug' ? 'BUG' : 'IDEA';
+  const subjectSummary = await summarizeSubject(gemini, row.title, row.body);
 
   const text = [
     `Kind: ${kindLabel}`,
@@ -790,7 +815,7 @@ async function notifyRequest(req, res, supabase, auth) {
   try {
     await sendMail({
       to: process.env.ALERT_EMAIL || 'jlundie@gmail.com',
-      subject: `[Supermom request] ${kindLabel}: ${row.title}`,
+      subject: `[Supermom request] ${kindLabel}: ${subjectSummary}`,
       text,
     });
   } catch (e) {
@@ -907,8 +932,17 @@ async function dispatchRequestPush(supabase, { businessId, requestId, title, bod
   }
 }
 
-async function handleNotifyRequest(req, res, supabase, auth, variant) {
-  const { requestId, replyBody } = req.body || {};
+// Default explanatory line for a 'done' close with no admin_notes/reply typed
+// (the actual case behind the "plain status-flip" complaint — the branded
+// template already renders a full "Joel's Reply" block when replyBody is
+// non-empty, it just had nothing to render for these). Deliberately generic
+// (never claims specifics Joel didn't confirm) rather than AI-generated —
+// inventing "what was fixed" from the title alone risks a false claim in a
+// customer-facing email.
+const DEFAULT_DONE_BODY = "We looked into this and it's fixed now — thanks for flagging it!";
+
+async function handleNotifyRequest(req, res, supabase, auth, variant, gemini) {
+  const { requestId, replyBody: rawReplyBody } = req.body || {};
   if (!requestId) return res.status(400).json({ error: 'Missing requestId' });
 
   const { data: row, error: fetchErr } = await supabase
@@ -929,7 +963,12 @@ async function handleNotifyRequest(req, res, supabase, auth, variant) {
   ]);
 
   const isDone = variant === 'done';
-  const emailSubject = isDone ? `[Supermom] Fixed: ${row.title}` : `[Supermom] Reply: ${row.title}`;
+  // 'done' with nothing typed gets the generic default so the email always
+  // has an explanatory line; 'reply' stays as-typed (an empty reply here is
+  // an admin-UI mistake, not something to paper over with fake content).
+  const replyBody = rawReplyBody?.trim() ? rawReplyBody : (isDone ? DEFAULT_DONE_BODY : rawReplyBody);
+  const subjectSummary = await summarizeSubject(gemini, row.title, row.body);
+  const emailSubject = isDone ? `[Supermom] Fixed: ${subjectSummary}` : `[Supermom] Reply: ${subjectSummary}`;
   const sender = '"Supermom Support" <support@supermomforhire.com>';
 
   if (submitter?.email) {
@@ -995,25 +1034,25 @@ async function handleNotifyRequest(req, res, supabase, auth, variant) {
   return res.status(200).json({ ok: true });
 }
 
-async function notifyRequestDone(req, res, supabase, auth) {
-  return handleNotifyRequest(req, res, supabase, auth, 'done');
+async function notifyRequestDone(req, res, supabase, auth, gemini) {
+  return handleNotifyRequest(req, res, supabase, auth, 'done', gemini);
 }
 
-async function notifyRequestReply(req, res, supabase, auth) {
-  return handleNotifyRequest(req, res, supabase, auth, 'reply');
+async function notifyRequestReply(req, res, supabase, auth, gemini) {
+  return handleNotifyRequest(req, res, supabase, auth, 'reply', gemini);
 }
 
 // Internal alert to Joel only (plain text, same style as notifyRequest) — the
 // owner's reply itself is never re-emailed to her (decisions.md 2026-09-27:
 // notifying her own reply back to her is noise), but a done->triaged reopen
 // is otherwise invisible unless Joel is staring at Admin, so he gets pinged.
-async function notifyRequestReopened(req, res, supabase, auth) {
+async function notifyRequestReopened(req, res, supabase, auth, gemini) {
   const { requestId, replyBody } = req.body || {};
   if (!requestId) return res.status(400).json({ error: 'Missing requestId' });
 
   const { data: row, error: fetchErr } = await supabase
     .from('client_requests')
-    .select('id, business_id, title, submitted_by')
+    .select('id, business_id, title, body, submitted_by')
     .eq('id', requestId)
     .single();
   if (fetchErr || !row) return res.status(404).json({ error: 'Request not found' });
@@ -1027,6 +1066,8 @@ async function notifyRequestReopened(req, res, supabase, auth) {
       ? supabase.from('users').select('email, first_name').eq('id', row.submitted_by).single()
       : Promise.resolve({ data: null }),
   ]);
+
+  const subjectSummary = await summarizeSubject(gemini, row.title, row.body);
 
   const text = [
     `Business: ${business?.name || row.business_id}`,
@@ -1042,7 +1083,7 @@ async function notifyRequestReopened(req, res, supabase, auth) {
   try {
     await sendMail({
       to: process.env.ALERT_EMAIL || 'jlundie@gmail.com',
-      subject: `[Supermom request] REOPENED: ${row.title}`,
+      subject: `[Supermom request] REOPENED: ${subjectSummary}`,
       text,
     });
   } catch (e) {
@@ -1627,10 +1668,10 @@ export default async function handler(req, res) {
     if (action === 'test-persona') return await testPersona(req, res, gemini);
     if (action === 'summarize-carried-note') return await summarizeCarriedNote(req, res, supabase, gemini);
     if (action === 'transcribe-voice-note') return await transcribeVoiceNote(req, res, supabase);
-    if (action === 'notify-request') return await notifyRequest(req, res, supabase, auth);
-    if (action === 'notify-request-done') return await notifyRequestDone(req, res, supabase, auth);
-    if (action === 'notify-request-reply') return await notifyRequestReply(req, res, supabase, auth);
-    if (action === 'notify-request-reopened') return await notifyRequestReopened(req, res, supabase, auth);
+    if (action === 'notify-request') return await notifyRequest(req, res, supabase, auth, gemini);
+    if (action === 'notify-request-done') return await notifyRequestDone(req, res, supabase, auth, gemini);
+    if (action === 'notify-request-reply') return await notifyRequestReply(req, res, supabase, auth, gemini);
+    if (action === 'notify-request-reopened') return await notifyRequestReopened(req, res, supabase, auth, gemini);
     if (action === 'client-brief') return await clientBrief(req, res, supabase, gemini, aiEnabled);
     if (action === 'day-brief') return await dayBrief(req, res, supabase, gemini, auth, aiEnabled);
     return res.status(404).json({ error: `Unknown AI action: ${action}` });

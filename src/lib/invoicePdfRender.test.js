@@ -5,6 +5,7 @@
 import { Buffer } from 'node:buffer';
 import { describe, it, expect } from 'vitest';
 import { buildInvoicePdfBuffer } from '../../api/_lib/invoicePdf';
+import { describeJobCalc } from './invoiceBalances';
 
 // 1x1 transparent PNG
 const LOGO_DATA_URI =
@@ -116,7 +117,7 @@ describe('buildInvoicePdfBuffer', () => {
     expect(buf.subarray(0, 5).toString('latin1')).toBe('%PDF-');
   }, 30000);
 
-  it('renders a paid-in-full receipt with alsoPaid', async () => {
+  it('renders a paid-in-full receipt with alsoPaid (with scheduled_time)', async () => {
     const invoice = makeInvoice();
     invoice.isPaidInFull = true;
     invoice.balanceOwing = 0;
@@ -128,25 +129,47 @@ describe('buildInvoicePdfBuffer', () => {
     invoice.payments = [
       { id: 'pmt-full', job_id: 'job-a', amount: 339, payment_date: '2026-07-03', payment_method: 'e-Transfer' },
     ];
+    const otherJob = {
+      id: 'job-other',
+      scheduled_date: '2026-07-01',
+      scheduled_time: '10:00:00',
+      actual_duration: 2,
+      pricing_type: 'Hourly',
+      flat_rate: 60,
+      service_name: 'Deep Clean',
+    };
     invoice.alsoPaid = [
-      { job: { id: 'job-other', scheduled_date: '2026-07-01', service_name: 'Deep Clean' }, total: 120, paid: 120 },
+      { job: otherJob, total: 120, paid: 120, owing: 0, taxAmount: 0 },
     ];
+    expect(describeJobCalc(otherJob, invoice.businesses)).toBe('2.0 hrs × $60.00/hr');
     const buf = await buildInvoicePdfBuffer(invoice);
     expect(Buffer.isBuffer(buf)).toBe(true);
     expect(buf.length).toBeGreaterThan(1000);
     expect(buf.subarray(0, 5).toString('latin1')).toBe('%PDF-');
   }, 30000);
 
-  it('renders an invoice with otherOutstanding', async () => {
+  it('renders an invoice with otherOutstanding (with scheduled_time and part-paid)', async () => {
     const invoice = makeInvoice();
+    const outJob = {
+      id: 'job-out-1',
+      scheduled_date: '2026-06-20',
+      scheduled_time: '09:00:00',
+      actual_duration: 3,
+      pricing_type: 'Hourly',
+      flat_rate: 50,
+      service_name: 'Organizing',
+      additional_costs_json: [{ amount: 10, description: 'Bins' }],
+    };
     invoice.otherOutstanding = [
-      { job: { id: 'job-out-1', scheduled_date: '2026-06-20', service_name: 'Organizing' }, total: 200, paid: 0, owing: 200 },
+      { job: outJob, total: 169.5, paid: 40, owing: 129.5, taxAmount: 19.5 },
     ];
-    invoice.runningTotalOwing = 369.5;
+    invoice.runningTotalOwing = 299;
+    expect(describeJobCalc(outJob, invoice.businesses)).toBe('3.0 hrs × $50.00/hr + $10.00 extras');
     const buf = await buildInvoicePdfBuffer(invoice);
     expect(Buffer.isBuffer(buf)).toBe(true);
     expect(buf.length).toBeGreaterThan(1000);
     expect(buf.subarray(0, 5).toString('latin1')).toBe('%PDF-');
   }, 30000);
 });
+
 

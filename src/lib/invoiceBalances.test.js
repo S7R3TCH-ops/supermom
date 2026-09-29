@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { decorateInvoiceWithBalances, jobPaymentBadge, getJobPaymentBadge } from './invoiceBalances';
+import { decorateInvoiceWithBalances, jobPaymentBadge, getJobPaymentBadge, describeJobCalc } from './invoiceBalances';
 
 // Stub of the two queries decorateInvoiceWithBalances makes: the client's
 // completed jobs and their non-void payments. The stub ignores filters (the
@@ -225,6 +225,57 @@ describe('getJobPaymentBadge', () => {
 
   it('returns null when invoice is null', () => {
     expect(getJobPaymentBadge(null, 'a')).toBeNull();
+  });
+});
+
+describe('describeJobCalc', () => {
+  it('formats hourly jobs with hours and rate', () => {
+    const j = { pricing_type: 'Hourly', actual_duration: 3, flat_rate: 50 };
+    expect(describeJobCalc(j)).toBe('3.0 hrs × $50.00/hr');
+  });
+
+  it('formats hourly jobs with extras when additionalTotal > 0', () => {
+    const j = {
+      pricing_type: 'Hourly',
+      actual_duration: 3,
+      flat_rate: 50,
+      additional_costs_json: [{ amount: 10, description: 'Tip' }],
+    };
+    expect(describeJobCalc(j)).toBe('3.0 hrs × $50.00/hr + $10.00 extras');
+  });
+
+  it('formats flat rate jobs without extras', () => {
+    const j = { pricing_type: 'Flat', flat_rate: 150 };
+    expect(describeJobCalc(j)).toBe('Flat rate');
+  });
+
+  it('formats flat rate jobs with extras', () => {
+    const j = {
+      pricing_type: 'Flat',
+      flat_rate: 150,
+      additional_costs_json: [{ amount: 25 }],
+    };
+    expect(describeJobCalc(j)).toBe('Flat rate + $25.00 extras');
+  });
+
+  it('guards against null/undefined/missing hours or rate without throwing or NaN', () => {
+    expect(describeJobCalc(null)).toBe('');
+    expect(describeJobCalc(undefined)).toBe('');
+
+    const emptyJob = {};
+    const resEmpty = describeJobCalc(emptyJob);
+    expect(resEmpty).not.toContain('NaN');
+    expect(resEmpty).toBe('0.0 hrs × $60.00/hr');
+
+    const missingRate = { pricing_type: 'Hourly', actual_duration: 2 };
+    const resRate = describeJobCalc(missingRate);
+    expect(resRate).not.toContain('NaN');
+    expect(resRate).toBe('2.0 hrs × $60.00/hr');
+
+    const nanHours = { pricing_type: 'Hourly', actual_duration: 'abc', flat_rate: 'def' };
+    const resNan = describeJobCalc(nanHours);
+    expect(resNan).not.toContain('NaN');
+    expect(resNan).toBe('0.0 hrs × $60.00/hr');
   });
 });
 

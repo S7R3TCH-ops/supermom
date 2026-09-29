@@ -1,7 +1,7 @@
 import React from 'react';
 import { Document, Page, View, Text, Image, StyleSheet, renderToBuffer } from '@react-pdf/renderer';
 import { computeJobFinancials } from '../../src/lib/financialMath.js';
-import { getJobPaymentBadge } from '../../src/lib/invoiceBalances.js';
+import { getJobPaymentBadge, describeJobCalc } from '../../src/lib/invoiceBalances.js';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
@@ -281,7 +281,7 @@ function InvoiceDocument({ invoice }) {
               return V({ key: p.id ?? `pmt-${i}`, style: { paddingLeft: 10, paddingRight: 10, marginBottom: 4 } },
                 isMulti && relatedJob ? T({ style: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: INK, marginBottom: 1 } },
                   relatedJob.service_name || 'Professional Services',
-                  relatedJob.scheduled_date ? T({ style: { fontFamily: 'Helvetica', color: LIGHT } }, ` · ${formatDate(relatedJob.scheduled_date)}`) : null,
+                  relatedJob.scheduled_date ? T({ style: { fontFamily: 'Helvetica', color: LIGHT } }, ` · ${formatDate(relatedJob.scheduled_date)}${formatJobTime(relatedJob) ? ` · ${formatJobTime(relatedJob)}` : ''}`) : null,
                 ) : null,
                 V({ style: { flexDirection: 'row', justifyContent: 'space-between' } },
                   T({ style: { fontSize: 8, color: MUTED } }, dateLine),
@@ -307,14 +307,25 @@ function InvoiceDocument({ invoice }) {
           // 7. If payment also covered jobs not on this invoice (alsoPaid)
           invoice.alsoPaid?.length > 0 ? V({ style: { marginTop: 6, paddingTop: 4, borderTopWidth: 1, borderTopColor: '#eee', paddingLeft: 10, paddingRight: 10 } },
             T({ style: { fontSize: 7, fontFamily: 'Helvetica-Bold', color: LABEL_C, letterSpacing: 0.5, marginBottom: 3 } }, 'This payment also covered:'),
-            ...invoice.alsoPaid.map(({ job: paidJob, total }, i) =>
-              V({ key: paidJob.id ?? `ap-${i}`, style: { flexDirection: 'row', justifyContent: 'space-between', paddingTop: 2, paddingBottom: 2 } },
-                T({ style: { fontSize: 8, color: MUTED } },
-                  `${paidJob.scheduled_date ? formatDate(paidJob.scheduled_date) : '—'} · ${paidJob.service_name || 'Professional Services'}`
+            ...invoice.alsoPaid.map(({ job: paidJob, total, paid, owing, taxAmount, amountApplied }, i) => {
+              const dateText = paidJob.scheduled_date ? formatDate(paidJob.scheduled_date) : '—';
+              const timeText = formatJobTime(paidJob);
+              const line1Text = timeText ? `${dateText} · ${timeText}` : dateText;
+              const line2Text = `${paidJob.service_name || 'Professional Services'} · ${describeJobCalc(paidJob, biz)}`;
+              const isPartPaid = paid > 0.009 && owing > 0.009;
+              const line3Text = isPartPaid
+                ? `Job total $${total.toFixed(2)}${taxAmount > 0 ? ' incl. HST' : ''} · paid $${paid.toFixed(2)} · owing $${owing.toFixed(2)}`
+                : null;
+              const displayAmt = typeof amountApplied === 'number' ? amountApplied : total;
+              return V({ key: paidJob.id ?? `ap-${i}`, style: { paddingTop: 3, paddingBottom: 3, borderBottomWidth: 1, borderBottomColor: '#f9f9f9' } },
+                V({ style: { flexDirection: 'row', justifyContent: 'space-between' } },
+                  T({ style: { fontSize: 8, color: MUTED } }, line1Text),
+                  T({ style: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: PAID } }, `$${displayAmt.toFixed(2)}`),
                 ),
-                T({ style: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: PAID } }, `$${total.toFixed(2)}`),
-              )
-            ),
+                T({ style: { fontSize: 7.5, color: '#666', marginTop: 1 } }, line2Text),
+                line3Text ? T({ style: { fontSize: 7, color: '#888', marginTop: 1 } }, line3Text) : null,
+              );
+            }),
           ) : null,
         ),
       ),
@@ -324,18 +335,24 @@ function InvoiceDocument({ invoice }) {
         V({ style: s.outstandingWrap },
           T({ style: s.outSectionLabel }, 'Other unpaid jobs'),
           T({ style: s.outSectionDesc  }, "These are not part of this invoice's total. Shown so you can see everything still owing."),
-          V({ style: s.outHeaderRow },
-            T({ style: [s.outDate, s.outHeaderText] }, 'Date'),
-            T({ style: [s.outDesc, s.outHeaderText] }, 'Service'),
-            T({ style: [s.outAmt,  s.outHeaderText] }, 'Owing'),
-          ),
-          ...invoice.otherOutstanding.map(({ job: otherJob, owing }) =>
-            V({ key: otherJob.id, style: s.outRow },
-              T({ style: s.outDate }, otherJob.scheduled_date ? formatDate(otherJob.scheduled_date) : '—'),
-              T({ style: s.outDesc }, otherJob.service_name || 'Professional Services'),
-              T({ style: s.outAmt  }, `$${owing.toFixed(2)}`),
-            )
-          ),
+          ...invoice.otherOutstanding.map(({ job: otherJob, owing, total, paid, taxAmount }) => {
+            const dateText = otherJob.scheduled_date ? formatDate(otherJob.scheduled_date) : '—';
+            const timeText = formatJobTime(otherJob);
+            const line1Text = timeText ? `${dateText} · ${timeText}` : dateText;
+            const line2Text = `${otherJob.service_name || 'Professional Services'} · ${describeJobCalc(otherJob, biz)}`;
+            const isPartPaid = paid > 0.009 && owing > 0.009;
+            const line3Text = isPartPaid
+              ? `Job total $${total.toFixed(2)}${taxAmount > 0 ? ' incl. HST' : ''} · paid $${paid.toFixed(2)} · owing $${owing.toFixed(2)}`
+              : null;
+            return V({ key: otherJob.id, style: { paddingTop: 4, paddingBottom: 4, borderBottomWidth: 1, borderBottomColor: '#f5f5f5' } },
+              V({ style: { flexDirection: 'row', justifyContent: 'space-between' } },
+                T({ style: { fontSize: 8.5, color: MUTED } }, line1Text),
+                T({ style: { fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#DC2626' } }, `$${owing.toFixed(2)}`),
+              ),
+              T({ style: { fontSize: 8, color: '#666', marginTop: 1 } }, line2Text),
+              line3Text ? T({ style: { fontSize: 7.5, color: '#888', marginTop: 1 } }, line3Text) : null,
+            );
+          }),
           V({ style: s.outTotalRow },
             T({ style: s.outTotalLabel }, 'Total still owing, all jobs'),
             T({ style: s.outTotalVal   }, `$${invoice.runningTotalOwing.toFixed(2)}`),

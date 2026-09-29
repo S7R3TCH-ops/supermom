@@ -24,7 +24,7 @@ export async function decorateInvoiceWithBalances(supabase, invoice) {
   if (!invoiceJobIds.size || !clientId) return { ...invoice, ...empty };
 
   const [{ data: clientJobs, error: jobsErr }, { data: clientPayments, error: paymentsErr }, { data: creditRows, error: creditErr }] = await Promise.all([
-    supabase.from('jobs').select('id, scheduled_date, service_name, pricing_type, actual_duration, estimated_hours, flat_rate, subtotal, additional_costs_json, additional_cost, additional_cost_notes, tax_enabled, hst_amount, job_status')
+    supabase.from('jobs').select('id, scheduled_date, scheduled_time, service_name, pricing_type, actual_duration, estimated_hours, flat_rate, subtotal, additional_costs_json, additional_cost, additional_cost_notes, tax_enabled, hst_amount, job_status')
       .eq('client_id', clientId)
       .eq('business_id', invoice.business_id)
       .eq('job_status', 'Completed')
@@ -63,9 +63,16 @@ export async function decorateInvoiceWithBalances(supabase, invoice) {
 
   const balances = (clientJobs ?? []).map(j => {
     // Use business param so tax inheritance (NULL → business.tax_enabled) is correct
-    const total = computeJobFinancials(j, business).total;
+    const fin = computeJobFinancials(j, business);
+    const total = fin.total;
     const paid  = paidByJobId[j.id] || 0;
-    return { job: j, total, paid, owing: Math.max(0, Math.round((total - paid) * 100) / 100) };
+    return {
+      job: j,
+      total,
+      paid,
+      owing: Math.max(0, Math.round((total - paid) * 100) / 100),
+      taxAmount: fin.taxAmount,
+    };
   });
 
   // Per-job balances for every job on this invoice
@@ -78,9 +85,24 @@ export async function decorateInvoiceWithBalances(supabase, invoice) {
     invoiceJobBalances.every(b => b.owing <= 0.01 && b.paid > 0);
 
   const otherOutstanding = balances.filter(b => !invoiceJobIds.has(b.job.id) && b.owing > 0.01);
+
+  const paymentsByThisInvoice = {};
+  (clientPayments ?? [])
+    .filter(p => p.invoice_id === invoice.id && !invoiceJobIds.has(p.job_id))
+    .forEach(p => {
+      paymentsByThisInvoice[p.job_id] = (paymentsByThisInvoice[p.job_id] || 0) + Number(p.amount);
+    });
+
   const alsoPaid = balances
     .filter(b => alsoPaidJobIds.has(b.job.id))
-    .map(b => ({ job: b.job, total: b.total, paid: b.paid }));
+    .map(b => ({
+      job: b.job,
+      total: b.total,
+      paid: b.paid,
+      owing: b.owing,
+      taxAmount: b.taxAmount,
+      amountApplied: paymentsByThisInvoice[b.job.id] ?? b.total,
+    }));
 
   const runningTotalOwing = Math.round(
     (balanceOwing + otherOutstanding.reduce((sum, b) => sum + b.owing, 0)) * 100
@@ -137,5 +159,26 @@ export function getJobPaymentBadge(invoice, jobId) {
     paid: b.paid,
     owing: b.owing,
   };
+}
+
+/**
+ * Describes how a job's subtotal was calculated (pure helper for invoice/receipt views).
+ * Hourly: "3.0 hrs × $50.00/hr" (+ " + $10.00 extras" if additionalTotal > 0)
+ * Flat: "Flat rate" (+ " + $10.00 extras" if additionalTotal > 0)
+ * Prepend service name at call site: `${service} · ${describeJobCalc(job, business)}`
+ */
+export function describeJobCalc(job, business = null) {
+  if (!job) return '';
+  const jobToCompute = (job.actual_duration != null && !job.job_status && job.estimated_hours == null)
+    ? { ...job, job_status: 'Completed' }
+    : job;
+  const fin = computeJobFinancials(jobToCompute, business);
+  const extras = fin.additionalTotal > 0 ? ` + $${fin.additionalTotal.toFixed(2)} extras` : '';
+  if (fin.isHourly) {
+    const hours = Number.isFinite(fin.hours) ? fin.hours : 0;
+    const rate = Number.isFinite(fin.rate) ? fin.rate : 0;
+    return `${hours.toFixed(1)} hrs × $${rate.toFixed(2)}/hr${extras}`;
+  }
+  return `Flat rate${extras}`;
 }
 

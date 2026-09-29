@@ -178,6 +178,14 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 ---
 
 
+## Current version: 0.13.102 - Sep 29, 2026 (descriptive invoice line entries, scheduled_time on invoices/PDF, task 11f)
+
+**v0.13.102**: Made invoice/receipt line entries descriptive (tasks.md #11f):
+- **scheduled_time on Invoices & PDF**: Added `scheduled_time` to queries in `api/invoice.ts` (download, json read, email) and `src/lib/invoiceBalances.ts` (`decorateInvoiceWithBalances`). Restores start-end time rendering on invoices and PDFs via `formatJobTime(job)` which was previously unpopulated.
+- **Shared Job Calc Helper**: Added pure helper `describeJobCalc(job, business)` in `src/lib/invoiceBalances.ts` (safe for Vercel PDF import chain). Formats hourly calculations (`${hours.toFixed(1)} hrs × $${rate.toFixed(2)}/hr` + extras) and flat rates (`Flat rate` + extras) with NaN/null safety.
+- **Descriptive Secondary Lists**: Updated "Other unpaid jobs" and "This payment also covered" on both web (`src/pages/InvoiceView.jsx`) and PDF (`api/_lib/invoicePdf.ts`) into compact 2-3 line blocks: (1) Date · Time range (if present) with owing/applied amount on right, (2) Service · <calc>, (3) Part-paid breakdown (`Job total $X.XX incl. HST · paid $Y.YY · owing $Z.ZZ`) when part-paid. Updated "Payments Received" on multi-job invoices to include time range after date.
+- **Tests & Build**: Added unit tests for `describeJobCalc` in `src/lib/invoiceBalances.test.js`. Extended `src/lib/invoicePdfRender.test.js` to assert `scheduled_time` and part-paid lines render cleanly to PDF buffer. Verified with temporary real-data check against live QA invoices. 285/285 tests pass, build clean.
+
 ## Current version: 0.13.100 - Sep 29, 2026 (invoice UX rework: consolidated money section, due date = invoice date, retitled other unpaid jobs, task 11 b/c/d/e/g)
 
 **v0.13.100**: Invoice/receipt UX rework per Joel QA feedback on v0.13.90/91 (tasks.md #11 b/c/d/e/g):

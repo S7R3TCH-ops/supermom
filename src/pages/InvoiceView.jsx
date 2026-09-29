@@ -2,7 +2,7 @@ import { Fragment, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchInvoiceById, settleInvoiceOutstanding, voidInvoiceSettlement, addJobsToInvoice, LAST_ROUND_WINDOW_MS } from '../data/invoicesRepo';
 import { computeJobFinancials } from '../lib/financialMath';
-import { getJobPaymentBadge } from '../lib/invoiceBalances';
+import { getJobPaymentBadge, describeJobCalc } from '../lib/invoiceBalances';
 import { allocatePayment, parsePaymentAmount } from '../lib/paymentWaterfall';
 import { buildPaymentPreview, buildPaymentReceipt, getLastPaymentRound } from '../lib/paymentPreview';
 import { useAuth } from '../context/AuthContext';
@@ -748,7 +748,11 @@ export default function InvoiceView() {
                         <div style={{ fontSize: 11, color: '#333', fontWeight: 500, marginBottom: 1 }}>
                           {relatedJob.service_name || 'Professional Services'}
                           {relatedJob.scheduled_date && (
-                            <span style={{ color: '#999', fontWeight: 400 }}> · {formatDate(relatedJob.scheduled_date)}</span>
+                            <span style={{ color: '#999', fontWeight: 400 }}>
+                              {' · '}
+                              {formatDate(relatedJob.scheduled_date)}
+                              {formatJobTime(relatedJob) ? ` · ${formatJobTime(relatedJob)}` : ''}
+                            </span>
                           )}
                         </div>
                       )}
@@ -794,16 +798,31 @@ export default function InvoiceView() {
                 <div style={{ fontSize: 11, color: '#6b7280', fontWeight: 600, marginBottom: 4 }}>
                   This payment also covered:
                 </div>
-                {invoice.alsoPaid.map(({ job: paidJob, total }) => (
-                  <div key={paidJob.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '3px 0', fontSize: 12 }}>
-                    <div style={{ color: '#555' }}>
-                      {paidJob.scheduled_date ? formatDate(paidJob.scheduled_date) : '—'} · {paidJob.service_name || 'Professional Services'}
+                {invoice.alsoPaid.map(({ job: paidJob, total, paid, owing, taxAmount, amountApplied }) => {
+                  const dateText = paidJob.scheduled_date ? formatDate(paidJob.scheduled_date) : '—';
+                  const timeText = formatJobTime(paidJob);
+                  const line1Text = timeText ? `${dateText} · ${timeText}` : dateText;
+                  const line2Text = `${paidJob.service_name || 'Professional Services'} · ${describeJobCalc(paidJob, biz)}`;
+                  const isPartPaid = paid > 0.009 && owing > 0.009;
+                  const line3Text = isPartPaid
+                    ? `Job total $${total.toFixed(2)}${taxAmount > 0 ? ' incl. HST' : ''} · paid $${paid.toFixed(2)} · owing $${owing.toFixed(2)}`
+                    : null;
+                  const displayAmt = typeof amountApplied === 'number' ? amountApplied : total;
+                  return (
+                    <div key={paidJob.id} style={{ padding: '4px 0', borderBottom: '1px solid #f9f9f9' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12 }}>
+                        <div style={{ color: '#555' }}>{line1Text}</div>
+                        <div style={{ color: '#16A34A', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+                          ${displayAmt.toFixed(2)}
+                        </div>
+                      </div>
+                      <div style={{ fontSize: 11, color: '#666', marginTop: 1 }}>{line2Text}</div>
+                      {line3Text && (
+                        <div style={{ fontSize: 10.5, color: '#888', marginTop: 1 }}>{line3Text}</div>
+                      )}
                     </div>
-                    <div style={{ color: '#16A34A', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
-                      ${total.toFixed(2)}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -816,18 +835,28 @@ export default function InvoiceView() {
               <div style={{ ...LABEL, marginBottom: 3 }}>Other unpaid jobs</div>
               <div style={{ fontSize: 11, color: '#888' }}>These are not part of this invoice's total. Shown so you can see everything still owing.</div>
             </div>
-            <div style={{ display: 'flex', padding: '5px 6px', background: '#F5F1EC', borderRadius: 4, marginBottom: 2, fontSize: 9, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: '#999' }}>
-              <div style={{ width: 110 }}>Date</div>
-              <div style={{ flex: 1 }}>Service</div>
-              <div style={{ width: 80, textAlign: 'right' }}>Owing</div>
-            </div>
-            {invoice.otherOutstanding.map(({ job: otherJob, owing }) => (
-              <div key={otherJob.id} style={{ display: 'flex', padding: '5px 6px', fontSize: 12, borderBottom: '1px solid #f5f5f5' }}>
-                <div style={{ color: '#555', width: 110 }}>{otherJob.scheduled_date ? formatDate(otherJob.scheduled_date) : '—'}</div>
-                <div style={{ color: '#1a1a1a', flex: 1 }}>{otherJob.service_name || 'Professional Services'}</div>
-                <div style={{ color: '#DC2626', fontWeight: 700, textAlign: 'right', width: 80 }}>${owing.toFixed(2)}</div>
-              </div>
-            ))}
+            {invoice.otherOutstanding.map(({ job: otherJob, owing, total, paid, taxAmount }) => {
+              const dateText = otherJob.scheduled_date ? formatDate(otherJob.scheduled_date) : '—';
+              const timeText = formatJobTime(otherJob);
+              const line1Text = timeText ? `${dateText} · ${timeText}` : dateText;
+              const line2Text = `${otherJob.service_name || 'Professional Services'} · ${describeJobCalc(otherJob, biz)}`;
+              const isPartPaid = paid > 0.009 && owing > 0.009;
+              const line3Text = isPartPaid
+                ? `Job total $${total.toFixed(2)}${taxAmount > 0 ? ' incl. HST' : ''} · paid $${paid.toFixed(2)} · owing $${owing.toFixed(2)}`
+                : null;
+              return (
+                <div key={otherJob.id} style={{ padding: '6px 0', borderBottom: '1px solid #f5f5f5' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12 }}>
+                    <div style={{ color: '#555' }}>{line1Text}</div>
+                    <div style={{ color: '#DC2626', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>${owing.toFixed(2)}</div>
+                  </div>
+                  <div style={{ fontSize: 11, color: '#666', marginTop: 1 }}>{line2Text}</div>
+                  {line3Text && (
+                    <div style={{ fontSize: 10.5, color: '#888', marginTop: 1 }}>{line3Text}</div>
+                  )}
+                </div>
+              );
+            })}
             <div style={{ background: '#EAE2D8', padding: '10px 14px', marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: 6 }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#555' }}>Total still owing, all jobs</div>
               <div className="inv-display" style={{ fontSize: 20, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#DC2626' }}>${invoice.runningTotalOwing.toFixed(2)}</div>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase, authHeaders } from '../lib/supabase';
 import { useAppTheme } from '../context/AppThemeContext';
@@ -11,8 +11,20 @@ import { computeJobSubtotal } from '../lib/financialMath';
 import ServiceCatalogSheet from '../components/sheets/ServiceCatalogSheet';
 import WorkerCatalogSheet from '../components/sheets/WorkerCatalogSheet';
 import { useRequestSheet } from '../context/RequestSheetContext';
-import { listRequestsAdmin, saveRequestAdmin, listRequestMessages } from '../data/requestsRepo';
-import { REQUEST_STATUSES } from '../lib/requestFormatting';
+import {
+  listRequestsAdmin,
+  listOlderFinishedRequestsAdmin,
+  fetchRequestContext,
+  saveRequestAdmin,
+  listRequestMessages,
+} from '../data/requestsRepo';
+import {
+  REQUEST_STATUSES,
+  isActiveRequest,
+  sortNeedsAttentionRequests,
+  getAdminStatusPill,
+} from '../lib/requestFormatting';
+import { groupErrors, formatErrorLastSeen } from '../lib/errorGrouping';
 
 function ToggleBtn({ show, onToggle, color }) {
   return (
@@ -68,14 +80,34 @@ export default function Admin() {
   const [showWorkers, setShowWorkers] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null); // { id, name }
   const [restoreConfirm, setRestoreConfirm] = useState(null); // { id, name }
-  const [errorLogs, setErrorLogs] = useState([]);
-  const [errorLogsLoading, setErrorLogsLoading] = useState(true);
-  const [expandedErrorId, setExpandedErrorId] = useState(null);
+  // Error Log state
+  const [isErrorLogExpanded, setIsErrorLogExpanded] = useState(false);
+  const [unresolvedCount, setUnresolvedCount] = useState(null);
+  const [unresolvedErrors, setUnresolvedErrors] = useState([]);
+  const [unresolvedErrorsLoading, setUnresolvedErrorsLoading] = useState(false);
+  const [hasFetchedUnresolved, setHasFetchedUnresolved] = useState(false);
+  const [expandedErrorGroupKey, setExpandedErrorGroupKey] = useState(null);
+  const [errorDetails, setErrorDetails] = useState({});
+  const [errorDetailsLoading, setErrorDetailsLoading] = useState(null);
+  const [resolvingGroupKey, setResolvingGroupKey] = useState(null);
+  const [isResolvedSectionExpanded, setIsResolvedSectionExpanded] = useState(false);
+  const [resolvedErrors, setResolvedErrors] = useState([]);
+  const [resolvedErrorsLoading, setResolvedErrorsLoading] = useState(false);
+  const [hasFetchedResolved, setHasFetchedResolved] = useState(false);
+
   const [aiEnabled, setAiEnabled] = useState(null);
   const [aiToggleBusy, setAiToggleBusy] = useState(false);
-  const [requests, setRequests] = useState([]);
+
+  // Requests state
+  const [activeRequests, setActiveRequests] = useState([]);
+  const [finishedRequests, setFinishedRequests] = useState([]);
   const [requestsLoading, setRequestsLoading] = useState(true);
   const [expandedRequestId, setExpandedRequestId] = useState(null);
+  const [showFinishedGroup, setShowFinishedGroup] = useState(false);
+  const [loadingOlderFinished, setLoadingOlderFinished] = useState(false);
+  const [hasLoadedOlderFinished, setHasLoadedOlderFinished] = useState(false);
+  const [requestContexts, setRequestContexts] = useState({});
+  const [loadingContextId, setLoadingContextId] = useState(null);
   // Per-row unsaved edits: { [id]: { status, admin_notes } }. Status + reply save together.
   const [requestDrafts, setRequestDrafts] = useState({});
   const [savingRequestId, setSavingRequestId] = useState(null);
@@ -87,8 +119,15 @@ export default function Admin() {
   useEffect(() => {
     if (!isSuperAdmin) return;
     listRequestsAdmin()
-      .then(setRequests)
-      .catch(() => setRequests([]))
+      .then(({ active, finished }) => {
+        setActiveRequests(active || []);
+        setFinishedRequests(finished || []);
+      })
+      .catch((err) => {
+        console.error('Failed to load admin requests:', err);
+        setActiveRequests([]);
+        setFinishedRequests([]);
+      })
       .finally(() => setRequestsLoading(false));
   }, [isSuperAdmin]);
 
@@ -112,6 +151,20 @@ export default function Admin() {
     });
   }
 
+  function handleRequestToggle(r) {
+    const isOpening = expandedRequestId !== r.id;
+    setExpandedRequestId(isOpening ? r.id : null);
+    if (isOpening && !requestContexts[r.id]) {
+      setLoadingContextId(r.id);
+      fetchRequestContext(r.id)
+        .then(ctx => {
+          setRequestContexts(prev => ({ ...prev, [r.id]: ctx }));
+        })
+        .catch(err => console.error('Failed to fetch request context:', err))
+        .finally(() => setLoadingContextId(null));
+    }
+  }
+
   async function handleRequestSave(r) {
     const draft = requestDrafts[r.id];
     if (!draft) return;
@@ -122,7 +175,27 @@ export default function Admin() {
         oldStatus: r.status,
         replyBody: draft.admin_notes,
       });
-      setRequests(prev => prev.map(x => (x.id === r.id ? { ...x, status: draft.status } : x)));
+
+      const updatedRequest = {
+        ...r,
+        status: draft.status,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (isActiveRequest(draft.status)) {
+        setActiveRequests(prev => {
+          const filtered = prev.filter(x => x.id !== r.id);
+          return sortNeedsAttentionRequests([...filtered, updatedRequest]);
+        });
+        setFinishedRequests(prev => prev.filter(x => x.id !== r.id));
+      } else {
+        setFinishedRequests(prev => {
+          const filtered = prev.filter(x => x.id !== r.id);
+          return [updatedRequest, ...filtered];
+        });
+        setActiveRequests(prev => prev.filter(x => x.id !== r.id));
+      }
+
       setRequestDrafts(prev => { const next = { ...prev }; delete next[r.id]; return next; });
       try {
         const msgs = await listRequestMessages(r.id);
@@ -138,15 +211,162 @@ export default function Admin() {
     }
   }
 
+  async function handleLoadOlderFinished() {
+    setLoadingOlderFinished(true);
+    try {
+      const older = await listOlderFinishedRequestsAdmin();
+      setFinishedRequests(prev => {
+        const existingIds = new Set(prev.map(x => x.id));
+        const newRows = older.filter(x => !existingIds.has(x.id));
+        return [...prev, ...newRows];
+      });
+      setHasLoadedOlderFinished(true);
+    } catch (err) {
+      console.error('Failed to load older finished requests:', err);
+      toast.error('Could not load older finished requests.');
+    } finally {
+      setLoadingOlderFinished(false);
+    }
+  }
+
+  // Error Log count-only on mount
   useEffect(() => {
     if (!isSuperAdmin) return;
-    supabase.from('error_logs')
-      .select('id, business_id, source, severity, message, stack, context, created_at')
-      .order('created_at', { ascending: false })
-      .limit(50)
-      .then(({ data }) => setErrorLogs(data || []))
-      .finally(() => setErrorLogsLoading(false));
+    supabase
+      .from('error_logs')
+      .select('id', { count: 'exact', head: true })
+      .is('resolved_at', null)
+      .then(({ count, error }) => {
+        if (error) {
+          supabase
+            .from('error_logs')
+            .select('id', { count: 'exact', head: true })
+            .then(({ count: allCount }) => setUnresolvedCount(allCount ?? 0));
+        } else {
+          setUnresolvedCount(count ?? 0);
+        }
+      })
+      .catch(() => setUnresolvedCount(0));
   }, [isSuperAdmin]);
+
+  function handleToggleErrorLog() {
+    const next = !isErrorLogExpanded;
+    setIsErrorLogExpanded(next);
+    if (next && !hasFetchedUnresolved) {
+      setUnresolvedErrorsLoading(true);
+      supabase
+        .from('error_logs')
+        .select('id, source, severity, message, created_at')
+        .is('resolved_at', null)
+        .order('created_at', { ascending: false })
+        .limit(100)
+        .then(({ data, error }) => {
+          if (error) {
+            return supabase
+              .from('error_logs')
+              .select('id, source, severity, message, created_at')
+              .order('created_at', { ascending: false })
+              .limit(100)
+              .then(res => res.data || []);
+          }
+          return data || [];
+        })
+        .then(rows => {
+          setUnresolvedErrors(rows);
+          setHasFetchedUnresolved(true);
+        })
+        .catch(err => {
+          console.error('Failed to fetch unresolved errors:', err);
+        })
+        .finally(() => setUnresolvedErrorsLoading(false));
+    }
+  }
+
+  const groupedUnresolved = useMemo(() => groupErrors(unresolvedErrors), [unresolvedErrors]);
+  const groupedResolved = useMemo(() => groupErrors(resolvedErrors), [resolvedErrors]);
+
+  async function handleResolveGroup(group) {
+    if (!group || !group.ids?.length) return;
+    setResolvingGroupKey(group.key);
+    try {
+      const nowIso = new Date().toISOString();
+      const { error } = await supabase
+        .from('error_logs')
+        .update({ resolved_at: nowIso })
+        .in('id', group.ids);
+      if (error) throw error;
+
+      const resolvedIds = new Set(group.ids);
+      setUnresolvedErrors(prev => prev.filter(e => !resolvedIds.has(e.id)));
+      setUnresolvedCount(prev => Math.max(0, (prev ?? 0) - group.count));
+
+      if (hasFetchedResolved) {
+        const resolvedRows = group.ids.map(id => ({
+          id,
+          source: group.source,
+          message: group.message,
+          severity: group.severity,
+          created_at: group.latestCreatedAt,
+          resolved_at: nowIso,
+        }));
+        setResolvedErrors(prev => [...resolvedRows, ...prev]);
+      }
+      toast.success(`Resolved ${group.count} error${group.count === 1 ? '' : 's'}.`);
+    } catch (err) {
+      console.error('Failed to resolve error group:', err);
+      toast.error('Could not resolve error group.');
+    } finally {
+      setResolvingGroupKey(null);
+    }
+  }
+
+  async function handleToggleErrorRow(group) {
+    const isOpening = expandedErrorGroupKey !== group.key;
+    setExpandedErrorGroupKey(isOpening ? group.key : null);
+    if (isOpening && group.newestId && !errorDetails[group.newestId]) {
+      setErrorDetailsLoading(group.newestId);
+      try {
+        const { data, error } = await supabase
+          .from('error_logs')
+          .select('id, stack, context')
+          .eq('id', group.newestId)
+          .single();
+        if (error) throw error;
+        if (data) {
+          setErrorDetails(prev => ({
+            ...prev,
+            [group.newestId]: { stack: data.stack, context: data.context },
+          }));
+        }
+      } catch (err) {
+        console.error('Failed to fetch error details:', err);
+      } finally {
+        setErrorDetailsLoading(null);
+      }
+    }
+  }
+
+  function handleToggleResolvedSection() {
+    const next = !isResolvedSectionExpanded;
+    setIsResolvedSectionExpanded(next);
+    if (next && !hasFetchedResolved) {
+      setResolvedErrorsLoading(true);
+      supabase
+        .from('error_logs')
+        .select('id, source, severity, message, created_at, resolved_at')
+        .not('resolved_at', 'is', null)
+        .order('resolved_at', { ascending: false })
+        .limit(50)
+        .then(({ data }) => {
+          setResolvedErrors(data || []);
+          setHasFetchedResolved(true);
+        })
+        .catch(err => {
+          console.error('Failed to fetch resolved errors:', err);
+        })
+        .finally(() => setResolvedErrorsLoading(false));
+    }
+  }
 
   // "is this feature working" check for lockscreen push — same role the
   // error-logs viewer plays. Runs once the migration + cron are live; empty
@@ -521,190 +741,628 @@ export default function Admin() {
             <SectionLabel>Super Admin: Requests</SectionLabel>
             <div style={{ background: 'var(--plum-dark)', border: '1.5px solid var(--pink-mid)', borderRadius: 16, padding: '14px', marginBottom: 20 }}>
               <div style={{ fontSize: 11, color: 'var(--pink-label)', marginBottom: 12, fontWeight: 600 }}>
-                Last 50 bug reports / ideas submitted in-app, across all businesses.
+                {requestsLoading ? 'Loading requests…' : `${activeRequests.length} need attention · ${finishedRequests.length} finished recently`}
               </div>
               {requestsLoading ? (
                 <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, textAlign: 'center', padding: '10px 0' }}>Loading…</div>
-              ) : requests.length === 0 ? (
-                <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, textAlign: 'center', padding: '10px 0' }}>Nothing submitted yet.</div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 340, overflowY: 'auto' }}>
-                  {requests.map(r => {
-                    const isOpen = expandedRequestId === r.id;
-                    const kindColor = r.kind === 'bug' ? '#FBBF24' : 'var(--pink)';
-                    const draft = requestDrafts[r.id];
-                    const draftStatus = draft ? draft.status : r.status;
-                    const draftNotes = draft ? draft.admin_notes : '';
-                    const isDirty = !!draft && (draft.status !== r.status || (draft.admin_notes || '').trim().length > 0);
-                    const isSaving = savingRequestId === r.id;
-                    return (
-                      <div key={r.id} style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)', padding: '10px 12px' }}>
-                        <div
-                          onClick={() => setExpandedRequestId(isOpen ? null : r.id)}
-                          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, cursor: 'pointer' }}
-                        >
-                          <div style={{ minWidth: 0, flex: 1 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                              <span style={{ fontSize: 9, fontWeight: 800, color: kindColor, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{r.kind}</span>
-                              <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)' }}>· {r.businesses?.name || 'Unknown business'}</span>
-                              <span title="Notified" style={{ width: 6, height: 6, borderRadius: '50%', background: r.notified_at ? '#10b981' : 'rgba(255,255,255,0.2)' }} />
-                              <span title="Exported" style={{ width: 6, height: 6, borderRadius: '50%', background: r.exported_at ? '#10b981' : 'rgba(255,255,255,0.2)' }} />
-                            </div>
-                            <div style={{ color: 'white', fontSize: 12.5, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: isOpen ? 'normal' : 'nowrap' }}>{r.title}</div>
-                          </div>
-                          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', whiteSpace: 'nowrap' }}>{new Date(r.created_at).toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</div>
-                        </div>
-                        
-<div style={{
-  display: 'grid',
-  gridTemplateRows: isOpen ? '1fr' : '0fr',
-  transition: 'grid-template-rows 200ms ease-out',
-}}>
-  <div style={{ overflow: 'hidden' }}>
-    <div style={{
-      marginTop: isOpen ? 8 : 0,
-      paddingTop: isOpen ? 8 : 0,
-      borderTop: isOpen ? '1px solid rgba(255,255,255,0.08)' : '1px solid transparent',
-      transition: 'all 200ms ease-out'
-    }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {/* Needs Attention List */}
+                  {activeRequests.length === 0 ? (
+                    <div style={{ color: '#86EFAC', fontSize: 12, fontWeight: 600, padding: '6px 0' }}>
+                      Nothing needs attention ✓
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {activeRequests.map(r => {
+                        const isOpen = expandedRequestId === r.id;
+                        const kindColor = r.kind === 'bug' ? '#FBBF24' : 'var(--pink)';
+                        const draft = requestDrafts[r.id];
+                        const draftStatus = draft ? draft.status : r.status;
+                        const draftNotes = draft ? draft.admin_notes : '';
+                        const isDirty = !!draft && (draft.status !== r.status || (draft.admin_notes || '').trim().length > 0);
+                        const isSaving = savingRequestId === r.id;
+                        const pill = getAdminStatusPill(r.status);
+                        const loadingCtx = loadingContextId === r.id;
+                        const ctx = requestContexts[r.id];
 
-                          <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', marginBottom: 8 }}>{r.body}</div>
-                            {r.context && (
-                              <pre style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: '0 0 8px' }}>{JSON.stringify(r.context, null, 2)}</pre>
-                            )}
-
-                            {/* Prior thread messages */}
-                            {r.admin_notes && (
-                              <div style={{ marginBottom: 8, padding: '8px 10px', borderRadius: 8, background: 'rgba(252,70,147,0.12)', borderLeft: '3px solid var(--pink)' }}>
-                                <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--pink)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 2 }}>Joel's reply (admin_notes)</div>
-                                <div style={{ fontSize: 12, color: 'white', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{r.admin_notes}</div>
+                        return (
+                          <div
+                            key={r.id}
+                            style={{
+                              background: 'rgba(255,255,255,0.05)',
+                              borderRadius: 12,
+                              border: '1px solid rgba(255,255,255,0.05)',
+                              padding: '10px 12px',
+                            }}
+                          >
+                            <div
+                              onClick={() => handleRequestToggle(r)}
+                              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, cursor: 'pointer' }}
+                            >
+                              <div style={{ minWidth: 0, flex: 1 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
+                                  <span
+                                    style={{
+                                      fontSize: 9,
+                                      fontWeight: 700,
+                                      padding: '1px 6px',
+                                      borderRadius: 999,
+                                      background: pill.bg,
+                                      color: pill.fg,
+                                      border: `1px solid ${pill.border}`,
+                                    }}
+                                  >
+                                    {pill.label}
+                                  </span>
+                                  <span style={{ fontSize: 9, fontWeight: 800, color: kindColor, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                    {r.kind}
+                                  </span>
+                                  <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)' }}>
+                                    · {r.businesses?.name || 'Unknown business'}
+                                  </span>
+                                </div>
+                                <div style={{ color: 'white', fontSize: 12.5, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: isOpen ? 'normal' : 'nowrap' }}>
+                                  {r.title}
+                                </div>
                               </div>
-                            )}
-                            {threadMessages[r.id] === undefined ? (
-                              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 8 }}>Loading thread…</div>
-                            ) : (threadMessages[r.id] || []).length > 0 && (
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
-                                {(threadMessages[r.id] || []).map(msg => {
-                                  const isJoel = msg.author_role === 'admin';
-                                  const label = isJoel ? 'Joel (Admin)' : 'Owner';
-                                  const timeStr = new Date(msg.created_at).toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-                                  return (
-                                    <div
-                                      key={msg.id}
-                                      style={{
-                                        padding: '8px 10px', borderRadius: 8,
-                                        background: isJoel ? 'rgba(252,70,147,0.12)' : 'rgba(255,255,255,0.06)',
-                                        borderLeft: `3px solid ${isJoel ? 'var(--pink)' : 'rgba(255,255,255,0.4)'}`,
-                                      }}
-                                    >
-                                      <div style={{ fontSize: 9, fontWeight: 700, color: isJoel ? 'var(--pink)' : 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 2, display: 'flex', justifyContent: 'space-between' }}>
-                                        <span>{label}</span>
-                                        <span style={{ fontWeight: 400, textTransform: 'none', color: 'rgba(255,255,255,0.4)' }}>{timeStr}</span>
-                                      </div>
-                                      <div style={{ fontSize: 12, color: 'white', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{msg.body}</div>
+                              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', whiteSpace: 'nowrap' }}>
+                                {new Date(r.created_at).toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                              </div>
+                            </div>
+
+                            <div style={{
+                              display: 'grid',
+                              gridTemplateRows: isOpen ? '1fr' : '0fr',
+                              transition: 'grid-template-rows 200ms ease-out',
+                            }}>
+                              <div style={{ overflow: 'hidden' }}>
+                                <div style={{
+                                  marginTop: isOpen ? 8 : 0,
+                                  paddingTop: isOpen ? 8 : 0,
+                                  borderTop: isOpen ? '1px solid rgba(255,255,255,0.08)' : '1px solid transparent',
+                                  transition: 'all 200ms ease-out',
+                                }}>
+                                  {(r.notified_at || r.exported_at) && (
+                                    <div style={{ display: 'flex', gap: 8, marginBottom: 6, fontSize: 10 }}>
+                                      {r.notified_at && (
+                                        <span style={{ color: '#10b981', fontWeight: 600 }}>Emailed ✓</span>
+                                      )}
+                                      {r.exported_at && (
+                                        <span style={{ color: '#10b981', fontWeight: 600 }}>Exported ✓</span>
+                                      )}
                                     </div>
-                                  );
-                                })}
-                              </div>
-                            )}
+                                  )}
+                                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', marginBottom: 8 }}>
+                                    {r.body}
+                                  </div>
 
-                            <label htmlFor={`req-reply-${r.id}`} style={{ display: 'block', fontSize: 9, fontWeight: 700, color: 'var(--pink-label)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>
-                              Reply (visible to the business owner)
-                            </label>
-                            <textarea
-                              id={`req-reply-${r.id}`}
-                              value={draftNotes}
-                              onChange={e => setRequestDraft(r, 'admin_notes', e.target.value)}
-                              className="sm-input"
-                              rows={3}
-                              placeholder="Type a reply to send to the thread..."
-                              style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 8, background: 'var(--plum-mid)', border: '1px solid var(--pink-mid)', color: 'white', fontSize: 16, fontFamily: 'inherit', resize: 'vertical', marginBottom: 8 }}
-                            />
-                            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                              <select
-                                value={draftStatus}
-                                onChange={e => setRequestDraft(r, 'status', e.target.value)}
-                                className="sm-input"
-                                style={{ padding: '6px 10px', borderRadius: 8, background: 'var(--plum-mid)', border: '1px solid var(--pink-mid)', color: 'white', fontSize: 11.5 }}
-                              >
-                                {REQUEST_STATUSES.map(s => (
-                                  <option key={s} value={s}>{s}</option>
-                                ))}
-                              </select>
-                              <button
-                                type="button"
-                                onClick={() => handleRequestSave(r)}
-                                disabled={!isDirty || isSaving}
-                                style={{ marginLeft: 'auto', padding: '6px 14px', borderRadius: 8, border: 'none', background: isDirty && !isSaving ? 'var(--pink)' : 'rgba(255,255,255,0.12)', color: 'white', fontSize: 11.5, fontWeight: 700, cursor: isDirty && !isSaving ? 'pointer' : 'default' }}
-                              >
-                                {isSaving ? 'Saving…' : 'Save'}
-                              </button>
+                                  {loadingCtx ? (
+                                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', marginBottom: 8 }}>Loading context…</div>
+                                  ) : ctx ? (
+                                    <pre style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: '0 0 8px' }}>
+                                      {JSON.stringify(ctx, null, 2)}
+                                    </pre>
+                                  ) : null}
+
+                                  {/* Prior thread messages */}
+                                  {r.admin_notes && (
+                                    <div style={{ marginBottom: 8, padding: '8px 10px', borderRadius: 8, background: 'rgba(252,70,147,0.12)', borderLeft: '3px solid var(--pink)' }}>
+                                      <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--pink)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 2 }}>Joel's reply (admin_notes)</div>
+                                      <div style={{ fontSize: 12, color: 'white', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{r.admin_notes}</div>
+                                    </div>
+                                  )}
+                                  {threadMessages[r.id] === undefined ? (
+                                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 8 }}>Loading thread…</div>
+                                  ) : (threadMessages[r.id] || []).length > 0 && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
+                                      {(threadMessages[r.id] || []).map(msg => {
+                                        const isJoel = msg.author_role === 'admin';
+                                        const label = isJoel ? 'Joel (Admin)' : 'Owner';
+                                        const timeStr = new Date(msg.created_at).toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+                                        return (
+                                          <div
+                                            key={msg.id}
+                                            style={{
+                                              padding: '8px 10px', borderRadius: 8,
+                                              background: isJoel ? 'rgba(252,70,147,0.12)' : 'rgba(255,255,255,0.06)',
+                                              borderLeft: `3px solid ${isJoel ? 'var(--pink)' : 'rgba(255,255,255,0.4)'}`,
+                                            }}
+                                          >
+                                            <div style={{ fontSize: 9, fontWeight: 700, color: isJoel ? 'var(--pink)' : 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 2, display: 'flex', justifyContent: 'space-between' }}>
+                                              <span>{label}</span>
+                                              <span style={{ fontWeight: 400, textTransform: 'none', color: 'rgba(255,255,255,0.4)' }}>{timeStr}</span>
+                                            </div>
+                                            <div style={{ fontSize: 12, color: 'white', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{msg.body}</div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+
+                                  <label htmlFor={`req-reply-${r.id}`} style={{ display: 'block', fontSize: 9, fontWeight: 700, color: 'var(--pink-label)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>
+                                    Reply (visible to the business owner)
+                                  </label>
+                                  <textarea
+                                    id={`req-reply-${r.id}`}
+                                    value={draftNotes}
+                                    onChange={e => setRequestDraft(r, 'admin_notes', e.target.value)}
+                                    className="sm-input"
+                                    rows={3}
+                                    placeholder="Type a reply to send to the thread..."
+                                    style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 8, background: 'var(--plum-mid)', border: '1px solid var(--pink-mid)', color: 'white', fontSize: 16, fontFamily: 'inherit', resize: 'vertical', marginBottom: 8 }}
+                                  />
+                                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                    <select
+                                      value={draftStatus}
+                                      onChange={e => setRequestDraft(r, 'status', e.target.value)}
+                                      className="sm-input"
+                                      style={{ padding: '6px 10px', borderRadius: 8, background: 'var(--plum-mid)', border: '1px solid var(--pink-mid)', color: 'white', fontSize: 11.5 }}
+                                    >
+                                      {REQUEST_STATUSES.map(s => (
+                                        <option key={s} value={s}>{s}</option>
+                                      ))}
+                                    </select>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRequestSave(r)}
+                                      disabled={!isDirty || isSaving}
+                                      style={{ marginLeft: 'auto', padding: '6px 14px', borderRadius: 8, border: 'none', background: isDirty && !isSaving ? 'var(--pink)' : 'rgba(255,255,255,0.12)', color: 'white', fontSize: 11.5, fontWeight: 700, cursor: isDirty && !isSaving ? 'pointer' : 'default' }}
+                                    >
+                                      {isSaving ? 'Saving…' : 'Save'}
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
                             </div>
                           </div>
-                        </div></div></div>
-                      </div>
-                    );
-                  })}
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Finished group (collapsed by default, hidden if empty) */}
+                  {finishedRequests.length > 0 && (
+                    <div style={{ marginTop: 6, borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 10 }}>
+                      <button
+                        type="button"
+                        onClick={() => setShowFinishedGroup(prev => !prev)}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: 'rgba(255,255,255,0.6)',
+                          fontSize: 11.5,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          padding: '2px 0',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                        }}
+                      >
+                        <span>{showFinishedGroup ? '▼' : '▶'}</span>
+                        <span>Finished ({finishedRequests.length})</span>
+                      </button>
+
+                      {showFinishedGroup && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
+                          {finishedRequests.map(r => {
+                            const isOpen = expandedRequestId === r.id;
+                            const kindColor = r.kind === 'bug' ? '#FBBF24' : 'var(--pink)';
+                            const draft = requestDrafts[r.id];
+                            const draftStatus = draft ? draft.status : r.status;
+                            const draftNotes = draft ? draft.admin_notes : '';
+                            const isDirty = !!draft && (draft.status !== r.status || (draft.admin_notes || '').trim().length > 0);
+                            const isSaving = savingRequestId === r.id;
+                            const pill = getAdminStatusPill(r.status);
+                            const loadingCtx = loadingContextId === r.id;
+                            const ctx = requestContexts[r.id];
+
+                            return (
+                              <div
+                                key={r.id}
+                                style={{
+                                  background: 'rgba(255,255,255,0.03)',
+                                  borderRadius: 12,
+                                  border: '1px solid rgba(255,255,255,0.04)',
+                                  padding: '10px 12px',
+                                  opacity: 0.7,
+                                }}
+                              >
+                                <div
+                                  onClick={() => handleRequestToggle(r)}
+                                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, cursor: 'pointer' }}
+                                >
+                                  <div style={{ minWidth: 0, flex: 1 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
+                                      <span
+                                        style={{
+                                          fontSize: 9,
+                                          fontWeight: 700,
+                                          padding: '1px 6px',
+                                          borderRadius: 999,
+                                          background: pill.bg,
+                                          color: pill.fg,
+                                          border: `1px solid ${pill.border}`,
+                                        }}
+                                      >
+                                        {pill.label}
+                                      </span>
+                                      <span style={{ fontSize: 9, fontWeight: 800, color: kindColor, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                        {r.kind}
+                                      </span>
+                                      <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)' }}>
+                                        · {r.businesses?.name || 'Unknown business'}
+                                      </span>
+                                    </div>
+                                    <div style={{ color: 'white', fontSize: 12.5, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: isOpen ? 'normal' : 'nowrap' }}>
+                                      {r.title}
+                                    </div>
+                                  </div>
+                                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', whiteSpace: 'nowrap' }}>
+                                    {new Date(r.created_at).toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                                  </div>
+                                </div>
+
+                                <div style={{
+                                  display: 'grid',
+                                  gridTemplateRows: isOpen ? '1fr' : '0fr',
+                                  transition: 'grid-template-rows 200ms ease-out',
+                                }}>
+                                  <div style={{ overflow: 'hidden' }}>
+                                    <div style={{
+                                      marginTop: isOpen ? 8 : 0,
+                                      paddingTop: isOpen ? 8 : 0,
+                                      borderTop: isOpen ? '1px solid rgba(255,255,255,0.08)' : '1px solid transparent',
+                                      transition: 'all 200ms ease-out',
+                                    }}>
+                                      {(r.notified_at || r.exported_at) && (
+                                        <div style={{ display: 'flex', gap: 8, marginBottom: 6, fontSize: 10 }}>
+                                          {r.notified_at && (
+                                            <span style={{ color: '#10b981', fontWeight: 600 }}>Emailed ✓</span>
+                                          )}
+                                          {r.exported_at && (
+                                            <span style={{ color: '#10b981', fontWeight: 600 }}>Exported ✓</span>
+                                          )}
+                                        </div>
+                                      )}
+                                      <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', marginBottom: 8 }}>
+                                        {r.body}
+                                      </div>
+
+                                      {loadingCtx ? (
+                                        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', marginBottom: 8 }}>Loading context…</div>
+                                      ) : ctx ? (
+                                        <pre style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: '0 0 8px' }}>
+                                          {JSON.stringify(ctx, null, 2)}
+                                        </pre>
+                                      ) : null}
+
+                                      {/* Prior thread messages */}
+                                      {r.admin_notes && (
+                                        <div style={{ marginBottom: 8, padding: '8px 10px', borderRadius: 8, background: 'rgba(252,70,147,0.12)', borderLeft: '3px solid var(--pink)' }}>
+                                          <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--pink)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 2 }}>Joel's reply (admin_notes)</div>
+                                          <div style={{ fontSize: 12, color: 'white', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{r.admin_notes}</div>
+                                        </div>
+                                      )}
+                                      {threadMessages[r.id] === undefined ? (
+                                        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 8 }}>Loading thread…</div>
+                                      ) : (threadMessages[r.id] || []).length > 0 && (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
+                                          {(threadMessages[r.id] || []).map(msg => {
+                                            const isJoel = msg.author_role === 'admin';
+                                            const label = isJoel ? 'Joel (Admin)' : 'Owner';
+                                            const timeStr = new Date(msg.created_at).toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+                                            return (
+                                              <div
+                                                key={msg.id}
+                                                style={{
+                                                  padding: '8px 10px', borderRadius: 8,
+                                                  background: isJoel ? 'rgba(252,70,147,0.12)' : 'rgba(255,255,255,0.06)',
+                                                  borderLeft: `3px solid ${isJoel ? 'var(--pink)' : 'rgba(255,255,255,0.4)'}`,
+                                                }}
+                                              >
+                                                <div style={{ fontSize: 9, fontWeight: 700, color: isJoel ? 'var(--pink)' : 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 2, display: 'flex', justifyContent: 'space-between' }}>
+                                                  <span>{label}</span>
+                                                  <span style={{ fontWeight: 400, textTransform: 'none', color: 'rgba(255,255,255,0.4)' }}>{timeStr}</span>
+                                                </div>
+                                                <div style={{ fontSize: 12, color: 'white', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{msg.body}</div>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      )}
+
+                                      <label htmlFor={`req-reply-${r.id}`} style={{ display: 'block', fontSize: 9, fontWeight: 700, color: 'var(--pink-label)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>
+                                        Reply (visible to the business owner)
+                                      </label>
+                                      <textarea
+                                        id={`req-reply-${r.id}`}
+                                        value={draftNotes}
+                                        onChange={e => setRequestDraft(r, 'admin_notes', e.target.value)}
+                                        className="sm-input"
+                                        rows={3}
+                                        placeholder="Type a reply to send to the thread..."
+                                        style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 8, background: 'var(--plum-mid)', border: '1px solid var(--pink-mid)', color: 'white', fontSize: 16, fontFamily: 'inherit', resize: 'vertical', marginBottom: 8 }}
+                                      />
+                                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                        <select
+                                          value={draftStatus}
+                                          onChange={e => setRequestDraft(r, 'status', e.target.value)}
+                                          className="sm-input"
+                                          style={{ padding: '6px 10px', borderRadius: 8, background: 'var(--plum-mid)', border: '1px solid var(--pink-mid)', color: 'white', fontSize: 11.5 }}
+                                        >
+                                          {REQUEST_STATUSES.map(s => (
+                                            <option key={s} value={s}>{s}</option>
+                                          ))}
+                                        </select>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleRequestSave(r)}
+                                          disabled={!isDirty || isSaving}
+                                          style={{ marginLeft: 'auto', padding: '6px 14px', borderRadius: 8, border: 'none', background: isDirty && !isSaving ? 'var(--pink)' : 'rgba(255,255,255,0.12)', color: 'white', fontSize: 11.5, fontWeight: 700, cursor: isDirty && !isSaving ? 'pointer' : 'default' }}
+                                        >
+                                          {isSaving ? 'Saving…' : 'Save'}
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+
+                          {!hasLoadedOlderFinished && (
+                            <button
+                              type="button"
+                              onClick={handleLoadOlderFinished}
+                              disabled={loadingOlderFinished}
+                              style={{
+                                background: 'transparent',
+                                border: '1px dashed rgba(255,255,255,0.2)',
+                                borderRadius: 8,
+                                color: 'rgba(255,255,255,0.5)',
+                                fontSize: 11,
+                                padding: '8px',
+                                cursor: loadingOlderFinished ? 'default' : 'pointer',
+                                marginTop: 4,
+                              }}
+                            >
+                              {loadingOlderFinished ? 'Loading older…' : 'Older finished'}
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
             <SectionLabel>Super Admin: Error Log</SectionLabel>
             <div style={{ background: 'var(--plum-dark)', border: '1.5px solid var(--pink-mid)', borderRadius: 16, padding: '14px', marginBottom: 20 }}>
-              <div style={{ fontSize: 11, color: 'var(--pink-label)', marginBottom: 12, fontWeight: 600 }}>
-                Last 50 client + server errors, across all businesses.
+              <div
+                onClick={handleToggleErrorLog}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'white' }}>
+                    Error Log · {unresolvedCount !== null ? `${unresolvedCount} unresolved` : 'Checking…'}
+                  </div>
+                  <div style={{ fontSize: 10.5, color: 'var(--pink-label)', marginTop: 2 }}>
+                    Client & server errors grouped by source
+                  </div>
+                </div>
+                <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>
+                  {isErrorLogExpanded ? '▲ Collapse' : '▼ Expand'}
+                </div>
               </div>
-              {errorLogsLoading ? (
-                <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, textAlign: 'center', padding: '10px 0' }}>Loading…</div>
-              ) : errorLogs.length === 0 ? (
-                <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, textAlign: 'center', padding: '10px 0' }}>No errors logged. ✓</div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 340, overflowY: 'auto' }}>
-                  {errorLogs.map(e => {
-                    const isOpen = expandedErrorId === e.id;
-                    const sevColor = e.severity === 'critical' ? '#EF4444' : e.severity === 'warning' ? '#FBBF24' : 'var(--pink)';
-                    return (
-                      <div key={e.id} style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)', padding: '10px 12px' }}>
-                        <div
-                          onClick={() => setExpandedErrorId(isOpen ? null : e.id)}
-                          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, cursor: 'pointer' }}
-                        >
-                          <div style={{ minWidth: 0, flex: 1 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                              <span style={{ fontSize: 9, fontWeight: 800, color: sevColor, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{e.severity}</span>
-                              <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)' }}>· {e.source}</span>
-                            </div>
-                            <div style={{ color: 'white', fontSize: 12.5, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: isOpen ? 'normal' : 'nowrap' }}>{e.message}</div>
-                          </div>
-                          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', whiteSpace: 'nowrap' }}>{new Date(e.created_at).toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</div>
-                        </div>
-                        
-<div style={{
-  display: 'grid',
-  gridTemplateRows: isOpen ? '1fr' : '0fr',
-  transition: 'grid-template-rows 200ms ease-out',
-}}>
-  <div style={{ overflow: 'hidden' }}>
-    <div style={{
-      marginTop: isOpen ? 8 : 0,
-      paddingTop: isOpen ? 8 : 0,
-      borderTop: isOpen ? '1px solid rgba(255,255,255,0.08)' : '1px solid transparent',
-      transition: 'all 200ms ease-out'
-    }}>
 
-                          <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                            {e.context && (
-                              <pre style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: '0 0 6px' }}>{JSON.stringify(e.context, null, 2)}</pre>
-                            )}
-                            {e.stack && (
-                              <pre style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0 }}>{e.stack}</pre>
-                            )}
+              {isErrorLogExpanded && (
+                <div style={{ marginTop: 12, borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 10 }}>
+                  {unresolvedErrorsLoading ? (
+                    <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, textAlign: 'center', padding: '10px 0' }}>
+                      Loading unresolved errors…
+                    </div>
+                  ) : groupedUnresolved.length === 0 ? (
+                    <div style={{ color: '#86EFAC', fontSize: 12, textAlign: 'center', padding: '10px 0', fontWeight: 600 }}>
+                      No unresolved errors logged. ✓
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 340, overflowY: 'auto' }}>
+                      {groupedUnresolved.map(group => {
+                        const isOpen = expandedErrorGroupKey === group.key;
+                        const sevColor = group.severity === 'critical' ? '#EF4444' : group.severity === 'warning' ? '#FBBF24' : 'var(--pink)';
+                        const isResolving = resolvingGroupKey === group.key;
+                        const detail = errorDetails[group.newestId];
+                        const loadingDetail = errorDetailsLoading === group.newestId;
+
+                        return (
+                          <div
+                            key={group.key}
+                            style={{
+                              background: 'rgba(255,255,255,0.05)',
+                              borderRadius: 12,
+                              border: '1px solid rgba(255,255,255,0.05)',
+                              padding: '10px 12px',
+                            }}
+                          >
+                            <div
+                              onClick={() => handleToggleErrorRow(group)}
+                              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, cursor: 'pointer' }}
+                            >
+                              <div style={{ minWidth: 0, flex: 1 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3, flexWrap: 'wrap' }}>
+                                  <span style={{ fontSize: 9, fontWeight: 800, color: sevColor, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                    {group.severity}
+                                  </span>
+                                  <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)' }}>
+                                    · {group.source}
+                                  </span>
+                                  {group.count > 1 && (
+                                    <span
+                                      style={{
+                                        background: 'rgba(255,255,255,0.15)',
+                                        borderRadius: 4,
+                                        padding: '1px 5px',
+                                        fontSize: 9.5,
+                                        fontWeight: 700,
+                                        color: 'white',
+                                      }}
+                                    >
+                                      ×{group.count}
+                                    </span>
+                                  )}
+                                </div>
+                                <div style={{ color: 'white', fontSize: 12.5, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: isOpen ? 'normal' : 'nowrap' }}>
+                                  {group.message}
+                                </div>
+                                <div style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>
+                                  Last seen: {formatErrorLastSeen(group.latestCreatedAt)}
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleResolveGroup(group);
+                                }}
+                                disabled={isResolving}
+                                style={{
+                                  background: 'rgba(34,197,94,0.15)',
+                                  border: '1px solid rgba(34,197,94,0.3)',
+                                  color: '#86EFAC',
+                                  borderRadius: 6,
+                                  padding: '4px 8px',
+                                  fontSize: 11,
+                                  fontWeight: 600,
+                                  cursor: isResolving ? 'default' : 'pointer',
+                                  whiteSpace: 'nowrap',
+                                  alignSelf: 'center',
+                                }}
+                              >
+                                {isResolving ? 'Resolving…' : 'Resolve'}
+                              </button>
+                            </div>
+
+                            <div style={{
+                              display: 'grid',
+                              gridTemplateRows: isOpen ? '1fr' : '0fr',
+                              transition: 'grid-template-rows 200ms ease-out',
+                            }}>
+                              <div style={{ overflow: 'hidden' }}>
+                                <div style={{
+                                  marginTop: isOpen ? 8 : 0,
+                                  paddingTop: isOpen ? 8 : 0,
+                                  borderTop: isOpen ? '1px solid rgba(255,255,255,0.08)' : '1px solid transparent',
+                                  transition: 'all 200ms ease-out',
+                                }}>
+                                  {loadingDetail ? (
+                                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>Loading stack & context…</div>
+                                  ) : detail ? (
+                                    <>
+                                      {detail.context && (
+                                        <pre style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: '0 0 6px' }}>
+                                          {JSON.stringify(detail.context, null, 2)}
+                                        </pre>
+                                      )}
+                                      {detail.stack && (
+                                        <pre style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0 }}>
+                                          {detail.stack}
+                                        </pre>
+                                      )}
+                                    </>
+                                  ) : (
+                                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>No details available.</div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
                           </div>
-                        </div></div></div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Resolved sub-section */}
+                  <div style={{ marginTop: 12, borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 10 }}>
+                    <button
+                      type="button"
+                      onClick={handleToggleResolvedSection}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'rgba(255,255,255,0.6)',
+                        fontSize: 11.5,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        padding: '2px 0',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                      }}
+                    >
+                      <span>{isResolvedSectionExpanded ? '▼' : '▶'}</span>
+                      <span>Resolved {hasFetchedResolved ? `(${groupedResolved.length})` : ''}</span>
+                    </button>
+
+                    {isResolvedSectionExpanded && (
+                      <div style={{ marginTop: 8 }}>
+                        {resolvedErrorsLoading ? (
+                          <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, textAlign: 'center', padding: '8px 0' }}>
+                            Loading resolved…
+                          </div>
+                        ) : groupedResolved.length === 0 ? (
+                          <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, textAlign: 'center', padding: '8px 0' }}>
+                            No resolved errors yet.
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 250, overflowY: 'auto' }}>
+                            {groupedResolved.map(group => (
+                              <div
+                                key={group.key}
+                                style={{
+                                  background: 'rgba(255,255,255,0.03)',
+                                  borderRadius: 10,
+                                  border: '1px solid rgba(255,255,255,0.04)',
+                                  padding: '8px 10px',
+                                  opacity: 0.7,
+                                }}
+                              >
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <span style={{ fontSize: 9, fontWeight: 700, color: '#86EFAC', background: 'rgba(34,197,94,0.15)', padding: '1px 5px', borderRadius: 4 }}>
+                                      ✓ Resolved
+                                    </span>
+                                    <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)' }}>
+                                      {group.source}
+                                    </span>
+                                    {group.count > 1 && (
+                                      <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)' }}>
+                                        ×{group.count}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)' }}>
+                                    {formatErrorLastSeen(group.latestCreatedAt)}
+                                  </div>
+                                </div>
+                                <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {group.message}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                    );
-                  })}
+                    )}
+                  </div>
                 </div>
               )}
             </div>

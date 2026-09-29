@@ -178,6 +178,15 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 ---
 
 
+## Current version: 0.13.101 - Sep 29, 2026 (admin ticket & error panel UX rework, task 12)
+
+**v0.13.101**: Admin page request intake and error log UX overhaul (task 12):
+- **Requests intake triage UX**: Added `splitAdminRequests` and `sortRequestsByPriority` in `src/lib/requestFormatting.js`. Splits requests into "Needs attention" (`new`, `triaged`, `planned`, sorted new-first then oldest-first within status) and a collapsed "Finished (last 72h)" section (`done`, `dismissed` within 72h, sorted newest-first). Older finished items hidden behind an explicit "Show older finished..." button (`listOlderFinishedRequestsAdmin`).
+- **Requests payload optimization**: Dropped `context` JSON from `listRequestsAdmin` query to eliminate bloat on initial page load; added `fetchRequestContext(id)` for lazy fetch on "Inspect context" click. Added status pills on request cards and sub-line real count summaries (`N open · M finished`). Bumps `updated_at` on thread reply even without status change.
+- **Error Log collapse & grouping**: Error Log panel is now collapsed by default with count-only header query (`resolved_at is null`) returning 0 rows on mount. Lazy-fetches unresolved errors on section expand, dropping heavy `stack` and `context` columns. Groups errors by `source` + first line of `message` with occurrence count, first/last seen timestamps, and sample entry (`src/lib/errorGrouping.js`). Added "Resolve" button per group and collapsible "Resolved" section.
+- **Migration**: Added `supabase/migrations/20260929010000_add_error_logs_resolved.sql` to add `resolved_at` / `resolved_by` columns with partial index (`WHERE resolved_at IS NULL`) and RLS update policy for admins. Committed verbatim, not run on prod.
+- 284/284 tests pass, build clean.
+
 ## Current version: 0.13.99 - Sep 28, 2026 (surplus-credit screen copy fix, task 11a)
 
 **v0.13.99**: Reworded `src/components/sheets/PostJobSheet.jsx`'s surplus-spillover screen (the phase shown after an overpaid job completion — around line 542-645). Root cause of the "it asked to apply the credit again" confusion (Joel, forward-queue item 11a — checked the live `payments`/`client_credits` data first, confirmed no actual double-charge exists): `recordPayment()` in `src/data/jobsRepo.js` (line 810-818) already silently auto-issues the surplus as account credit the instant the job is saved; this screen then immediately asks what to do with that already-existing credit, but the old copy ("Apply $X to these jobs" / "Keep $X as credit instead") read like a fresh apply-or-not decision instead of a routing choice for money that's already credit. New copy states the credit already exists up front ("{client}'s account now has $X in credit... already saved as credit"), and both buttons now say "Send"/"Leave" instead of "Apply"/"Keep... instead". No logic change — money flow is untouched, this is copy-only. 268/268 tests pass, build clean.

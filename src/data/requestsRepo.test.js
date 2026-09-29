@@ -109,7 +109,7 @@ describe('saveRequestAdmin notify dispatching', () => {
     });
   });
 
-  it('calls /api/ai/notify-request-reply when status stays done (or triaged) and replyBody provided', async () => {
+  it('calls /api/ai/notify-request-reply and bumps updated_at when status stays done (or triaged) and replyBody provided', async () => {
     await saveRequestAdmin('req-2', 'biz-123', {
       status: 'done',
       oldStatus: 'done',
@@ -120,8 +120,12 @@ describe('saveRequestAdmin notify dispatching', () => {
     expect(dbInserts).toHaveLength(1);
     expect(dbInserts[0].data.body).toBe('Follow up on the fix');
 
-    // No status update because status did not change
-    expect(dbUpdates).toHaveLength(0);
+    // Bumps updated_at on client_requests even though status did not change
+    expect(dbUpdates).toHaveLength(1);
+    expect(dbUpdates[0].table).toBe('client_requests');
+    expect(dbUpdates[0].patch.updated_at).toBeDefined();
+    expect(dbUpdates[0].patch.status).toBeUndefined();
+    expect(dbUpdates[0].val).toBe('req-2');
 
     // Notification dispatched to notify-request-reply
     expect(globalThis.fetch).toHaveBeenCalledTimes(1);

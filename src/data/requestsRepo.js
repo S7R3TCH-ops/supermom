@@ -1,7 +1,14 @@
 import { supabase, authHeaders } from '../lib/supabase';
 import { getCurrentBusinessId } from './currentBusiness';
 import { logClientError } from '../lib/errorTracking';
-import { deriveTitle, captureContext } from '../lib/requestFormatting';
+import {
+  deriveTitle,
+  captureContext,
+  ACTIVE_STATUSES,
+  FINISHED_STATUSES,
+  getFinishedCutoffDate,
+  sortNeedsAttentionRequests,
+} from '../lib/requestFormatting';
 
 export { deriveTitle, captureContext };
 
@@ -42,15 +49,69 @@ export async function submitRequest({ kind, body }) {
   return row;
 }
 
-/** Admin-only (RLS): last 50 requests across every business. */
+const ADMIN_LIST_FIELDS = 'id, business_id, kind, title, body, status, admin_notes, notified_at, exported_at, created_at, updated_at, businesses(name)';
+
+/**
+ * Admin-only: list active requests (new, triaged, planned; sorted by status priority then oldest-first)
+ * and recent finished requests (done, declined within 72h).
+ * Drops heavy `context` jsonb from list queries for low network payload on page load.
+ */
 export async function listRequestsAdmin() {
+  const cutoff = getFinishedCutoffDate();
+
+  const [activeRes, finishedRes] = await Promise.all([
+    supabase
+      .from('client_requests')
+      .select(ADMIN_LIST_FIELDS)
+      .in('status', ACTIVE_STATUSES)
+      .limit(100),
+    supabase
+      .from('client_requests')
+      .select(ADMIN_LIST_FIELDS)
+      .in('status', FINISHED_STATUSES)
+      .gte('updated_at', cutoff)
+      .order('updated_at', { ascending: false })
+      .limit(50),
+  ]);
+
+  if (activeRes.error) throw activeRes.error;
+  if (finishedRes.error) throw finishedRes.error;
+
+  const active = sortNeedsAttentionRequests(activeRes.data || []);
+  const finished = finishedRes.data || [];
+
+  return { active, finished };
+}
+
+/**
+ * On-demand fetch for older finished requests (updated_at < 72h cutoff).
+ * Never called on initial page load.
+ */
+export async function listOlderFinishedRequestsAdmin() {
+  const cutoff = getFinishedCutoffDate();
   const { data, error } = await supabase
     .from('client_requests')
-    .select('id, business_id, kind, title, body, context, status, admin_notes, notified_at, exported_at, created_at, businesses(name)')
-    .order('created_at', { ascending: false })
+    .select(ADMIN_LIST_FIELDS)
+    .in('status', FINISHED_STATUSES)
+    .lt('updated_at', cutoff)
+    .order('updated_at', { ascending: false })
     .limit(50);
   if (error) throw error;
   return data || [];
+}
+
+/**
+ * Lazy-load context for a single request on row expand.
+ */
+export async function fetchRequestContext(requestId) {
+  if (!requestId) return null;
+  const { data, error } = await supabase
+    .from('client_requests')
+    .select('context')
+    .eq('id', requestId)
+    .single();
+  if (error) throw error;
+  return data?.context ?? null;
 }
 
 /**
@@ -140,10 +201,13 @@ export async function saveRequestAdmin(id, businessId, { status, oldStatus, repl
     if (msgErr) throw msgErr;
   }
 
-  if (status && status !== oldStatus) {
+  const statusChanged = Boolean(status && status !== oldStatus);
+  if (statusChanged || trimmedReply) {
+    const patch = { updated_at: new Date().toISOString() };
+    if (statusChanged) patch.status = status;
     const { error: reqErr } = await supabase
       .from('client_requests')
-      .update({ status, updated_at: new Date().toISOString() })
+      .update(patch)
       .eq('id', id);
     if (reqErr) throw reqErr;
   }

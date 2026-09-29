@@ -178,11 +178,11 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 ---
 
 
-## Current version: 0.13.102 - Sep 29, 2026 (descriptive invoice line entries, scheduled_time on invoices/PDF, task 11f)
+## Current version: 0.13.102 - Sep 29, 2026 (line-detail invoice entries task 11f + admin request/error panel rework task 12)
 
 **v0.13.102**: Made invoice/receipt line entries descriptive (tasks.md #11f):
 - **scheduled_time on Invoices & PDF**: Added `scheduled_time` to queries in `api/invoice.ts` (download, json read, email) and `src/lib/invoiceBalances.ts` (`decorateInvoiceWithBalances`). Restores start-end time rendering on invoices and PDFs via `formatJobTime(job)` which was previously unpopulated.
-- **Shared Job Calc Helper**: Added pure helper `describeJobCalc(job, business)` in `src/lib/invoiceBalances.ts` (safe for Vercel PDF import chain). Formats hourly calculations (`${hours.toFixed(1)} hrs × $${rate.toFixed(2)}/hr` + extras) and flat rates (`Flat rate` + extras) with NaN/null safety.
+- **Shared Job Calc Helper**: Added pure helper `describeJobCalc(job, business)` in `src/lib/invoiceBalances.ts` (safe for Vercel PDF import chain). Formats hourly calculations (`${hours.toFixed(1)} hrs × ${rate.toFixed(2)}/hr` + extras) and flat rates (`Flat rate` + extras) with NaN/null safety.
 - **Descriptive Secondary Lists**: Updated "Other unpaid jobs" and "This payment also covered" on both web (`src/pages/InvoiceView.jsx`) and PDF (`api/_lib/invoicePdf.ts`) into compact 2-3 line blocks: (1) Date · Time range (if present) with owing/applied amount on right, (2) Service · <calc>, (3) Part-paid breakdown (`Job total $X.XX incl. HST · paid $Y.YY · owing $Z.ZZ`) when part-paid. Updated "Payments Received" on multi-job invoices to include time range after date.
 - **Tests & Build**: Added unit tests for `describeJobCalc` in `src/lib/invoiceBalances.test.js`. Extended `src/lib/invoicePdfRender.test.js` to assert `scheduled_time` and part-paid lines render cleanly to PDF buffer. Verified with temporary real-data check against live QA invoices. 285/285 tests pass, build clean.
 
@@ -195,6 +195,9 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 - **Task C (Owner panel add-jobs count)**: Fixed button count and enable condition in `InvoiceView.jsx` and `PostJobSheet.jsx` to derive strictly from addable jobs (`otherUnpaidJobs` intersected with checked IDs), preventing stale button counts or showing 'Add 0 jobs to invoice'.
 - **Task G (Invoice due date = invoice date)**: Removed Net-7 terms math (+7 days) in `src/data/invoicesRepo.js` (`generateInvoiceForJob`) and extracted `computeInvoiceDueDate(scheduledDate)`. Due date now defaults to the invoice/scheduled date on both insert and update. Added unit test in `src/data/invoiceDueDate.test.js`. Existing invoices will pick up the new rule upon update.
 - **Tests & Build**: Extended `src/lib/invoicePdfRender.test.js` to verify real `renderToBuffer` on unpaid invoice with partial payment, paid-in-full receipt with alsoPaid, and invoice with otherOutstanding. Added unit tests for `getJobPaymentBadge` in `src/lib/invoiceBalances.test.js`. 280/280 tests pass, build clean.
+
+**v0.13.101**: Admin request intake + error log UX rework (tasks.md #12). Finished requests (`done`/`declined`) with no activity for 72h are no longer fetched at all (a query filter on `client_requests.updated_at`: no flag, no cron, no migration). Admin requests are split into a sorted "Needs attention" list (new, triaged, planned; oldest first) and a collapsed "Finished (N)" group; every row header has a status pill; an "Older finished" button loads older ones on demand only. `saveRequestAdmin` now also bumps `updated_at` when it only inserts a reply, so a reply restarts the 72h clock. The `context` jsonb is dropped from list queries and fetched on row expand (`fetchRequestContext`). Error Log is collapsed by default with a count-only mount query, lists only unresolved errors on expand (grouped by source+message via `src/lib/errorGrouping.js`), has a per-group Resolve button (sets `resolved_at`) and a lazy Resolved sub-section. **Migration `supabase/migrations/20260929010000_add_error_logs_resolved.sql` (adds `error_logs.resolved_at` + an admin-only UPDATE policy) is NOT YET RUN: Joel runs it manually. Until then the panel falls back to listing all errors and Resolve fails.** 284/284 tests pass, build clean.
+
 
 ## Current version: 0.13.99 - Sep 28, 2026 (surplus-credit screen copy fix, task 11a)
 

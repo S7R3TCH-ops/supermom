@@ -120,3 +120,22 @@ export function jobPaymentBadge(invoice, jobId) {
   if (!b || !(b.paid > 0.009)) return null;
   return { kind: b.owing <= 0.01 ? 'paid' : 'partial', paid: b.paid, owing: b.owing };
 }
+
+/**
+ * Pure helper for per-job payment badges on decorated invoices.
+ * Single source of truth for badge text and kind used by both InvoiceView.jsx and invoicePdf.ts.
+ * Returns { kind: 'paid'|'partial', text: string, paid: number, owing: number } or null.
+ */
+export function getJobPaymentBadge(invoice, jobId) {
+  if (!invoice) return null;
+  const b = (invoice.invoiceJobBalances || []).find(x => x.job?.id === jobId);
+  if (!b || !(b.paid > 0.009)) return null;
+  const isFullyPaid = b.owing <= 0.01;
+  return {
+    kind: isFullyPaid ? 'paid' : 'partial',
+    text: isFullyPaid ? 'Paid in full ✓' : `Paid $${b.paid.toFixed(2)} · Owing $${b.owing.toFixed(2)}`,
+    paid: b.paid,
+    owing: b.owing,
+  };
+}
+

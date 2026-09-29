@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { decorateInvoiceWithBalances, jobPaymentBadge } from './invoiceBalances';
+import { decorateInvoiceWithBalances, jobPaymentBadge, getJobPaymentBadge } from './invoiceBalances';
 
 // Stub of the two queries decorateInvoiceWithBalances makes: the client's
 // completed jobs and their non-void payments. The stub ignores filters (the
@@ -172,3 +172,59 @@ describe('jobPaymentBadge', () => {
     expect(jobPaymentBadge(inv([['a', 100, 0]]), 'zzz')).toBeNull();
   });
 });
+
+describe('getJobPaymentBadge', () => {
+  const inv = (balances, isPaidInFull = false) => ({
+    isPaidInFull,
+    invoiceJobBalances: balances.map(([id, paid, owing]) => ({ job: { id }, paid, owing })),
+  });
+
+  it('marks a fully paid job with "Paid in full ✓"', () => {
+    expect(getJobPaymentBadge(inv([['a', 100, 0], ['b', 0, 50]]), 'a')).toEqual({
+      kind: 'paid',
+      text: 'Paid in full ✓',
+      paid: 100,
+      owing: 0,
+    });
+  });
+
+  it('marks a partly paid job with "Paid $X · Owing $Y"', () => {
+    expect(getJobPaymentBadge(inv([['a', 40, 60]]), 'a')).toEqual({
+      kind: 'partial',
+      text: 'Paid $40.00 · Owing $60.00',
+      paid: 40,
+      owing: 60,
+    });
+  });
+
+  it('formats decimals to two decimal places', () => {
+    expect(getJobPaymentBadge(inv([['a', 42.5, 57.5]]), 'a')).toEqual({
+      kind: 'partial',
+      text: 'Paid $42.50 · Owing $57.50',
+      paid: 42.5,
+      owing: 57.5,
+    });
+  });
+
+  it('shows badge even when invoice is marked paid in full (receipt)', () => {
+    expect(getJobPaymentBadge(inv([['a', 100, 0]], true), 'a')).toEqual({
+      kind: 'paid',
+      text: 'Paid in full ✓',
+      paid: 100,
+      owing: 0,
+    });
+  });
+
+  it('returns null for an unpaid job', () => {
+    expect(getJobPaymentBadge(inv([['a', 0, 60]]), 'a')).toBeNull();
+  });
+
+  it('returns null for a job not on the invoice', () => {
+    expect(getJobPaymentBadge(inv([['a', 100, 0]]), 'zzz')).toBeNull();
+  });
+
+  it('returns null when invoice is null', () => {
+    expect(getJobPaymentBadge(null, 'a')).toBeNull();
+  });
+});
+

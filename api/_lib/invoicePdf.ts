@@ -1,7 +1,7 @@
 import React from 'react';
 import { Document, Page, View, Text, Image, StyleSheet, renderToBuffer } from '@react-pdf/renderer';
 import { computeJobFinancials } from '../../src/lib/financialMath.js';
-import { jobPaymentBadge } from '../../src/lib/invoiceBalances.js';
+import { getJobPaymentBadge } from '../../src/lib/invoiceBalances.js';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
@@ -147,25 +147,6 @@ function InvoiceDocument({ invoice }) {
   const aggTotal      = allF.reduce((s, f) => s + f.total, 0);
   const aggTaxRate    = allF[0]?.taxRate || 0;
 
-  const totalRow = V({ style: s.tDueRow, key: 'total' },
-    T({ style: s.tDueLabel }, 'Invoice Total'),
-    V({ style: { flexDirection: 'row', alignItems: 'center' } },
-      isReceipt ? T({ style: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: PAID, marginRight: 4 } }, '✓ Paid') : null,
-      T({ style: [s.tDueVal, isReceipt ? { color: PAID } : {}] }, `$${aggTotal.toFixed(2)}`),
-    ),
-  );
-
-  // (A second "Payments Received" block used to be built here but was never
-  // rendered — the totals row below has its own inline payments column.)
-
-  const balanceRow = (invoice.payments?.length > 0 && !invoice.isPaidInFull)
-    ? V({ style: s.balanceWrap, key: 'balance' },
-        V({ style: s.balanceMainRow },
-          T({ style: s.balanceLabel }, 'Remaining'),
-          T({ style: [s.balanceVal, { color: '#DC2626' }] }, `$${invoice.balanceOwing.toFixed(2)}`),
-        ),
-      )
-    : null;
 
   const creditRow = (invoice.creditRemaining > 0.009)
     ? T({ key: 'credit', style: { fontSize: 8, color: '#888', marginTop: 4, textAlign: 'right' } },
@@ -241,12 +222,12 @@ function InvoiceDocument({ invoice }) {
             V({ style: s.cDesc },
               T({ style: { fontSize: 10, color: INK } }, job.service_name || 'Professional Services'),
               !f.isHourly ? T({ style: { fontSize: 7, color: LIGHT, marginTop: 2 } }, 'Flat rate') : null,
-              // Mirrors the PAID / PARTIAL badge in InvoiceView.jsx — keep both in sync.
+              // Mirrors the per-job payment badge in InvoiceView.jsx — keep both in sync.
               (() => {
-                const badge = jobPaymentBadge(invoice, job.id);
+                const badge = getJobPaymentBadge(invoice, job.id);
                 if (!badge) return null;
                 return T({ style: { fontSize: 7, fontFamily: 'Helvetica-Bold', letterSpacing: 0.5, marginTop: 3, color: badge.kind === 'paid' ? PAID : '#B45309' } },
-                  badge.kind === 'paid' ? 'PAID' : `PARTIAL · $${badge.paid.toFixed(2)} paid`);
+                  badge.text);
               })(),
             ),
             anyHourly ? V({ style: s.cRate  }, f.isHourly ? T({ style: s.tdCenter }, `$${f.rate.toFixed(2)}`) : T({ style: s.tdCenter }, '')) : null,
@@ -270,51 +251,79 @@ function InvoiceDocument({ invoice }) {
         ];
       }),
 
-      // ── Totals (two-column: payments left, subtotal/total right) ──
-      V({ style: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 4, marginBottom: 10 } },
-        // Left — payments received, fills white space beside totals column
-        invoice.payments?.length > 0
-          ? V({ style: { width: 180, marginRight: 16 } },
-              T({ style: { fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#999', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 5 } }, 'Payments Received'),
-              ...invoice.payments.map((p, i) => {
-                const relatedJob = jobById[p.job_id];
-                const dateLine = p.payment_method
-                  ? `${formatDate(p.payment_date)} · ${p.payment_method}`
-                  : formatDate(p.payment_date);
-                return V({ key: p.id ?? `pmt-${i}`, style: { marginBottom: 6 } },
-                  relatedJob ? T({ style: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: INK, marginBottom: 1 } },
-                    relatedJob.service_name || 'Professional Services',
-                    relatedJob.scheduled_date ? T({ style: { fontFamily: 'Helvetica', color: LIGHT } }, ` · ${formatDate(relatedJob.scheduled_date)}`) : null,
-                  ) : null,
-                  V({ style: { flexDirection: 'row', justifyContent: 'space-between' } },
-                    T({ style: { fontSize: 8, color: MUTED } }, dateLine),
-                    T({ style: { fontSize: 9, fontFamily: 'Helvetica-Bold', color: PAID } }, `$${Number(p.amount).toFixed(2)}`),
-                  ),
-                );
-              }),
-            )
-          : V({ style: {} }),
-        // Right — subtotal / HST / invoice total / remaining
-        V({ style: { width: 200 } },
+      // ── Consolidated money block (directly under line items) ──
+      V({ style: { alignItems: 'flex-end', marginTop: 6, marginBottom: 12 } },
+        V({ style: { width: 240 } },
+          // 1. Subtotal
           V({ style: s.tRow },
             T({ style: s.tLabel }, 'Subtotal'),
             T({ style: s.tVal   }, `$${(aggSubtotal + aggAdditional).toFixed(2)}`),
           ),
+          // 2. HST (only when > 0)
           aggTax > 0 ? V({ style: s.tRow },
             T({ style: s.tLabel }, `HST (${(aggTaxRate * 100).toFixed(0)}%)`),
             T({ style: s.tVal   }, `$${aggTax.toFixed(2)}`),
           ) : null,
-          totalRow,
-          balanceRow,
+          // 3. Invoice total
+          V({ style: s.tDueRow },
+            T({ style: s.tDueLabel }, 'Invoice Total'),
+            T({ style: s.tDueVal }, `$${aggTotal.toFixed(2)}`),
+          ),
+          // 4. Payments received (one line each: date · method · amount, with service + date of job if multi-job)
+          invoice.payments?.length > 0 ? V({ style: { marginTop: 4, marginBottom: 2 } },
+            T({ style: { fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#999', letterSpacing: 0.8, textTransform: 'uppercase', paddingLeft: 10, paddingRight: 10, marginBottom: 3 } }, 'Payments Received'),
+            ...invoice.payments.map((p, i) => {
+              const relatedJob = jobById[p.job_id];
+              const isMulti = allJobs.length > 1;
+              const dateLine = p.payment_method
+                ? `${formatDate(p.payment_date)} · ${p.payment_method}`
+                : formatDate(p.payment_date);
+              return V({ key: p.id ?? `pmt-${i}`, style: { paddingLeft: 10, paddingRight: 10, marginBottom: 4 } },
+                isMulti && relatedJob ? T({ style: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: INK, marginBottom: 1 } },
+                  relatedJob.service_name || 'Professional Services',
+                  relatedJob.scheduled_date ? T({ style: { fontFamily: 'Helvetica', color: LIGHT } }, ` · ${formatDate(relatedJob.scheduled_date)}`) : null,
+                ) : null,
+                V({ style: { flexDirection: 'row', justifyContent: 'space-between' } },
+                  T({ style: { fontSize: 8, color: MUTED } }, dateLine),
+                  T({ style: { fontSize: 9, fontFamily: 'Helvetica-Bold', color: PAID } }, `$${Number(p.amount).toFixed(2)}`),
+                ),
+              );
+            }),
+          ) : null,
+          // 5. Balance still owing (red) — or Paid in full ✓ (green) on a receipt
+          invoice.isPaidInFull ? V({ style: [s.balanceWrap, { borderTopWidth: 0, paddingTop: 4 }] },
+            V({ style: s.balanceMainRow },
+              T({ style: s.balanceLabel }, 'Balance'),
+              T({ style: { fontSize: 10, fontFamily: 'Helvetica-Bold', color: PAID } }, 'Paid in full ✓'),
+            ),
+          ) : (invoice.payments?.length > 0) ? V({ style: s.balanceWrap },
+            V({ style: s.balanceMainRow },
+              T({ style: s.balanceLabel }, 'Balance still owing'),
+              T({ style: [s.balanceVal, { color: '#DC2626' }] }, `$${invoice.balanceOwing.toFixed(2)}`),
+            ),
+          ) : null,
+          // 6. Account-credit note
           creditRow,
+          // 7. If payment also covered jobs not on this invoice (alsoPaid)
+          invoice.alsoPaid?.length > 0 ? V({ style: { marginTop: 6, paddingTop: 4, borderTopWidth: 1, borderTopColor: '#eee', paddingLeft: 10, paddingRight: 10 } },
+            T({ style: { fontSize: 7, fontFamily: 'Helvetica-Bold', color: LABEL_C, letterSpacing: 0.5, marginBottom: 3 } }, 'This payment also covered:'),
+            ...invoice.alsoPaid.map(({ job: paidJob, total }, i) =>
+              V({ key: paidJob.id ?? `ap-${i}`, style: { flexDirection: 'row', justifyContent: 'space-between', paddingTop: 2, paddingBottom: 2 } },
+                T({ style: { fontSize: 8, color: MUTED } },
+                  `${paidJob.scheduled_date ? formatDate(paidJob.scheduled_date) : '—'} · ${paidJob.service_name || 'Professional Services'}`
+                ),
+                T({ style: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: PAID } }, `$${total.toFixed(2)}`),
+              )
+            ),
+          ) : null,
         ),
       ),
 
-      // ── Other outstanding balances for this client ──
+      // ── Other unpaid jobs for this client (Section B) ──
       invoice.otherOutstanding?.length > 0 ?
         V({ style: s.outstandingWrap },
-          T({ style: s.outSectionLabel }, 'Also Outstanding for This Client'),
-          T({ style: s.outSectionDesc  }, 'Other completed jobs with unpaid balances'),
+          T({ style: s.outSectionLabel }, 'Other unpaid jobs'),
+          T({ style: s.outSectionDesc  }, "These are not part of this invoice's total. Shown so you can see everything still owing."),
           V({ style: s.outHeaderRow },
             T({ style: [s.outDate, s.outHeaderText] }, 'Date'),
             T({ style: [s.outDesc, s.outHeaderText] }, 'Service'),
@@ -328,34 +337,12 @@ function InvoiceDocument({ invoice }) {
             )
           ),
           V({ style: s.outTotalRow },
-            T({ style: s.outTotalLabel }, 'Total Owed — All Jobs'),
+            T({ style: s.outTotalLabel }, 'Total still owing, all jobs'),
             T({ style: s.outTotalVal   }, `$${invoice.runningTotalOwing.toFixed(2)}`),
           ),
         )
       : null,
 
-      // ── Also paid for this client (jobs settled together on this receipt) ──
-      invoice.alsoPaid?.length > 0 ?
-        V({ style: s.outstandingWrap },
-          T({ style: { fontSize: 10, color: MUTED, marginBottom: 7 } },
-            'Remaining ',
-            T({ style: { fontFamily: 'Helvetica-Bold', color: INK } }, `$${invoice.alsoPaid.reduce((s, { total }) => s + total, 0).toFixed(2)}`),
-            ' from this payment was also applied to:',
-          ),
-          V({ style: s.outHeaderRow },
-            T({ style: [s.outDate, s.outHeaderText] }, 'Date'),
-            T({ style: [s.outDesc, s.outHeaderText] }, 'Service'),
-            T({ style: [s.paidAmt, s.outHeaderText] }, 'Amount'),
-          ),
-          ...invoice.alsoPaid.map(({ job: paidJob, total }) =>
-            V({ key: paidJob.id, style: s.outRow },
-              T({ style: s.outDate }, paidJob.scheduled_date ? formatDate(paidJob.scheduled_date) : '—'),
-              T({ style: s.outDesc }, paidJob.service_name || 'Professional Services'),
-              T({ style: s.paidAmt }, `✓ $${total.toFixed(2)}`),
-            )
-          ),
-        )
-      : null,
 
       // ── Payment footer (only on unpaid invoices) ──
       !isReceipt ? V({ style: s.footerBorder },

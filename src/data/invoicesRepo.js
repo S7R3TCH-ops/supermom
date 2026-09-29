@@ -4,6 +4,14 @@ import { computeJobTotal, computeJobFinancials } from '../lib/financialMath';
 import { allocatePayment } from '../lib/paymentWaterfall';
 
 /**
+ * Computes an invoice's due date. In v0.13.100, the due date matches the
+ * invoice date (the job's scheduled_date) — net-7 terms removed per Joel.
+ */
+export function computeInvoiceDueDate(scheduledDate) {
+  return scheduledDate;
+}
+
+/**
  * Generates a formal invoice for a job if one doesn't already exist.
  * Links it to the job via invoice_jobs.
  */
@@ -31,10 +39,8 @@ export async function generateInvoiceForJob(jobId) {
   // Compute actual total using the central source of truth
   const actualTotal = Math.round(computeJobTotal(job) * 100) / 100;
 
-  // Net-7 terms — due 7 days after the service date
-  const _d = new Date(job.scheduled_date);
-  _d.setDate(_d.getDate() + 7);
-  const dueDate = _d.toISOString().slice(0, 10);
+  // Due date defaults to the invoice date (job scheduled date)
+  const dueDate = computeInvoiceDueDate(job.scheduled_date);
 
   if (existingLink) {
     const statusPatch = job.payment_status === 'Paid' ? { status: 'Paid' } : {};

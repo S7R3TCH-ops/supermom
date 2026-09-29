@@ -704,35 +704,40 @@ export default function PostJobSheet({ jobId, onClose }) {
             </div>
 
             <div style={{ paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <button
-                type="button"
-                disabled={bundleBusy || bundleSelected.size === 0}
-                onClick={async () => {
-                  if (bundleSelected.size === 0) { setPhase('nudge'); return; }
-                  setBundleBusy(true);
-                  try {
-                    const ids = [...bundleSelected];
-                    await addJobsToInvoice(invoiceId, ids);
-                    toast.success(`Done: these jobs are on ${job?.client_name || 'the client'}'s invoice now. You don't need to add them again.`);
-                    notifyDataChangedNow();
-                  } catch (err) {
-                    toast.error(err.message || 'Failed to add jobs to invoice.');
-                  }
-                  setBundleBusy(false);
-                  setPhase('nudge');
-                }}
-                style={{
-                  width: '100%', padding: '14px', borderRadius: 12,
-                  background: bundleSelected.size === 0 ? T.cardBorder : T.pink,
-                  color: bundleSelected.size === 0 ? T.inkMuted : 'white',
-                  border: 'none', fontFamily: T.font, fontSize: 14, fontWeight: 700,
-                  cursor: bundleBusy || bundleSelected.size === 0 ? 'default' : 'pointer',
-                  boxShadow: bundleSelected.size > 0 ? '0 4px 12px rgba(233,30,106,0.3)' : 'none',
-                  minHeight: 44,
-                }}
-              >
-                {bundleBusy ? 'Saving…' : `Add ${bundleSelected.size} job${bundleSelected.size !== 1 ? 's' : ''} to invoice`}
-              </button>
+              {(() => {
+                const addableBundleCount = clientOutstanding.filter(j => bundleSelected.has(j.id)).length;
+                return (
+                  <button
+                    type="button"
+                    disabled={bundleBusy || addableBundleCount === 0}
+                    onClick={async () => {
+                      const ids = clientOutstanding.filter(j => bundleSelected.has(j.id)).map(j => j.id);
+                      if (ids.length === 0) { setPhase('nudge'); return; }
+                      setBundleBusy(true);
+                      try {
+                        await addJobsToInvoice(invoiceId, ids);
+                        toast.success(`Done: these jobs are on ${job?.client_name || 'the client'}'s invoice now. You don't need to add them again.`);
+                        notifyDataChangedNow();
+                      } catch (err) {
+                        toast.error(err.message || 'Failed to add jobs to invoice.');
+                      }
+                      setBundleBusy(false);
+                      setPhase('nudge');
+                    }}
+                    style={{
+                      width: '100%', padding: '14px', borderRadius: 12,
+                      background: addableBundleCount === 0 ? T.cardBorder : T.pink,
+                      color: addableBundleCount === 0 ? T.inkMuted : 'white',
+                      border: 'none', fontFamily: T.font, fontSize: 14, fontWeight: 700,
+                      cursor: bundleBusy || addableBundleCount === 0 ? 'default' : 'pointer',
+                      boxShadow: addableBundleCount > 0 ? '0 4px 12px rgba(233,30,106,0.3)' : 'none',
+                      minHeight: 44,
+                    }}
+                  >
+                    {bundleBusy ? 'Saving…' : addableBundleCount > 0 ? `Add ${addableBundleCount} job${addableBundleCount !== 1 ? 's' : ''} to invoice` : 'Add jobs to invoice'}
+                  </button>
+                );
+              })()}
               <button
                 type="button"
                 onClick={() => setPhase('nudge')}

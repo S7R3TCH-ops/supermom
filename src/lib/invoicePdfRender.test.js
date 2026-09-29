@@ -97,4 +97,56 @@ describe('buildInvoicePdfBuffer', () => {
     const buf = await buildInvoicePdfBuffer(invoice);
     expect(buf.subarray(0, 5).toString('latin1')).toBe('%PDF-');
   }, 30000);
+
+  it('renders an unpaid invoice with partial payment', async () => {
+    const invoice = makeInvoice();
+    invoice.isPaidInFull = false;
+    invoice.amountPaid = 50;
+    invoice.balanceOwing = 289;
+    invoice.invoiceJobBalances = [
+      { job: { id: 'job-a' }, total: 169.5, paid: 50, owing: 119.5 },
+      { job: { id: 'job-b' }, total: 169.5, paid: 0, owing: 169.5 },
+    ];
+    invoice.payments = [
+      { id: 'pmt-partial', job_id: 'job-a', amount: 50, payment_date: '2026-07-03', payment_method: 'e-Transfer' },
+    ];
+    const buf = await buildInvoicePdfBuffer(invoice);
+    expect(Buffer.isBuffer(buf)).toBe(true);
+    expect(buf.length).toBeGreaterThan(1000);
+    expect(buf.subarray(0, 5).toString('latin1')).toBe('%PDF-');
+  }, 30000);
+
+  it('renders a paid-in-full receipt with alsoPaid', async () => {
+    const invoice = makeInvoice();
+    invoice.isPaidInFull = true;
+    invoice.balanceOwing = 0;
+    invoice.amountPaid = 339;
+    invoice.invoiceJobBalances = [
+      { job: { id: 'job-a' }, total: 169.5, paid: 169.5, owing: 0 },
+      { job: { id: 'job-b' }, total: 169.5, paid: 169.5, owing: 0 },
+    ];
+    invoice.payments = [
+      { id: 'pmt-full', job_id: 'job-a', amount: 339, payment_date: '2026-07-03', payment_method: 'e-Transfer' },
+    ];
+    invoice.alsoPaid = [
+      { job: { id: 'job-other', scheduled_date: '2026-07-01', service_name: 'Deep Clean' }, total: 120, paid: 120 },
+    ];
+    const buf = await buildInvoicePdfBuffer(invoice);
+    expect(Buffer.isBuffer(buf)).toBe(true);
+    expect(buf.length).toBeGreaterThan(1000);
+    expect(buf.subarray(0, 5).toString('latin1')).toBe('%PDF-');
+  }, 30000);
+
+  it('renders an invoice with otherOutstanding', async () => {
+    const invoice = makeInvoice();
+    invoice.otherOutstanding = [
+      { job: { id: 'job-out-1', scheduled_date: '2026-06-20', service_name: 'Organizing' }, total: 200, paid: 0, owing: 200 },
+    ];
+    invoice.runningTotalOwing = 369.5;
+    const buf = await buildInvoicePdfBuffer(invoice);
+    expect(Buffer.isBuffer(buf)).toBe(true);
+    expect(buf.length).toBeGreaterThan(1000);
+    expect(buf.subarray(0, 5).toString('latin1')).toBe('%PDF-');
+  }, 30000);
 });
+

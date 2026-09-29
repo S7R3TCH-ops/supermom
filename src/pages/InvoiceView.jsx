@@ -2,6 +2,7 @@ import { Fragment, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchInvoiceById, settleInvoiceOutstanding, voidInvoiceSettlement, addJobsToInvoice, LAST_ROUND_WINDOW_MS } from '../data/invoicesRepo';
 import { computeJobFinancials } from '../lib/financialMath';
+import { getJobPaymentBadge } from '../lib/invoiceBalances';
 import { allocatePayment, parsePaymentAmount } from '../lib/paymentWaterfall';
 import { buildPaymentPreview, buildPaymentReceipt, getLastPaymentRound } from '../lib/paymentPreview';
 import { useAuth } from '../context/AuthContext';
@@ -87,8 +88,10 @@ export default function InvoiceView() {
         const settleIds = (inv.invoiceJobBalances ?? [])
           .filter(b => b.owing > 0.01).map(b => b.job.id);
         setSelectedIds(new Set(settleIds));
-        // Default all other outstanding to checked for add-to-invoice panel
-        setAddJobIds(new Set((inv.otherOutstanding ?? []).map(b => b.job.id)));
+        // Default all other unpaid outstanding (not on this invoice) to checked for add-to-invoice panel
+        const invJobIds = new Set((inv.invoice_jobs || []).map(ij => ij.job_id));
+        const addable = (inv.otherOutstanding ?? []).filter(b => !invJobIds.has(b.job.id));
+        setAddJobIds(new Set(addable.map(b => b.job.id)));
         return inv;
       });
   }
@@ -160,6 +163,8 @@ export default function InvoiceView() {
   const lastRound = getLastPaymentRound(invoice.payments, invoice.id, LAST_ROUND_WINDOW_MS);
   const allInvoiceJobIdSet = new Set(allInvoiceJobs.map(j => j.id));
   const otherUnpaidJobs = (invoice.otherOutstanding ?? []).filter(b => !allInvoiceJobIdSet.has(b.job.id));
+  const addableJobs = otherUnpaidJobs.filter(b => addJobIds.has(b.job.id));
+  const addableCount = addableJobs.length;
 
   function toggleJob(jobId) {
     setSelectedIds(prev => {
@@ -178,11 +183,12 @@ export default function InvoiceView() {
   }
 
   async function handleAddJobs() {
-    if (addingRef.current || addJobIds.size === 0) return;
+    const toAdd = otherUnpaidJobs.filter(b => addJobIds.has(b.job.id)).map(b => b.job.id);
+    if (addingRef.current || toAdd.length === 0) return;
     addingRef.current = true;
     setAddState('saving');
     try {
-      await addJobsToInvoice(id, [...addJobIds]);
+      await addJobsToInvoice(id, toAdd);
       await reload();
       notifyDataChanged();
       setAddState('idle');
@@ -457,16 +463,22 @@ export default function InvoiceView() {
           <button
             type="button"
             onClick={handleAddJobs}
-            disabled={addJobIds.size === 0 || addState === 'saving'}
+            disabled={addableCount === 0 || addState === 'saving'}
             style={{
               width: '100%',
-              background: addState === 'saving' ? '#ccc' : addJobIds.size === 0 ? '#eee' : 'var(--pink)',
-              color: addJobIds.size === 0 ? '#aaa' : 'white', border: 'none',
+              background: addState === 'saving' ? '#ccc' : addableCount === 0 ? '#eee' : 'var(--pink)',
+              color: addableCount === 0 ? '#aaa' : 'white', border: 'none',
               padding: '10px 14px', borderRadius: 8, fontSize: 14, fontWeight: 700,
-              cursor: addJobIds.size === 0 || addState === 'saving' ? 'not-allowed' : 'pointer',
+              cursor: addableCount === 0 || addState === 'saving' ? 'not-allowed' : 'pointer',
             }}
           >
-            {addState === 'saving' ? 'Updating…' : addState === 'error' ? '✗ Failed — retry' : `Add ${addJobIds.size} job${addJobIds.size !== 1 ? 's' : ''} to invoice`}
+            {addState === 'saving'
+              ? 'Updating…'
+              : addState === 'error'
+                ? '✗ Failed — retry'
+                : addableCount > 0
+                  ? `Add ${addableCount} job${addableCount !== 1 ? 's' : ''} to invoice`
+                  : 'Add jobs to invoice'}
           </button>
         </div>
       )}
@@ -643,11 +655,6 @@ export default function InvoiceView() {
               </tr>
             </thead>
             <tbody style={{ fontSize: 13, lineHeight: 1.4 }}>
-              <tr style={{ background: '#f9fafb', borderBottom: '1.5px solid #e5e7eb', fontSize: 11, fontWeight: 700, color: '#4b5563' }}>
-                <td colSpan={anyHourly ? 5 : 3} style={{ padding: '8px 14px' }}>
-                  Total ${aggTotal.toFixed(2)} · Paid ${(invoice.amountPaid ?? 0).toFixed(2)} · Still owing ${(invoice.balanceOwing ?? 0).toFixed(2)}
-                </td>
-              </tr>
               {allInvoiceJobs.map((j, idx) => {
                 const f = allFinancials[idx];
                 return (
@@ -663,12 +670,11 @@ export default function InvoiceView() {
                         <div>{j.service_name || 'Professional Services'}</div>
                         {!f.isHourly && <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>Flat rate</div>}
                         {(() => {
-                          const bal = (invoice.invoiceJobBalances || []).find(b => b.job?.id === j.id);
-                          if (!bal || !bal.paid || bal.paid <= 0) return null;
-                          const isFullyPaid = bal.owing <= 0.01;
+                          const badge = getJobPaymentBadge(invoice, j.id);
+                          if (!badge) return null;
                           return (
-                            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.5px', marginTop: 3, color: isFullyPaid ? '#16A34A' : '#B45309' }}>
-                              {isFullyPaid ? 'Paid in full ✓' : `Paid $${bal.paid.toFixed(2)} · Owing $${bal.owing.toFixed(2)}`}
+                            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.5px', marginTop: 3, color: badge.kind === 'paid' ? '#16A34A' : '#B45309' }}>
+                              {badge.text}
                             </div>
                           );
                         })()}
@@ -702,77 +708,113 @@ export default function InvoiceView() {
           </table>
         </div>
 
-        {/* Totals */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 14, gap: 20 }}>
-          {/* Left — payments received, compact, bottom-aligned with the totals column */}
-          {invoice.payments?.length > 0 ? (
-            <div style={{ minWidth: 140, maxWidth: 240 }}>
-              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: '#999', marginBottom: 6 }}>
-                Payments Received
-              </div>
-              {invoice.payments.map(p => {
-                const relatedJob = jobByIdMap[p.job_id];
-                return (
-                  <div key={p.id ?? `${p.payment_date}-${p.amount}`} style={{ marginBottom: 8 }}>
-                    {relatedJob && (
-                      <div style={{ fontSize: 11, color: '#333', fontWeight: 500, marginBottom: 1 }}>
-                        {relatedJob.service_name || 'Professional Services'}
-                        {relatedJob.scheduled_date && (
-                          <span style={{ color: '#999', fontWeight: 400 }}> · {formatDate(relatedJob.scheduled_date)}</span>
-                        )}
-                      </div>
-                    )}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12 }}>
-                      <div style={{ color: '#888' }}>
-                        {formatDate(p.payment_date)}{p.payment_method ? ` · ${p.payment_method}` : ''}
-                      </div>
-                      <div style={{ color: '#16A34A', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>${Number(p.amount).toFixed(2)}</div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : <div />}
-
-          {/* Right — subtotal / HST / invoice total / remaining */}
-          <div style={{ width: 280, flexShrink: 0 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 14px', fontSize: 13, color: '#555' }}>
+        {/* Consolidated money block — directly under line items */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12, marginBottom: 16 }}>
+          <div style={{ width: 340, maxWidth: '100%' }}>
+            {/* 1. Subtotal */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 12px', fontSize: 13, color: '#555' }}>
               <div>Subtotal</div>
               <div>${(aggSubtotal + aggAdditional).toFixed(2)}</div>
             </div>
+
+            {/* 2. HST (only when > 0) */}
             {aggTax > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 14px', fontSize: 13, color: '#555' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 12px', fontSize: 13, color: '#555' }}>
                 <div>HST ({(aggTaxRate * 100).toFixed(0)}%)</div>
                 <div>${aggTax.toFixed(2)}</div>
               </div>
             )}
-            <div style={{ background: '#EAE2D8', padding: '9px 14px', marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: 6 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#555' }}>Invoice Total</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                {invoice.isPaidInFull && <div style={{ fontSize: 11, fontWeight: 700, color: '#16A34A' }}>✓ Paid</div>}
-                <div className="inv-display" style={{ fontSize: 18, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: invoice.isPaidInFull ? '#16A34A' : 'inherit' }}>${aggTotal.toFixed(2)}</div>
+
+            {/* 3. Invoice total */}
+            <div style={{ background: '#EAE2D8', padding: '8px 12px', marginTop: 4, marginBottom: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: 6 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#555' }}>Invoice Total</div>
+              <div className="inv-display" style={{ fontSize: 16, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                ${aggTotal.toFixed(2)}
               </div>
             </div>
-            {!invoice.isPaidInFull && invoice.payments?.length > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 14px', marginTop: 2 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#555' }}>Remaining</div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: '#DC2626' }}>${invoice.balanceOwing.toFixed(2)}</div>
+
+            {/* 4. Payments received (one line each: date · method · amount, with service + date of job if multi-job) */}
+            {invoice.payments?.length > 0 && (
+              <div style={{ marginTop: 6, marginBottom: 4, padding: '0 12px' }}>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: '#999', marginBottom: 4 }}>
+                  Payments Received
+                </div>
+                {invoice.payments.map(p => {
+                  const relatedJob = jobByIdMap[p.job_id];
+                  const isMulti = allInvoiceJobs.length > 1;
+                  return (
+                    <div key={p.id ?? `${p.payment_date}-${p.amount}`} style={{ marginBottom: 6 }}>
+                      {isMulti && relatedJob && (
+                        <div style={{ fontSize: 11, color: '#333', fontWeight: 500, marginBottom: 1 }}>
+                          {relatedJob.service_name || 'Professional Services'}
+                          {relatedJob.scheduled_date && (
+                            <span style={{ color: '#999', fontWeight: 400 }}> · {formatDate(relatedJob.scheduled_date)}</span>
+                          )}
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12 }}>
+                        <div style={{ color: '#888' }}>
+                          {formatDate(p.payment_date)}{p.payment_method ? ` · ${p.payment_method}` : ''}
+                        </div>
+                        <div style={{ color: '#16A34A', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+                          ${Number(p.amount).toFixed(2)}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
+
+            {/* 5. Balance still owing (red) — or Paid in full ✓ (green) on a receipt */}
+            {invoice.isPaidInFull ? (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 12px', marginTop: 2 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#555' }}>Balance</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#16A34A' }}>Paid in full ✓</div>
+              </div>
+            ) : invoice.payments?.length > 0 ? (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 12px', marginTop: 2 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#555' }}>Balance still owing</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: '#DC2626', fontVariantNumeric: 'tabular-nums' }}>
+                  ${invoice.balanceOwing.toFixed(2)}
+                </div>
+              </div>
+            ) : null}
+
+            {/* 6. Account-credit note */}
             {invoice.creditRemaining > 0.009 && (
-              <div style={{ padding: '6px 14px 0', fontSize: 10.5, color: '#888', textAlign: 'right' }}>
+              <div style={{ padding: '6px 12px 0', fontSize: 10.5, color: '#888', textAlign: 'right' }}>
                 ✦ ${invoice.creditRemaining.toFixed(2)} account credit remaining — applied automatically to your next visit.
+              </div>
+            )}
+
+            {/* 7. If payment also covered jobs not on this invoice (alsoPaid) */}
+            {invoice.alsoPaid?.length > 0 && (
+              <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid #eee', paddingLeft: 12, paddingRight: 12 }}>
+                <div style={{ fontSize: 11, color: '#6b7280', fontWeight: 600, marginBottom: 4 }}>
+                  This payment also covered:
+                </div>
+                {invoice.alsoPaid.map(({ job: paidJob, total }) => (
+                  <div key={paidJob.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '3px 0', fontSize: 12 }}>
+                    <div style={{ color: '#555' }}>
+                      {paidJob.scheduled_date ? formatDate(paidJob.scheduled_date) : '—'} · {paidJob.service_name || 'Professional Services'}
+                    </div>
+                    <div style={{ color: '#16A34A', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+                      ${total.toFixed(2)}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
         </div>
 
-        {/* Other outstanding balances for this client */}
+        {/* Other unpaid jobs for this client (Section B) */}
         {invoice.otherOutstanding?.length > 0 && (
           <div style={{ marginBottom: 14, borderTop: '2px solid #EAE2D8', paddingTop: 14 }}>
             <div style={{ marginBottom: 8 }}>
-              <div style={{ ...LABEL, marginBottom: 3 }}>Also Outstanding for This Client</div>
-              <div style={{ fontSize: 11, color: '#888' }}>Other completed jobs with unpaid balances</div>
+              <div style={{ ...LABEL, marginBottom: 3 }}>Other unpaid jobs</div>
+              <div style={{ fontSize: 11, color: '#888' }}>These are not part of this invoice's total. Shown so you can see everything still owing.</div>
             </div>
             <div style={{ display: 'flex', padding: '5px 6px', background: '#F5F1EC', borderRadius: 4, marginBottom: 2, fontSize: 9, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: '#999' }}>
               <div style={{ width: 110 }}>Date</div>
@@ -787,34 +829,9 @@ export default function InvoiceView() {
               </div>
             ))}
             <div style={{ background: '#EAE2D8', padding: '10px 14px', marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: 6 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#555' }}>Total Owed — All Jobs</div>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: '#555' }}>Total still owing, all jobs</div>
               <div className="inv-display" style={{ fontSize: 20, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#DC2626' }}>${invoice.runningTotalOwing.toFixed(2)}</div>
             </div>
-          </div>
-        )}
-
-        {/* Also paid for this client — jobs settled together on this receipt */}
-        {invoice.alsoPaid?.length > 0 && (
-          <div style={{ marginBottom: 14, borderTop: '2px solid #EAE2D8', paddingTop: 14 }}>
-            <div style={{ marginBottom: 10 }}>
-              <span style={{ fontSize: 13, color: '#555' }}>
-                Remaining{' '}
-                <strong style={{ color: '#1a1a1a', fontVariantNumeric: 'tabular-nums' }}>${invoice.alsoPaid.reduce((s, { total }) => s + total, 0).toFixed(2)}</strong>
-                {' '}from this payment was also applied to:
-              </span>
-            </div>
-            <div style={{ display: 'flex', padding: '5px 6px', background: '#F5F1EC', borderRadius: 4, marginBottom: 2, fontSize: 9, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: '#999' }}>
-              <div style={{ width: 110 }}>Date</div>
-              <div style={{ flex: 1 }}>Service</div>
-              <div style={{ width: 80, textAlign: 'right' }}>Amount</div>
-            </div>
-            {invoice.alsoPaid.map(({ job: paidJob, total }) => (
-              <div key={paidJob.id} style={{ display: 'flex', padding: '5px 6px', fontSize: 12, borderBottom: '1px solid #f5f5f5' }}>
-                <div style={{ color: '#555', width: 110 }}>{paidJob.scheduled_date ? formatDate(paidJob.scheduled_date) : '—'}</div>
-                <div style={{ color: '#1a1a1a', flex: 1 }}>{paidJob.service_name || 'Professional Services'}</div>
-                <div style={{ color: '#16A34A', fontWeight: 700, textAlign: 'right', width: 80 }}>✓ ${total.toFixed(2)}</div>
-              </div>
-            ))}
           </div>
         )}
 

@@ -137,6 +137,8 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
   const [busy, setBusy] = useState(false);
   const [bookErr, setBookErr] = useState('');
   const [bookingNotes, setBookingNotes] = useState(prefillData?.job_notes || prefillData?.bookingNotes || '');
+  // True while bookingNotes holds text pre-filled from the client's carried-forward note (not typed by the user)
+  const [notesCarried, setNotesCarried] = useState(false);
   const [takingChances, setTakingChances] = useState(false);
   const [pastConfirmed, setPastConfirmed] = useState(false);
   const [workerId, setWorkerId] = useState(null);
@@ -202,7 +204,10 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
     setLastClientRefId(selectedClient.id);
     // Don't overwrite if we have specific prefillData for a duplication
     if (!prefillData && selectedClient.recurrence) setRecurrence(selectedClient.recurrence);
-    if (!prefillData && selectedClient.pendingNote) setBookingNotes(selectedClient.pendingNote);
+    if (!prefillData && selectedClient.pendingNote) {
+      setBookingNotes(selectedClient.pendingNote);
+      setNotesCarried(true);
+    }
   }
 
   const onPickService = async (id) => {
@@ -382,6 +387,8 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
               setRecurrence={setRecurrence}
               notes={bookingNotes}
               setNotes={setBookingNotes}
+              notesCarried={notesCarried}
+              setNotesCarried={setNotesCarried}
               aiDuration={aiDuration}
               aiLoading={aiEstimateLoading}
               aiReason={aiEstimateReason}
@@ -588,7 +595,7 @@ function Step2What({
   setActivePicker,
   selectedClient, services, serviceId, onPickService,
   date, setDate, time, setTime, duration, setDuration,
-  recurrence, setRecurrence, notes, setNotes,
+  recurrence, setRecurrence, notes, setNotes, notesCarried, setNotesCarried,
   aiDuration, aiLoading, aiReason, suggestedTime,
   business, customPrice, setCustomPrice, additionalCosts, setAdditionalCosts,
   workers, workerId, setWorkerId, workerPay, setWorkerPay,
@@ -882,10 +889,22 @@ function Step2What({
       {/* Notes */}
       <div>
         <SectionLabel>Notes for this job</SectionLabel>
+        {notesCarried && notes && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6, fontSize: 12, color: T.inkSub }}>
+            <span style={{ fontWeight: 600, color: T.pink }}>Carried from last visit</span>
+            <button
+              type="button"
+              onClick={() => { setNotes(''); setNotesCarried(false); }}
+              style={{ background: 'none', border: 'none', padding: '4px 0', minHeight: 32, color: T.pink, fontSize: 12, fontWeight: 600, textDecoration: 'underline', cursor: 'pointer', fontFamily: T.font }}
+            >
+              Clear
+            </button>
+          </div>
+        )}
         <textarea
           placeholder="Specific instructions for this visit..."
           value={notes}
-          onChange={e => setNotes(e.target.value)}
+          onChange={e => { setNotes(e.target.value); if (notesCarried) setNotesCarried(false); }}
           style={{ width: '100%', height: 80, padding: '12px', borderRadius: 12, background: T.card, border: `1px solid ${T.cardBorder}`, color: T.ink, fontSize: 13, resize: 'none', fontFamily: T.font }}
         />
       </div>

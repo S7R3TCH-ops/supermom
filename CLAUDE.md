@@ -178,7 +178,11 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 ---
 
 
-## Current version: 0.13.102 - Sep 29, 2026 (line-detail invoice entries task 11f + admin request/error panel rework task 12)
+## Current version: 0.13.103 - Sep 30, 2026 (carried-note label on new-job sheet, task 10)
+
+**v0.13.103**: `NewJobSheet.jsx`: a note pre-filled from the client's carried-forward `pending_note` now shows a pink "Carried from last visit" tag with a "Clear" link above the notes box (tag drops as soon as she types; Clear empties the field). Root cause of Joel's "notes bleed over" report (tasks.md #10): not a copy-from-last-job bug. The pre-fill only ever comes from `pending_note`, which is written only when Sandra opts in at wrap-up, but it landed unlabelled in the plain notes box. UI-only; booking still consumes `pending_note` as before, so Clear needs no DB write. `Home.jsx`'s `handleDuplicateJob` is dead code (never called). 301/301 tests pass, build clean. Two pre-existing lint errors in this file (unused `setDate`, set-state-in-effect) left alone.
+
+## Previous version: 0.13.102 - Sep 29, 2026 (line-detail invoice entries task 11f + admin request/error panel rework task 12)
 
 **v0.13.102**: Made invoice/receipt line entries descriptive (tasks.md #11f):
 - **scheduled_time on Invoices & PDF**: Added `scheduled_time` to queries in `api/invoice.ts` (download, json read, email) and `src/lib/invoiceBalances.ts` (`decorateInvoiceWithBalances`). Restores start-end time rendering on invoices and PDFs via `formatJobTime(job)` which was previously unpopulated.

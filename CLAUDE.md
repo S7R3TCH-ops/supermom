@@ -178,7 +178,11 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 ---
 
 
-## Current version: 0.13.104 - Sep 30, 2026 (top-bar AI chat schedule context, task 4c)
+## Current version: 0.13.105 - Sep 30, 2026 (Finance outstanding now tax-inclusive, task 7)
+
+**v0.13.105**: `Finance.jsx` `outstandingItems`: owing was `computeJobSubtotal` (pre-tax) minus `amount_paid` (payments include HST), so on a taxed job it understated owing by the unpaid HST share (e.g. $100 + $13 HST job with $100 paid showed $0 owing, really $13; a $50 payment showed $50, really $63). Now `computeJobTotal(j) − paid`. Confirmed by code reading, not by a prod data query. Side effect to know about: the Revenue card stays pre-tax (by design) while Outstanding is now tax-inclusive, so the two aren't on the same basis. 301/301 tests, build clean.
+
+## Previous version: 0.13.104 - Sep 30, 2026 (top-bar AI chat schedule context, task 4c)
 
 **v0.13.104**: `api/ai/chat.js`: when the chat has a business scope but no client/job subject (the top-bar ✦ button, `LogoBar.jsx` calls `openChat()` with no context), the system prompt now includes that business's Scheduled jobs for today + tomorrow (Toronto dates via `api/_lib/torontoTime.js`, business-scoped, max 20, client name/time/service/open note). Server-side rather than the blueprint's client-side snapshot: no client-trusted data in the prompt, no `LogoBar`/`AiChatSheet` change, same filters as `api/briefing/daily.js`. Admin with no viewpoint and no subject still gets no schedule (scope is null; deliberate per v0.13.87). **tasks.md #4b (briefing shows yesterday as today) code-checked: NOT a bug** — `api/briefing/daily.js` and `day-brief` both use `torontoDateStr` and `scheduled_date = today`, and `day-brief` only surfaces `job_status = 'Scheduled'`; nothing reproduces. Not exercised live (preview API has no env; `api/ai/*` has no unit tests): verify after deploy by asking the top-bar chat "what's on today?". 301/301 tests, lint clean on the file.
 

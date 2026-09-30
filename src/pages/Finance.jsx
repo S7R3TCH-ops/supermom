@@ -5,7 +5,7 @@ import { SectionLabel } from '../components/ui/typography';
 import { useJobs, useExpenses, useInvoices, useBusiness } from '../data/useData';
 import { useFinanceDetailSheet } from '../context/FinanceDetailSheetContext';
 import { useJobDetailSheet } from '../context/JobDetailSheetContext';
-import { computeJobFinancials, computeJobSubtotal } from '../lib/financialMath';
+import { computeJobFinancials, computeJobSubtotal, computeJobTotal } from '../lib/financialMath';
 import { getWorkerLabel } from '../lib/labels';
 import NewExpenseSheet from '../components/sheets/NewExpenseSheet';
 import AmtCell from '../components/ui/AmtCell';
@@ -352,9 +352,12 @@ export default function Finance() {
     completedPeriodJobs
       .filter(j => j.payment_status !== 'Paid')
       .map(j => {
-        const sub = computeJobSubtotal(j);
+        // Outstanding is cash still to collect, so compare the tax-inclusive total
+        // against payments (which include HST). Using the pre-tax subtotal here
+        // understated owing on taxed jobs by the unpaid HST share.
+        const total = computeJobTotal(j);
         const paid = j.amount_paid || 0;
-        const owing = Math.max(0, sub - Math.min(paid, sub));
+        const owing = Math.max(0, total - Math.min(paid, total));
         return { ...j.raw, client_name: j.client_name, total: owing };
       }),
     [completedPeriodJobs],

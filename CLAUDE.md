@@ -178,7 +178,11 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 ---
 
 
-## Current version: 0.13.105 - Sep 30, 2026 (Finance outstanding now tax-inclusive, task 7)
+## Current version: 0.13.106 - Sep 30, 2026 (Gemini 429/503 retry)
+
+**v0.13.106**: `api/_lib/gemini.js` gains `generateContentWithRetry` (2 retries, 600ms/1400ms backoff, only on 429/503/RESOURCE_EXHAUSTED/UNAVAILABLE; anything else throws immediately). `generateText` (used by every `api/ai/[action].js` handler) and `api/ai/chat.js` both go through it. Motivation: repeated `gemini-3.6-flash` 429s on client-brief generation in the error log. Short on purpose (~2s max) so an exhausted daily quota still fails fast and degrades to the existing mock/skip fallbacks. First unit tests on the Gemini layer: `api/_lib/gemini.test.js` (retry-then-succeed, give-up, no-retry-on-401). 305/305 tests, lint clean, build clean. Closes the "no rate-limit/retry handling on Gemini 429s" gap from the 2026-09-26 AI-layer audit (logging/metrics gap remains).
+
+## Previous version: 0.13.105 - Sep 30, 2026 (Finance outstanding now tax-inclusive, task 7)
 
 **v0.13.105**: `Finance.jsx` `outstandingItems`: owing was `computeJobSubtotal` (pre-tax) minus `amount_paid` (payments include HST), so on a taxed job it understated owing by the unpaid HST share (e.g. $100 + $13 HST job with $100 paid showed $0 owing, really $13; a $50 payment showed $50, really $63). Now `computeJobTotal(j) − paid`. Confirmed by code reading, not by a prod data query. Side effect to know about: the Revenue card stays pre-tax (by design) while Outstanding is now tax-inclusive, so the two aren't on the same basis. 301/301 tests, build clean.
 

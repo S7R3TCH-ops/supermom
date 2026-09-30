@@ -19,8 +19,33 @@ export function initGemini() {
   return apiKey ? new GoogleGenAI({ apiKey }) : null;
 }
 
+// 429 (quota/rate limit) and 503 (overloaded) are usually transient — the
+// error log showed repeated gemini-3.6-flash 429s on client-brief generation
+// that a short backoff would have ridden out. Kept to 2 retries / ~2s total so
+// a genuinely exhausted daily quota still fails fast inside the serverless
+// function's time budget instead of hanging.
+const RETRY_DELAYS_MS = [600, 1400];
+
+export function isRetryableGeminiError(err) {
+  const status = err?.status ?? err?.code;
+  if (status === 429 || status === 503) return true;
+  return /(429|503)|RESOURCE_EXHAUSTED|UNAVAILABLE/.test(String(err?.message || ''));
+}
+
+export async function generateContentWithRetry(gemini, params, delaysMs = RETRY_DELAYS_MS) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await gemini.models.generateContent(params);
+    } catch (err) {
+      if (attempt >= delaysMs.length || !isRetryableGeminiError(err)) throw err;
+      console.warn(`[gemini] retryable error (attempt ${attempt + 1}/${delaysMs.length + 1}): ${err.message}`);
+      await new Promise(r => setTimeout(r, delaysMs[attempt]));
+    }
+  }
+}
+
 export async function generateText(gemini, prompt, maxOutputTokens) {
-  const response = await gemini.models.generateContent({
+  const response = await generateContentWithRetry(gemini, {
     model: GEMINI_MODEL,
     contents: prompt,
     config: { maxOutputTokens, ...NO_THINKING },

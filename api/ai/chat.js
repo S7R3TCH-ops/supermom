@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { requireUser, canAccessBusiness, assertClientAccess } from '../_lib/authGuard.js';
-import { initGemini, GEMINI_MODEL } from '../_lib/gemini.js';
+import { initGemini, generateContentWithRetry, GEMINI_MODEL } from '../_lib/gemini.js';
 import { torontoDateStr } from '../_lib/torontoTime.js';
 
 export default async function handler(req, res) {
@@ -138,7 +138,7 @@ export default async function handler(req, res) {
       role: m.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: m.content }],
     }));
-    const response = await gemini.models.generateContent({
+    const response = await generateContentWithRetry(gemini, {
       model: GEMINI_MODEL,
       contents,
       config: {

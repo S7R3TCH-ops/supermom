@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { requireUser, canAccessBusiness, assertClientAccess } from '../_lib/authGuard.js';
 import { initGemini, GEMINI_MODEL } from '../_lib/gemini.js';
+import { torontoDateStr } from '../_lib/torontoTime.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
@@ -70,6 +71,37 @@ export default async function handler(req, res) {
       .single();
     if (biz?.owner_name) systemParts.push(`Owner: ${biz.owner_name}.`);
     if (biz?.ai_profile?.style) systemParts.push(`Preferred style: ${biz.ai_profile.style}.`);
+  }
+
+  // Top-bar chat has no client/job subject — without this it answers blind.
+  // Give it the business's own schedule (today + tomorrow, Toronto dates) so
+  // "what's on today?" style questions are grounded. Server-side and
+  // business-scoped, same filters as api/briefing/daily.js.
+  if (scopeBusinessId && !clientId && !jobId) {
+    const today = torontoDateStr(0);
+    const tomorrow = torontoDateStr(1);
+    const { data: upcoming, error: upcomingErr } = await supabase
+      .from('jobs')
+      .select('scheduled_date, scheduled_time, service_name, job_notes, notes_resolved_at, clients!jobs_client_id_fkey(first_name, last_name)')
+      .eq('business_id', scopeBusinessId)
+      .in('scheduled_date', [today, tomorrow])
+      .eq('job_status', 'Scheduled')
+      .is('deleted_at', null)
+      .order('scheduled_date', { ascending: true })
+      .order('scheduled_time', { ascending: true })
+      .limit(20);
+    if (upcomingErr) {
+      console.warn('[ai/chat] schedule context query failed (non-fatal):', upcomingErr.message);
+    } else {
+      systemParts.push(`Today is ${today}. Upcoming scheduled jobs (today and tomorrow only): ${upcoming?.length ? '' : 'none.'}`);
+      for (const j of upcoming || []) {
+        const c = j.clients ?? {};
+        const who = [c.first_name, c.last_name].filter(Boolean).join(' ') || 'client';
+        const when = j.scheduled_date === today ? 'today' : 'tomorrow';
+        const note = j.job_notes && !j.notes_resolved_at ? ` — note: ${j.job_notes}` : '';
+        systemParts.push(`- ${when} ${j.scheduled_time?.slice(0, 5) || 'no time'}: ${j.service_name || 'job'} for ${who}${note}`);
+      }
+    }
   }
 
   if (clientId) {

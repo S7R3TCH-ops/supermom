@@ -178,7 +178,11 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 ---
 
 
-## Current version: 0.13.103 - Sep 30, 2026 (carried-note label on new-job sheet, task 10)
+## Current version: 0.13.104 - Sep 30, 2026 (top-bar AI chat schedule context, task 4c)
+
+**v0.13.104**: `api/ai/chat.js`: when the chat has a business scope but no client/job subject (the top-bar ✦ button, `LogoBar.jsx` calls `openChat()` with no context), the system prompt now includes that business's Scheduled jobs for today + tomorrow (Toronto dates via `api/_lib/torontoTime.js`, business-scoped, max 20, client name/time/service/open note). Server-side rather than the blueprint's client-side snapshot: no client-trusted data in the prompt, no `LogoBar`/`AiChatSheet` change, same filters as `api/briefing/daily.js`. Admin with no viewpoint and no subject still gets no schedule (scope is null; deliberate per v0.13.87). **tasks.md #4b (briefing shows yesterday as today) code-checked: NOT a bug** — `api/briefing/daily.js` and `day-brief` both use `torontoDateStr` and `scheduled_date = today`, and `day-brief` only surfaces `job_status = 'Scheduled'`; nothing reproduces. Not exercised live (preview API has no env; `api/ai/*` has no unit tests): verify after deploy by asking the top-bar chat "what's on today?". 301/301 tests, lint clean on the file.
+
+## Previous version: 0.13.103 - Sep 30, 2026 (carried-note label on new-job sheet, task 10)
 
 **v0.13.103**: `NewJobSheet.jsx`: a note pre-filled from the client's carried-forward `pending_note` now shows a pink "Carried from last visit" tag with a "Clear" link above the notes box (tag drops as soon as she types; Clear empties the field). Root cause of Joel's "notes bleed over" report (tasks.md #10): not a copy-from-last-job bug. The pre-fill only ever comes from `pending_note`, which is written only when Sandra opts in at wrap-up, but it landed unlabelled in the plain notes box. UI-only; booking still consumes `pending_note` as before, so Clear needs no DB write. `Home.jsx`'s `handleDuplicateJob` is dead code (never called). 301/301 tests pass, build clean. Two pre-existing lint errors in this file (unused `setDate`, set-state-in-effect) left alone.
 

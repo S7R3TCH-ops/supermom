@@ -1150,7 +1150,7 @@ async function statlerTool(req, res, supabase) {
 
   if (action === 'supermom_read_schedule') {
     let { date, startDate, endDate, clientName, limit } = args || {};
-    let query = supabase.from('jobs').select('id, scheduled_date, scheduled_time, service_name, job_status, clients!inner(first_name, last_name)').eq('business_id', businessId).is('deleted_at', null);
+    let query = supabase.from('jobs').select('id, scheduled_date, scheduled_time, service_name, job_status, clients!jobs_client_id_fkey!inner(first_name, last_name)').eq('business_id', businessId).is('deleted_at', null);
 
     if (clientName) {
       clientName = clientName.replace(/[^\p{L} \-']/gu, '').trim();

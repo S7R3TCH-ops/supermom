@@ -178,7 +178,11 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 ---
 
 
-## Current version: 0.13.106 - Sep 30, 2026 (Gemini 429/503 retry)
+## Current version: 0.13.107 - Sep 30, 2026 (Statler read_schedule fix + lint cleanup)
+
+**v0.13.107**: `api/ai/[action].js` `supermom_read_schedule` (the Statler voice/SMS tool Sandra uses to ask for her schedule) returned `500 Failed to query schedule` on every call, with any arguments (replayed against prod 2026-09-30, 4 arg shapes). Cause (code-read + schema, not confirmed from Supabase logs): the select embedded `clients!inner(...)` with no relationship hint, and migration `20260914010000` added a second jobs<->clients link (`clients.pending_note_source_job_id -> jobs`), so PostgREST can no longer pick one. Every other query in the app already names `clients!jobs_client_id_fkey`; this handler now does too. The handler had never worked in prod since it was added (the 09-26 "read-schedule wired" note was wrong). Also shipped with it (uncommitted lint cleanups from earlier sessions): unused imports/vars removed in `Home.jsx` (incl. dead `handleDuplicateJob`, `handleRefreshTraffic`, `weekUpcoming`), `NewJobSheet`, `PostJobSheet`, `RequestSheet`, `NoteCallout`, `WheelColumn`, `context/RequestSheet.jsx`; `eslint.config.js` declares the `__COMMIT_SHA__` global; CLAUDE.md voice-scheduling line corrected. Two DB migrations committed but NOT applied by deploy (run by hand in the Supabase SQL Editor): `20260930020000_capture_rls_helper_functions.sql` (no-op capture of `is_admin()`/`my_business_id()`) and `20260930030000_harden_rls_helper_search_path.sql` (pins their search_path; instant rollback in its header). Verify after deploy by replaying `supermom_read_schedule` against `/api/ai/statler-tool`.
+
+## Previous version: 0.13.106 - Sep 30, 2026 (Gemini 429/503 retry)
 
 **v0.13.106**: `api/_lib/gemini.js` gains `generateContentWithRetry` (2 retries, 600ms/1400ms backoff, only on 429/503/RESOURCE_EXHAUSTED/UNAVAILABLE; anything else throws immediately). `generateText` (used by every `api/ai/[action].js` handler) and `api/ai/chat.js` both go through it. Motivation: repeated `gemini-3.6-flash` 429s on client-brief generation in the error log. Short on purpose (~2s max) so an exhausted daily quota still fails fast and degrades to the existing mock/skip fallbacks. First unit tests on the Gemini layer: `api/_lib/gemini.test.js` (retry-then-succeed, give-up, no-retry-on-401). 305/305 tests, lint clean, build clean. Closes the "no rate-limit/retry handling on Gemini 429s" gap from the 2026-09-26 AI-layer audit (logging/metrics gap remains).
 
@@ -381,7 +385,7 @@ Full version-by-version history (v0.13.41 through this version): `git log -- CLA
 
 ### 🤖 AI features (deferred — needs serverless slots)
 
-6. **Voice scheduling** — `transcribe-voice-note` action already exists in `api/ai/[action].js` (not a separate file, corrected 2026-09-17). Flow: mic → transcribe → Claude parses intent → pre-fills NewJobSheet.
+6. **Voice scheduling** — `transcribe-voice-note` in `api/ai/[action].js` (~line 399) is only a TODO stub (no transcription wired; corrected 2026-09-30, earlier text said it "already exists"). Flow: mic → transcribe → Gemini parses intent → pre-fills NewJobSheet.
 7. **Smart scheduling suggestions** — given Sandra's calendar + drive times, Claude suggests optimal day/time for new bookings. All data already available.
 8. **Weekly AI debrief** — Sunday evening summary: revenue, hours, top clients, one pattern observation. Extend the daily briefing cron.
 9. **Auto-generate prep notes** — based on `ai_context`, pre-draft PrepNoteSheet content before Sandra opens it.

@@ -594,7 +594,7 @@ function fmtMins(min) {
 function Step2What({
   setActivePicker,
   selectedClient, services, serviceId, onPickService,
-  date, setDate, time, setTime, duration, setDuration,
+  date, time, setTime, duration, setDuration,
   recurrence, setRecurrence, notes, setNotes, notesCarried, setNotesCarried,
   aiDuration, aiLoading, aiReason, suggestedTime,
   business, customPrice, setCustomPrice, additionalCosts, setAdditionalCosts,

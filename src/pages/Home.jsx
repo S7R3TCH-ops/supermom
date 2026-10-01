@@ -1,5 +1,5 @@
 import { useMemo, useEffect, useState, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import pkg from '../../package.json';
 import { useAppTheme } from '../context/AppThemeContext';
 import { Title, Subheading, Text, Caption, SectionLabel } from '../components/ui/typography';
@@ -8,7 +8,6 @@ import { useAuth } from '../context/AuthContext';
 import { useJobDetailSheet } from '../context/JobDetailSheetContext';
 import { usePostJobSheet } from '../context/PostJobSheetContext';
 import { useFinanceDetailSheet } from '../context/FinanceDetailSheetContext';
-import { useNewJobSheet } from '../context/NewJobSheetContext';
 import { generateCommandBrief, speakBrief, stopSpeaking } from '../data/ai';
 import { updateDailyRoutes, DEFAULT_HOME_ADDRESS } from '../lib/maps';
 import { getBriefingMessage } from '../lib/briefingMessages';
@@ -17,7 +16,6 @@ import { notifyDataChangedNow } from '../data/events';
 import { isNoteOpen, isNoteDone } from '../lib/noteState';
 import { triggerHaptic } from '../lib/haptics';
 import NoteCallout from '../components/ui/NoteCallout';
-import { useGeofence } from '../context/GeofenceContext';
 import { useToast } from '../context/ToastContext';
 import { useKeyboardFocus } from '../hooks/useKeyboardFocus';
 import { usePushSubscription } from '../hooks/usePushSubscription';
@@ -34,15 +32,12 @@ import MissionIntel from '../components/cards/MissionIntel';
 const DEEP_ROSE = '#B5004E';
 
 export default function Home() {
-  const navigate = useNavigate();
   const themeCtx = useAppTheme();
   const jobsCtx = useJobs();
   const detailSheet = useJobDetailSheet();
   const postJobSheet = usePostJobSheet();
   const financeSheet = useFinanceDetailSheet();
-  const newJobSheet = useNewJobSheet();
   const authCtx = useAuth();
-  const { handleClockOut } = useGeofence();
   const toast = useToast();
   const bizCtx = useBusiness();
   const aiEnabled = useAiEnabled();
@@ -329,12 +324,6 @@ export default function Home() {
       }, 0);
   }, [allWeekJobs]);
 
-  const weekUpcoming = useMemo(() => {
-    return allWeekJobs
-      .filter(j => j.status === 'Scheduled')
-      .reduce((s, j) => s + computeJobTotal(j), 0);
-  }, [allWeekJobs]);
-
   const todayUpcoming = useMemo(() => {
     return todayJobs.filter(j =>
       j.id !== activeJob?.id &&
@@ -354,16 +343,6 @@ export default function Home() {
     () => todayJobs.find(j => now >= j.start && now < j.end && j.status === 'Scheduled')?.id ?? null,
     [todayJobs, now]
   );
-
-  const handleDuplicateJob = (job) => {
-    newJobSheet.openWithPrefill({
-      client_id: job.client_id,
-      service_id: job.service_id,
-      estimated_hours: job.estimated_hours,
-      job_notes: job.job_notes,
-      recurrence: job.recurrence,
-    });
-  };
 
   const handleReadAloud = (e) => {
     e.stopPropagation();
@@ -465,7 +444,6 @@ export default function Home() {
   const openPostJob = postJobSheet?.openPostJob;
   const openDetail = financeSheet?.open;
 
-  const [isRefreshingTraffic, setIsRefreshingTraffic] = useState(false);
   const [isGoLaunching, setIsGoLaunching] = useState(false);
   const [isFlyingIcon, setIsFlyingIcon] = useState(false);
   const [locationLoading, setLocationLoading] = useState(false);
@@ -525,19 +503,6 @@ export default function Home() {
     setTimeout(() => setIsFlyingIcon(false), 1450);
   };
 
-  const handleRefreshTraffic = async (e) => {
-    e.stopPropagation();
-    setIsRefreshingTraffic(true);
-    try {
-      await updateDailyRoutes(todayJobs.filter(j => j.status === 'Scheduled'), homeAddress);
-      notifyDataChanged();
-    } catch {
-      /* ignore */
-    } finally {
-      setIsRefreshingTraffic(false);
-    }
-  };
-
   const fetchLocationDrives = async () => {
     const targets = todayJobs.filter(j => j.address && j.end > now && j.status === 'Scheduled');
     if (!targets.length) return;
@@ -582,7 +547,7 @@ export default function Home() {
           drive_to_live: { durationValue: live.durationValue, duration: live.duration, computed_at: new Date().toISOString() },
         }).catch(() => { /* best-effort — the alert falls back to the static chain */ });
       }
-    } catch (err) {
+    } catch {
       // silently fail — drive time is best-effort
     } finally {
       setLocationLoading(false);

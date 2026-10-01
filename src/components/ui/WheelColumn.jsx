@@ -11,7 +11,7 @@ const PAD_COUNT = (VISIBLE_COUNT - 1) / 2;
  * parallel arrays; `selectedIndex` is controlled, `onChange(index)` fires as
  * the centered item changes while scrolling.
  */
-export default function WheelColumn({ labels, selectedIndex, onChange, T, mode }) {
+export default function WheelColumn({ labels, selectedIndex, onChange, T }) {
   const scrollRef = useRef(null);
   const rafRef = useRef(null);
   const settleTimerRef = useRef(null);

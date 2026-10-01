@@ -29,7 +29,6 @@ export default function NoteCallout({ T, mode, label, text, compact = false, onD
 
     const pillBorder = isOpen ? T.pink : (onDark ? 'rgba(255,255,255,0.35)' : T.pink);
     const pillBorderWidth = isOpen ? 1.5 : 1;
-    const textColor = onDark ? '#fff' : T.ink;
 
     return (
       <div style={{

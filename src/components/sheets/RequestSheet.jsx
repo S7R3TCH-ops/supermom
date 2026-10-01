@@ -19,7 +19,7 @@ const PLACEHOLDERS = {
 };
 
 export default function RequestSheet({ isOpen, isClosing, onClose }) {
-  const { T, mode } = useAppTheme();
+  const { T } = useAppTheme();
   const isKeyboardFocused = useKeyboardFocus();
   const sheetRef = useRef(null);
   useFocusTrap(sheetRef, isOpen, onClose);

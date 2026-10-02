@@ -3,6 +3,7 @@ import { useBusiness } from '../../data/useData';
 import { getWorkerLabel } from '../../lib/labels';
 import NoteCallout from '../ui/NoteCallout';
 import { isNoteOpen, isNoteDone } from '../../lib/noteState';
+import { fmtMoney } from '../../lib/money';
 
 export default function JobCard({
   job: j, T, onClick, total = 0, privacyOn = false, label,
@@ -95,13 +96,13 @@ export default function JobCard({
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
           {amountToShow > 0 && (
             <div style={{ fontFamily: T.serif, fontSize: 14, fontWeight: isOwing ? 700 : 600, color: amountColor, fontVariantNumeric: 'tabular-nums' }}>
-              {privacyOn ? '•••' : `${prefix}$${amountToShow.toFixed(0)}`}
+              {privacyOn ? '•••' : `${prefix}${fmtMoney(amountToShow)}`}
               {isEstimated && !privacyOn && <span style={{ fontSize: 10, fontWeight: 500, opacity: 0.85, marginLeft: 2 }}>est.</span>}
             </div>
           )}
           {paidSoFar > 0 && !privacyOn && (isPartial || wrapUp) && (
             <div style={{ fontSize: 10.5, fontWeight: 600, color: isOwing ? 'rgba(255,255,255,0.9)' : T.inkSub, marginTop: 1 }}>
-              ${paidSoFar.toFixed(0)} paid{Number(j.credit_paid) > 0 ? ` · incl. $${Number(j.credit_paid).toFixed(0)} credit` : ''}
+              {fmtMoney(paidSoFar)} paid{Number(j.credit_paid) > 0 ? ` · incl. ${fmtMoney(j.credit_paid)} credit` : ''}
             </div>
           )}
         </div>

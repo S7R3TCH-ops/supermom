@@ -7,6 +7,7 @@ import OfflineMessage from '../components/ui/OfflineMessage';
 import WeekStrip from '../components/ui/WeekStrip';
 import { getNavigationUrl } from '../lib/maps';
 import { useDaySwipeGesture } from '../hooks/useDaySwipeGesture';
+import { fmtMoney } from '../lib/money';
 
 // Real "now" — was previously a hard-coded prototype anchor.
 const NOW = () => new Date();
@@ -87,11 +88,6 @@ function weekRangeLabel(weekStart) {
   const endD     = parseInt(new Intl.DateTimeFormat('en-CA', { day: 'numeric', timeZone: 'America/Toronto' }).format(endDay), 10);
   if (startMon === endMon) return `${startMon} ${startD} – ${endD}`;
   return `${startMon} ${startD} – ${endMon} ${endD}`;
-}
-
-function fmtMoney(v) {
-  const n = parseFloat(v);
-  return Number.isFinite(n) ? `$${n.toFixed(2)}` : '—';
 }
 
 // Adapt display jobs (from useJobs) into the shape the views expect:

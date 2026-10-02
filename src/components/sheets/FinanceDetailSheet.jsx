@@ -5,6 +5,7 @@ import { useJobDetailSheet } from '../../context/JobDetailSheetContext';
 import AmtCell from '../ui/AmtCell';
 import GrabBar from '../ui/GrabBar';
 import { computeJobFinancials } from '../../lib/financialMath';
+import { fmtMoney } from '../../lib/money';
 
 function fmtShortDate(val) {
   if (!val) return '';
@@ -52,7 +53,7 @@ function JobRow({ item, T, privacyOn, onTap }) {
       </div>
       <div style={{ textAlign: 'right', flexShrink: 0 }}>
         <div style={{ fontSize: 15, fontWeight: 700, color: T.ink, fontVariantNumeric: 'tabular-nums' }}>
-          {privacyOn ? '•••' : `$${Number(total).toFixed(0)}`}
+          {privacyOn ? '•••' : fmtMoney(total)}
         </div>
         <div style={{ fontSize: 9, fontWeight: 700, color: item.payment_status === 'Paid' ? T.greenFg : item.payment_status === 'Partial' ? T.amberFg : T.errorFg, textTransform: 'uppercase', marginTop: 2 }}>
           {item.payment_status === 'Paid' ? 'Paid ✓' : item.payment_status === 'Partial' ? 'Partial' : 'Unpaid'}
@@ -79,7 +80,7 @@ function WorkerCostRow({ item, T, privacyOn }) {
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3, flexShrink: 0 }}>
         <div style={{ fontSize: 14, fontWeight: 700, color: '#B5004E', fontVariantNumeric: 'tabular-nums' }}>
-          {privacyOn ? '•••' : `-$${Number(item.amount || 0).toFixed(0)}`}
+          {privacyOn ? '•••' : `-${fmtMoney(item.amount || 0)}`}
         </div>
         <span style={{ fontSize: 8.5, fontWeight: 700, padding: '1px 5px', borderRadius: 4, textTransform: 'uppercase',
           background: paid ? T.greenBg : T.amberBg, color: paid ? T.greenFg : T.amberFg }}>
@@ -107,7 +108,7 @@ function ExpenseRow({ item, T, privacyOn }) {
         </div>
       </div>
       <div style={{ fontSize: 14, fontWeight: 700, color: T.errorFg, flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
-        {privacyOn ? '•••' : `-$${Number(item.amount || 0).toFixed(0)}`}
+        {privacyOn ? '•••' : `-${fmtMoney(item.amount || 0)}`}
       </div>
     </div>
   );
@@ -171,25 +172,25 @@ export default function FinanceDetailSheet({ title, items, type, onClose }) {
             {type === 'profit' ? (
               <div style={{ display: 'flex', gap: 12, marginTop: 6, flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 10.5, fontWeight: 700, color: T.greenFg }}>
-                  {privacyOn ? '•••' : `+$${summary.revenue?.toFixed(0)}`} revenue
+                  {privacyOn ? '•••' : `+${fmtMoney(summary.revenue)}`} revenue
                 </span>
                 <span style={{ fontSize: 10.5, fontWeight: 700, color: T.errorFg }}>
-                  {privacyOn ? '•••' : `-$${summary.expenses?.toFixed(0)}`} expenses
+                  {privacyOn ? '•••' : `-${fmtMoney(summary.expenses)}`} expenses
                 </span>
                 {summary.workerCosts > 0 && (
                   <span style={{ fontSize: 10.5, fontWeight: 700, color: T.amberFg }}>
-                    {privacyOn ? '•••' : `-$${summary.workerCosts?.toFixed(0)}`} worker
+                    {privacyOn ? '•••' : `-${fmtMoney(summary.workerCosts)}`} worker
                   </span>
                 )}
                 <span style={{ fontSize: 10.5, fontWeight: 700, color: summary.color }}>
-                  = {privacyOn ? '•••' : `$${summary.net?.toFixed(0)}`} net
+                  = {privacyOn ? '•••' : fmtMoney(summary.net)} net
                 </span>
               </div>
             ) : (
               <div style={{ fontFamily: T.font, fontSize: 11.5, color: T.inkMuted, marginTop: 4 }}>
                 {summary.line} · Total:{' '}
                 <span style={{ color: summary.color, fontWeight: 700 }}>
-                  {privacyOn ? '•••' : `$${Number(summary.total).toFixed(0)}`}
+                  {privacyOn ? '•••' : fmtMoney(summary.total)}
                 </span>
               </div>
             )}

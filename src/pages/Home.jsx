@@ -19,7 +19,7 @@ import NoteCallout from '../components/ui/NoteCallout';
 import { useToast } from '../context/ToastContext';
 import { useKeyboardFocus } from '../hooks/useKeyboardFocus';
 import { usePushSubscription } from '../hooks/usePushSubscription';
-import { sameDay, getWeekRange, fmtTime12, dateBrief, fmtDuration } from '../lib/dateUtils';
+import { sameDay, getWeekRange, fmtTime12, dateBrief, fmtDuration, computeArrivalMs } from '../lib/dateUtils';
 import { computeJobTotal } from '../lib/financialMath';
 import { getWorkerLabel } from '../lib/labels';
 import OfflineMessage from '../components/ui/OfflineMessage';
@@ -28,6 +28,7 @@ import Swipeable from '../components/ui/Swipeable';
 import EmptyState from '../components/cards/EmptyState';
 import LiveTimer from '../components/cards/LiveTimer';
 import MissionIntel from '../components/cards/MissionIntel';
+import { fmtMoney } from '../lib/money';
 
 const DEEP_ROSE = '#B5004E';
 
@@ -1020,7 +1021,7 @@ export default function Home() {
                               )}
                               {!privacyOn && computeJobTotal(next) > 0 && (
                                 <div style={{ fontSize: 11, fontWeight: 600, color: DEEP_ROSE, opacity: 0.65, marginTop: 4, whiteSpace: 'nowrap' }}>
-                                  ${computeJobTotal(next).toFixed(0)}
+                                  {fmtMoney(computeJobTotal(next))}
                                 </div>
                               )}
                             </div>
@@ -1063,7 +1064,7 @@ export default function Home() {
                       const arrivalTime = (() => {
                         const secs = locDrive?.durationValue ?? fallbackValue ?? null;
                         if (!secs) return null;
-                        return new Date(Date.now() + secs * 1000).toLocaleTimeString('en-CA', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/Toronto' });
+                        return new Date(computeArrivalMs(secs, next.start, Date.now())).toLocaleTimeString('en-CA', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/Toronto' });
                       })();
                       const driveSubtitle = locationLoading ? null
                         : locDrive ? `${locDrive.duration} · arrive ${arrivalTime} · live traffic`
@@ -1192,7 +1193,7 @@ export default function Home() {
               </div>
               {!privacyOn && owingTotal > 0 && (
                 <div style={{ fontFamily: T.font, fontSize: 12, fontWeight: 600, color: DEEP_ROSE, opacity: 0.65 }}>
-                  ${owingTotal.toFixed(0)} outstanding
+                  {fmtMoney(owingTotal)} outstanding
                 </div>
               )}
             </div>

@@ -11,6 +11,7 @@ import NewExpenseSheet from '../components/sheets/NewExpenseSheet';
 import AmtCell from '../components/ui/AmtCell';
 import { EmptyActivity, NoResults } from '../components/ui/Illustrations';
 import OfflineMessage from '../components/ui/OfflineMessage';
+import { fmtMoney } from '../lib/money';
 
 const periods = ['Week', 'Month', 'Year', 'All'];
 
@@ -294,13 +295,13 @@ const TransactionRow = memo(function TransactionRow({ tx, T, privacyOn, onPress 
       </div>
       <div style={{ textAlign: 'right' }}>
         <AmtCell
-          amount={`${isCost ? '-' : ''}$${Number(tx.amount || 0).toFixed(0)}`}
+          amount={`${isCost ? '-' : ''}${fmtMoney(tx.amount || 0)}`}
           size={14}
           color={isCost ? T.errorFg : T.ink}
         />
         {tx.isPartial && !privacyOn && (
           <div style={{ fontSize: 9, color: T.inkMuted, fontWeight: 500, marginTop: 1 }}>
-            of ${Number(tx.total || 0).toFixed(0)}
+            of {fmtMoney(tx.total || 0)}
           </div>
         )}
       </div>

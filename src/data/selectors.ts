@@ -4,6 +4,7 @@
 // keep using fields like `c.init` and `c.color`.
 
 import { computeJobTotal, JobInput } from '../lib/financialMath';
+import { fmtMoney } from '../lib/money';
 
 const PALETTE = [
   '#FC4693', '#8B5CF6', '#06B6D4', '#F59E0B', '#22C55E', '#EC4899',
@@ -250,7 +251,7 @@ export function toDisplayClient(
     service: lastService,
     last: lastJob ? fmtShortDate(lastJob.scheduled_at as string) : '—',
     next: nextJob ? fmtShortDate(nextJob.scheduled_at as string) : '—',
-    amt: owedTotal > 0 ? `$${owedTotal.toFixed(0)}` : '',
+    amt: owedTotal > 0 ? fmtMoney(owedTotal) : '',
     owed: owedTotal > 0,
     tags,
     note: row.notes ?? '',
@@ -280,7 +281,7 @@ export function toDisplayClient(
         date: fmtShortDate(j?.scheduled_at as string),
         service: j?.service_name as string,
         time: endStr ? `${startStr} – ${endStr}` : startStr,
-        amt: `$${computeJobTotal(j).toFixed(0)}`,
+        amt: fmtMoney(computeJobTotal(j)),
         job_status: (j?.job_status as string) || 'Scheduled',
         payment_status: (j?.payment_status as string) || '',
       };
@@ -292,7 +293,7 @@ export function toDisplayClient(
       duration: j?.actual_duration ? fmtDur(Number(j.actual_duration) * 60)
               : j?.estimated_hours ? fmtDur(Number(j.estimated_hours) * 60)
               : '—',
-      amt: `$${computeJobTotal(j).toFixed(0)}`,
+      amt: fmtMoney(computeJobTotal(j)),
       status: j?.payment_status === 'Paid' ? 'paid' : j?.payment_status === 'Partial' ? 'partial' : 'unpaid',
       job_status: (j?.job_status as string) || 'Completed',
     })),

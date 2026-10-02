@@ -178,7 +178,14 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 ---
 
 
-## Current version: 0.13.108 - Oct 1, 2026 (Statler voice: job detail + guarded edit)
+## Current version: 0.13.109 - Oct 2, 2026 (exact per-job totals + Home arrive time)
+
+**v0.13.109**: Two display fixes, no stored-math or schema change (tasks.md `T-exact-job-totals`, `T-home-arrive-time`).
+- **Exact totals:** new `src/lib/money.ts` `fmtMoney` (always 2 decimals, `—` for non-numbers; Calendar's old local copy now imports it). Replaced per-job `toFixed(0)` money displays with it: `JobCard.jsx` (amount, paid, credit), `Home.jsx` (Next Up card total, outstanding), `selectors.ts` (client owed amount, upcoming/history job amounts), `FinanceDetailSheet.jsx` (all rows + header), `Finance.jsx` transaction row amount/"of". So `$68.45` on Schedule no longer reads `$68` on Home. Code-checked: Calendar `job.total` and Home both come from `computeJobTotal(jobRow)` (no business arg) so they already agree. Unchanged on purpose: revenue aggregates stay pre-tax (Joel 10-02), Finance revenue-list amounts stay pre-tax (only the format changed), `$X/hr` rates and worker-pay labels, Clients.jsx lifetime/owes aggregates, Finance.jsx:944 worker-cost line. Known: `computeJobTotal` ignores business-level tax, so a taxed-by-business job with no per-job override and no stored `hst_amount` shows untaxed everywhere (consistent, but not tax-inclusive); not touched.
+- **Arrive time:** `Home.jsx` Next Up card "arrive" was `Date.now()` + drive, so a 6:30 PM job viewed at 5:16 PM said "arrive 5:23". New pure `computeArrivalMs(driveSecs, jobStart, nowMs)` in `dateUtils.js`: job start while leave-by is still ahead, now + drive once it has passed.
+- Tests: `money.test.js`, `dateUtils.test.js` (343/343 total), build clean. Not device-checked.
+
+## Previous version: 0.13.108 - Oct 1, 2026 (Statler voice: job detail + guarded edit)
 
 **v0.13.108** (commit `28611ee`; bridge half, commit `d01f548`, lives in `C:/Projects/statler-voice-bridge`): Sandra asked by phone (captures 10-01 20:49-20:51) to see all job details, edit/move jobs, and never be able to delete one. Built:
 - **`api/_lib/statlerJobs.js`** (new): `getJobDetail` (backs new `supermom_get_job`: date/time/duration/service/status/notes/pricing/estimated total/payment status/worker NAMES only (never pay) + client phone/phone2/email/address/access_info/notes) and `editJob` (backs `supermom_edit_schedule`). `api/ai/[action].js` is now a thin wrapper that adds the audit_log row and GCal sync.

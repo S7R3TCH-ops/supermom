@@ -105,3 +105,14 @@ export function composeTorontoISO(dateStr, timeStr) {
     return null;
   }
 }
+
+/**
+ * Arrival time (ms) for the next job's "arrive" line.
+ * Leave-by still in the future: you'll arrive at the job's start. Leave-by passed:
+ * you're already late, so arrival is now + drive.
+ */
+export function computeArrivalMs(driveSecs, jobStart, nowMs) {
+  const startMs = jobStart.getTime();
+  const leaveByMs = startMs - driveSecs * 1000;
+  return leaveByMs > nowMs ? startMs : nowMs + driveSecs * 1000;
+}

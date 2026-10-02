@@ -217,6 +217,16 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
     const svc = services.find(s => s.id === id);
     if (!svc) return;
 
+    // Flat-rate services have a fixed catalog duration (e.g. 3.5h) — use it exactly.
+    // History / AI estimates only apply to hourly services; they were silently
+    // overriding the catalog value (3.5h booked as 4h).
+    if (svc.pricing_type !== 'Hourly' && Number(svc.default_duration) > 0) {
+      setAiDuration(null);
+      setAiEstimateReason('');
+      if (!durationTouched) setDuration(Number(svc.default_duration));
+      return;
+    }
+
     // 1. Local deterministic estimate
     const localEstimate = calculateEstimatedDuration(selectedClient, svc.name, services);
     setAiDuration(localEstimate !== Number(svc.default_duration) ? localEstimate : null);

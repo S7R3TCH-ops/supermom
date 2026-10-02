@@ -838,7 +838,8 @@ export async function recordPayment(jobId, amount, method = 'Cash', _paymentStat
   if (workerPaid !== null) await markJobWorkerPaid(jobId, workerPaid);
 
   // 4. AUTO-LEARNING: Update service default duration based on moving average
-  if (duration > 0 && job.service_id) {
+  // Flat-rate services keep the catalog duration the owner set; only hourly ones learn.
+  if (duration > 0 && job.service_id && job.pricing_type === 'Hourly') {
     try {
       const { data: pastJobs } = await supabase
         .from('jobs')

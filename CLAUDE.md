@@ -178,7 +178,11 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 ---
 
 
-## Current version: 0.13.109 - Oct 2, 2026 (exact per-job totals + Home arrive time)
+## Current version: 0.13.110 - Oct 2, 2026 (flat-rate service keeps catalog duration)
+
+**v0.13.110**: Sandra's bug: a flat-rate service with catalog duration 3.5h booked as 4h. Cause (code-read, not confirmed against her DB row): `NewJobSheet.jsx` `onPickService` overwrote the catalog default with the client's last-visit duration and then a Gemini estimate (`estimate-duration`, which is never told the catalog default), snapped to the half hour. Fix: non-Hourly services use `default_duration` exactly and skip history/AI; hourly unchanged. Also `jobsRepo.js` `recordPayment` auto-learning (rewrites `services.default_duration` from the avg of completed jobs) now runs for Hourly jobs only, so a flat service's catalog duration can't drift. **If Sandra's catalog already shows 4h, auto-learning had already rewritten it: set it back to 3.5 in the Service Catalog.** Not device-checked.
+
+## Previous version: 0.13.109 - Oct 2, 2026 (exact per-job totals + Home arrive time)
 
 **v0.13.109**: Two display fixes, no stored-math or schema change (tasks.md `T-exact-job-totals`, `T-home-arrive-time`).
 - **Exact totals:** new `src/lib/money.ts` `fmtMoney` (always 2 decimals, `—` for non-numbers; Calendar's old local copy now imports it). Replaced per-job `toFixed(0)` money displays with it: `JobCard.jsx` (amount, paid, credit), `Home.jsx` (Next Up card total, outstanding), `selectors.ts` (client owed amount, upcoming/history job amounts), `FinanceDetailSheet.jsx` (all rows + header), `Finance.jsx` transaction row amount/"of". So `$68.45` on Schedule no longer reads `$68` on Home. Code-checked: Calendar `job.total` and Home both come from `computeJobTotal(jobRow)` (no business arg) so they already agree. Unchanged on purpose: revenue aggregates stay pre-tax (Joel 10-02), Finance revenue-list amounts stay pre-tax (only the format changed), `$X/hr` rates and worker-pay labels, Clients.jsx lifetime/owes aggregates, Finance.jsx:944 worker-cost line. Known: `computeJobTotal` ignores business-level tax, so a taxed-by-business job with no per-job override and no stored `hst_amount` shows untaxed everywhere (consistent, but not tax-inclusive); not touched.

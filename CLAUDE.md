@@ -178,9 +178,9 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 ---
 
 
-## Current version: 0.13.108 - Oct 1, 2026 (Statler voice: job detail + guarded edit, NOT yet deployed)
+## Current version: 0.13.108 - Oct 1, 2026 (Statler voice: job detail + guarded edit)
 
-**v0.13.108** (uncommitted at time of writing; bridge half lives in `C:Projectsstatler-voice-bridge`): Sandra asked by phone (captures 10-01 20:49-20:51) to see all job details, edit/move jobs, and never be able to delete one. Built:
+**v0.13.108** (commit `28611ee`; bridge half, commit `d01f548`, lives in `C:/Projects/statler-voice-bridge`): Sandra asked by phone (captures 10-01 20:49-20:51) to see all job details, edit/move jobs, and never be able to delete one. Built:
 - **`api/_lib/statlerJobs.js`** (new): `getJobDetail` (backs new `supermom_get_job`: date/time/duration/service/status/notes/pricing/estimated total/payment status/worker NAMES only (never pay) + client phone/phone2/email/address/access_info/notes) and `editJob` (backs `supermom_edit_schedule`). `api/ai/[action].js` is now a thin wrapper that adds the audit_log row and GCal sync.
 - **Edit rules:** explicit arg allowlist `job_id, date, time, duration_hours, service, description` (anything else is dropped, never written). Only `job_status = 'Scheduled'` jobs; a Completed/Cancelled job returns a spoken "can't be changed by phone". Notes append-only (and reopen a resolved note). Service must match an active catalog service (name + `service_id` move together, price untouched; ambiguous or unknown writes nothing). Duration recalculates `estimated_hours` + `subtotal`/`hst_amount`/`total_amount`. Affects only that one visit, not a series. **No delete/cancel/status/money-rate action exists anywhere in `statlerTool`.**
 - **`api/_lib/jobMoney.js`** (new): plain-JS mirror of `buildFinancialPatch`/`computeJobFinancials`, used only for the duration recalculation. Deliberately not an import of the TS money module (JS handler -> TS chain is unproven on Vercel, see invoice PDF note). `api/_lib/jobMoney.test.js` pins it to `buildFinancialPatch` across 9 hourly/flat/tax/extras cases, so drift fails CI. **If the app's money math changes, this must change with it.**

@@ -358,6 +358,7 @@ Full version-by-version history (v0.13.41 through this version): `git log -- CLA
 
 ### ✅ Recent Changes
 
+- **2026-10-01**: No code change (v0.13.107 still current). Joel device-tested rescheduling a job on prod: leave push fired, job edited to a later time, fresh leave push fired for the new time, wrap-up push fired for the new end time, original slot's wrap-up stayed silent, Google Calendar event moved with no duplicate. Confirms the `push_log` UNIQUE(job_id, kind, job_start_at) sweep design handles reschedules. Not exercised: edit inside the alert window, recurring-series edit GCal-dupe path.
 - **2026-09-26**: Fixed Phase 1 High-Friction UI Bugs: Removed time picker snapping to :00/:30 increments in `NewJobSheet.jsx`/`JobDetailSheet.jsx`; fixed a `gcal_event_id` copying bug during series edits in `jobsRepo.js` that caused orphaned duplicates on Google Calendar; ensured `drive_to` is cleared on time/date changes to force recalculation and prevent stale push reminders; fixed "Calculating drive time..." getting stuck indefinitely in `Home.jsx` when location fails by falling back to "Drive time unavailable".
 - **2026-09-26**: Added stopword filter ("and", "the", "for", etc.) to the fuzzy client-search fallback to stop connector words causing false-positive matches (e.g. "and" matching "Alexander").
 - **2026-09-25**: Fixed fuzzy client search in `supermom_schedule_job` and `supermom_mark_paid` to check all name tokens instead of just the first, fixing edge cases with complex names.

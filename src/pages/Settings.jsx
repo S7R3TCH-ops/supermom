@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { normalizePhone, formatPhone } from '../lib/phone';
 import { useAppTheme } from '../context/AppThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { notifyDataChanged, useBusiness } from '../data/useData';
@@ -101,7 +102,7 @@ export default function Settings() {
       setForm({
         name:               business.name        ?? '',
         owner_name:         business.owner_name  ?? '',
-        phone:              business.phone       ?? '',
+        phone:              formatPhone(business.phone),
         email:              business.email       ?? '',
         address:            business.address     ?? '',
         city:               business.city        ?? '',
@@ -202,7 +203,7 @@ export default function Settings() {
         .update({
           name:        form.name.trim(),
           owner_name:  form.owner_name.trim(),
-          phone:       form.phone,
+          phone:       normalizePhone(form.phone),
           email:       form.email,
           address:     form.address,
           city:        form.city,
@@ -353,7 +354,7 @@ export default function Settings() {
   const isDirty = form && business && (
     form.name        !== (business.name        ?? '') ||
     form.owner_name  !== (business.owner_name  ?? '') ||
-    form.phone       !== (business.phone       ?? '') ||
+    normalizePhone(form.phone) !== (normalizePhone(business.phone) ?? null) ||
     form.email       !== (business.email       ?? '') ||
     form.address     !== (business.address     ?? '') ||
     form.city        !== (business.city        ?? '') ||
@@ -477,7 +478,7 @@ export default function Settings() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
                 <label style={labelStyle}>Phone</label>
-                <input className="sm-input" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} style={inputStyle} />
+                <input className="sm-input" type="tel" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} placeholder="(555) 555-5555" style={inputStyle} />
               </div>
               <div>
                 <label style={labelStyle}>Email</label>

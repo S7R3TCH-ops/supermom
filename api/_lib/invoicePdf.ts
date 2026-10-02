@@ -2,6 +2,7 @@ import React from 'react';
 import { Document, Page, View, Text, Image, StyleSheet, renderToBuffer } from '@react-pdf/renderer';
 import { computeJobFinancials } from '../../src/lib/financialMath.js';
 import { getJobPaymentBadge, describeJobCalc } from '../../src/lib/invoiceBalances.js';
+import { formatPhone } from '../../src/lib/phone.js';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
@@ -178,7 +179,7 @@ function InvoiceDocument({ invoice }) {
             T({ style: s.infoBold }, `${client.first_name || ''} ${client.last_name || ''}`.trim() || '—'),
             client.street ? '\n' : null, client.street ? T({ style: s.infoMuted }, client.street) : null,
             clientCity   ? '\n' : null, clientCity   ? T({ style: s.infoMuted }, clientCity)   : null,
-            client.phone ? '\n' : null, client.phone ? T({ style: s.infoLight }, client.phone) : null,
+            client.phone ? '\n' : null, client.phone ? T({ style: s.infoLight }, formatPhone(client.phone)) : null,
             client.email ? '\n' : null, client.email ? T({ style: s.infoLight }, client.email) : null,
           ),
         ),
@@ -188,7 +189,7 @@ function InvoiceDocument({ invoice }) {
           T({ style: s.infoBlock },
             T({ style: s.infoBold }, biz.name || 'Supermom for Hire'),
             bizCity   ? '\n' : null, bizCity   ? T({ style: s.infoMuted }, bizCity)   : null,
-            biz.phone ? '\n' : null, biz.phone ? T({ style: s.infoLight }, biz.phone) : null,
+            biz.phone ? '\n' : null, biz.phone ? T({ style: s.infoLight }, formatPhone(biz.phone)) : null,
             biz.email ? '\n' : null, biz.email ? T({ style: s.infoLight }, biz.email) : null,
           ),
         ),

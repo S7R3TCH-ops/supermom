@@ -6,6 +6,7 @@ import { useNewJobSheet } from '../context/NewJobSheetContext';
 import { useEditClientSheet } from '../context/EditClientSheetContext';
 import { useToast } from '../context/ToastContext';
 import AmtCell from '../components/ui/AmtCell';
+import { formatPhone } from '../lib/phone';
 import { Title, Subheading, Text, Caption, SectionLabel } from '../components/ui/typography';
 import { useClient, useClientInvoices, notifyDataChanged, useAiEnabled } from '../data/useData';
 import { updateClient, softDeleteClient, hardDeleteClient, setPendingNote } from '../data/clientsRepo';
@@ -13,13 +14,6 @@ import { archiveClientJobs } from '../data/jobsRepo';
 import { getClientCreditBalance, getClientCreditHistory } from '../data/creditsRepo';
 import { useAuth } from '../context/AuthContext';
 import { EmptyActivity, EmptySchedule } from '../components/ui/Illustrations';
-
-function formatPhone(p) {
-  if (!p) return '';
-  const digits = p.replace(/\D/g, '');
-  if (digits.length !== 10) return p;
-  return `(${digits.slice(0,3)}) ${digits.slice(3,6)}-${digits.slice(6)}`;
-}
 
 function formatDate(dateStr) {
   if (!dateStr) return '';

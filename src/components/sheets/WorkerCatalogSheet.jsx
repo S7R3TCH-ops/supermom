@@ -11,6 +11,7 @@ import {
 import { SectionLabel } from '../ui/typography';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import GrabBar from '../ui/GrabBar';
+import { normalizePhone, formatPhone } from '../../lib/phone';
 import { triggerHaptic } from '../../lib/haptics';
 
 const BLANK = { name: '', phone: '', email: '', person_type: 'worker' };
@@ -66,7 +67,7 @@ export default function WorkerCatalogSheet({ isOpen, onClose }) {
   }
 
   async function startEdit(w) {
-    setForm({ name: w.name || '', phone: w.phone || '', email: w.email || '', person_type: w.person_type || 'worker' });
+    setForm({ name: w.name || '', phone: formatPhone(w.phone), email: w.email || '', person_type: w.person_type || 'worker' });
     setErr('');
     setEditing(w.id);
     // Load existing skills for this worker
@@ -104,7 +105,7 @@ export default function WorkerCatalogSheet({ isOpen, onClose }) {
       if (editing === 'new') {
         const w = await createWorker({
           name: form.name.trim(),
-          phone: form.phone || null,
+          phone: normalizePhone(form.phone),
           email: form.email || null,
           person_type: form.person_type,
         });
@@ -113,7 +114,7 @@ export default function WorkerCatalogSheet({ isOpen, onClose }) {
       } else {
         await updateWorker(editing, {
           name: form.name.trim(),
-          phone: form.phone || null,
+          phone: normalizePhone(form.phone),
           email: form.email || null,
           person_type: form.person_type,
         });
@@ -278,7 +279,7 @@ export default function WorkerCatalogSheet({ isOpen, onClose }) {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   <div>
                     <label style={{ fontSize: 9.5, fontWeight: 700, color: T.inkMuted, textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Phone</label>
-                    <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} style={inputStyle} placeholder="(416) 555-0000" />
+                    <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} style={inputStyle} placeholder="(555) 555-5555" />
                   </div>
                   <div>
                     <label style={{ fontSize: 9.5, fontWeight: 700, color: T.inkMuted, textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Email</label>
@@ -373,7 +374,7 @@ export default function WorkerCatalogSheet({ isOpen, onClose }) {
                   )}
                   {(w.phone || w.email) && (
                     <div style={{ fontFamily: T.font, fontSize: 10.5, color: T.inkMuted, marginTop: 2 }}>
-                      {[w.phone, w.email].filter(Boolean).join(' · ')}
+                      {[formatPhone(w.phone), w.email].filter(Boolean).join(' · ')}
                     </div>
                   )}
                 </div>

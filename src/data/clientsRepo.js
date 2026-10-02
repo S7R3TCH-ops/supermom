@@ -5,6 +5,7 @@
 import { supabase } from '../lib/supabase';
 import { getCurrentBusinessId } from './currentBusiness';
 import { summarizeCarriedNote } from './ai';
+import { phoneDigits } from '../lib/phone';
 
 function assertWrote(data, op) {
   const rows = Array.isArray(data) ? data : (data ? [data] : []);
@@ -68,11 +69,16 @@ export async function fetchClientByContact({ email, first_name, last_name, phone
     .is('deleted_at', null);
   if (last_name) nameQuery = nameQuery.eq('last_name', last_name);
   else nameQuery = nameQuery.is('last_name', null);
-  if (phone) nameQuery = nameQuery.eq('phone', phone);
-  else nameQuery = nameQuery.is('phone', null);
+  if (!phone) {
+    const { data: byNameNoPhone } = await nameQuery.is('phone', null).maybeSingle();
+    return byNameNoPhone;
+  }
 
-  const { data: byNamePhone } = await nameQuery.maybeSingle();
-  return byNamePhone;
+  // Same person, different spelling of the number (+1647…, (647) …, 647-…) must match,
+  // and rows saved before phone normalisation are in mixed formats — compare digits.
+  const { data: sameName } = await nameQuery;
+  const want = phoneDigits(phone);
+  return (sameName || []).find(c => c.phone && phoneDigits(c.phone) === want) || null;
 }
 
 export async function createClient(payload) {

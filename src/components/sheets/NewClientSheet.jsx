@@ -8,6 +8,7 @@ import { useKeyboardFocus } from '../../hooks/useKeyboardFocus';
 import { useToast } from '../../context/ToastContext';
 import { notifyDataChanged } from '../../data/useData';
 import GrabBar from '../ui/GrabBar';
+import { normalizePhone } from '../../lib/phone';
 
 const STATUS_OPTIONS = [
   { value: 'active',   label: 'Active' },
@@ -76,7 +77,7 @@ export default function NewClientSheet({ onClose, onCreated }) {
       const created = await createClient({
         first_name: first.trim(),
         last_name: last.trim() || null,
-        phone: phone.trim() || null,
+        phone: normalizePhone(phone),
         email: email.trim() || null,
         street: street.trim() || null,
         city: city.trim() || null,
@@ -161,7 +162,7 @@ export default function NewClientSheet({ onClose, onCreated }) {
           </div>
           <div>
             <label htmlFor="nc-phone" style={label}>Phone</label>
-            <input id="nc-phone" className="sm-input" style={input} type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="6475550100" />
+            <input id="nc-phone" className="sm-input" style={input} type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="(555) 555-5555" />
           </div>
           <div>
             <label htmlFor="nc-email" style={label}>Email</label>

@@ -9,6 +9,7 @@ import { initGemini, generateText, GEMINI_MODEL } from '../_lib/gemini.js';
 import webpush from 'web-push';
 import { buildRequestEmailHtml } from '../_lib/brandedEmail.js';
 import { getJobDetail, editJob } from '../_lib/statlerJobs.js';
+import { normalizePhone } from '../_lib/phone.js';
 
 // Actions that must work even when the AI kill-switch (app_settings.ai_enabled)
 // is off, and that never touch Gemini — living under /api/ai/ purely to
@@ -1428,7 +1429,7 @@ async function statlerTool(req, res, supabase) {
         business_id: businessId,
         first_name: firstName,
         last_name: lastName,
-        phone_number: phone || null,
+        phone: normalizePhone(phone),
         email: email || null,
         notes: notes || null
       })

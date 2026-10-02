@@ -9,6 +9,7 @@ import { useBackClose } from '../../hooks/useBackClose';
 import { useKeyboardFocus } from '../../hooks/useKeyboardFocus';
 import { RECURRENCE } from '../../data/services';
 import GrabBar from '../ui/GrabBar';
+import { normalizePhone, formatPhone } from '../../lib/phone';
 import { triggerHaptic } from '../../lib/haptics';
 
 const STATUS_OPTIONS = [
@@ -60,7 +61,7 @@ export default function EditClientSheet({ clientId, onClose }) {
         if (!raw) return;
         setFirst(raw.first_name || '');
         setLast(raw.last_name || '');
-        setPhone(raw.phone || '');
+        setPhone(formatPhone(raw.phone));
         setEmail(raw.email || '');
         setStreet(raw.street || '');
         setCity(raw.city || '');
@@ -98,7 +99,7 @@ export default function EditClientSheet({ clientId, onClose }) {
       await updateClient(clientId, {
         first_name: first.trim(),
         last_name: last.trim() || null,
-        phone: phone.trim() || null,
+        phone: normalizePhone(phone),
         email: email.trim() || null,
         street: street.trim() || null,
         city: city.trim() || null,
@@ -237,7 +238,7 @@ export default function EditClientSheet({ clientId, onClose }) {
 
             <div>
               <label style={labelStyle}>Phone</label>
-              <input className="sm-input" style={inputStyle} type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="6475550100" />
+              <input className="sm-input" style={inputStyle} type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="(555) 555-5555" />
             </div>
             <div>
               <label style={labelStyle}>Email</label>

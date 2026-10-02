@@ -115,7 +115,7 @@ describe('getJobDetail', () => {
     const { job, client } = out.body;
     expect(job).toMatchObject({ date: '2026-10-05', service: 'Decluttering', duration_hours: 2, total: 120, total_is_estimate: true, workers: ['Bridget'] });
     expect(JSON.stringify(out.body)).not.toMatch(/"pay"|777/); // worker pay never exposed
-    expect(client).toMatchObject({ name: 'Ann Rae', phone: '416-555-0100', email: 'ann@example.com', address: '1 Main St, Georgetown, ON, L7G 1A1', access_info: 'Key under mat' });
+    expect(client).toMatchObject({ name: 'Ann Rae', phone: '(416) 555-0100', email: 'ann@example.com', address: '1 Main St, Georgetown, ON, L7G 1A1', access_info: 'Key under mat' });
   });
   it('rejects a non-uuid id and a job from another business', async () => {
     expect((await getJobDetail(fakeSupabase, BIZ, 'nope')).status).toBe(400);

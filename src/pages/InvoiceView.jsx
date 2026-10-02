@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { formatPhone } from '../lib/phone';
 import { fetchInvoiceById, settleInvoiceOutstanding, voidInvoiceSettlement, addJobsToInvoice, LAST_ROUND_WINDOW_MS } from '../data/invoicesRepo';
 import { computeJobFinancials } from '../lib/financialMath';
 import { getJobPaymentBadge, describeJobCalc } from '../lib/invoiceBalances';
@@ -617,7 +618,7 @@ export default function InvoiceView() {
             <div style={{ fontWeight: 600 }}>{client.first_name} {client.last_name}</div>
             {client.street && <div style={{ color: '#555' }}>{client.street}</div>}
             {clientCity && <div style={{ color: '#555' }}>{clientCity}</div>}
-            {client.phone && <div style={{ color: '#888' }}>{client.phone}</div>}
+            {client.phone && <div style={{ color: '#888' }}>{formatPhone(client.phone)}</div>}
             {client.email && <div style={{ color: '#888' }}>{client.email}</div>}
           </div>
 
@@ -625,7 +626,7 @@ export default function InvoiceView() {
             <div style={LABEL}>From</div>
             <div style={{ fontWeight: 600 }}>{biz.name || 'Supermom for Hire'}</div>
             {bizCity && <div style={{ color: '#555' }}>{bizCity}</div>}
-            {biz.phone && <div style={{ color: '#888' }}>{biz.phone}</div>}
+            {biz.phone && <div style={{ color: '#888' }}>{formatPhone(biz.phone)}</div>}
             {biz.email && <div style={{ color: '#888' }}>{biz.email}</div>}
           </div>
 

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
+import { normalizePhone, formatPhone } from '../../lib/phone';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { useBusiness } from '../../data/useData';
@@ -38,7 +39,7 @@ export default function OnboardingWalkthrough() {
         name:        business.name        ?? '',
         first_name:  profile?.first_name  ?? '',
         last_name:   profile?.last_name   ?? '',
-        phone:       business.phone       ?? '',
+        phone:       formatPhone(business.phone),
         city:        business.city        ?? '',
         postal_code: business.postal_code ?? '',
         tax_enabled: business.tax_enabled ?? false,
@@ -110,7 +111,7 @@ export default function OnboardingWalkthrough() {
         supabase.from('businesses').update({
           name:        bizForm.name.trim(),
           owner_name:  `${bizForm.first_name.trim()} ${bizForm.last_name.trim()}`,
-          phone:       bizForm.phone.trim(),
+          phone:       normalizePhone(bizForm.phone),
           city:        bizForm.city.trim(),
           postal_code: bizForm.postal_code.trim() || null,
           tax_enabled: bizForm.tax_enabled,
@@ -226,7 +227,7 @@ export default function OnboardingWalkthrough() {
               </div>
               <div>
                 <label style={{ ...labelStyle, color: bizFieldErrors.phone ? '#fca5a5' : labelStyle.color }}>Phone</label>
-                <input value={bizForm.phone} onChange={e => setBizForm(f => ({ ...f, phone: e.target.value }))} placeholder="(416) 555-0100" style={{ ...inputStyle, borderColor: bizFieldErrors.phone ? 'rgba(252,165,165,0.6)' : inputStyle.border }} />
+                <input value={bizForm.phone} onChange={e => setBizForm(f => ({ ...f, phone: e.target.value }))} placeholder="(555) 555-5555" style={{ ...inputStyle, borderColor: bizFieldErrors.phone ? 'rgba(252,165,165,0.6)' : inputStyle.border }} />
               </div>
               <div style={{ display: 'flex', gap: 10 }}>
                 <div style={{ flex: 1 }}>

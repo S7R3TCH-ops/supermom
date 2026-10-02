@@ -1,5 +1,6 @@
 import { google } from 'googleapis';
 import { createClient } from '@supabase/supabase-js';
+import { formatPhone } from '../_lib/phone.js';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL,
@@ -57,7 +58,7 @@ export default async function handler(req, res) {
     const descLines = [];
     if (job.service_name) descLines.push(`Service: ${job.service_name}`);
     if (clientName)       descLines.push(`Client: ${clientName}`);
-    if (job.clients.phone) descLines.push(`Phone: ${job.clients.phone}`);
+    if (job.clients.phone) descLines.push(`Phone: ${formatPhone(job.clients.phone)}`);
     if (job.clients.email) descLines.push(`Email: ${job.clients.email}`);
     if (job.job_notes)    descLines.push('', job.job_notes);
     descLines.push('', 'Synced from Supermom for Hire');

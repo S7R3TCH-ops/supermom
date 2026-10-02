@@ -9,6 +9,7 @@
 // and the absence of any delete/cancel action. Tests pin all three.
 
 import { computeMoney, buildHoursPatch } from './jobMoney.js';
+import { formatPhone } from './phone.js';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -106,8 +107,8 @@ export async function getJobDetail(supabase, businessId, jobId) {
       },
       client: {
         name: [trim(c.first_name), trim(c.last_name)].filter(Boolean).join(' '),
-        phone: c.phone || null,
-        phone2: c.phone2 || null,
+        phone: formatPhone(c.phone) || null,
+        phone2: formatPhone(c.phone2) || null,
         email: c.email || null,
         address: addressOf(c),
         access_info: c.access_info || null,

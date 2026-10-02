@@ -8,6 +8,7 @@ import { torontoDateStr, torontoToUtc } from '../_lib/torontoTime.js';
 import { initGemini, generateText, GEMINI_MODEL } from '../_lib/gemini.js';
 import webpush from 'web-push';
 import { buildRequestEmailHtml } from '../_lib/brandedEmail.js';
+import { getJobDetail, editJob } from '../_lib/statlerJobs.js';
 
 // Actions that must work even when the AI kill-switch (app_settings.ai_enabled)
 // is off, and that never touch Gemini — living under /api/ai/ purely to
@@ -1379,118 +1380,40 @@ async function statlerTool(req, res, supabase) {
   }
 
 
+  if (action === 'supermom_get_job') {
+    const { job_id } = args || {};
+    const out = await getJobDetail(supabase, businessId, job_id);
+    return res.status(out.status).json(out.body);
+  }
+
   if (action === 'supermom_edit_schedule') {
-    let { job_id, date, time, description } = args || {};
+    const out = await editJob(supabase, businessId, args);
+    if (out.jobId) {
+      const { error: auditErr } = await supabase
+        .from('audit_log')
+        .insert({
+          business_id: businessId,
+          action: 'ai_action',
+          entity: 'jobs',
+          entity_id: out.jobId,
+          new_value: JSON.stringify({ action: 'edit_schedule', updates: out.updates, old: out.old })
+        });
+      if (auditErr) console.error('[statlerTool] Audit log failed:', auditErr.message);
 
-    if (!job_id) {
-      return res.status(400).json({ error: 'Missing job_id. Please use supermom_read_schedule first to find the job_id.' });
-    }
-
-    if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      return res.status(400).json({ error: 'date must be YYYY-MM-DD' });
-    }
-
-    if (time && typeof time === 'string') {
-      const match = time.toLowerCase().trim().match(/^(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)$/);
-      if (match) {
-        let hour = parseInt(match[1], 10);
-        if (hour >= 1 && hour <= 12) {
-          const min = match[2] || '00';
-          const ampm = match[3].replace(/\./g, '');
-          if (ampm === 'pm' && hour < 12) hour += 12;
-          if (ampm === 'am' && hour === 12) hour = 0;
-          time = `${hour.toString().padStart(2, '0')}:${min}`;
-        }
+      try {
+        const protocol = req.headers['x-forwarded-proto'] || 'http';
+        const host = req.headers['host'];
+        await fetch(`${protocol}://${host}/api/sync/gcal`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ jobId: out.jobId, action: 'upsert' })
+        });
+      } catch (e) {
+        console.error('[statlerTool] Failed to trigger GCal sync:', e.message);
       }
     }
-
-    if (time && !/^\d{2}:\d{2}(:\d{2})?$/.test(time)) {
-      return res.status(400).json({ error: 'time must be HH:MM or HH:MM:SS' });
-    }
-
-    const { data: job, error: jobErr } = await supabase
-      .from('jobs')
-      .select('id, client_id, scheduled_date, scheduled_time, job_status, service_name, job_notes, ai_context')
-      .eq('business_id', businessId)
-      .eq('id', job_id)
-      .is('deleted_at', null)
-      .single();
-
-    if (jobErr || !job) {
-      return res.status(404).json({ error: `Job not found with ID ${job_id}` });
-    }
-
-    if (date && date !== job.scheduled_date) {
-      const { data: existingJobs, error: existingErr } = await supabase
-        .from('jobs')
-        .select('id')
-        .eq('business_id', businessId)
-        .eq('client_id', job.client_id)
-        .eq('scheduled_date', date)
-        .is('deleted_at', null);
-
-      if (existingErr) {
-        return res.status(500).json({ error: 'Failed to check conflicts' });
-      }
-      if (existingJobs && existingJobs.length > 0 && existingJobs[0].id !== job.id) {
-        return res.status(200).json({ result: 'Conflict: This client already has a job scheduled on the new date.' });
-      }
-    }
-
-    const updates = {};
-    if (date) updates.scheduled_date = date;
-    if (time) updates.scheduled_time = time;
-    // Moved in time → drive estimates are for the old slot (same rule as JobDetailSheet).
-    const moved = (date && date !== job.scheduled_date) ||
-      (time && time.slice(0, 5) !== (job.scheduled_time || '').slice(0, 5));
-    if (moved && job.ai_context && ('drive_to' in job.ai_context || 'drive_to_live' in job.ai_context)) {
-      const { drive_to: _dt, drive_to_live: _dtl, ...restCtx } = job.ai_context;
-      updates.ai_context = restCtx;
-    }
-    if (description) {
-      const oldNotes = job.job_notes || '';
-      updates.job_notes = oldNotes ? `${oldNotes}\n\n[AI Edit]: ${description}` : `[AI Edit]: ${description}`;
-    }
-
-    if (Object.keys(updates).length === 0) {
-      return res.status(400).json({ error: 'No new date, time, or notes provided.' });
-    }
-
-    const { error: updateErr } = await supabase
-      .from('jobs')
-      .update(updates)
-      .eq('id', job.id);
-
-    if (updateErr) {
-      console.error('[statlerTool] update job failed:', updateErr.message);
-      return res.status(500).json({ error: 'Failed to update job' });
-    }
-
-    const { error: auditErr } = await supabase
-      .from('audit_log')
-      .insert({
-        business_id: businessId,
-        action: 'ai_action',
-        entity: 'jobs',
-        entity_id: job.id,
-        new_value: JSON.stringify({ action: 'edit_schedule', updates })
-      });
-
-    if (auditErr) console.error('[statlerTool] Audit log failed:', auditErr.message);
-
-    try {
-      const protocol = req.headers['x-forwarded-proto'] || 'http';
-      const host = req.headers['host'];
-      await fetch(`${protocol}://${host}/api/sync/gcal`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobId: job.id, action: 'upsert' })
-      });
-    } catch (e) {
-      console.error('[statlerTool] Failed to trigger GCal sync:', e.message);
-    }
-
-    return res.status(200).json({ result: `Successfully updated job ${job.id} with new schedule.` });
+    if (out.status >= 500) console.error('[statlerTool] edit_schedule failed:', out.body?.error);
+    return res.status(out.status).json(out.body);
   }
 
   if (action === 'supermom_add_client') {

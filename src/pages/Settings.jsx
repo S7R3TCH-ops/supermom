@@ -114,9 +114,9 @@ export default function Settings() {
         mileage_tracking:   business.ai_profile?.mileage_tracking ?? false,
         mileage_rate_per_km: business.ai_profile?.mileage_rate_per_km != null
           ? String(business.ai_profile.mileage_rate_per_km)
-          : '0.70',
-        worker_label:       business.ai_profile?.worker_labels?.worker ?? '🦸 Sidekick',
-        staff_label:        business.ai_profile?.worker_labels?.staff ?? '🌟 Wingmom',
+          : '',
+        worker_label:       business.ai_profile?.worker_labels?.worker ?? '',
+        staff_label:        business.ai_profile?.worker_labels?.staff ?? '',
         revenue_goal_monthly: business.ai_profile?.revenue_goal_monthly != null
           ? String(business.ai_profile.revenue_goal_monthly)
           : '',
@@ -215,10 +215,12 @@ export default function Settings() {
             ...(business?.ai_profile || {}),
             signature: form.signature,
             mileage_tracking: form.mileage_tracking,
-            mileage_rate_per_km: form.mileage_rate_per_km === '' ? 0.70 : Number(form.mileage_rate_per_km),
+            // Blank = unset; Finance falls back to the CRA rate at read time.
+            mileage_rate_per_km: form.mileage_rate_per_km === '' ? null : Number(form.mileage_rate_per_km),
             worker_labels: {
-              worker: form.worker_label || '🦸 Sidekick',
-              staff: form.staff_label || '🌟 Wingmom',
+              // Blank = unset; getWorkerLabel falls back to its built-in names at read time.
+              worker: form.worker_label.trim() || null,
+              staff: form.staff_label.trim() || null,
             },
             revenue_goal_monthly: form.revenue_goal_monthly === '' ? null : Number(form.revenue_goal_monthly),
           }
@@ -364,9 +366,9 @@ export default function Settings() {
     form.hst_number  !== (business.hst_number  ?? '') ||
     form.signature   !== (business.ai_profile?.signature ?? '') ||
     form.mileage_tracking !== (business.ai_profile?.mileage_tracking ?? false) ||
-    form.mileage_rate_per_km !== (business.ai_profile?.mileage_rate_per_km != null ? String(business.ai_profile.mileage_rate_per_km) : '0.70') ||
-    form.worker_label !== (business.ai_profile?.worker_labels?.worker ?? '🦸 Sidekick') ||
-    form.staff_label !== (business.ai_profile?.worker_labels?.staff ?? '🌟 Wingmom') ||
+    form.mileage_rate_per_km !== (business.ai_profile?.mileage_rate_per_km != null ? String(business.ai_profile.mileage_rate_per_km) : '') ||
+    form.worker_label !== (business.ai_profile?.worker_labels?.worker ?? '') ||
+    form.staff_label !== (business.ai_profile?.worker_labels?.staff ?? '') ||
     form.revenue_goal_monthly !== (business.ai_profile?.revenue_goal_monthly != null ? String(business.ai_profile.revenue_goal_monthly) : '')
   );
 
@@ -558,11 +560,12 @@ export default function Settings() {
                   type="number"
                   step="0.01"
                   value={form.mileage_rate_per_km}
+                  placeholder="0.00"
                   onChange={e => setForm({...form, mileage_rate_per_km: e.target.value})}
                   onFocus={e => e.target.select()}
                   style={inputStyle}
                 />
-                <div style={{ fontSize: 10, color: T.inkMuted, marginTop: 4 }}>2024 CRA rate: $0.70/km (first 5,000 km)</div>
+                <div style={{ fontSize: 10, color: T.inkMuted, marginTop: 4 }}>Leave blank to use the 2024 CRA rate: $0.70/km (first 5,000 km)</div>
               </div>
             )}
 
@@ -705,11 +708,11 @@ export default function Settings() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <div>
                   <label style={labelStyle}>Worker label</label>
-                  <input className="sm-input" value={form.worker_label} onChange={e => setForm({...form, worker_label: e.target.value})} placeholder="🦸 Sidekick" style={inputStyle} />
+                  <input className="sm-input" value={form.worker_label} onChange={e => setForm({...form, worker_label: e.target.value})} style={inputStyle} />
                 </div>
                 <div>
                   <label style={labelStyle}>Staff label</label>
-                  <input className="sm-input" value={form.staff_label} onChange={e => setForm({...form, staff_label: e.target.value})} placeholder="🌟 Wingmom" style={inputStyle} />
+                  <input className="sm-input" value={form.staff_label} onChange={e => setForm({...form, staff_label: e.target.value})} style={inputStyle} />
                 </div>
               </div>
             </div>

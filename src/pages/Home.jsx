@@ -10,6 +10,7 @@ import { usePostJobSheet } from '../context/PostJobSheetContext';
 import { useFinanceDetailSheet } from '../context/FinanceDetailSheetContext';
 import { generateCommandBrief, speakBrief, stopSpeaking } from '../data/ai';
 import { updateDailyRoutes, DEFAULT_HOME_ADDRESS } from '../lib/maps';
+import { routeNeedsUpdate, groupUpcomingByDay } from '../lib/routeChain';
 import { getBriefingMessage } from '../lib/briefingMessages';
 import { updateJob, setJobNoteResolved, patchJobAiContext } from '../data/jobsRepo';
 import { notifyDataChangedNow } from '../data/events';
@@ -336,6 +337,7 @@ export default function Home() {
 
   const locationFetchedRef = useRef(false);
   const routesFetchedRef = useRef(false);
+  const upcomingRoutesRef = useRef(new Set());
   const windowJobIdRef = useRef(null);
   const lastFetchTimeRef = useRef(0);
 
@@ -383,23 +385,36 @@ export default function Home() {
     // bake the town-level fallback into job 1's leg.
     if (!loading && !bizCtx?.loading && todayJobs.length > 0 && !routesFetchedRef.current) {
       const scheduledJobs = todayJobs.filter(j => j.status === 'Scheduled');
-      const needsUpdate = scheduledJobs.some((j, i) => {
-        const driveTo = j.ai_context?.drive_to;
-        if (driveTo === undefined) return true;
-        // Chain changed since this leg was computed (earlier job completed or
-        // cancelled) — recompute. Legs from before from_job_id existed recompute once.
-        if (driveTo && typeof driveTo === 'object') {
-          if (i === 0) return driveTo.from_job_id !== null || driveTo.from_home !== (homeAddress || DEFAULT_HOME_ADDRESS);
-          return driveTo.from_job_id !== scheduledJobs[i - 1].id;
-        }
-        return false;
-      });
-      if (needsUpdate) {
+      // Chain changed since a leg was computed (earlier job completed/cancelled,
+      // home address edited) — recompute.
+      if (routeNeedsUpdate(scheduledJobs, homeAddress || DEFAULT_HOME_ADDRESS)) {
         routesFetchedRef.current = true;
         updateDailyRoutes(scheduledJobs, homeAddress);
       }
     }
   }, [todayJobs, loading, homeAddress, bizCtx?.loading]);
+
+  // Upcoming days (next 7): baseline drive chain from home, so a future job already has
+  // a drive estimate before the day arrives. Live GPS only ever applies to today's
+  // jobs (fetchLocationDrives), so the owner's phone location never leaks into these.
+  // Each day computes at most once per mount (paid Distance Matrix call) and only when
+  // its stored legs are missing/stale.
+  useEffect(() => {
+    if (loading || bizCtx?.loading || !allJobs) return;
+    const todayKey = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Toronto' }).format(new Date());
+    const home = homeAddress || DEFAULT_HOME_ADDRESS;
+    for (const { date, jobs } of groupUpcomingByDay(
+      allJobs.map(j => ({ ...j, start: j.scheduled_at ? new Date(j.scheduled_at) : null })),
+      todayKey,
+      7,
+    )) {
+      const key = `${date}|${home}`;
+      if (upcomingRoutesRef.current.has(key)) continue;
+      if (!routeNeedsUpdate(jobs, home)) continue;
+      upcomingRoutesRef.current.add(key);
+      updateDailyRoutes(jobs, homeAddress);
+    }
+  }, [allJobs, loading, homeAddress, bizCtx?.loading]);
 
   useEffect(() => {
     if (!loading && todayJobs.length > 0 && !locationFetchedRef.current) {

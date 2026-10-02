@@ -178,7 +178,11 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 ---
 
 
-## Current version: 0.13.110 - Oct 2, 2026 (flat-rate service keeps catalog duration)
+## Current version: 0.13.111 - Oct 2, 2026 (baseline drive chain for upcoming days)
+
+**v0.13.111**: Joel: live GPS belongs to the day of the job; jobs on later days should baseline from the owner's home address. Live GPS was already today-only (`fetchLocationDrives`), but later-day jobs had no `drive_to` at all until their day, so Calendar/JobDetailSheet showed nothing. New Home effect computes the static home-based chain (`updateDailyRoutes`, one Distance Matrix call per day) for Scheduled jobs on each of the next 7 days, only when a day's stored legs are missing/stale (home address edited, previous job changed), at most once per day per mount (`upcomingRoutesRef`, paid-API guard). Pure helpers in new `src/lib/routeChain.js` (`routeNeedsUpdate`, extracted from the today effect unchanged, and `groupUpcomingByDay`), tests in `routeChain.test.js` (349/349). Quota: ~(n+1)^2 elements per day-group, once per stale day, against the 500/day cap; first load after this ships fills the week in one burst. Runs when Home opens (not at booking time). Not device-checked; 2 pre-existing `react-hooks` lint errors in Home.jsx unchanged.
+
+## Previous version: 0.13.110 - Oct 2, 2026 (flat-rate service keeps catalog duration)
 
 **v0.13.110**: Sandra's bug: a flat-rate service with catalog duration 3.5h booked as 4h. Cause (code-read, not confirmed against her DB row): `NewJobSheet.jsx` `onPickService` overwrote the catalog default with the client's last-visit duration and then a Gemini estimate (`estimate-duration`, which is never told the catalog default), snapped to the half hour. Fix: non-Hourly services use `default_duration` exactly and skip history/AI; hourly unchanged. Also `jobsRepo.js` `recordPayment` auto-learning (rewrites `services.default_duration` from the avg of completed jobs) now runs for Hourly jobs only, so a flat service's catalog duration can't drift. **If Sandra's catalog already shows 4h, auto-learning had already rewritten it: set it back to 3.5 in the Service Catalog.** Not device-checked.
 

@@ -169,7 +169,7 @@ export default function NewClientSheet({ onClose, onCreated }) {
           </div>
           <div>
             <label htmlFor="nc-street" style={label}>Street</label>
-            <input id="nc-street" className="sm-input" style={input} value={street} onChange={e => setStreet(e.target.value)} placeholder="12 Main St" />
+            <input id="nc-street" className="sm-input" style={input} value={street} onChange={e => setStreet(e.target.value)} placeholder="Street address" />
           </div>
           <div>
             <label htmlFor="nc-city" style={label}>City</label>
@@ -177,7 +177,7 @@ export default function NewClientSheet({ onClose, onCreated }) {
           </div>
           <div>
             <label htmlFor="nc-postal" style={label}>Postal code</label>
-            <input id="nc-postal" className="sm-input" style={input} value={postalCode} onChange={e => setPostalCode(e.target.value)} placeholder="L7G 4S5" />
+            <input id="nc-postal" className="sm-input" style={input} value={postalCode} onChange={e => setPostalCode(e.target.value)} placeholder="A1A 1A1" />
           </div>
 
           <div>

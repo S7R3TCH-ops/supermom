@@ -208,16 +208,16 @@ export default function OnboardingWalkthrough() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14, textAlign: 'left' }}>
               <div>
                 <label style={{ ...labelStyle, color: bizFieldErrors.name ? '#fca5a5' : labelStyle.color }}>Business Name</label>
-                <input value={bizForm.name} onChange={e => setBizForm(f => ({ ...f, name: e.target.value }))} placeholder="Supermom for Hire" style={{ ...inputStyle, borderColor: bizFieldErrors.name ? 'rgba(252,165,165,0.6)' : inputStyle.border }} />
+                <input value={bizForm.name} onChange={e => setBizForm(f => ({ ...f, name: e.target.value }))} style={{ ...inputStyle, borderColor: bizFieldErrors.name ? 'rgba(252,165,165,0.6)' : inputStyle.border }} />
               </div>
               <div style={{ display: 'flex', gap: 10 }}>
                 <div style={{ flex: 1 }}>
                   <label style={{ ...labelStyle, color: bizFieldErrors.first_name ? '#fca5a5' : labelStyle.color }}>First Name</label>
-                  <input value={bizForm.first_name} onChange={e => setBizForm(f => ({ ...f, first_name: e.target.value }))} placeholder="Sandra" style={{ ...inputStyle, borderColor: bizFieldErrors.first_name ? 'rgba(252,165,165,0.6)' : inputStyle.border }} />
+                  <input value={bizForm.first_name} onChange={e => setBizForm(f => ({ ...f, first_name: e.target.value }))} style={{ ...inputStyle, borderColor: bizFieldErrors.first_name ? 'rgba(252,165,165,0.6)' : inputStyle.border }} />
                 </div>
                 <div style={{ flex: 1 }}>
                   <label style={{ ...labelStyle, color: bizFieldErrors.last_name ? '#fca5a5' : labelStyle.color }}>Last Name</label>
-                  <input value={bizForm.last_name} onChange={e => setBizForm(f => ({ ...f, last_name: e.target.value }))} placeholder="Smith" style={{ ...inputStyle, borderColor: bizFieldErrors.last_name ? 'rgba(252,165,165,0.6)' : inputStyle.border }} />
+                  <input value={bizForm.last_name} onChange={e => setBizForm(f => ({ ...f, last_name: e.target.value }))} style={{ ...inputStyle, borderColor: bizFieldErrors.last_name ? 'rgba(252,165,165,0.6)' : inputStyle.border }} />
                 </div>
               </div>
               <div>
@@ -231,11 +231,11 @@ export default function OnboardingWalkthrough() {
               <div style={{ display: 'flex', gap: 10 }}>
                 <div style={{ flex: 1 }}>
                   <label style={{ ...labelStyle, color: bizFieldErrors.city ? '#fca5a5' : labelStyle.color }}>City</label>
-                  <input value={bizForm.city} onChange={e => setBizForm(f => ({ ...f, city: e.target.value }))} placeholder="Georgetown" style={{ ...inputStyle, borderColor: bizFieldErrors.city ? 'rgba(252,165,165,0.6)' : inputStyle.border }} />
+                  <input value={bizForm.city} onChange={e => setBizForm(f => ({ ...f, city: e.target.value }))} style={{ ...inputStyle, borderColor: bizFieldErrors.city ? 'rgba(252,165,165,0.6)' : inputStyle.border }} />
                 </div>
                 <div style={{ width: 110 }}>
                   <label style={labelStyle}>Postal Code</label>
-                  <input value={bizForm.postal_code} onChange={e => setBizForm(f => ({ ...f, postal_code: e.target.value }))} placeholder="L7G 4S5" style={inputStyle} />
+                  <input value={bizForm.postal_code} onChange={e => setBizForm(f => ({ ...f, postal_code: e.target.value }))} placeholder="A1A 1A1" style={inputStyle} />
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', borderRadius: 10, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)' }}>

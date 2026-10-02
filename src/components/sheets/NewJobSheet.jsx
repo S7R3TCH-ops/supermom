@@ -14,6 +14,7 @@ import NewClientSheet from './NewClientSheet';
 import { calculateEstimatedDuration } from '../../data/ai';
 import { fetchSmartDurationEstimate } from '../../data/ai';
 import { getWorkerLabel } from '../../lib/labels';
+import { DEFAULT_HOME_ADDRESS } from '../../lib/maps';
 import { buildFinancialPatch } from '../../lib/jobDraftPolicy';
 import { useKeyboardFocus } from '../../hooks/useKeyboardFocus';
 import GrabBar from '../ui/GrabBar';
@@ -157,10 +158,15 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
   useEffect(() => {
     const dest = selectedClient?.address;
     if (!dest) { setDriveTime(null); return; }
+    // Drive estimate starts from the business's own address (street if set), not a
+    // hardcoded town — same origin the Home drive chain uses.
+    const origin = business?.address
+      ? [business.address, business.city, business.province, business.postal_code].filter(Boolean).join(', ')
+      : DEFAULT_HOME_ADDRESS;
     let cancelled = false;
     setDriveTimeLoading(true);
     setDriveTime(null);
-    fetch(`/api/maps?type=distance&origins=${encodeURIComponent('Georgetown, ON, Canada')}&destinations=${encodeURIComponent(dest)}&departure_time=now&avoid=tolls`)
+    fetch(`/api/maps?type=distance&origins=${encodeURIComponent(origin)}&destinations=${encodeURIComponent(dest)}&departure_time=now&avoid=tolls`)
       .then(r => r.json())
       .then(data => {
         if (cancelled) return;
@@ -170,7 +176,7 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
       .catch(() => { if (!cancelled) setDriveTime(null); })
       .finally(() => { if (!cancelled) setDriveTimeLoading(false); });
     return () => { cancelled = true; };
-  }, [selectedClient?.address]);
+  }, [selectedClient?.address, business?.address, business?.city, business?.province, business?.postal_code]);
 
   const scheduledISO = useMemo(() => composeTorontoISO(date, time), [date, time]);
   const isPastBooking = useMemo(() => {

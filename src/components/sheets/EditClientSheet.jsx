@@ -245,7 +245,7 @@ export default function EditClientSheet({ clientId, onClose }) {
             </div>
             <div>
               <label style={labelStyle}>Street</label>
-              <input className="sm-input" style={inputStyle} value={street} onChange={e => setStreet(e.target.value)} placeholder="12 Main St" />
+              <input className="sm-input" style={inputStyle} value={street} onChange={e => setStreet(e.target.value)} placeholder="Street address" />
             </div>
             <div>
               <label style={labelStyle}>City</label>
@@ -253,7 +253,7 @@ export default function EditClientSheet({ clientId, onClose }) {
             </div>
             <div>
               <label style={labelStyle}>Postal code</label>
-              <input className="sm-input" style={inputStyle} value={postalCode} onChange={e => setPostalCode(e.target.value)} placeholder="L7G 4S5" />
+              <input className="sm-input" style={inputStyle} value={postalCode} onChange={e => setPostalCode(e.target.value)} placeholder="A1A 1A1" />
             </div>
 
             {/* Status */}

@@ -178,7 +178,11 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 ---
 
 
-## Current version: 0.13.111 - Oct 2, 2026 (baseline drive chain for upcoming days)
+## Current version: 0.13.112 - Oct 2, 2026 (placeholders are format hints only, no baked-in town)
+
+**v0.13.112**: Joel's rule: a text box shows placeholder text only when it demonstrates a required format, never a sample identity or location. Removed the sample-data placeholders in `OnboardingWalkthrough.jsx` (business name, first/last name, city "Georgetown"); postal placeholder is now `A1A 1A1` (was a real Georgetown code) in onboarding, NewClientSheet and EditClientSheet; client street placeholder is now "Street address". Related real bug: `NewJobSheet.jsx`'s new-job drive-time preview hardcoded `'Georgetown, ON, Canada'` as origin; it now uses the business address (same string the Home chain builds), falling back to `DEFAULT_HOME_ADDRESS`. Left alone on purpose, ask Joel: phone placeholders (three different formats across sheets), `e.g.` content hints (service name, expense notes), the mileage-rate prefill `0.70`, and the team-label defaults `🦸 Sidekick`/`🌟 Wingmom` (real prefilled values, not placeholders). Settings → City itself has no default in code; if it shows Georgetown it is the saved `businesses.city`. 349/349, build clean, not device-checked.
+
+## Previous version: 0.13.111 - Oct 2, 2026 (baseline drive chain for upcoming days)
 
 **v0.13.111**: Joel: live GPS belongs to the day of the job; jobs on later days should baseline from the owner's home address. Live GPS was already today-only (`fetchLocationDrives`), but later-day jobs had no `drive_to` at all until their day, so Calendar/JobDetailSheet showed nothing. New Home effect computes the static home-based chain (`updateDailyRoutes`, one Distance Matrix call per day) for Scheduled jobs on each of the next 7 days, only when a day's stored legs are missing/stale (home address edited, previous job changed), at most once per day per mount (`upcomingRoutesRef`, paid-API guard). Pure helpers in new `src/lib/routeChain.js` (`routeNeedsUpdate`, extracted from the today effect unchanged, and `groupUpcomingByDay`), tests in `routeChain.test.js` (349/349). Quota: ~(n+1)^2 elements per day-group, once per stale day, against the 500/day cap; first load after this ships fills the week in one burst. Runs when Home opens (not at booking time). Not device-checked; 2 pre-existing `react-hooks` lint errors in Home.jsx unchanged.
 

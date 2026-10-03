@@ -178,7 +178,11 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin) → builds to `/manifest
 ---
 
 
-## Current version: 0.13.114 - Oct 2, 2026 (Settings no longer prefills mileage rate / team labels)
+## Current version: 0.13.115 - Oct 3, 2026 (Statler voice booking saves service + duration)
+
+**v0.13.115**: `api/ai/[action].js` `supermom_schedule_job` now accepts optional `service` and `duration_hours`. Before, every voice-booked job saved `service_name: 'Cleaning'` with no duration (found on Joel's QA call 2026-10-03: he booked "assist, 1 hour" and had to pick the service by hand; Statler also falsely said the duration was noted). After the insert the handler applies them through the same validated `editJob` path as `supermom_edit_schedule` (service must match one of her active services, duration recalculates an hourly total); an unmatched service is reported and does not block the duration. The tool result now reads back what actually saved (time, service, duration, anything "NOT applied", defaults called out as defaults) so Statler repeats facts, not guesses. Tests: 3 new in `api/_lib/statlerJobs.test.js` (360/360 pass, lint clean). Bridge side (`tools/supermom_schedule_job.js` + `sandra.md`) ships separately. Not exercised against prod. The 2026-10-04 9:00 AM "Oscar Grouch" QA job from that call is still in Sandra's data with service Cleaning, delete or fix by hand.
+
+## Previous version: 0.13.114 - Oct 2, 2026 (Settings no longer prefills mileage rate / team labels)
 
 **v0.13.114**: Settings → mileage rate (`0.70`) and team labels (`🦸 Sidekick`/`🌟 Wingmom`) were prefilled into the text boxes whenever nothing was saved, and saving wrote them into `ai_profile` as if the owner had chosen them. Now the boxes start empty unless a value was saved, and blank saves as `null` (mileage rate, labels). Runtime fallbacks are unchanged and still apply at read time: `Finance.jsx` `?? 0.70`, `labels.js` `getWorkerLabel` falls back to the built-in names. So saved values (Sandra's) display as before; a business that never set them shows empty boxes and the app behaves as before. Label placeholders removed; mileage placeholder `0.00` with "Leave blank to use the 2024 CRA rate" helper. Left on purpose: `e.g.` content hints (Joel decides later), the new-service form's `default_duration: '2'` prefill in `ServiceCatalogSheet.jsx` (save already falls back to 2h), `labels.js` Sandra-branded fallback names (a business that never saved labels would otherwise show a blank/undefined label). 357/357, build clean, not device-checked.
 

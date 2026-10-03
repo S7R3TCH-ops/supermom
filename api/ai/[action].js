@@ -1216,7 +1216,7 @@ async function statlerTool(req, res, supabase) {
   }
 
   if (action === 'supermom_schedule_job') {
-    let { clientName, date, time, description } = args || {};
+    let { clientName, date, time, description, service, duration_hours } = args || {};
     if (!clientName || !date) {
       return res.status(400).json({ error: 'Missing clientName or date' });
     }
@@ -1377,7 +1377,42 @@ async function statlerTool(req, res, supabase) {
       console.error('[statlerTool] Failed to trigger GCal sync:', e.message);
     }
 
-      return res.status(200).json({ result: `Successfully scheduled job for ${clientName} on ${date}. Job ID: ${newJob.id}` });
+    // Service and duration go through the same validated path as supermom_edit_schedule (service must match
+    // one of her services; duration recalculates an hourly total). The insert above defaults the service to
+    // 'Cleaning' with no duration, so read back what actually saved and say so; Statler repeats only this.
+    const wantsService = typeof service === 'string' && service.trim() !== '';
+    const wantsDuration = duration_hours !== undefined && duration_hours !== null && duration_hours !== '';
+    const problems = [];
+    let serviceFailed = false;
+    if (wantsService || wantsDuration) {
+      const edit = await editJob(supabase, businessId, {
+        job_id: newJob.id,
+        ...(wantsService ? { service } : {}),
+        ...(wantsDuration ? { duration_hours } : {}),
+      });
+      if (!edit.jobId) {
+        serviceFailed = wantsService;
+        problems.push(edit.body?.error || edit.body?.result || 'service/duration not applied');
+        // A service that did not match writes nothing, so still try the duration on its own.
+        if (wantsService && wantsDuration) {
+          const durOnly = await editJob(supabase, businessId, { job_id: newJob.id, duration_hours });
+          if (!durOnly.jobId) problems.push(durOnly.body?.error || durOnly.body?.result || 'duration not applied');
+        }
+      }
+    }
+
+    const { data: saved } = await supabase
+      .from('jobs')
+      .select('scheduled_time, service_name, estimated_hours')
+      .eq('id', newJob.id)
+      .maybeSingle();
+    const savedBits = [
+      `time ${(saved?.scheduled_time || time || '12:00:00').slice(0, 5)}${time ? '' : ' (default, none given)'}`,
+      `service ${saved?.service_name || 'Cleaning'}${wantsService && !serviceFailed ? '' : ' (default, not set by phone)'}`,
+      saved?.estimated_hours ? `duration ${saved.estimated_hours} hours` : 'no duration set',
+    ];
+    const warn = problems.length ? ` NOT applied: ${problems.join(' ')}` : '';
+    return res.status(200).json({ result: `Successfully scheduled job for ${clientName} on ${date}. Saved as: ${savedBits.join(', ')}.${warn} Job ID: ${newJob.id}` });
   }
 
 

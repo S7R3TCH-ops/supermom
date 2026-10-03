@@ -31,6 +31,14 @@ function makeQuery(table) {
     insert: (row) => ((q.op = 'insert'), (q.patch = row), api),
     delete: () => ((q.op = 'delete'), api),
     maybeSingle: () => Promise.resolve({ data: rows()[0] ?? null, error: null }),
+    // insert(...).select().single(): store the row (with the DB's column defaults) and return it
+    single: () => {
+      if (q.op !== 'insert') return Promise.resolve({ data: rows()[0] ?? null, error: null });
+      const row = { id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd', pricing_type: 'Hourly', hourly_rate: 40, estimated_hours: null, deleted_at: null, ...q.patch };
+      (db[table] ||= []).push(row);
+      writes.push({ table, op: 'insert', patch: q.patch });
+      return Promise.resolve({ data: row, error: null });
+    },
     then: (resolve, reject) => {
       let result;
       if (q.op === 'update') {
@@ -258,5 +266,51 @@ describe('statler-tool router: no delete path exists', () => {
     expect((await call({ action: 'supermom_get_job', args: { job_id: JOB }, businessId: BIZ }, 'Bearer wrong')).code).toBe(401);
     expect((await call({ action: 'supermom_edit_schedule', args: { job_id: JOB, date: '2026-10-08' }, businessId: BIZ }, '')).code).toBe(401);
     expect(writes).toHaveLength(0);
+  });
+});
+
+describe('supermom_schedule_job saves service and duration and reports what saved', () => {
+  process.env.VITE_SUPABASE_URL = 'http://x';
+  process.env.SUPABASE_SERVICE_ROLE_KEY = 'k';
+  process.env.STATLER_SECRET = 's3cret';
+  const NEW_JOB = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+
+  const book = async (args) => {
+    db.clients = [{ id: 'c9', business_id: BIZ, first_name: 'Oscar', last_name: 'Grouch' }];
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({}));
+    const out = {};
+    const res = { status: (c) => ((out.code = c), res), json: (b) => ((out.body = b), res) };
+    await handler(
+      { method: 'POST', query: { action: 'statler-tool' }, headers: { authorization: 'Bearer s3cret', host: 'x' },
+        body: { action: 'supermom_schedule_job', args: { clientName: 'Oscar Grouch', date: '2026-10-04', time: '9:00 am', ...args }, businessId: BIZ } },
+      res,
+    );
+    return out;
+  };
+
+  it('applies a matching service and the duration, and says so', async () => {
+    const out = await book({ service: 'closet organizing', duration_hours: 1 });
+    expect(out.code).toBe(200);
+    const job = jobRow(NEW_JOB);
+    expect(job.service_name).toBe('Closet Organizing');
+    expect(job.service_id).toBe('s1');
+    expect(job.estimated_hours).toBe(1);
+    expect(out.body.result).toMatch(/time 09:00/);
+    expect(out.body.result).toMatch(/service Closet Organizing, duration 1 hours/);
+    expect(out.body.result).not.toMatch(/NOT applied/);
+  });
+
+  it('an unknown service is reported, the duration still applies', async () => {
+    const out = await book({ service: 'assist', duration_hours: 1 });
+    expect(out.code).toBe(200);
+    expect(jobRow(NEW_JOB).estimated_hours).toBe(1);
+    expect(out.body.result).toMatch(/service Cleaning \(default, not set by phone\)/);
+    expect(out.body.result).toMatch(/NOT applied: .*No service matches "assist"/);
+    expect(out.body.result).toMatch(/duration 1 hours/);
+  });
+
+  it('with no service or duration it says the defaults were used', async () => {
+    const out = await book({});
+    expect(out.body.result).toMatch(/service Cleaning \(default, not set by phone\), no duration set/);
   });
 });

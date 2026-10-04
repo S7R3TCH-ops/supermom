@@ -8,7 +8,7 @@ import { torontoDateStr, torontoToUtc } from '../_lib/torontoTime.js';
 import { initGemini, generateText, GEMINI_MODEL } from '../_lib/gemini.js';
 import webpush from 'web-push';
 import { buildRequestEmailHtml } from '../_lib/brandedEmail.js';
-import { getJobDetail, editJob } from '../_lib/statlerJobs.js';
+import { getJobDetail, editJob, matchServices } from '../_lib/statlerJobs.js';
 import { normalizePhone } from '../_lib/phone.js';
 
 // Actions that must work even when the AI kill-switch (app_settings.ai_enabled)
@@ -1216,7 +1216,7 @@ async function statlerTool(req, res, supabase) {
   }
 
   if (action === 'supermom_schedule_job') {
-    let { clientName, date, time, description, service, duration_hours } = args || {};
+    let { clientName, date, time, description, service, unlisted_service, duration_hours } = args || {};
     if (!clientName || !date) {
       return res.status(400).json({ error: 'Missing clientName or date' });
     }
@@ -1329,10 +1329,15 @@ async function statlerTool(req, res, supabase) {
       return res.status(200).json({ result: 'A job is already scheduled for this client on this date.', existingJobId: existingJobs[0].id });
     }
 
-    // Her business has no default service (she is not a cleaning company), so a job is only booked against one of
-    // her real, active services. No service given, or no/ambiguous match: nothing is booked and the result lists
-    // her services so Statler can ask which one.
-    const serviceQuery = typeof service === 'string' ? service.trim().replace(/[^\p{L}\p{N} \-'&]/gu, '') : '';
+    // Her business has no default service (she is not a cleaning company). Rules, in order:
+    //  - `service` names one of her services exactly -> booked against it.
+    //  - `service` is close to one or more of hers -> NOT booked yet; Statler confirms which with the caller and calls again.
+    //  - `unlisted_service` (what she said, not one of her services) -> booked with no service; the words go in the job notes
+    //    so she can create the service in the app afterwards.
+    //  - nothing given -> NOT booked; Statler asks, and the result lists her services.
+    const cleanSvc = (v) => (typeof v === 'string' ? v.trim().replace(/[^\p{L}\p{N} \-'&]/gu, '') : '');
+    const serviceQuery = cleanSvc(service);
+    const unlisted = cleanSvc(unlisted_service);
     const { data: svcRows, error: svcErr } = await supabase
       .from('services')
       .select('id, name')
@@ -1343,22 +1348,29 @@ async function statlerTool(req, res, supabase) {
       return res.status(500).json({ error: 'Failed to look up services' });
     }
     const serviceNames = (svcRows || []).map((r) => r.name);
-    const listed = serviceNames.length ? `Her services: ${serviceNames.join(', ')}.` : 'She has no services set up in the app.';
-    if (!serviceQuery) {
+    const listed = serviceNames.length ? `Her services: ${serviceNames.join(', ')}.` : 'She has no services set up in the app yet.';
+    let chosenService = null;
+    if (serviceQuery) {
+      const found = matchServices(serviceQuery, svcRows || []);
+      if (found.exact) {
+        chosenService = found.exact;
+      } else if (found.near.length) {
+        const names = found.near.map((r) => `"${r.name}"`).join(' or ');
+        return res.status(200).json({
+          result: `Not booked yet: "${serviceQuery}" is not exactly one of her services. Closest: ${names}. Ask her to confirm which one she means ("${found.near[0].name}, right?"). If she says yes, call this tool again with that exact service name. If she says it is something else or a new service, call again with unlisted_service set to what she said and no service.`,
+          candidates: found.near.map((r) => r.name),
+        });
+      } else {
+        return res.status(200).json({
+          result: `Not booked yet: nothing close to "${serviceQuery}" is one of her services. ${listed} If it is a new service, call this tool again with unlisted_service set to what she said (and no service): it books the job with no service and puts her words in the job notes so she can add the service in the app. If she meant one of hers, call again with that exact name.`,
+          candidates: serviceNames,
+        });
+      }
+    } else if (!unlisted) {
       return res.status(200).json({ result: `Not booked: no service was given. Ask which service this job is for. ${listed}`, candidates: serviceNames });
     }
-    const exactSvc = (svcRows || []).filter((r) => r.name.toLowerCase() === serviceQuery.toLowerCase());
-    const looseSvc = (svcRows || []).filter((r) => r.name.toLowerCase().includes(serviceQuery.toLowerCase()));
-    const svcMatches = exactSvc.length ? exactSvc : looseSvc;
-    if (svcMatches.length !== 1) {
-      return res.status(200).json({
-        result: `Not booked: ${svcMatches.length === 0 ? `no service matches "${serviceQuery}"` : `${svcMatches.length} services match "${serviceQuery}"`}. Ask which one. ${listed}`,
-        candidates: serviceNames,
-      });
-    }
-    const chosenService = svcMatches[0];
 
-    const aiNotes = `⚠️ BOOKED VIA AI VOICE ASSISTANT - verify with client if unexpected.\n\n${description || ''}`;
+    const aiNotes = `⚠️ BOOKED VIA AI VOICE ASSISTANT - verify with client if unexpected.\n\n${unlisted && !chosenService ? `Service said on the phone (not one of her services yet, add it in the app): ${unlisted}\n\n` : ''}${description || ''}`;
 
     const { data: newJob, error: jobErr } = await supabase
       .from('jobs')
@@ -1369,8 +1381,8 @@ async function statlerTool(req, res, supabase) {
         scheduled_time: time || '12:00:00',
         job_notes: aiNotes.trim(),
         job_status: 'Scheduled',
-        service_id: chosenService.id,
-        service_name: chosenService.name
+        service_id: chosenService ? chosenService.id : null,
+        service_name: chosenService ? chosenService.name : null
       })
       .select('id')
       .single();
@@ -1423,7 +1435,7 @@ async function statlerTool(req, res, supabase) {
       .maybeSingle();
     const savedBits = [
       `time ${(saved?.scheduled_time || time || '12:00:00').slice(0, 5)}${time ? '' : ' (default, none given)'}`,
-      `service ${saved?.service_name || chosenService.name}`,
+      chosenService ? `service ${saved?.service_name || chosenService.name}` : `no service set (she said "${unlisted}", it is in the job notes; she can add that service in the app)`,
       saved?.estimated_hours ? `duration ${saved.estimated_hours} hours` : 'no duration set',
     ];
     const warn = durationProblem ? ` Duration NOT applied: ${durationProblem}` : '';

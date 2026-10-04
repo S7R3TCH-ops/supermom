@@ -63,7 +63,7 @@ const fakeSupabase = { from: (t) => makeQuery(t) };
 
 vi.mock('@supabase/supabase-js', () => ({ createClient: () => fakeSupabase }));
 
-import { getJobDetail, editJob, EDITABLE_ARGS } from './statlerJobs.js';
+import { getJobDetail, editJob, matchServices, EDITABLE_ARGS } from './statlerJobs.js';
 import handler from '../ai/[action].js';
 
 const BIZ = '11111111-1111-4111-8111-111111111111';
@@ -290,8 +290,8 @@ describe('supermom_schedule_job saves service and duration and reports what save
 
   const jobsInserted = () => writes.filter((w) => w.table === 'jobs' && w.op === 'insert');
 
-  it('books against her real service with the duration, and says what saved', async () => {
-    const out = await book({ service: 'closet organizing', duration_hours: 1 });
+  it('an exact service name (any case) books against it with the duration, and says what saved', async () => {
+    const out = await book({ service: 'closet ORGANIZING', duration_hours: 1 });
     expect(out.code).toBe(200);
     const job = jobRow(NEW_JOB);
     expect(job.service_name).toBe('Closet Organizing');
@@ -302,25 +302,64 @@ describe('supermom_schedule_job saves service and duration and reports what save
     expect(out.body.result).not.toMatch(/NOT applied/);
   });
 
-  it('an unknown service books nothing and lists her real services', async () => {
-    const out = await book({ service: 'assist', duration_hours: 1 });
-    expect(out.code).toBe(200);
+  it('a near-miss ("organising", "closet") books nothing and asks Statler to confirm the closest match', async () => {
+    for (const said of ['closet organising', 'closet']) {
+      const out = await book({ service: said });
+      expect(out.body.result).toMatch(/^Not booked yet:.*Closest: "Closet Organizing"/);
+      expect(out.body.result).toMatch(/Closet Organizing, right\?/);
+    }
     expect(jobsInserted()).toHaveLength(0);
-    expect(out.body.result).toMatch(/^Not booked: no service matches "assist"/);
+  });
+
+  it('a name that fits two services books nothing and offers both', async () => {
+    const out = await book({ service: 'organizing' });
+    expect(jobsInserted()).toHaveLength(0);
+    expect(out.body.candidates).toEqual(expect.arrayContaining(['Closet Organizing', 'Garage Organizing']));
+    expect(out.body.result).toMatch(/Closet Organizing" or "Garage Organizing|Garage Organizing" or "Closet Organizing/);
+  });
+
+  it('nothing close: books nothing yet, lists her services, explains the new-service path', async () => {
+    const out = await book({ service: 'assist' });
+    expect(jobsInserted()).toHaveLength(0);
+    expect(out.body.result).toMatch(/^Not booked yet: nothing close to "assist"/);
     expect(out.body.result).toMatch(/Closet Organizing, Garage Organizing, Errands/);
+    expect(out.body.result).toMatch(/unlisted_service/);
     expect(out.body.result).not.toMatch(/Old Service/);
   });
 
-  it('no service given books nothing, never defaults to Cleaning, and asks', async () => {
-    const out = await book({});
-    expect(jobsInserted()).toHaveLength(0);
-    expect(out.body.result).toMatch(/^Not booked: no service was given/);
+  it('unlisted_service books with no service, her words in the job notes, and the duration still applies', async () => {
+    const out = await book({ unlisted_service: 'assist', duration_hours: 1, description: 'Bring boxes' });
+    expect(out.code).toBe(200);
+    expect(jobsInserted()).toHaveLength(1);
+    const job = jobRow(NEW_JOB);
+    expect(job.service_id).toBeNull();
+    expect(job.service_name).toBeNull();
+    expect(job.job_notes).toMatch(/not one of her services yet.*: assist/);
+    expect(job.job_notes).toMatch(/Bring boxes/);
+    expect(job.estimated_hours).toBe(1);
+    expect(out.body.result).toMatch(/no service set \(she said "assist"/);
+    expect(out.body.result).toMatch(/duration 1 hours/);
     expect(JSON.stringify(db.jobs)).not.toMatch(/Cleaning/);
   });
 
-  it('an ambiguous service books nothing', async () => {
-    const out = await book({ service: 'organizing' });
+  it('no service at all books nothing and asks', async () => {
+    const out = await book({});
     expect(jobsInserted()).toHaveLength(0);
-    expect(out.body.result).toMatch(/^Not booked: 2 services match "organizing"/);
+    expect(out.body.result).toMatch(/^Not booked: no service was given/);
+  });
+});
+
+describe('matchServices', () => {
+  const svcs = [{ id: '1', name: 'Closet Organizing' }, { id: '2', name: 'Garage Organizing' }, { id: '3', name: 'Errands' }, { id: '4', name: 'Hourly Assist' }];
+  it('exact ignores case and punctuation', () => {
+    expect(matchServices('closet-organizing', svcs).exact?.id).toBe('1');
+  });
+  it('typos and plurals are near, not exact', () => {
+    expect(matchServices('errand', svcs)).toMatchObject({ exact: null, near: [{ id: '3' }] });
+    expect(matchServices('closet organising', svcs).near[0].id).toBe('1');
+    expect(matchServices('assist', svcs).near[0].id).toBe('4');
+  });
+  it('unrelated words match nothing', () => {
+    expect(matchServices('piano lessons', svcs).near).toEqual([]);
   });
 });

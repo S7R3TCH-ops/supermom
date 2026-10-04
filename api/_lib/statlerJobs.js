@@ -276,3 +276,37 @@ export async function editJob(supabase, businessId, rawArgs) {
     body: { result: `Done: ${notes.join('; ')}.` },
   };
 }
+
+
+// ---- fuzzy service lookup for voice booking -------------------------------------------------------------------
+// "organising" vs "Organizing", "closet" vs "Closet Organizing". exact = same name ignoring case/punctuation;
+// near = plausible matches Statler must confirm with the caller before booking (best first).
+const norm = (t) => String(t || '').toLowerCase().normalize('NFKD').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+const stem = (w) => w.replace(/(ing|es|s)$/, '');
+function lev(a, b) {
+  const dp = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+  for (let j = 1; j <= b.length; j++) dp[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) {
+    dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  }
+  return dp[a.length][b.length];
+}
+const sim = (a, b) => (a === b ? 1 : 1 - lev(a, b) / Math.max(a.length, b.length, 1));
+function serviceScore(query, name) {
+  const q = norm(query), n = norm(name);
+  if (!q || !n) return 0;
+  const qt = q.split(' ').map(stem).filter(Boolean), nt = n.split(' ').map(stem).filter(Boolean);
+  const perToken = qt.reduce((sum, w) => sum + Math.max(...nt.map((x) => sim(w, x))), 0) / qt.length;
+  return Math.max(sim(q, n), perToken);
+}
+export const SERVICE_NEAR_THRESHOLD = 0.7;
+export function matchServices(query, services) {
+  const q = norm(query);
+  const exact = (services || []).filter((s) => norm(s.name) === q);
+  if (exact.length === 1) return { exact: exact[0], near: [] };
+  const scored = (services || [])
+    .map((s) => ({ s, score: serviceScore(query, s.name) }))
+    .filter((x) => x.score >= SERVICE_NEAR_THRESHOLD)
+    .sort((a, b) => b.score - a.score);
+  return { exact: null, near: scored.slice(0, 3).map((x) => x.s) };
+}

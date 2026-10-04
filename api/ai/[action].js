@@ -1329,6 +1329,35 @@ async function statlerTool(req, res, supabase) {
       return res.status(200).json({ result: 'A job is already scheduled for this client on this date.', existingJobId: existingJobs[0].id });
     }
 
+    // Her business has no default service (she is not a cleaning company), so a job is only booked against one of
+    // her real, active services. No service given, or no/ambiguous match: nothing is booked and the result lists
+    // her services so Statler can ask which one.
+    const serviceQuery = typeof service === 'string' ? service.trim().replace(/[^\p{L}\p{N} \-'&]/gu, '') : '';
+    const { data: svcRows, error: svcErr } = await supabase
+      .from('services')
+      .select('id, name')
+      .eq('business_id', businessId)
+      .eq('active', true);
+    if (svcErr) {
+      console.error('[statlerTool] service lookup failed:', svcErr.message);
+      return res.status(500).json({ error: 'Failed to look up services' });
+    }
+    const serviceNames = (svcRows || []).map((r) => r.name);
+    const listed = serviceNames.length ? `Her services: ${serviceNames.join(', ')}.` : 'She has no services set up in the app.';
+    if (!serviceQuery) {
+      return res.status(200).json({ result: `Not booked: no service was given. Ask which service this job is for. ${listed}`, candidates: serviceNames });
+    }
+    const exactSvc = (svcRows || []).filter((r) => r.name.toLowerCase() === serviceQuery.toLowerCase());
+    const looseSvc = (svcRows || []).filter((r) => r.name.toLowerCase().includes(serviceQuery.toLowerCase()));
+    const svcMatches = exactSvc.length ? exactSvc : looseSvc;
+    if (svcMatches.length !== 1) {
+      return res.status(200).json({
+        result: `Not booked: ${svcMatches.length === 0 ? `no service matches "${serviceQuery}"` : `${svcMatches.length} services match "${serviceQuery}"`}. Ask which one. ${listed}`,
+        candidates: serviceNames,
+      });
+    }
+    const chosenService = svcMatches[0];
+
     const aiNotes = `⚠️ BOOKED VIA AI VOICE ASSISTANT - verify with client if unexpected.\n\n${description || ''}`;
 
     const { data: newJob, error: jobErr } = await supabase
@@ -1340,7 +1369,8 @@ async function statlerTool(req, res, supabase) {
         scheduled_time: time || '12:00:00',
         job_notes: aiNotes.trim(),
         job_status: 'Scheduled',
-        service_name: 'Cleaning'
+        service_id: chosenService.id,
+        service_name: chosenService.name
       })
       .select('id')
       .single();
@@ -1377,28 +1407,13 @@ async function statlerTool(req, res, supabase) {
       console.error('[statlerTool] Failed to trigger GCal sync:', e.message);
     }
 
-    // Service and duration go through the same validated path as supermom_edit_schedule (service must match
-    // one of her services; duration recalculates an hourly total). The insert above defaults the service to
-    // 'Cleaning' with no duration, so read back what actually saved and say so; Statler repeats only this.
-    const wantsService = typeof service === 'string' && service.trim() !== '';
+    // Duration goes through the same validated path as supermom_edit_schedule (hourly totals recalculate). Read back
+    // what actually saved; Statler repeats only this.
     const wantsDuration = duration_hours !== undefined && duration_hours !== null && duration_hours !== '';
-    const problems = [];
-    let serviceFailed = false;
-    if (wantsService || wantsDuration) {
-      const edit = await editJob(supabase, businessId, {
-        job_id: newJob.id,
-        ...(wantsService ? { service } : {}),
-        ...(wantsDuration ? { duration_hours } : {}),
-      });
-      if (!edit.jobId) {
-        serviceFailed = wantsService;
-        problems.push(edit.body?.error || edit.body?.result || 'service/duration not applied');
-        // A service that did not match writes nothing, so still try the duration on its own.
-        if (wantsService && wantsDuration) {
-          const durOnly = await editJob(supabase, businessId, { job_id: newJob.id, duration_hours });
-          if (!durOnly.jobId) problems.push(durOnly.body?.error || durOnly.body?.result || 'duration not applied');
-        }
-      }
+    let durationProblem = '';
+    if (wantsDuration) {
+      const edit = await editJob(supabase, businessId, { job_id: newJob.id, duration_hours });
+      if (!edit.jobId) durationProblem = edit.body?.error || edit.body?.result || 'duration not applied';
     }
 
     const { data: saved } = await supabase
@@ -1408,10 +1423,10 @@ async function statlerTool(req, res, supabase) {
       .maybeSingle();
     const savedBits = [
       `time ${(saved?.scheduled_time || time || '12:00:00').slice(0, 5)}${time ? '' : ' (default, none given)'}`,
-      `service ${saved?.service_name || 'Cleaning'}${wantsService && !serviceFailed ? '' : ' (default, not set by phone)'}`,
+      `service ${saved?.service_name || chosenService.name}`,
       saved?.estimated_hours ? `duration ${saved.estimated_hours} hours` : 'no duration set',
     ];
-    const warn = problems.length ? ` NOT applied: ${problems.join(' ')}` : '';
+    const warn = durationProblem ? ` Duration NOT applied: ${durationProblem}` : '';
     return res.status(200).json({ result: `Successfully scheduled job for ${clientName} on ${date}. Saved as: ${savedBits.join(', ')}.${warn} Job ID: ${newJob.id}` });
   }
 

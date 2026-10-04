@@ -288,7 +288,9 @@ describe('supermom_schedule_job saves service and duration and reports what save
     return out;
   };
 
-  it('applies a matching service and the duration, and says so', async () => {
+  const jobsInserted = () => writes.filter((w) => w.table === 'jobs' && w.op === 'insert');
+
+  it('books against her real service with the duration, and says what saved', async () => {
     const out = await book({ service: 'closet organizing', duration_hours: 1 });
     expect(out.code).toBe(200);
     const job = jobRow(NEW_JOB);
@@ -300,17 +302,25 @@ describe('supermom_schedule_job saves service and duration and reports what save
     expect(out.body.result).not.toMatch(/NOT applied/);
   });
 
-  it('an unknown service is reported, the duration still applies', async () => {
+  it('an unknown service books nothing and lists her real services', async () => {
     const out = await book({ service: 'assist', duration_hours: 1 });
     expect(out.code).toBe(200);
-    expect(jobRow(NEW_JOB).estimated_hours).toBe(1);
-    expect(out.body.result).toMatch(/service Cleaning \(default, not set by phone\)/);
-    expect(out.body.result).toMatch(/NOT applied: .*No service matches "assist"/);
-    expect(out.body.result).toMatch(/duration 1 hours/);
+    expect(jobsInserted()).toHaveLength(0);
+    expect(out.body.result).toMatch(/^Not booked: no service matches "assist"/);
+    expect(out.body.result).toMatch(/Closet Organizing, Garage Organizing, Errands/);
+    expect(out.body.result).not.toMatch(/Old Service/);
   });
 
-  it('with no service or duration it says the defaults were used', async () => {
+  it('no service given books nothing, never defaults to Cleaning, and asks', async () => {
     const out = await book({});
-    expect(out.body.result).toMatch(/service Cleaning \(default, not set by phone\), no duration set/);
+    expect(jobsInserted()).toHaveLength(0);
+    expect(out.body.result).toMatch(/^Not booked: no service was given/);
+    expect(JSON.stringify(db.jobs)).not.toMatch(/Cleaning/);
+  });
+
+  it('an ambiguous service books nothing', async () => {
+    const out = await book({ service: 'organizing' });
+    expect(jobsInserted()).toHaveLength(0);
+    expect(out.body.result).toMatch(/^Not booked: 2 services match "organizing"/);
   });
 });

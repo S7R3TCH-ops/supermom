@@ -1,5 +1,5 @@
 /**
- * Supermom V2 Theme System
+ * Supermom for Hire Theme System
  * 
  * To change a palette, simply update the values in LIGHT_PALETTE or DARK_PALETTE.
  * The smTokens function maps these palettes to the semantic names used across the app.

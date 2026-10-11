@@ -1,5 +1,5 @@
 /**
- * Idempotent & Diverse Seeding Script for Supermom v2.0
+ * Idempotent & Diverse Seeding Script for Supermom for Hire
  * Prevents duplicates by checking for existing clients/services.
  * Adds rich, diverse scenarios (ADHD focus, unpaid past jobs, etc.)
  */

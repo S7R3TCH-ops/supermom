@@ -1,5 +1,5 @@
 /**
- * Realistic Seeding Script for Supermom v2.0
+ * Realistic Seeding Script for Supermom for Hire
  * Generates a diverse set of clients and jobs (past, present, future)
  * with rich AI context notes and varying payment statuses.
  */

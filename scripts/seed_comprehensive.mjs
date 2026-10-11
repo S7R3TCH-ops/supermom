@@ -1,5 +1,5 @@
 /**
- * Realistic & Spread Out Seeding Script for Supermom v2.0
+ * Realistic & Spread Out Seeding Script for Supermom for Hire
  * Date Context: Monday, April 27, 2026
  * 
  * Strategy:

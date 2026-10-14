@@ -12,6 +12,7 @@ import { composeTorontoISO as _composeTorontoISO } from '../lib/dateUtils';
 import { setJobWorkers, markJobWorkerPaid, fetchJobWorkers, fetchJobWorkersForJobs } from './jobWorkersRepo';
 import { getClientCreditBalance, getJobIssuedCredit, applyCredit, issueCredit, moveCreditBackFromJob } from './creditsRepo';
 import { logClientError } from '../lib/errorTracking';
+import { PER_JOB_AI_CONTEXT_KEYS, omitKeys, mergeAiContextForJobSave } from '../lib/jobAiContext';
 export { composeTorontoISO } from '../lib/dateUtils';
 
 function assertWrote(data, op) {
@@ -251,7 +252,7 @@ async function createRecurringSeries(payload, businessId, assignWorkerId, assign
       template_id: template.id,
       scheduled_date: currentDateStr,
       ai_context: {
-        ...(payload.ai_context || {}),
+        ...omitKeys(payload.ai_context, PER_JOB_AI_CONTEXT_KEYS),
         template_id: template.id,
         occurrence_index: i,
       }
@@ -296,6 +297,18 @@ export async function updateJob(id, patch, seriesAction = 'this') {
   const cleanPatch = { ...normalizeJobPayload(patchNoWorker), updated_at: new Date().toISOString() };
 
   if (seriesAction === 'this') {
+    if (cleanPatch.ai_context) {
+      // The caller's ai_context comes from an in-memory snapshot that may be stale:
+      // keep the server-owned keys (gcal_event_id, …) from the job's current row.
+      const { data: fresh, error: freshErr } = await supabase
+        .from('jobs')
+        .select('ai_context')
+        .eq('id', id)
+        .eq('business_id', businessId)
+        .single();
+      if (freshErr) throw freshErr;
+      cleanPatch.ai_context = mergeAiContextForJobSave(fresh?.ai_context, cleanPatch.ai_context);
+    }
     const { data, error } = await supabase
       .from('jobs')
       .update(cleanPatch)
@@ -343,6 +356,8 @@ export async function updateJob(id, patch, seriesAction = 'this') {
     const after = seriesPatchBase.ai_context;
     aiContextPatch = {};
     for (const key of Object.keys(after)) {
+      // Per-visit / server-owned keys never propagate to sibling jobs.
+      if (PER_JOB_AI_CONTEXT_KEYS.includes(key)) continue;
       if (JSON.stringify(after[key]) !== JSON.stringify(before[key])) {
         aiContextPatch[key] = after[key];
       }

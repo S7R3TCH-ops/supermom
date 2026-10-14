@@ -22,15 +22,17 @@ const isGone = (e) => [404, 410].includes(httpStatus(e));
 // dragging that single event between dates, and deleting it would remove it for
 // the whole series.
 async function heldByOtherJob(job, eventId) {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('jobs')
-    .select('id')
+    .select('id, job_status')
     .eq('business_id', job.business_id)
     .is('deleted_at', null)
     .neq('id', job.id)
-    .eq('ai_context->>gcal_event_id', eventId)
-    .limit(1);
-  return (data || []).length > 0;
+    .eq('ai_context->>gcal_event_id', eventId);
+  // Fail closed: treating a failed lookup as "not held" could delete a shared event.
+  if (error) throw new Error(`GCal: held-by-other lookup failed: ${error.message}`);
+  // A cancelled job's event is already gone, so it no longer holds the id.
+  return (data || []).some((r) => r.job_status !== 'Cancelled');
 }
 
 // ai_context is shared with other writers (drive times, clock-in, edits), so merge

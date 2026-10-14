@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 let events;
 let gcalCalls;
 let googleError;
+let failHeldLookup;
 const gErr = (code) => Object.assign(new Error(`google ${code}`), { code });
 
 let reviveTombstones;
@@ -69,6 +70,7 @@ function makeQuery(table) {
     single: () => Promise.resolve({ data: matches()[0] ?? null, error: matches()[0] ? null : { message: 'none' } }),
     maybeSingle: () => Promise.resolve({ data: matches()[0] ?? null, error: null }),
     then: (res, rej) => {
+      if (failHeldLookup && q.filters.some(([k]) => k === 'neq')) return Promise.resolve({ data: null, error: { message: 'db down' } }).then(res, rej);
       if (q.op === 'update') matches().forEach((r) => Object.assign(r, q.patch));
       const rows = q.op === 'select' ? matches() : null;
       return Promise.resolve({ data: rows, error: null }).then(res, rej);
@@ -108,6 +110,7 @@ beforeEach(() => {
   events = new Map();
   gcalCalls = [];
   googleError = null;
+  failHeldLookup = false;
   reviveTombstones = true;
   onInsert = null;
   db = {
@@ -245,5 +248,25 @@ describe('gcal sync', () => {
     const out = await call(J1, 'upsert');
     expect(out.body.status).toBe('token_expired');
     expect(db.integrations[0].sync_status).toBe('token_expired');
+  });
+
+  it('a cancelled sibling no longer holds a shared event, so the last job can delete it', async () => {
+    events.set('shared', { id: 'shared' });
+    db.jobs = [
+      mkJob(J1, { gcal_event_id: 'shared' }, { job_status: 'Cancelled' }),
+      mkJob(J2, { gcal_event_id: 'shared' }, { job_status: 'Cancelled' }),
+    ];
+    const out = await call(J2, 'delete');
+    expect(out.body.shared).toBeUndefined();
+    expect(events.get('shared').status).toBe('cancelled');
+  });
+
+  it('fails closed when the held-by-other lookup errors (never deletes a possibly shared event)', async () => {
+    events.set('shared', { id: 'shared' });
+    db.jobs = [mkJob(J1, { gcal_event_id: 'shared' })];
+    failHeldLookup = true;
+    const out = await call(J1, 'delete');
+    expect(out.code).toBe(500);
+    expect(events.get('shared').status).not.toBe('cancelled');
   });
 });

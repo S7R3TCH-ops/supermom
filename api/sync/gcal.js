@@ -37,10 +37,13 @@ async function heldByOtherJob(job, eventId) {
 // onto a fresh read instead of writing back the snapshot taken at the start of the
 // request, which Google round-trips later can leave stale.
 async function mergeAiContext(jobId, patch) {
-  const { data: fresh } = await supabase.from('jobs').select('ai_context').eq('id', jobId).single();
-  await supabase.from('jobs').update({
-    ai_context: { ...(fresh?.ai_context || {}), ...patch },
+  const { data: fresh, error: readErr } = await supabase.from('jobs').select('ai_context').eq('id', jobId).single();
+  // Never write on a failed read: merging onto {} would wipe drive_to, clock_in_time, etc.
+  if (readErr || !fresh) throw new Error(`GCal: could not re-read job ${jobId} ai_context: ${readErr?.message || 'not found'}`);
+  const { error: writeErr } = await supabase.from('jobs').update({
+    ai_context: { ...(fresh.ai_context || {}), ...patch },
   }).eq('id', jobId);
+  if (writeErr) throw new Error(`GCal: could not save job ${jobId} ai_context: ${writeErr.message}`);
 }
 
 export default async function handler(req, res) {
@@ -152,9 +155,16 @@ export default async function handler(req, res) {
         // 409: this job's event already exists (concurrent sync, lost stored id,
         // or deleted earlier). Update it in place rather than creating a second.
         if (httpStatus(insertErr) !== 409) throw insertErr;
-        await calendar.events.update({ calendarId, eventId: newId, resource: event });
+        try {
+          await calendar.events.update({ calendarId, eventId: newId, resource: event });
+        } catch (updErr) {
+          // Google refused to revive a deleted event with this id: create a fresh one.
+          if (!isGone(updErr)) throw updErr;
+          const created = await calendar.events.insert({ calendarId, resource: event });
+          gcalEventId = created.data.id;
+        }
       }
-      gcalEventId = newId;
+      gcalEventId = gcalEventId || newId;
     }
 
     // 5. Update Job with event id

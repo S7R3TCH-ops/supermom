@@ -3,8 +3,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // ---- fake Google Calendar: events keyed by id, 409 on duplicate insert, 404 on missing ----
 let events;
 let gcalCalls;
+let googleError;
 const gErr = (code) => Object.assign(new Error(`google ${code}`), { code });
 
+let reviveTombstones;
+let onInsert;
 vi.mock('googleapis', () => ({
   google: {
     auth: { OAuth2: class { setCredentials() {} } },
@@ -12,21 +15,27 @@ vi.mock('googleapis', () => ({
       events: {
         insert: async ({ resource }) => {
           gcalCalls.push(['insert', resource.id]);
+          if (googleError) throw googleError;
           const id = resource.id || 'rand' + events.size;
-          if (events.has(id)) throw gErr(409);
+          if (events.has(id)) throw gErr(409); // live event OR cancelled tombstone
           events.set(id, { ...resource, id });
+          if (onInsert) onInsert();
           return { data: { id } };
         },
         update: async ({ eventId, resource }) => {
           gcalCalls.push(['update', eventId]);
-          if (!events.has(eventId)) throw gErr(404);
-          events.set(eventId, { ...events.get(eventId), ...resource });
+          const cur = events.get(eventId);
+          if (!cur) throw gErr(404);
+          if (cur.status === 'cancelled' && !reviveTombstones) throw gErr(410);
+          events.set(eventId, { ...cur, ...resource });
           return { data: { id: eventId } };
         },
         delete: async ({ eventId }) => {
           gcalCalls.push(['delete', eventId]);
-          if (!events.has(eventId)) throw gErr(404);
-          events.delete(eventId);
+          const cur = events.get(eventId);
+          if (!cur) throw gErr(404);
+          if (cur.status === 'cancelled') throw gErr(410);
+          events.set(eventId, { ...cur, status: 'cancelled' }); // Google keeps a tombstone
           return {};
         },
       },
@@ -87,6 +96,7 @@ const mkJob = (id, ctx = {}, extra = {}) => ({
   clients: { first_name: 'Katie', last_name: 'S' },
   ...extra,
 });
+const live = () => [...events.values()].filter((e) => e.status !== 'cancelled');
 const call = async (jobId, action) => {
   const out = {};
   const res = { status: (c) => ((out.code = c), res), json: (b) => ((out.body = b), res), send: () => res };
@@ -97,6 +107,9 @@ const call = async (jobId, action) => {
 beforeEach(() => {
   events = new Map();
   gcalCalls = [];
+  googleError = null;
+  reviveTombstones = true;
+  onInsert = null;
   db = {
     integrations: [{ business_id: BIZ, service_name: 'google_calendar', calendar_id: 'primary', refresh_token: 'rt' }],
     jobs: [],
@@ -108,7 +121,7 @@ describe('gcal sync', () => {
     db.jobs = [mkJob(J1)];
     const out = await call(J1, 'upsert');
     expect(out.body.eventId).toBe(detEventId(J1));
-    expect(events.size).toBe(1);
+    expect(live().length).toBe(1);
     expect(db.jobs[0].ai_context.gcal_event_id).toBe(out.body.eventId);
   });
 
@@ -117,8 +130,8 @@ describe('gcal sync', () => {
     await call(J1, 'upsert');
     db.jobs[0].scheduled_date = '2026-10-14';
     await call(J1, 'upsert');
-    expect(events.size).toBe(1);
-    expect([...events.values()][0].start.dateTime).toContain('2026-10-14');
+    expect(live().length).toBe(1);
+    expect(live()[0].start.dateTime).toContain('2026-10-14');
   });
 
   it('lost gcal_event_id re-finds its own event instead of orphaning it', async () => {
@@ -127,14 +140,14 @@ describe('gcal sync', () => {
     db.jobs[0].ai_context = {}; // id lost (stale-snapshot overwrite)
     db.jobs[0].scheduled_date = '2026-10-14';
     await call(J1, 'upsert');
-    expect(events.size).toBe(1);
-    expect([...events.values()][0].start.dateTime).toContain('2026-10-14');
+    expect(live().length).toBe(1);
+    expect(live()[0].start.dateTime).toContain('2026-10-14');
   });
 
   it('two concurrent first syncs create exactly one event', async () => {
     db.jobs = [mkJob(J1)];
     await Promise.all([call(J1, 'upsert'), call(J1, 'upsert')]);
-    expect(events.size).toBe(1);
+    expect(live().length).toBe(1);
   });
 
   it('a job whose stored id is held by another live job gets its own event', async () => {
@@ -145,21 +158,21 @@ describe('gcal sync', () => {
     // job 2 is now the only holder, so it keeps the original event
     await call(J2, 'upsert');
     expect(db.jobs[1].ai_context.gcal_event_id).toBe('shared');
-    expect(events.size).toBe(2);
+    expect(live().length).toBe(2);
   });
 
   it('recreates when Google no longer has the stored event (404)', async () => {
     db.jobs = [mkJob(J1, { gcal_event_id: 'gone' })];
     const out = await call(J1, 'upsert');
     expect(out.body.eventId).toBe(detEventId(J1));
-    expect(events.size).toBe(1);
+    expect(live().length).toBe(1);
   });
 
   it('delete removes the event; a missing event is not an error', async () => {
     db.jobs = [mkJob(J1)];
     await call(J1, 'upsert');
     expect((await call(J1, 'delete')).body.status).toBe('deleted');
-    expect(events.size).toBe(0);
+    expect(live().length).toBe(0);
     expect((await call(J1, 'delete')).body.status).toBe('deleted');
   });
 
@@ -168,7 +181,7 @@ describe('gcal sync', () => {
     await call(J1, 'upsert');
     db.jobs[0].ai_context = {};
     await call(J1, 'delete');
-    expect(events.size).toBe(0);
+    expect(live().length).toBe(0);
   });
 
   it('delete never removes an event another live job still holds', async () => {
@@ -176,12 +189,61 @@ describe('gcal sync', () => {
     db.jobs = [mkJob(J1, { gcal_event_id: 'shared' }), mkJob(J2, { gcal_event_id: 'shared' })];
     const out = await call(J1, 'delete');
     expect(out.body.shared).toBe(true);
-    expect(events.has('shared')).toBe(true);
+    expect(events.get('shared').status).not.toBe('cancelled');
   });
 
   it('write-back merges onto fresh ai_context instead of clobbering concurrent keys', async () => {
     db.jobs = [mkJob(J1, { drive_to: { duration: '8 mins' } })];
     await call(J1, 'upsert');
     expect(db.jobs[0].ai_context.drive_to).toEqual({ duration: '8 mins' });
+  });
+
+  it('re-syncing after the event was deleted revives it (no second event)', async () => {
+    db.jobs = [mkJob(J1)];
+    await call(J1, 'upsert');
+    await call(J1, 'delete');
+    expect(live().length).toBe(0);
+    await call(J1, 'upsert');
+    expect(live().length).toBe(1);
+    expect(db.jobs[0].ai_context.gcal_event_id).toBe(detEventId(J1));
+  });
+
+  it("falls back to a fresh event if Google refuses to revive the deleted one (410)", async () => {
+    reviveTombstones = false;
+    db.jobs = [mkJob(J1)];
+    await call(J1, 'upsert');
+    await call(J1, 'delete');
+    const out = await call(J1, 'upsert');
+    expect(out.code).toBe(200);
+    expect(live().length).toBe(1);
+    expect(db.jobs[0].ai_context.gcal_event_id).not.toBe(detEventId(J1));
+  });
+
+  it('write-back keeps keys written to the row while the Google call was in flight', async () => {
+    db.jobs = [mkJob(J1, { payment_method: 'Cash' })];
+    // Another writer (drive-time patch) lands between the job read and the write-back.
+    onInsert = () => { db.jobs[0].ai_context = { ...db.jobs[0].ai_context, drive_to: { duration: '9 mins' } }; };
+    await call(J1, 'upsert');
+    expect(db.jobs[0].ai_context.drive_to).toEqual({ duration: '9 mins' });
+    expect(db.jobs[0].ai_context.payment_method).toBe('Cash');
+    expect(db.jobs[0].ai_context.gcal_event_id).toBe(detEventId(J1));
+  });
+
+  it('never writes ai_context if the fresh re-read fails (would wipe other keys)', async () => {
+    db.jobs = [mkJob(J1, { payment_method: 'Cash', drive_to: { duration: '8 mins' } })];
+    const realFrom = db.jobs;
+    // Make the re-read (second jobs select by id) fail by removing the row mid-flight.
+    onInsert = () => { db.jobs = []; };
+    const out = await call(J1, 'upsert');
+    expect(out.code).toBe(500);
+    expect(realFrom[0].ai_context).toEqual({ payment_method: 'Cash', drive_to: { duration: '8 mins' } });
+  });
+
+  it('persists token_expired on the integration when Google says invalid_grant', async () => {
+    db.jobs = [mkJob(J1)];
+    googleError = Object.assign(new Error('invalid_grant'), { response: { data: { error: 'invalid_grant' } } });
+    const out = await call(J1, 'upsert');
+    expect(out.body.status).toBe('token_expired');
+    expect(db.integrations[0].sync_status).toBe('token_expired');
   });
 });

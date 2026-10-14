@@ -22,6 +22,8 @@ export const PER_JOB_AI_CONTEXT_KEYS = [
   'drive_to',
   'drive_to_live',
   'clock_in_time',
+  'clock_out_time',
+  'geofence_status',
 ];
 
 export function omitKeys(ctx, keys) {

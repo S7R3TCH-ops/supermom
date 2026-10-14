@@ -78,7 +78,7 @@ function makeQuery(table) {
 }
 vi.mock('@supabase/supabase-js', () => ({ createClient: () => ({ from: makeQuery }) }));
 
-const { default: handler, detEventId } = await import('./gcal.js');
+const { default: handler, detEventId } = await import('../sync/gcal.js');
 
 const BIZ = 'biz-1';
 const J1 = 'aaaaaaaa-0000-4000-8000-000000000001';

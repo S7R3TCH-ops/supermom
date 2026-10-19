@@ -1,0 +1,4 @@
+### Daily briefing email
+- **File**: `api/briefing/daily.js` | **Schedule**: `0 11 * * *` (7 AM EDT, in `vercel.json`) | **Secret**: `CRON_SECRET`, stored in Vercel env only — never write the actual value into this file or any other tracked doc (a prior plaintext copy here was the finding that triggered its 2026-09-15 rotation). Auth is header-only (`Authorization: Bearer $CRON_SECRET`, sent automatically by Vercel Cron); the old `?secret=`/`?to=` query-param path was removed 2026-09-15 — it was request-logged and let anyone who'd read the secret exfiltrate every business's data to an arbitrary email.
+- **Sender**: `admin@supermomforhire.com` via nodemailer + `GMAIL_APP_PASSWORD` | **Reply-To**: `noreply@supermomforhire.com`
+- **⚠️ DO NOT rapid-redeploy** — every prod deploy re-registers the cron and resets next-run clock. Deploy once from a clean committed tree.

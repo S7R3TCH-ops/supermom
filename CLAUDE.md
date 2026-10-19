@@ -183,6 +183,7 @@ Model tiering and Opus use: see the global ~/.claude/CLAUDE.md 'Model usage' sec
 ### ✅ Recent Changes
 
 Dated log: `docs/changelog/open-items-done-2026-10.md`.
+- **2026-10-19, live (`c4c565e` + `97183ea`):** daily briefing email paused (`vercel.json` crons block removed; `api/briefing/daily.js` kept), which also turns off its stale-request backstop and send-failure alert. Unverified: Vercel Cron Jobs list empty, no email 10-20 11:00 UTC. `OnboardingWalkthrough.jsx` step 3 still promises the email to new tenants.
 - **Open QA, Statler voice (from the 2026-10-05 entry):** no result yet for `supermom_get_job` read-aloud, `supermom_text_me_contact` (bridge `.env` needs `TWILIO_FROM_NUMBER`), delete refusal. Leftover test data to delete by hand: Oscar Grouch 10-07 12:00 Assist job in the Clocked.IN AI business. v0.13.115 voice booking and v0.13.108 voice edit passed in prod.
 
 ### 🔴 Bugs / Active issues

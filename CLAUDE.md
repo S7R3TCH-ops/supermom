@@ -130,7 +130,7 @@ React (Vite), Supabase (Auth + Postgres), Vercel, React Context state, inline st
 Public route `/i/:id` (no auth). **Every change to `api/_lib/invoicePdf.ts` must be mirrored in `InvoiceView.jsx`.** Never mix `logo-banner.png` (app bar) with `logo-final-white-bg.png` (invoice/email). Full detail: `docs/reference/invoice-architecture.md`.
 
 ### Daily briefing email
-**PAUSED 2026-10-19 (Joel): no `vercel.json` cron entry; nobody uses the briefing yet. Resume = restore `"crons": [{ "path": "/api/briefing/daily", "schedule": "0 11 * * *" }]` in `vercel.json`.** `api/briefing/daily.js` kept, cron was `0 11 * * *`, auth is `Authorization: Bearer $CRON_SECRET` (Vercel env only, never write the value in any doc). **⚠️ DO NOT rapid-redeploy:** every prod deploy re-registers the cron and resets the next-run clock; deploy once from a clean committed tree. Full detail: `docs/reference/daily-briefing-email.md`.
+**PAUSED 2026-10-19 (Joel): no `vercel.json` cron entry; nobody uses the briefing yet. Resume = restore `"crons": [{ "path": "/api/briefing/daily", "schedule": "0 11 * * *" }]` in `vercel.json`.** `api/briefing/daily.js` kept, cron was `0 11 * * *`. **The stale-`client_requests` backstop (`daily.js:322-342`) and the send-failure alert ran on the same cron, so they are off while paused.** Auth is `Authorization: Bearer $CRON_SECRET` (Vercel env only, never write the value in any doc). **⚠️ (When the cron is active) DO NOT rapid-redeploy:** every prod deploy re-registers the cron and resets the next-run clock; deploy once from a clean committed tree. Full detail: `docs/reference/daily-briefing-email.md`.
 
 ### Drive time architecture
 `locationDrives` in `Home.jsx` is ephemeral, never persisted; `updateDailyRoutes()` in `maps.js` persists the pre-calc to `ai_context.drive_to`. Full detail: `docs/reference/drive-time-architecture.md`.
@@ -178,7 +178,7 @@ Model tiering and Opus use: see the global ~/.claude/CLAUDE.md 'Model usage' sec
 
 > **Sync rule**: every change to `api/_lib/invoicePdf.ts` must be mirrored in `InvoiceView.jsx` before commit.
 > Vercel Hobby: **11 of 12** serverless functions: `maps`, `invoice`, `auth/google/login`, `auth/google/callback`, `briefing/daily`, `sync/gcal`, `ai/[action]`, `ai/chat`, `admin/provision`, `admin/ai-toggle`, `reminders/[action]`. (2026-09-18, v0.13.72 — added `reminders/[action]` for lockscreen push; named generically because the separately-approved SMS-reminders design is built to ride this same function once its own Twilio Phase-0 is done, at no additional slot cost.)
-> Maps quota: Distance Matrix hard-capped at 500 elements/day. Sandra's real usage ~15–30/day. **Don't rapid-redeploy** (resets cron clock).
+> Maps quota: Distance Matrix hard-capped at 500 elements/day. Sandra's real usage ~15–30/day. **Don't rapid-redeploy** (resets cron clock, once the briefing cron is restored).
 
 ### ✅ Recent Changes
 

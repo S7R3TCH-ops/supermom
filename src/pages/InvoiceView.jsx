@@ -10,6 +10,8 @@ import { useAuth } from '../context/AuthContext';
 import { getCurrentBusinessId } from '../data/currentBusiness';
 import { authHeaders } from '../lib/supabase';
 import { notifyDataChanged } from '../data/useData';
+import { logClientError } from '../lib/errorTracking';
+import { resolveEmailFailureOutcome } from '../lib/invoiceEmailOutcome';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
@@ -33,6 +35,18 @@ function formatJobTime(job) {
   const endTotal = hh * 60 + mm + Math.round(hours * 60);
   return `${fmt(hh, mm)} – ${fmt(Math.floor(endTotal / 60) % 24, endTotal % 60)}`;
 }
+
+// Latest invoice/receipt sent-at stamps across an invoice's jobs (same pick as reload()).
+function sentStamps(inv) {
+  const jobs = (inv?.invoice_jobs || []).map(ij => ij.jobs).filter(Boolean);
+  return {
+    invoiceSentAt: jobs.find(j => j.invoice_sent_at)?.invoice_sent_at || null,
+    receiptSentAt: jobs.find(j => j.receipt_sent_at)?.receipt_sent_at || null,
+  };
+}
+
+// Client emails must never land in error_logs (server messages can echo the recipient).
+const scrubEmails = (msg) => String(msg ?? '').replace(/[^\s"'<>,;]+@[^\s"'<>,;]+/g, '[email]');
 
 const LABEL = { fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 8 };
 
@@ -82,9 +96,9 @@ export default function InvoiceView() {
     return fetchInvoiceById(id)
       .then(inv => {
         setInvoice(inv);
-        const jobs = (inv.invoice_jobs || []).map(ij => ij.jobs).filter(Boolean);
-        setInvoiceSentAt(jobs.find(j => j.invoice_sent_at)?.invoice_sent_at || null);
-        setReceiptSentAt(jobs.find(j => j.receipt_sent_at)?.receipt_sent_at || null);
+        const stamps = sentStamps(inv);
+        setInvoiceSentAt(stamps.invoiceSentAt);
+        setReceiptSentAt(stamps.receiptSentAt);
         // Default invoice jobs (only) to selected for settle panel
         const settleIds = (inv.invoiceJobBalances ?? [])
           .filter(b => b.owing > 0.01).map(b => b.job.id);
@@ -260,6 +274,12 @@ export default function InvoiceView() {
   async function handleEmail() {
     if (!client.email) return;
     setEmailState('sending');
+    // The server stamps *_sent_at only after the mail goes out. If the response is lost
+    // (iOS PWA fetch abort, timeout), a changed stamp is the proof it was sent.
+    const before = { invoiceSentAt, receiptSentAt };
+    const startedAt = Date.now();
+    const visibilityAtStart = document.visibilityState;
+    let status = null; // HTTP status of a non-ok response; stays null for network-level errors
     try {
       const res = await fetch('/api/invoice', {
         method: 'POST',
@@ -274,7 +294,7 @@ export default function InvoiceView() {
           bizEmail: biz.email,
         }),
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) { status = res.status; throw new Error(await res.text()); }
       const data = await res.json();
       if (data.isReceipt) setReceiptSentAt(new Date().toISOString());
       else setInvoiceSentAt(new Date().toISOString());
@@ -283,7 +303,31 @@ export default function InvoiceView() {
       setTimeout(() => setEmailState('idle'), 4000);
     } catch (e) {
       console.error('Email error:', e);
-      setEmailState('error');
+      let after = null;
+      try { after = sentStamps(await reload()); } catch (re) { console.error('Email recheck error:', re); }
+      const outcome = resolveEmailFailureOutcome({ before, after, status });
+      const logErr = new Error(scrubEmails(e?.message));
+      logErr.name = e?.name || 'Error';
+      logClientError(logErr, {
+        type: 'invoice_email_send',
+        severity: outcome === 'sent' ? 'warning' : 'error',
+        outcome,
+        invoiceId: id,
+        httpStatus: status,
+        errorName: logErr.name,
+        elapsedMs: Date.now() - startedAt,
+        visibilityAtStart,
+        visibilityNow: document.visibilityState,
+        recheckFailed: after === null,
+      });
+      if (outcome === 'sent') {
+        notifyDataChanged();
+        setEmailState('sent');
+        setTimeout(() => setEmailState('idle'), 4000);
+      } else {
+        setEmailState(outcome); // 'error' | 'unsure'
+        if (outcome === 'unsure') setTimeout(() => setEmailState('idle'), 10000);
+      }
     }
   }
 
@@ -291,6 +335,7 @@ export default function InvoiceView() {
   const emailLabel = emailState === 'sending' ? 'Sending…'
     : emailState === 'sent'    ? '✓ Sent!'
     : emailState === 'error'   ? '✗ Failed — retry'
+    : emailState === 'unsure'  ? "Couldn't confirm — check Sent mail before resending"
     : client.email             ? `Email ${docLabel}`
     : 'No Email on File';
 
@@ -383,10 +428,12 @@ export default function InvoiceView() {
             disabled={!client.email || emailState === 'sending'}
             style={{
               background: emailState === 'sent' ? '#16A34A' : 'white',
-              color: emailState === 'sent' ? 'white' : client.email ? 'var(--pink)' : '#bbb',
-              border: `1.5px solid ${emailState === 'sent' ? '#16A34A' : client.email ? 'var(--pink)' : '#ddd'}`,
+              color: emailState === 'sent' ? 'white' : emailState === 'unsure' ? '#B45309' : client.email ? 'var(--pink)' : '#bbb',
+              border: `1.5px solid ${emailState === 'sent' ? '#16A34A' : emailState === 'unsure' ? '#B45309' : client.email ? 'var(--pink)' : '#ddd'}`,
               padding: '8px 14px', borderRadius: 8, fontSize: 13, fontWeight: 700,
-              cursor: client.email && emailState === 'idle' ? 'pointer' : 'not-allowed',
+              // 'unsure' label is long: let it wrap instead of blowing out the toolbar
+              ...(emailState === 'unsure' ? { maxWidth: 240, whiteSpace: 'normal', textAlign: 'left', lineHeight: 1.3 } : {}),
+              cursor: client.email && ['idle', 'error', 'unsure'].includes(emailState) ? 'pointer' : 'not-allowed',
               transition: 'all 0.2s',
             }}
           >

@@ -144,12 +144,13 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin); icons have `#FC4693` pi
 ---
 
 
-## Current version: 0.13.116 - Oct 14, 2026 (Google Calendar: one event per job, edits can't lose or copy the event id)
+## Current version: 0.13.117 - Oct 21, 2026 (invoice email button verifies sent-at; round logo badge in emails)
 
-**v0.13.116** (LIVE 2026-10-14, `fe3890e`): Sandra's "moved one Katie appointment, Google shows both days". Cause: all Katie series jobs shared one `ai_context.gcal_event_id`, and `updateJob` wrote a stale `ai_context` snapshot. Fix: server-owned keys (`gcal_*`, `occurrence_index`, `template_id`) survive saves (`src/lib/jobAiContext.js`), series saves no longer copy them, and `api/sync/gcal.js` uses a deterministic Google event id (job uuid without dashes). Tests: `api/_lib/gcalSync.test.js`, `src/data/updateJobAiContext.test.js`, `src/lib/jobAiContext.test.js`.
-- **Open:** Joel runs the repair `--apply` for Sandra's business (dry run done 10-14); delete QA event `rcg8f94t` by hand; smoke-check after deploy (move a QA job, expect one event).
+**v0.13.117** (branch `fix/invoice-send-state-and-logo`, not yet live): Sandra's `142fec00`. `InvoiceView.jsx` `handleEmail` re-reads sent-at stamps after any failure (changed = sent; no response + no change = "Couldn't confirm - check Sent mail", helper `src/lib/invoiceEmailOutcome.js`) and logs to `error_logs`. Email logo `<img>` now `border-radius:50%` in `api/invoice.ts`, `api/_lib/brandedEmail.js`, `api/briefing/daily.js`. Needs a real-iPhone check. Full: `docs/changelog/v0.13.117.md`.
+
+**v0.13.116** (LIVE 2026-10-14, `fe3890e`): one Google event per job (`docs/changelog/v0.13.116.md`).
+- **Open:** Joel runs the Katie repair `--apply` for Sandra's business; delete QA event `rcg8f94t` by hand; smoke-check (move a QA job, expect one event).
 - **Do not run** `scripts/sync-upcoming-gcal.mjs` until it reuses the deterministic id.
-- Full entry: `docs/changelog/v0.13.116.md`.
 
 Older versions: docs/changelog/v0.13.97-to-v0.13.115.md, docs/changelog/, docs/archive/CHANGELOG-v0.13-archive.md; full history: git log -- CLAUDE.md
 
@@ -183,7 +184,7 @@ Model tiering and Opus use: see the global ~/.claude/CLAUDE.md 'Model usage' sec
 ### ✅ Recent Changes
 
 Dated log: `docs/changelog/open-items-done-2026-10.md`.
-- **2026-10-19, live (`c4c565e` + `97183ea`):** daily briefing email paused (`vercel.json` crons block removed; `api/briefing/daily.js` kept), which also turns off its stale-request backstop and send-failure alert. Unverified: Vercel Cron Jobs list empty, no email 10-20 11:00 UTC. `OnboardingWalkthrough.jsx` step 3 still promises the email to new tenants.
+- **2026-10-19, live:** daily briefing email paused (see Daily briefing email). Unverified: no email 10-20 11:00 UTC; `OnboardingWalkthrough.jsx` step 3 still promises it. Full: `docs/changelog/open-items-done-2026-10.md`.
 - **Open QA, Statler voice (from the 2026-10-05 entry):** no result yet for `supermom_get_job` read-aloud, `supermom_text_me_contact` (bridge `.env` needs `TWILIO_FROM_NUMBER`), delete refusal. Leftover test data to delete by hand: Oscar Grouch 10-07 12:00 Assist job in the Clocked.IN AI business. v0.13.115 voice booking and v0.13.108 voice edit passed in prod.
 
 ### 🔴 Bugs / Active issues
@@ -202,11 +203,7 @@ No open bugs. Resolved items: `docs/changelog/open-items-done-2026-10.md`.
 
 ### 🤖 AI features (deferred — needs serverless slots)
 
-6. **Voice scheduling** — `transcribe-voice-note` in `api/ai/[action].js` (~line 399) is only a TODO stub (no transcription wired; corrected 2026-09-30, earlier text said it "already exists"). Flow: mic → transcribe → Gemini parses intent → pre-fills NewJobSheet.
-7. **Smart scheduling suggestions** — given Sandra's calendar + drive times, Claude suggests optimal day/time for new bookings. All data already available.
-8. **Weekly AI debrief** — Sunday evening summary: revenue, hours, top clients, one pattern observation. Extend the daily briefing cron.
-9. **Auto-generate prep notes** — based on `ai_context`, pre-draft PrepNoteSheet content before Sandra opens it.
-10. **Invoice draft from voice** — 30-second post-job recording → Claude extracts service/duration/extras → pre-fills PostJobSheet.
+Items 6–10 (voice scheduling, smart scheduling, weekly debrief, prep notes, invoice-from-voice): `docs/reference/deferred-ai-features.md`.
 
 ### 📱 Phase 2 features
 

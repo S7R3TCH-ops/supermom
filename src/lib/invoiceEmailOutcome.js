@@ -23,21 +23,30 @@ const AMBIGUOUS_STATUSES = new Set([408, 502, 503, 504]);
 
 /**
  * @param {object} p
- * @param {{invoiceSentAt: ?string, receiptSentAt: ?string}} p.before - stamps before the request
+ * @param {?{invoiceSentAt: ?string, receiptSentAt: ?string}} p.before - SERVER stamps before the
+ *   request (never client-clock values), or null if unknown (then nothing can prove 'sent')
  * @param {?{invoiceSentAt: ?string, receiptSentAt: ?string}} p.after - stamps re-read after the
  *   failure, or null if the re-read itself failed
  * @param {?number} p.status - HTTP status if a response arrived, else null (network-level error)
  * @returns {'sent' | 'error' | 'unsure'}
  */
 export function resolveEmailFailureOutcome({ before, after, status = null }) {
-  if (after) {
+  // before === null: the pre-request stamps are unknown, so a "change" proves nothing.
+  if (before && after) {
     // The server decides receipt vs invoice, so either stamp moving means it was sent.
-    const changed = (after.invoiceSentAt || null) !== (before.invoiceSentAt || null)
-      || (after.receiptSentAt || null) !== (before.receiptSentAt || null);
-    if (changed) return 'sent';
+    // Compare instants, not strings: Z vs +00:00 formatting must never look like a change.
+    if (!sameInstant(after.invoiceSentAt, before.invoiceSentAt)
+      || !sameInstant(after.receiptSentAt, before.receiptSentAt)) return 'sent';
   }
   const hadRealResponse = status != null && !AMBIGUOUS_STATUSES.has(status);
   // A genuine server error response ("Failed — retry") is trustworthy; anything else
   // (no response, gateway timeout) might have sent, so warn before she resends.
   return hadRealResponse ? 'error' : 'unsure';
+}
+
+function sameInstant(a, b) {
+  if (!a || !b) return !a && !b;
+  const ta = Date.parse(a);
+  const tb = Date.parse(b);
+  return Number.isNaN(ta) || Number.isNaN(tb) ? a === b : ta === tb;
 }

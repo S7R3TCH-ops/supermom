@@ -45,6 +45,26 @@ describe('resolveEmailFailureOutcome', () => {
     expect(resolveEmailFailureOutcome({ before: none, after: null, status: 403 })).toBe('error');
   });
 
+  it('success then failing resend with the server stamp unchanged is never sent', () => {
+    // before holds the SERVER stamp from the first send's re-read; the failed resend leaves it alone
+    const server = { invoiceSentAt: '2026-10-16T00:25:02.123+00:00', receiptSentAt: null };
+    const reread = { invoiceSentAt: '2026-10-16T00:25:02.123Z', receiptSentAt: null }; // same instant, other format
+    expect(resolveEmailFailureOutcome({ before: server, after: reread, status: null })).toBe('unsure');
+    expect(resolveEmailFailureOutcome({ before: server, after: reread, status: 500 })).toBe('error');
+  });
+
+  it('a client-clock snapshot would poison the check (why before must be server stamps)', () => {
+    const clientClock = { invoiceSentAt: '2026-10-16T00:25:09.000Z', receiptSentAt: null };
+    const server = { invoiceSentAt: '2026-10-16T00:25:02.000Z', receiptSentAt: null };
+    expect(resolveEmailFailureOutcome({ before: clientClock, after: server, status: null })).toBe('sent');
+  });
+
+  it('unknown snapshot (before null) never reports sent', () => {
+    const after = { invoiceSentAt: '2026-10-16T00:25:02Z', receiptSentAt: null };
+    expect(resolveEmailFailureOutcome({ before: null, after, status: null })).toBe('unsure');
+    expect(resolveEmailFailureOutcome({ before: null, after, status: 500 })).toBe('error');
+  });
+
   it('does not compare against wall-clock time (only before vs after)', () => {
     const stamp = '2099-01-01T00:00:00Z';
     const same = { invoiceSentAt: stamp, receiptSentAt: null };

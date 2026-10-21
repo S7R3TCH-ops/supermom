@@ -63,6 +63,7 @@ export default function InvoiceView() {
   const settlingRef = useRef(false);
   const addingRef   = useRef(false);
   const emailTimerRef = useRef(null);
+  const stampsStaleRef = useRef(false); // true if the post-send re-read failed, so held stamps may be old
   const wrapRef = useRef(null);
   const boxRef = useRef(null);
   const [scale, setScale] = useState(1);
@@ -274,7 +275,14 @@ export default function InvoiceView() {
     setEmailState('sending');
     // The server stamps *_sent_at only after the mail goes out. If the response is lost
     // (iOS PWA fetch abort, timeout), a changed stamp is the proof it was sent.
-    const before = { invoiceSentAt, receiptSentAt };
+    // Snapshot must hold SERVER stamps only (never client-clock values), else a failed
+    // resend would look like a change. If the last post-send re-read failed they may be
+    // old: refresh first, and if that fails treat the snapshot as unknown (never 'sent').
+    let before = { invoiceSentAt, receiptSentAt };
+    if (stampsStaleRef.current) {
+      try { before = latestSentStamps(await reload({ keepSelections: true })); stampsStaleRef.current = false; }
+      catch { before = null; }
+    }
     const startedAt = Date.now();
     const visibilityAtStart = document.visibilityState;
     let status = null; // HTTP status of a non-ok response; stays null for network-level errors
@@ -293,9 +301,10 @@ export default function InvoiceView() {
         }),
       });
       if (!res.ok) { status = res.status; throw new Error(await res.text()); }
-      const data = await res.json();
-      if (data.isReceipt) setReceiptSentAt(new Date().toISOString());
-      else setInvoiceSentAt(new Date().toISOString());
+      await res.json();
+      // Pull the server's real stamps (not the client clock) so the next send's snapshot is exact.
+      try { await reload({ keepSelections: true }); stampsStaleRef.current = false; }
+      catch (re) { stampsStaleRef.current = true; console.error('Post-send refresh error:', re); }
       notifyDataChanged();
       setEmailState('sent');
       emailTimerRef.current = setTimeout(() => setEmailState(st => (st === 'sent' ? 'idle' : st)), 4000);

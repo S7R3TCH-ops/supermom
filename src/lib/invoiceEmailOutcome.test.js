@@ -54,7 +54,8 @@ describe('resolveEmailFailureOutcome', () => {
   });
 
   it('a client-clock snapshot would poison the check (why before must be server stamps)', () => {
-    const clientClock = { invoiceSentAt: '2026-10-16T00:25:09.000Z', receiptSentAt: null };
+    // client clock lagging the server: the unchanged server stamp reads as "moved forward"
+    const clientClock = { invoiceSentAt: '2026-10-16T00:24:55.000Z', receiptSentAt: null };
     const server = { invoiceSentAt: '2026-10-16T00:25:02.000Z', receiptSentAt: null };
     expect(resolveEmailFailureOutcome({ before: clientClock, after: server, status: null })).toBe('sent');
   });

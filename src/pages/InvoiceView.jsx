@@ -11,7 +11,7 @@ import { getCurrentBusinessId } from '../data/currentBusiness';
 import { authHeaders } from '../lib/supabase';
 import { notifyDataChanged } from '../data/useData';
 import { logClientError } from '../lib/errorTracking';
-import { resolveEmailFailureOutcome } from '../lib/invoiceEmailOutcome';
+import { resolveEmailFailureOutcome, latestSentStamps } from '../lib/invoiceEmailOutcome';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
@@ -34,15 +34,6 @@ function formatJobTime(job) {
   if (!hours || hours <= 0) return fmt(hh, mm);
   const endTotal = hh * 60 + mm + Math.round(hours * 60);
   return `${fmt(hh, mm)} – ${fmt(Math.floor(endTotal / 60) % 24, endTotal % 60)}`;
-}
-
-// Latest invoice/receipt sent-at stamps across an invoice's jobs (same pick as reload()).
-function sentStamps(inv) {
-  const jobs = (inv?.invoice_jobs || []).map(ij => ij.jobs).filter(Boolean);
-  return {
-    invoiceSentAt: jobs.find(j => j.invoice_sent_at)?.invoice_sent_at || null,
-    receiptSentAt: jobs.find(j => j.receipt_sent_at)?.receipt_sent_at || null,
-  };
 }
 
 // Client emails must never land in error_logs (server messages can echo the recipient).
@@ -71,6 +62,7 @@ export default function InvoiceView() {
   const [settlementReceipt, setSettlementReceipt] = useState(null);
   const settlingRef = useRef(false);
   const addingRef   = useRef(false);
+  const emailTimerRef = useRef(null);
   const wrapRef = useRef(null);
   const boxRef = useRef(null);
   const [scale, setScale] = useState(1);
@@ -92,13 +84,16 @@ export default function InvoiceView() {
     return () => ro.disconnect();
   }, [invoice]);
 
-  function reload() {
+  // keepSelections: refresh data without resetting the settle / add-to-invoice checkboxes
+  // (used by the email-failure recheck so it doesn't wipe her in-progress choices).
+  function reload({ keepSelections = false } = {}) {
     return fetchInvoiceById(id)
       .then(inv => {
         setInvoice(inv);
-        const stamps = sentStamps(inv);
+        const stamps = latestSentStamps(inv);
         setInvoiceSentAt(stamps.invoiceSentAt);
         setReceiptSentAt(stamps.receiptSentAt);
+        if (keepSelections) return inv;
         // Default invoice jobs (only) to selected for settle panel
         const settleIds = (inv.invoiceJobBalances ?? [])
           .filter(b => b.owing > 0.01).map(b => b.job.id);
@@ -110,6 +105,8 @@ export default function InvoiceView() {
         return inv;
       });
   }
+
+  useEffect(() => () => clearTimeout(emailTimerRef.current), []);
 
   useEffect(() => {
     reload()
@@ -273,6 +270,7 @@ export default function InvoiceView() {
 
   async function handleEmail() {
     if (!client.email) return;
+    clearTimeout(emailTimerRef.current); // a stale reset must not fire mid-send
     setEmailState('sending');
     // The server stamps *_sent_at only after the mail goes out. If the response is lost
     // (iOS PWA fetch abort, timeout), a changed stamp is the proof it was sent.
@@ -300,11 +298,11 @@ export default function InvoiceView() {
       else setInvoiceSentAt(new Date().toISOString());
       notifyDataChanged();
       setEmailState('sent');
-      setTimeout(() => setEmailState('idle'), 4000);
+      emailTimerRef.current = setTimeout(() => setEmailState(st => (st === 'sent' ? 'idle' : st)), 4000);
     } catch (e) {
       console.error('Email error:', e);
       let after = null;
-      try { after = sentStamps(await reload()); } catch (re) { console.error('Email recheck error:', re); }
+      try { after = latestSentStamps(await reload({ keepSelections: true })); } catch (re) { console.error('Email recheck error:', re); }
       const outcome = resolveEmailFailureOutcome({ before, after, status });
       const logErr = new Error(scrubEmails(e?.message));
       logErr.name = e?.name || 'Error';
@@ -323,10 +321,10 @@ export default function InvoiceView() {
       if (outcome === 'sent') {
         notifyDataChanged();
         setEmailState('sent');
-        setTimeout(() => setEmailState('idle'), 4000);
+        emailTimerRef.current = setTimeout(() => setEmailState(st => (st === 'sent' ? 'idle' : st)), 4000);
       } else {
-        setEmailState(outcome); // 'error' | 'unsure'
-        if (outcome === 'unsure') setTimeout(() => setEmailState('idle'), 10000);
+        // 'error' | 'unsure'. 'unsure' is the double-send warning: stays until the next click.
+        setEmailState(outcome);
       }
     }
   }

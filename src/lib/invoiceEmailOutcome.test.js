@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { resolveEmailFailureOutcome } from './invoiceEmailOutcome';
+import { readFileSync } from 'node:fs';
+import { resolveEmailFailureOutcome, latestSentStamps } from './invoiceEmailOutcome';
+import { decorateInvoiceWithBalances } from './invoiceBalances';
 
 const none = { invoiceSentAt: null, receiptSentAt: null };
 
@@ -47,5 +49,50 @@ describe('resolveEmailFailureOutcome', () => {
     const stamp = '2099-01-01T00:00:00Z';
     const same = { invoiceSentAt: stamp, receiptSentAt: null };
     expect(resolveEmailFailureOutcome({ before: same, after: { ...same }, status: null })).toBe('unsure');
+  });
+});
+
+describe('latestSentStamps', () => {
+  const inv = (...jobs) => ({ invoice_jobs: jobs.map(j => ({ jobs: j })) });
+
+  it('returns nulls when no job has a stamp or there are no jobs', () => {
+    expect(latestSentStamps(inv({ id: 'a' }))).toEqual({ invoiceSentAt: null, receiptSentAt: null });
+    expect(latestSentStamps({})).toEqual({ invoiceSentAt: null, receiptSentAt: null });
+  });
+
+  it('takes the latest stamp per field regardless of invoice_jobs order', () => {
+    const old = { id: 'a', invoice_sent_at: '2026-09-01T10:00:00Z' };
+    const fresh = { id: 'b', invoice_sent_at: '2026-10-16T00:25:02Z', receipt_sent_at: '2026-10-17T00:00:00Z' };
+    const expected = { invoiceSentAt: '2026-10-16T00:25:02Z', receiptSentAt: '2026-10-17T00:00:00Z' };
+    expect(latestSentStamps(inv(old, fresh))).toEqual(expected);
+    expect(latestSentStamps(inv(fresh, old))).toEqual(expected);
+  });
+
+  it('compares instants, not strings (offset formats)', () => {
+    const a = { invoice_sent_at: '2026-10-16T01:00:00+00:00' };
+    const b = { invoice_sent_at: '2026-10-15T23:30:00-05:00' }; // = 04:30Z, later
+    expect(latestSentStamps(inv(a, b)).invoiceSentAt).toBe('2026-10-15T23:30:00-05:00');
+  });
+});
+
+describe('sent-at stamps survive the invoice JSON read path', () => {
+  it('decorateInvoiceWithBalances leaves invoice_jobs[].jobs (and their stamps) untouched', async () => {
+    const sb = { from: () => {
+      const b = { select: () => b, eq: () => b, is: () => b, order: () => b,
+        then: (ok, err) => Promise.resolve({ data: [], error: null }).then(ok, err) };
+      return b;
+    } };
+    const invoice = {
+      id: 'inv-1', business_id: 'biz-1', client_id: 'c1', businesses: { id: 'biz-1' },
+      invoice_jobs: [{ job_id: 'j1', jobs: { id: 'j1', invoice_sent_at: '2026-10-16T00:25:02Z', receipt_sent_at: null } }],
+    };
+    const out = await decorateInvoiceWithBalances(sb, invoice);
+    expect(latestSentStamps(out)).toEqual({ invoiceSentAt: '2026-10-16T00:25:02Z', receiptSentAt: null });
+  });
+
+  it('api/invoice.ts handleJsonRead selects the stamp columns (regression: they were missing)', () => {
+    const src = readFileSync(new URL('../../api/invoice.ts', import.meta.url), 'utf8');
+    const body = src.slice(src.indexOf('async function handleJsonRead'), src.indexOf('async function handleEmail'));
+    expect(body).toMatch(/invoice_jobs\(job_id, jobs\([^)]*invoice_sent_at[^)]*receipt_sent_at/);
   });
 });

@@ -134,7 +134,7 @@ async function handleJsonRead(req, res) {
   const sb = makeSupabase();
   const { data: invoice, error } = await sb
     .from('invoices')
-    .select('*, clients(id, first_name, last_name, street, city, province, postal_code, phone, email), businesses(id, name, city, province, phone, email, hst_number, logo_url, hourly_rate, hst_rate, tax_enabled), invoice_jobs(job_id, jobs(id, scheduled_date, scheduled_time, service_name, pricing_type, actual_duration, estimated_hours, flat_rate, subtotal, additional_costs_json, additional_cost, additional_cost_notes, tax_enabled, hst_amount, job_status))')
+    .select('*, clients(id, first_name, last_name, street, city, province, postal_code, phone, email), businesses(id, name, city, province, phone, email, hst_number, logo_url, hourly_rate, hst_rate, tax_enabled), invoice_jobs(job_id, jobs(id, scheduled_date, scheduled_time, service_name, pricing_type, actual_duration, estimated_hours, flat_rate, subtotal, additional_costs_json, additional_cost, additional_cost_notes, tax_enabled, hst_amount, job_status, invoice_sent_at, receipt_sent_at))')
     .eq('id', id)
     .single();
   if (error || !invoice) return res.status(404).json({ error: 'Invoice not found' });

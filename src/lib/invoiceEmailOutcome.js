@@ -1,3 +1,16 @@
+// Latest (max) invoice/receipt sent-at across an invoice's jobs. Deterministic: the
+// embedded invoice_jobs order is not guaranteed, and jobs can carry different stamps
+// (e.g. one that was on an earlier invoice), so never pick "the first one".
+export function latestSentStamps(inv) {
+  const jobs = (inv?.invoice_jobs || []).map(ij => ij.jobs).filter(Boolean);
+  const latest = (field) => jobs.reduce((best, j) => {
+    const v = j[field];
+    if (!v) return best;
+    return !best || Date.parse(v) > Date.parse(best) ? v : best;
+  }, null);
+  return { invoiceSentAt: latest('invoice_sent_at'), receiptSentAt: latest('receipt_sent_at') };
+}
+
 // Decides what the Email button should say after a POST /api/invoice that did not
 // come back as a clean 200. The server only stamps invoice_sent_at / receipt_sent_at
 // after sendMail resolves, so a changed stamp proves the email went out even when the

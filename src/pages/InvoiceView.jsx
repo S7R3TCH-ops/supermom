@@ -432,7 +432,7 @@ export default function InvoiceView() {
           </button>
           {isOwner && <button
             onClick={handleEmail}
-            disabled={!client.email || emailState === 'sending'}
+            disabled={!client.email || emailState === 'sending' || emailState === 'sent'}
             style={{
               background: emailState === 'sent' ? '#16A34A' : 'white',
               color: emailState === 'sent' ? 'white' : emailState === 'unsure' ? '#B45309' : client.email ? 'var(--pink)' : '#bbb',

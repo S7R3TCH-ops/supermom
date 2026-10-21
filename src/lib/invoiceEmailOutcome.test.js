@@ -59,6 +59,22 @@ describe('resolveEmailFailureOutcome', () => {
     expect(resolveEmailFailureOutcome({ before: clientClock, after: server, status: null })).toBe('sent');
   });
 
+  it('only forward movement counts: null->value and later are sent; earlier and value->null are not', () => {
+    const t1 = '2026-10-16T00:25:02Z';
+    const t2 = '2026-10-17T00:25:02Z';
+    const o = (before, after, field = 'invoiceSentAt') => resolveEmailFailureOutcome({
+      before: { invoiceSentAt: null, receiptSentAt: null, [field]: before },
+      after: { invoiceSentAt: null, receiptSentAt: null, [field]: after },
+      status: null,
+    });
+    expect(o(null, t1)).toBe('sent');
+    expect(o(t1, t2)).toBe('sent');
+    expect(o(null, t1, 'receiptSentAt')).toBe('sent');
+    expect(o(t2, t1)).toBe('unsure');
+    expect(o(t1, null)).toBe('unsure');
+    expect(o(t1, null, 'receiptSentAt')).toBe('unsure');
+  });
+
   it('unknown snapshot (before null) never reports sent', () => {
     const after = { invoiceSentAt: '2026-10-16T00:25:02Z', receiptSentAt: null };
     expect(resolveEmailFailureOutcome({ before: null, after, status: null })).toBe('unsure');

@@ -35,8 +35,10 @@ export function resolveEmailFailureOutcome({ before, after, status = null }) {
   if (before && after) {
     // The server decides receipt vs invoice, so either stamp moving means it was sent.
     // Compare instants, not strings: Z vs +00:00 formatting must never look like a change.
-    if (!sameInstant(after.invoiceSentAt, before.invoiceSentAt)
-      || !sameInstant(after.receiptSentAt, before.receiptSentAt)) return 'sent';
+    // Only forward movement counts (null -> value, or later); a stamp that vanished or went
+    // backwards is a bad read, not proof of a send.
+    if (advanced(before.invoiceSentAt, after.invoiceSentAt)
+      || advanced(before.receiptSentAt, after.receiptSentAt)) return 'sent';
   }
   const hadRealResponse = status != null && !AMBIGUOUS_STATUSES.has(status);
   // A genuine server error response ("Failed — retry") is trustworthy; anything else
@@ -44,9 +46,10 @@ export function resolveEmailFailureOutcome({ before, after, status = null }) {
   return hadRealResponse ? 'error' : 'unsure';
 }
 
-function sameInstant(a, b) {
-  if (!a || !b) return !a && !b;
-  const ta = Date.parse(a);
-  const tb = Date.parse(b);
-  return Number.isNaN(ta) || Number.isNaN(tb) ? a === b : ta === tb;
+function advanced(before, after) {
+  if (!after) return false;
+  if (!before) return true;
+  const tb = Date.parse(before);
+  const ta = Date.parse(after);
+  return Number.isNaN(tb) || Number.isNaN(ta) ? false : ta > tb;
 }

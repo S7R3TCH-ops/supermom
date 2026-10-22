@@ -44,7 +44,7 @@ export function buildRequestEmailHtml({ kind, title, body, variant, recipientNam
 
         <!-- Header -->
         <tr><td style="background:${pink};padding:28px 32px;text-align:center;">
-          <img src="https://supermom-v2.vercel.app/branding/logo-final-white-bg.png" alt="Supermom" height="80" style="display:block;margin:0 auto 12px;border-radius:50%;" />
+          <img src="https://app.supermomforhire.com/branding/logo-final-white-bg.png" alt="Supermom" width="80" height="80" style="display:block;margin:0 auto 12px;border-radius:50%;" />
           <div style="color:white;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;opacity:.95;">${headerLabel}</div>
         </td></tr>
 

@@ -4,6 +4,7 @@ import { buildInvoicePdfBuffer } from './_lib/invoicePdf.js';
 import { requireUser, canAccessBusiness } from './_lib/authGuard.js';
 import { decorateInvoiceWithBalances } from '../src/lib/invoiceBalances.js';
 import { logServerError } from './_lib/errorLog.js';
+import { APP_ORIGIN, invoiceViewUrl, normalizeRecipient, domainCanReceiveMail, safeAttachmentName, safeDisplayName, buildInvoiceEmailText } from './_lib/invoiceEmail.js';
 
 function escapeHtml(str) {
   return String(str ?? '')
@@ -14,7 +15,7 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
-function brandedEmailHtml({ clientName, bizName, bizEmail, invoiceNumber, isReceipt }) {
+function brandedEmailHtml({ clientName, bizName, bizEmail, invoiceNumber, isReceipt, viewUrl }) {
   clientName   = escapeHtml(clientName);
   bizName      = escapeHtml(bizName);
   bizEmail     = escapeHtml(bizEmail);
@@ -34,7 +35,7 @@ function brandedEmailHtml({ clientName, bizName, bizEmail, invoiceNumber, isRece
 
         <!-- Header -->
         <tr><td style="background:${headerColor};padding:28px 32px;text-align:center;">
-          <img src="https://supermom-v2.vercel.app/branding/logo-final-white-bg.png" alt="${bizName}" height="80" style="display:block;margin:0 auto 12px;border-radius:50%;" />
+          <img src="${APP_ORIGIN}/branding/logo-final-white-bg.png" alt="${bizName}" width="80" height="80" style="display:block;margin:0 auto 12px;border-radius:50%;" />
           <div style="color:white;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;opacity:.85;">${docLabel}</div>
         </td></tr>
 
@@ -46,6 +47,11 @@ function brandedEmailHtml({ clientName, bizName, bizEmail, invoiceNumber, isRece
               ? `Please find your receipt #${invoiceNumber} from <strong>${bizName}</strong> attached. Your payment has been received in full — thank you!`
               : `Please find your invoice #${invoiceNumber} from <strong>${bizName}</strong> attached to this email as a PDF.`
             }
+          </p>
+
+          <!-- View online (same domain as the sender; also the fallback if the PDF is stripped) -->
+          <p style="margin:0 0 24px;text-align:center;">
+            <a href="${viewUrl}" style="display:inline-block;background:${headerColor};color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:12px 24px;border-radius:10px;">View ${docLabel} Online</a>
           </p>
 
           <!-- Doc # callout -->
@@ -73,6 +79,7 @@ function brandedEmailHtml({ clientName, bizName, bizEmail, invoiceNumber, isRece
 
         <!-- Footer -->
         <tr><td style="background:#fafafa;border-top:1px solid #eee;padding:20px 32px;text-align:center;">
+          <p style="margin:0 0 4px;font-size:12px;color:#aaa;">Questions? Just reply to this email.</p>
           <p style="margin:0;font-size:12px;color:#aaa;">${bizName} · Georgetown, ON</p>
         </td></tr>
 
@@ -156,6 +163,11 @@ async function handleEmail(req, res) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
+  const recipient = normalizeRecipient(clientEmail);
+  if (!recipient.ok) {
+    return res.status(400).json({ error: recipient.reason, code: 'bad_recipient' });
+  }
+
   const sb = makeSupabase();
 
   // Sending email + flipping invoice_sent_at/receipt_sent_at is side-effecting:
@@ -178,8 +190,20 @@ async function handleEmail(req, res) {
   const gmailPass = process.env.GMAIL_APP_PASSWORD;
 
   if (!gmailUser || !gmailPass) {
-    console.warn('[invoice/email] Gmail credentials not configured — email not sent');
-    return res.status(200).json({ ok: true, mock: true });
+    // Never report success for an email that was not sent: the UI would show "Sent!".
+    console.error('[invoice/email] Gmail credentials not configured — email not sent');
+    await logServerError({
+      severity: 'error',
+      message: `Invoice email NOT sent for invoice ${invoiceNumber}: Gmail credentials not configured`,
+      context: { invoiceId, invoiceNumber },
+      businessId: invoiceData.business_id ?? null,
+      alert: false,
+    });
+    return res.status(500).json({ error: 'Email is not configured' });
+  }
+
+  if (!(await domainCanReceiveMail(recipient.domain))) {
+    return res.status(400).json({ error: `The email domain "${recipient.domain}" can't receive mail - check the address`, code: 'bad_recipient' });
   }
 
   let pdfBuffer = null;
@@ -193,6 +217,13 @@ async function handleEmail(req, res) {
       pdfBuffer = await buildInvoicePdfBuffer(decorated);
     } catch (err) {
       console.error('[invoice/email] PDF generation failed:', err);
+      await logServerError({
+        severity: 'warning',
+        message: `Invoice email for ${invoiceNumber} sent WITHOUT PDF attachment (generation failed): ${err instanceof Error ? err.message : String(err)}`,
+        stack: err instanceof Error ? err.stack : null,
+        context: { invoiceId, invoiceNumber },
+        businessId: invoiceData.business_id ?? null,
+      });
     }
   }
 
@@ -205,18 +236,28 @@ async function handleEmail(req, res) {
   const docLabel = isReceipt ? 'Receipt' : 'Invoice';
 
   try {
-    await transporter.sendMail({
-      from: `"${bizName || 'Supermom for Hire'}" <${fromAddress}>`,
+    const viewUrl = invoiceViewUrl(invoiceId);
+    const info = await transporter.sendMail({
+      from: `"${safeDisplayName(bizName)}" <${fromAddress}>`,
       replyTo: fromAddress,
-      to: clientEmail,
+      to: recipient.email,
+      // Copy to the sending mailbox: proof of what went out, and a visible trail for bounces.
+      bcc: gmailUser,
       subject: `${docLabel} #${invoiceNumber} from ${bizName || 'Supermom for Hire'}`,
-      html: brandedEmailHtml({ clientName, bizName, bizEmail, invoiceNumber, isReceipt }),
+      text: buildInvoiceEmailText({ clientName, bizName, bizEmail, invoiceNumber, isReceipt, viewUrl }),
+      html: brandedEmailHtml({ clientName, bizName, bizEmail, invoiceNumber, isReceipt, viewUrl }),
       attachments: pdfBuffer ? [{
-        filename: `${clientLastName || 'Client'}_${docLabel}_${invoiceNumber}.pdf`,
+        filename: safeAttachmentName(clientLastName, docLabel, invoiceNumber),
         content: pdfBuffer,
         contentType: 'application/pdf',
       }] : [],
     });
+
+    // SMTP can accept the call yet reject the recipient; treat that as a failure.
+    if (info?.rejected?.length) {
+      throw new Error(`Recipient rejected by mail server: ${info.rejected.join(', ')}`);
+    }
+    console.log('[invoice/email] sent', { invoiceNumber, messageId: info?.messageId, response: info?.response });
 
     if (jobIds.length) {
       const sentField = isReceipt ? 'receipt_sent_at' : 'invoice_sent_at';

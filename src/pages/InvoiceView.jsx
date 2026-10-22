@@ -49,6 +49,7 @@ export default function InvoiceView() {
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState(null);
   const [emailState, setEmailState] = useState('idle');
+  const [emailNote, setEmailNote] = useState(null); // server's reason when it rejects the address (HTTP 400)
   const [invoiceSentAt, setInvoiceSentAt] = useState(null);
   const [receiptSentAt, setReceiptSentAt] = useState(null);
   const [isOwner, setIsOwner]       = useState(false);
@@ -273,6 +274,7 @@ export default function InvoiceView() {
     if (!client.email) return;
     clearTimeout(emailTimerRef.current); // a stale reset must not fire mid-send
     setEmailState('sending');
+    setEmailNote(null);
     // The server stamps *_sent_at only after the mail goes out. If the response is lost
     // (iOS PWA fetch abort, timeout), a changed stamp is the proof it was sent.
     // Snapshot must hold SERVER stamps only (never client-clock values), else a failed
@@ -310,6 +312,10 @@ export default function InvoiceView() {
       emailTimerRef.current = setTimeout(() => setEmailState(st => (st === 'sent' ? 'idle' : st)), 4000);
     } catch (e) {
       console.error('Email error:', e);
+      if (status === 400) {
+        // The server refused the address (invalid / mistyped / domain can't receive mail). Show why.
+        try { setEmailNote(JSON.parse(e.message)?.error || null); } catch { /* not JSON: keep generic label */ }
+      }
       let after = null;
       try { after = latestSentStamps(await reload({ keepSelections: true })); } catch (re) { console.error('Email recheck error:', re); }
       const outcome = resolveEmailFailureOutcome({ before, after, status });
@@ -341,7 +347,7 @@ export default function InvoiceView() {
   const docLabel   = isReceipt ? 'Receipt' : 'Invoice';
   const emailLabel = emailState === 'sending' ? 'Sending…'
     : emailState === 'sent'    ? '✓ Sent!'
-    : emailState === 'error'   ? '✗ Failed — retry'
+    : emailState === 'error'   ? (emailNote ? `✗ ${emailNote}` : '✗ Failed — retry')
     : emailState === 'unsure'  ? "Couldn't confirm — check Sent mail before resending"
     : client.email             ? `Email ${docLabel}`
     : 'No Email on File';
@@ -439,7 +445,7 @@ export default function InvoiceView() {
               border: `1.5px solid ${emailState === 'sent' ? '#16A34A' : emailState === 'unsure' ? '#B45309' : client.email ? 'var(--pink)' : '#ddd'}`,
               padding: '8px 14px', borderRadius: 8, fontSize: 13, fontWeight: 700,
               // 'unsure' label is long: let it wrap instead of blowing out the toolbar
-              ...(emailState === 'unsure' ? { maxWidth: 240, whiteSpace: 'normal', textAlign: 'left', lineHeight: 1.3 } : {}),
+              ...(emailState === 'unsure' || (emailState === 'error' && emailNote) ? { maxWidth: 240, whiteSpace: 'normal', textAlign: 'left', lineHeight: 1.3 } : {}),
               cursor: client.email && ['idle', 'error', 'unsure'].includes(emailState) ? 'pointer' : 'not-allowed',
               transition: 'all 0.2s',
             }}

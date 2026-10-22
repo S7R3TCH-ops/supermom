@@ -146,11 +146,11 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin); icons have `#FC4693` pi
 
 ## Current version: 0.13.118 - Oct 22, 2026 (invoice email deliverability)
 
-**v0.13.118** (branch `fix/invoice-email-deliverability`, stacked on the v0.13.117 branch, not live): invoice email gets a text part, same-domain "View online" link + logo, BCC, recipient validation (typo domains + MX), no fake success when Gmail creds missing. **DNS is the bigger cause and is Joel's (Wix DNS):** two SPF records, no DKIM (`google._domainkey`), no DMARC; see `docs/changelog/v0.13.118.md` and second-brain `tasks.md` 2026-10-22.
+**v0.13.118** (LIVE 2026-10-22, `e8d1c0c`, with v0.13.117): invoice email gets a text part, same-domain "View online" link + logo, BCC, recipient validation (typo domains + MX), no fake success when Gmail creds missing. **DNS is the bigger cause and is Joel's (Wix DNS):** two SPF records, no DKIM (`google._domainkey`), no DMARC; see `docs/changelog/v0.13.118.md` and second-brain `tasks.md` 2026-10-22.
 
 ### Previous: 0.13.117 - Oct 21, 2026 (invoice email button verifies sent-at; round logo badge in emails)
 
-**v0.13.117** (branch `fix/invoice-send-state-and-logo`, not yet live): Sandra's `142fec00`. `InvoiceView.jsx` `handleEmail` re-reads sent-at stamps after any failure (needs `invoice_sent_at`/`receipt_sent_at` in `handleJsonRead`'s jobs select, added; changed = sent; no response + no change = "Couldn't confirm - check Sent mail", helper `src/lib/invoiceEmailOutcome.js`) and logs to `error_logs`. Email logo `<img>` now `border-radius:50%` in `api/invoice.ts`, `api/_lib/brandedEmail.js`, `api/briefing/daily.js`. Needs a real-iPhone check. Full: `docs/changelog/v0.13.117.md`.
+**v0.13.117** (LIVE 2026-10-22 with v0.13.118): Sandra's `142fec00`. `InvoiceView.jsx` `handleEmail` re-reads sent-at stamps after any failure (needs `invoice_sent_at`/`receipt_sent_at` in `handleJsonRead`'s jobs select, added; changed = sent; no response + no change = "Couldn't confirm - check Sent mail", helper `src/lib/invoiceEmailOutcome.js`) and logs to `error_logs`. Email logo `<img>` now `border-radius:50%` in `api/invoice.ts`, `api/_lib/brandedEmail.js`, `api/briefing/daily.js`. Needs a real-iPhone check. Full: `docs/changelog/v0.13.117.md`.
 
 **v0.13.116** (LIVE 2026-10-14, `fe3890e`): one Google event per job (`docs/changelog/v0.13.116.md`).
 - **Open:** Joel runs the Katie repair `--apply` for Sandra's business; delete QA event `rcg8f94t` by hand; smoke-check (move a QA job, expect one event).

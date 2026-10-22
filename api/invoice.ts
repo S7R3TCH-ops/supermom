@@ -4,7 +4,7 @@ import { buildInvoicePdfBuffer } from './_lib/invoicePdf.js';
 import { requireUser, canAccessBusiness } from './_lib/authGuard.js';
 import { decorateInvoiceWithBalances } from '../src/lib/invoiceBalances.js';
 import { logServerError } from './_lib/errorLog.js';
-import { APP_ORIGIN, invoiceViewUrl, normalizeRecipient, domainCanReceiveMail, safeAttachmentName, safeDisplayName, buildInvoiceEmailText } from './_lib/invoiceEmail.js';
+import { APP_ORIGIN, invoiceViewUrl, normalizeRecipient, domainCanReceiveMail, safeAttachmentName, safeDisplayName, stripControl, buildInvoiceEmailText } from './_lib/invoiceEmail.js';
 
 function escapeHtml(str) {
   return String(str ?? '')
@@ -243,7 +243,7 @@ async function handleEmail(req, res) {
       to: recipient.email,
       // Copy to the sending mailbox: proof of what went out, and a visible trail for bounces.
       bcc: gmailUser,
-      subject: `${docLabel} #${invoiceNumber} from ${bizName || 'Supermom for Hire'}`,
+      subject: `${docLabel} #${stripControl(invoiceNumber)} from ${safeDisplayName(bizName)}`,
       text: buildInvoiceEmailText({ clientName, bizName, bizEmail, invoiceNumber, isReceipt, viewUrl }),
       html: brandedEmailHtml({ clientName, bizName, bizEmail, invoiceNumber, isReceipt, viewUrl }),
       attachments: pdfBuffer ? [{

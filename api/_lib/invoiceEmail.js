@@ -67,22 +67,31 @@ export async function domainCanReceiveMail(domain, timeoutMs = 3000) {
       }
     }
   })();
-  const timeout = new Promise(resolve => setTimeout(() => resolve(true), timeoutMs));
+  let timer;
+  const timeout = new Promise(resolve => { timer = setTimeout(() => resolve(true), timeoutMs); });
   try {
     return await Promise.race([lookup, timeout]);
   } catch {
     return true;
+  } finally {
+    // An uncleared timer keeps the serverless function alive for the full timeout.
+    clearTimeout(timer);
   }
 }
 
 // Display name goes inside a quoted From header: drop quotes, backslashes and
 // control characters (header-injection / malformed-header guard).
 export function safeDisplayName(name, fallback = 'Supermom for Hire') {
-  const cleaned = [...String(name ?? '')]
-    .filter(ch => ch !== '"' && ch !== '\\' && ch.charCodeAt(0) >= 32)
+  const cleaned = [...stripControl(name)]
+    .filter(ch => ch !== '"' && ch !== '\\')
     .join('')
     .trim();
   return cleaned || fallback;
+}
+
+// Drop CR/LF and other control characters (header-injection guard for Subject etc.).
+export function stripControl(value) {
+  return [...String(value ?? '')].filter(ch => ch.charCodeAt(0) >= 32).join('');
 }
 
 export function safeAttachmentName(clientLastName, docLabel, invoiceNumber) {

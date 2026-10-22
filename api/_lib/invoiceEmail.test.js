@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import {
   APP_ORIGIN, invoiceViewUrl, normalizeRecipient, safeAttachmentName, safeDisplayName,
-  buildInvoiceEmailText, domainCanReceiveMail,
+  buildInvoiceEmailText, domainCanReceiveMail, stripControl,
 } from './invoiceEmail.js';
 
 describe('normalizeRecipient', () => {
@@ -16,6 +16,15 @@ describe('normalizeRecipient', () => {
     const r = normalizeRecipient('sam@gmial.com');
     expect(r.ok).toBe(false);
     expect(r.reason).toContain('sam@gmail.com');
+  });
+});
+
+describe('domainCanReceiveMail timer', () => {
+  it('clears its timeout so the event loop is not held open', async () => {
+    const count = () => process.getActiveResourcesInfo().filter(r => r === 'Timeout').length;
+    const before = count();
+    await domainCanReceiveMail('example.com', 5000);
+    expect(count()).toBeLessThanOrEqual(before);
   });
 });
 
@@ -36,6 +45,7 @@ describe('invoice email content', () => {
     expect(safeAttachmentName(null, 'Receipt', '1')).toBe('Client_Receipt_1.pdf');
     expect(safeDisplayName('Sandra "Mom"\r\nBcc: x@y.com')).toBe('Sandra MomBcc: x@y.com');
     expect(safeDisplayName('')).toBe('Supermom for Hire');
+    expect(stripControl('2026-1\r\nBcc: x@y.com')).toBe('2026-1Bcc: x@y.com');
   });
   it('plain-text part carries the link, number and payment info', () => {
     const t = buildInvoiceEmailText({ clientName: 'Nma', bizName: 'Supermom for Hire', bizEmail: 'sandra@supermomforhire.com', invoiceNumber: '2026-064', isReceipt: false, viewUrl: 'https://app.supermomforhire.com/i/x' });

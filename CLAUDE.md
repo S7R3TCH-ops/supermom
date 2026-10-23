@@ -146,7 +146,7 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin); icons have `#FC4693` pi
 
 ## Current version: 0.13.118 - Oct 22, 2026 (invoice email deliverability)
 
-**Unreleased (branch `fix/receipt-email-pink-and-service-date`, committed 2026-10-23, NOT pushed, awaiting Joel's QA-account check):** invoice/receipt email (`api/invoice.ts`) receipt header + button now brand pink, same as invoice (was green since v0.12.20; only the "Paid in Full" line stays green); email shows Date(s) of Service under the number (helper `formatServiceDates` in `api/_lib/invoiceEmail.js`) and in the subject + plain-text part. PDF and `InvoiceView.jsx` receipt title still green, untouched on purpose (Joel only asked about email).
+**Receipt email pink + date of service (LIVE 2026-10-23, `6f8c5a8`, no version bump):** invoice/receipt email (`api/invoice.ts`) receipt header + button now brand pink, same as invoice (was green since v0.12.20; only the "Paid in Full" line stays green); email shows Date(s) of Service under the number (helper `formatServiceDates` in `api/_lib/invoiceEmail.js`) and in the subject + plain-text part. PDF and `InvoiceView.jsx` receipt title still green, untouched on purpose (Joel only asked about email).
 
 **v0.13.118** (LIVE 2026-10-22, `e8d1c0c`, with v0.13.117): invoice email gets a text part, same-domain "View online" link + logo, BCC, recipient validation (typo domains + MX), no fake success when Gmail creds missing. **DNS is the bigger cause and is Joel's (Wix DNS):** two SPF records, no DKIM (`google._domainkey`), no DMARC; see `docs/changelog/v0.13.118.md` and second-brain `tasks.md` 2026-10-22.
 

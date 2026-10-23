@@ -100,9 +100,31 @@ export function safeAttachmentName(clientLastName, docLabel, invoiceNumber) {
   return `${last}_${docLabel}_${clean(invoiceNumber) || 'document'}.pdf`;
 }
 
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function formatServiceDate(dateStr) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(dateStr ?? ''));
+  if (!m) return null;
+  return `${MONTHS[parseInt(m[2], 10) - 1]} ${parseInt(m[3], 10)}, ${m[1]}`;
+}
+
+/**
+ * Service-date line for the email: { label, text }, or null when no job has a
+ * usable date. One day reads "October 14, 2026"; 2-3 days are listed; beyond
+ * that a "first – last (N services)" range. Takes the jobs' scheduled_date
+ * strings (YYYY-MM-DD).
+ */
+export function formatServiceDates(dates) {
+  const days = [...new Set((dates ?? []).filter(d => formatServiceDate(d)).map(d => String(d).slice(0, 10)))].sort();
+  if (!days.length) return null;
+  if (days.length === 1) return { label: 'Date of Service', text: formatServiceDate(days[0]) };
+  if (days.length <= 3) return { label: 'Dates of Service', text: days.map(formatServiceDate).join(', ') };
+  return { label: 'Dates of Service', text: `${formatServiceDate(days[0])} – ${formatServiceDate(days[days.length - 1])} (${days.length} services)` };
+}
+
 // Plain-text alternative. HTML-only mail with a lone attachment is a classic
 // spam signature; multipart/alternative with a real text body is not.
-export function buildInvoiceEmailText({ clientName, bizName, bizEmail, invoiceNumber, isReceipt, viewUrl }) {
+export function buildInvoiceEmailText({ clientName, bizName, bizEmail, invoiceNumber, isReceipt, viewUrl, service }) {
   const docLabel = isReceipt ? 'Receipt' : 'Invoice';
   const biz = bizName || 'Supermom for Hire';
   const lines = [
@@ -111,9 +133,9 @@ export function buildInvoiceEmailText({ clientName, bizName, bizEmail, invoiceNu
     isReceipt
       ? `Your receipt #${invoiceNumber} from ${biz} is attached as a PDF. Your payment has been received in full - thank you!`
       : `Your invoice #${invoiceNumber} from ${biz} is attached as a PDF.`,
-    '',
-    `You can also view it online: ${viewUrl}`,
   ];
+  if (service) lines.push(`${service.label}: ${service.text}`);
+  lines.push('', `You can also view it online: ${viewUrl}`);
   if (!isReceipt) {
     lines.push('', `Payment: e-Transfer to ${bizEmail || 'sandra@supermomforhire.com'}`, `Reference: Invoice #${invoiceNumber}`);
   }

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import {
   APP_ORIGIN, invoiceViewUrl, normalizeRecipient, safeAttachmentName, safeDisplayName,
-  buildInvoiceEmailText, domainCanReceiveMail, stripControl,
+  buildInvoiceEmailText, domainCanReceiveMail, stripControl, formatServiceDates,
 } from './invoiceEmail.js';
 
 describe('normalizeRecipient', () => {
@@ -57,6 +57,27 @@ describe('invoice email content', () => {
   });
 });
 
+describe('formatServiceDates', () => {
+  it('formats a single day', () => {
+    expect(formatServiceDates(['2026-10-14'])).toEqual({ label: 'Date of Service', text: 'October 14, 2026' });
+  });
+  it('dedupes, sorts and lists up to three days', () => {
+    expect(formatServiceDates(['2026-10-21', '2026-10-14', '2026-10-14'])).toEqual({ label: 'Dates of Service', text: 'October 14, 2026, October 21, 2026' });
+  });
+  it('collapses four or more days to a range', () => {
+    const r = formatServiceDates(['2026-10-28', '2026-10-07', '2026-10-14', '2026-10-21']);
+    expect(r.text).toBe('October 7, 2026 – October 28, 2026 (4 services)');
+  });
+  it('ignores unusable dates and returns null when none are left', () => {
+    expect(formatServiceDates([null, undefined, '', 'nope'])).toBeNull();
+    expect(formatServiceDates(undefined)).toBeNull();
+  });
+  it('shows up in the plain-text part', () => {
+    const t = buildInvoiceEmailText({ clientName: 'Nma', bizName: 'B', invoiceNumber: '1', isReceipt: true, viewUrl: 'u', service: formatServiceDates(['2026-10-14']) });
+    expect(t).toContain('Date of Service: October 14, 2026');
+  });
+});
+
 describe('api/invoice.ts handleEmail wiring (regression guards)', () => {
   const src = readFileSync(new URL('../invoice.ts', import.meta.url), 'utf8');
   it('sends a text part, bcc, validates the recipient, and no longer fakes success without credentials', () => {
@@ -65,5 +86,9 @@ describe('api/invoice.ts handleEmail wiring (regression guards)', () => {
     expect(src).toContain('normalizeRecipient(clientEmail)');
     expect(src).not.toContain('mock: true');
     expect(src).not.toContain('supermom-v2.vercel.app');
+  });
+  it('receipt header uses the same pink as the invoice header (Joel 2026-10-23)', () => {
+    expect(src).toContain('const headerColor = pink;');
+    expect(src).not.toContain('isReceipt ? green');
   });
 });

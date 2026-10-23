@@ -4,7 +4,7 @@ import { buildInvoicePdfBuffer } from './_lib/invoicePdf.js';
 import { requireUser, canAccessBusiness } from './_lib/authGuard.js';
 import { decorateInvoiceWithBalances } from '../src/lib/invoiceBalances.js';
 import { logServerError } from './_lib/errorLog.js';
-import { APP_ORIGIN, invoiceViewUrl, normalizeRecipient, domainCanReceiveMail, safeAttachmentName, safeDisplayName, stripControl, buildInvoiceEmailText } from './_lib/invoiceEmail.js';
+import { APP_ORIGIN, invoiceViewUrl, normalizeRecipient, domainCanReceiveMail, safeAttachmentName, safeDisplayName, stripControl, buildInvoiceEmailText, formatServiceDates } from './_lib/invoiceEmail.js';
 
 function escapeHtml(str) {
   return String(str ?? '')
@@ -15,16 +15,16 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
-function brandedEmailHtml({ clientName, bizName, bizEmail, invoiceNumber, isReceipt, viewUrl }) {
+function brandedEmailHtml({ clientName, bizName, bizEmail, invoiceNumber, isReceipt, viewUrl, service }) {
   clientName   = escapeHtml(clientName);
   bizName      = escapeHtml(bizName);
   bizEmail     = escapeHtml(bizEmail);
   invoiceNumber = escapeHtml(invoiceNumber);
   const pink  = '#FC4693';
-  const green = '#16A34A';
   const cream = '#FFF9F5';
   const docLabel = isReceipt ? 'Receipt' : 'Invoice';
-  const headerColor = isReceipt ? green : pink;
+  // Receipts and invoices share the brand pink header; only the "Paid in Full" line is green.
+  const headerColor = pink;
   return `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -55,9 +55,11 @@ function brandedEmailHtml({ clientName, bizName, bizEmail, invoiceNumber, isRece
           </p>
 
           <!-- Doc # callout -->
-          <div style="background:${cream};border:1.5px solid ${isReceipt ? '#BBF7D0' : '#FFD6E8'};border-radius:12px;padding:16px 20px;margin-bottom:28px;">
+          <div style="background:${cream};border:1.5px solid #FFD6E8;border-radius:12px;padding:16px 20px;margin-bottom:28px;">
             <div style="font-size:10px;font-weight:700;color:#aaa;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">${docLabel} Number</div>
             <div style="font-size:18px;font-weight:600;color:#1a1a1a;">#${invoiceNumber}</div>
+            ${service ? `<div style="font-size:10px;font-weight:700;color:#aaa;letter-spacing:1px;text-transform:uppercase;margin:14px 0 4px;">${escapeHtml(service.label)}</div>
+            <div style="font-size:15px;font-weight:600;color:#1a1a1a;">${escapeHtml(service.text)}</div>` : ''}
           </div>
 
           ${isReceipt ? `
@@ -234,6 +236,7 @@ async function handleEmail(req, res) {
 
   const fromAddress = 'invoice@supermomforhire.com';
   const docLabel = isReceipt ? 'Receipt' : 'Invoice';
+  const service = formatServiceDates((invoiceData.invoice_jobs ?? []).map(ij => ij.jobs?.scheduled_date));
 
   try {
     const viewUrl = invoiceViewUrl(invoiceId);
@@ -243,9 +246,9 @@ async function handleEmail(req, res) {
       to: recipient.email,
       // Copy to the sending mailbox: proof of what went out, and a visible trail for bounces.
       bcc: gmailUser,
-      subject: `${docLabel} #${stripControl(invoiceNumber)} from ${safeDisplayName(bizName)}`,
-      text: buildInvoiceEmailText({ clientName, bizName, bizEmail, invoiceNumber, isReceipt, viewUrl }),
-      html: brandedEmailHtml({ clientName, bizName, bizEmail, invoiceNumber, isReceipt, viewUrl }),
+      subject: `${docLabel} #${stripControl(invoiceNumber)}${service ? ` (${service.text})` : ''} from ${safeDisplayName(bizName)}`,
+      text: buildInvoiceEmailText({ clientName, bizName, bizEmail, invoiceNumber, isReceipt, viewUrl, service }),
+      html: brandedEmailHtml({ clientName, bizName, bizEmail, invoiceNumber, isReceipt, viewUrl, service }),
       attachments: pdfBuffer ? [{
         filename: safeAttachmentName(clientLastName, docLabel, invoiceNumber),
         content: pdfBuffer,

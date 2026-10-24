@@ -12,6 +12,7 @@ import { authHeaders } from '../lib/supabase';
 import { notifyDataChanged } from '../data/useData';
 import { logClientError } from '../lib/errorTracking';
 import { resolveEmailFailureOutcome, latestSentStamps } from '../lib/invoiceEmailOutcome';
+import { isStandalonePwa, fetchPdfFile, canShareFile, shareFile } from '../lib/pdfShare';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
@@ -64,6 +65,10 @@ export default function InvoiceView() {
   const settlingRef = useRef(false);
   const addingRef   = useRef(false);
   const emailTimerRef = useRef(null);
+  const [pdfBusy, setPdfBusy] = useState(false);     // standalone PWA only: fetching the PDF
+  const [pdfFile, setPdfFile] = useState(null);      // fetched File waiting for a fresh tap to share
+  const [pdfError, setPdfError] = useState(false);
+  const pdfBusyRef = useRef(false);
   const stampsStaleRef = useRef(false); // true if the post-send re-read failed, so held stamps may be old
   const wrapRef = useRef(null);
   const boxRef = useRef(null);
@@ -345,6 +350,58 @@ export default function InvoiceView() {
   }
 
   const docLabel   = isReceipt ? 'Receipt' : 'Invoice';
+
+  // iOS home-screen PWA has no browser chrome: navigating to the attachment PDF strands the user
+  // on it. Fetch it and open the native share sheet instead (Save to Files, Print, Mail...).
+  const standalone = isStandalonePwa();
+  const pdfFilename = `${client.last_name || 'Client'}_${docLabel}_${invoice.invoice_number || docLabel}.pdf`;
+  // A held file is only valid for the current doc (invoice vs receipt can flip after a payment).
+  const readyFile = pdfFile && pdfFile.name === pdfFilename ? pdfFile : null;
+
+  async function runShare(file) {
+    try {
+      const outcome = await shareFile(file, file.name.replace(/\.pdf$/, ''));
+      if (outcome === 'needs-tap') {
+        // Second refusal on a fresh tap means sharing really isn't available right now.
+        if (file === readyFile) { setPdfFile(null); setPdfError(true); }
+        else setPdfFile(file);
+        return;
+      }
+      setPdfFile(null); // 'shared' | 'cancelled'
+    } catch (e) {
+      console.error('PDF share error:', e);
+      logClientError(e, { type: 'invoice_pdf_share', invoiceId: id, errorName: e?.name });
+      setPdfFile(null);
+      setPdfError(true);
+    }
+  }
+
+  async function handleDownloadPdf() {
+    if (pdfBusyRef.current) return;
+    setPdfError(false);
+    // Second tap: share synchronously from this tap (no await first) so iOS counts it as user activation.
+    if (readyFile) {
+      pdfBusyRef.current = true; // a second tap while the sheet is open must not call share() again
+      setPdfBusy(true);
+      runShare(readyFile).finally(() => { pdfBusyRef.current = false; setPdfBusy(false); });
+      return;
+    }
+    pdfBusyRef.current = true;
+    setPdfBusy(true);
+    try {
+      const file = await fetchPdfFile(`/api/invoice?id=${id}`, pdfFilename);
+      if (!canShareFile(file)) throw new Error('Sharing PDFs is not supported on this device');
+      await runShare(file);
+    } catch (e) {
+      console.error('PDF prepare error:', e);
+      logClientError(e, { type: 'invoice_pdf_prepare', invoiceId: id, errorName: e?.name });
+      setPdfError(true);
+    } finally {
+      pdfBusyRef.current = false;
+      setPdfBusy(false);
+    }
+  }
+
   const emailLabel = emailState === 'sending' ? 'Sending…'
     : emailState === 'sent'    ? '✓ Sent!'
     : emailState === 'error'   ? (emailNote ? `✗ ${emailNote}` : '✗ Failed — retry')
@@ -452,18 +509,33 @@ export default function InvoiceView() {
           >
             {emailLabel}
           </button>}
-          <a
-            href={`/api/invoice?id=${id}`}
-            download
-            style={{
-              background: 'var(--pink)', color: 'white', textDecoration: 'none',
-              padding: '8px 14px', borderRadius: 8, fontSize: 13, fontWeight: 700,
-              cursor: 'pointer', boxShadow: '0 4px 12px rgba(233,30,106,0.2)',
-              display: 'inline-block',
-            }}
-          >
-            Download PDF
-          </a>
+          {standalone ? (
+            <button
+              onClick={handleDownloadPdf}
+              disabled={pdfBusy}
+              style={{
+                background: 'var(--pink)', color: 'white', border: 'none', textDecoration: 'none',
+                padding: '8px 14px', borderRadius: 8, fontSize: 13, fontWeight: 700,
+                cursor: pdfBusy ? 'not-allowed' : 'pointer', boxShadow: '0 4px 12px rgba(233,30,106,0.2)',
+                display: 'inline-block', opacity: pdfBusy ? 0.7 : 1,
+              }}
+            >
+              {pdfBusy ? 'Preparing…' : readyFile ? 'Ready — tap to share' : 'Download PDF'}
+            </button>
+          ) : (
+            <a
+              href={`/api/invoice?id=${id}`}
+              download
+              style={{
+                background: 'var(--pink)', color: 'white', textDecoration: 'none',
+                padding: '8px 14px', borderRadius: 8, fontSize: 13, fontWeight: 700,
+                cursor: 'pointer', boxShadow: '0 4px 12px rgba(233,30,106,0.2)',
+                display: 'inline-block',
+              }}
+            >
+              Download PDF
+            </a>
+          )}
           <button
             onClick={() => {
               const prev = document.title;
@@ -502,6 +574,11 @@ export default function InvoiceView() {
           )}
         </div>
       </div>
+      {standalone && pdfError && (
+        <div className="no-print" role="alert" style={{ maxWidth: 800, margin: '-5px auto 15px', fontSize: 12, color: '#DC2626', fontWeight: 600 }}>
+          Couldn't prepare the PDF. Use Email, or try again.
+        </div>
+      )}
 
       {/* Owner-only: add other outstanding jobs to this invoice as line items */}
       {isOwner && !invoice.isPaidInFull && otherUnpaidJobs.length > 0 && (

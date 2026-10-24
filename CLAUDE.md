@@ -144,7 +144,11 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin); icons have `#FC4693` pi
 ---
 
 
-## Current version: 0.13.118 - Oct 22, 2026 (invoice email deliverability)
+## Current version: 0.13.119 - Oct 24, 2026 (iOS PWA invoice PDF share)
+
+**v0.13.119** (branch `fix/sandra-invoice-pdf-onepage`, **NOT pushed / not live**): Sandra's iOS installed-PWA "Download PDF" navigated the whole window to the attachment PDF (no back/save, had to kill the app). `InvoiceView.jsx` now, in an iOS home-screen PWA only (`navigator.standalone`), fetches the PDF and opens the native share sheet (`navigator.share({files})`); Android/desktop, browser tabs and `/i/:id` keep the plain anchor. Helper + tests: `src/lib/pdfShare.js`. **UNVERIFIED on a real iPhone** (share-sheet path, user-activation "Ready - tap to share" fallback). Full: `docs/changelog/v0.13.119.md`.
+
+### Previous: 0.13.118 - Oct 22, 2026 (invoice email deliverability)
 
 **Receipt email pink + date of service (LIVE 2026-10-23, `6f8c5a8`, no version bump):** invoice/receipt email (`api/invoice.ts`) receipt header + button now brand pink, same as invoice (was green since v0.12.20; only the "Paid in Full" line stays green); email shows Date(s) of Service under the number (helper `formatServiceDates` in `api/_lib/invoiceEmail.js`) and in the subject + plain-text part. **PDF and `InvoiceView.jsx` receipt title also pink, plus out-of-range-month guard in `formatServiceDate` (LIVE 2026-10-24, `847cb63`):** email, PDF and web receipts now match; only paid-in-full cues stay green.
 

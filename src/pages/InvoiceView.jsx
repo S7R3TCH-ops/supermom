@@ -354,7 +354,7 @@ export default function InvoiceView() {
   // iOS home-screen PWA has no browser chrome: navigating to the attachment PDF strands the user
   // on it. Fetch it and open the native share sheet instead (Save to Files, Print, Mail...).
   const standalone = isStandalonePwa();
-  const pdfFilename = `${client.last_name || 'Client'}_${docLabel}_${invoice.invoice_number || docLabel}.pdf`;
+  const pdfFilename = `${client.last_name || 'Client'}_${docLabel}_${invoice.invoice_number || 'Invoice'}.pdf`;
   // A held file is only valid for the current doc (invoice vs receipt can flip after a payment).
   const readyFile = pdfFile && pdfFile.name === pdfFilename ? pdfFile : null;
 
@@ -576,7 +576,7 @@ export default function InvoiceView() {
       </div>
       {standalone && pdfError && (
         <div className="no-print" role="alert" style={{ maxWidth: 800, margin: '-5px auto 15px', fontSize: 12, color: '#DC2626', fontWeight: 600 }}>
-          Couldn't prepare the PDF. Use Email, or try again.
+          Couldn't prepare the PDF. Please try again.
         </div>
       )}
 

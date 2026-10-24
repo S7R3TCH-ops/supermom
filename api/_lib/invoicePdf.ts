@@ -195,7 +195,7 @@ function InvoiceDocument({ invoice }) {
         ),
         // Invoice / Receipt meta
         V({ style: [s.infoCol, { alignItems: 'flex-end' }] },
-          T({ style: { fontSize: 20, fontFamily: 'Helvetica-Bold', color: isReceipt ? PAID : PINK, letterSpacing: 2, textTransform: 'uppercase', textAlign: 'right', marginBottom: 8 } }, isReceipt ? 'Receipt' : 'Invoice'),
+          T({ style: { fontSize: 20, fontFamily: 'Helvetica-Bold', color: PINK, letterSpacing: 2, textTransform: 'uppercase', textAlign: 'right', marginBottom: 8 } }, isReceipt ? 'Receipt' : 'Invoice'),
           V({ style: s.metaRow }, T({ style: s.metaKey }, '#'),   T({ style: s.metaVal }, invoice.invoice_number || '—')),
           V({ style: s.metaRow }, T({ style: s.metaKey }, 'DATE'), T({ style: s.metaVal }, formatDate(invoice.invoice_date))),
           V({ style: s.metaRow }, T({ style: s.metaKey }, 'DUE DATE'), T({ style: s.metaVal }, formatDate(invoice.due_date))),

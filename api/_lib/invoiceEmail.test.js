@@ -69,7 +69,7 @@ describe('formatServiceDates', () => {
     expect(r.text).toBe('October 7, 2026 – October 28, 2026 (4 services)');
   });
   it('ignores unusable dates and returns null when none are left', () => {
-    expect(formatServiceDates([null, undefined, '', 'nope'])).toBeNull();
+    expect(formatServiceDates([null, undefined, '', 'nope', '2026-99-01', '2026-00-10'])).toBeNull();
     expect(formatServiceDates(undefined)).toBeNull();
   });
   it('shows up in the plain-text part', () => {

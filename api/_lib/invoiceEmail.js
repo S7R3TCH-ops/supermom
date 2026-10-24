@@ -105,7 +105,9 @@ const MONTHS = ['January','February','March','April','May','June','July','August
 function formatServiceDate(dateStr) {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(dateStr ?? ''));
   if (!m) return null;
-  return `${MONTHS[parseInt(m[2], 10) - 1]} ${parseInt(m[3], 10)}, ${m[1]}`;
+  const month = MONTHS[parseInt(m[2], 10) - 1];
+  if (!month) return null;
+  return `${month} ${parseInt(m[3], 10)}, ${m[1]}`;
 }
 
 /**

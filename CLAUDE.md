@@ -146,7 +146,7 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin); icons have `#FC4693` pi
 
 ## Current version: 0.13.119 - Oct 24, 2026 (iOS PWA invoice PDF share)
 
-**v0.13.119** (**LIVE 2026-10-24**, `14b9716`): Sandra's iOS installed-PWA "Download PDF" navigated the whole window to the attachment PDF (no back/save, had to kill the app). `InvoiceView.jsx` now, in an iOS home-screen PWA only (`navigator.standalone`), fetches the PDF and opens the native share sheet (`navigator.share({files})`); Android/desktop, browser tabs and `/i/:id` keep the plain anchor. Helper + tests: `src/lib/pdfShare.js`. **UNVERIFIED on a real iPhone** (share-sheet path, user-activation "Ready - tap to share" fallback). Full: `docs/changelog/v0.13.119.md`.
+**v0.13.119** (**LIVE 2026-10-24**, `14b9716`): Sandra's iOS installed-PWA "Download PDF" navigated the whole window to the attachment PDF (no back/save, had to kill the app). `InvoiceView.jsx` now, in an iOS home-screen PWA only (`navigator.standalone`), fetches the PDF and opens the native share sheet (`navigator.share({files})`); Android/desktop, browser tabs and `/i/:id` keep the plain anchor. Helper + tests: `src/lib/pdfShare.js`. **UNVERIFIED on a real iPhone** (share-sheet path, user-activation "Ready - tap to share" fallback); partial check 2026-10-25 (Joel, via Sandra's phone): PDF download and email attachment show no off characters, other results pending (second-brain `supermom/tasks.md` `T-sandra-pdf-onepage`). Full: `docs/changelog/v0.13.119.md`.
 
 ### Previous: 0.13.118 - Oct 22, 2026 (invoice email deliverability)
 

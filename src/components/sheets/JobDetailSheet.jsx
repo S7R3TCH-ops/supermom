@@ -10,6 +10,7 @@ import { isNoteOpen, isNoteDone } from '../../lib/noteState';
 import { markJobWorkerPaid } from '../../data/jobWorkersRepo';
 import { getJobIssuedCredit, reclassifyToTip, moveCreditBackFromJob } from '../../data/creditsRepo';
 import { recalcInvoiceTotal } from '../../data/invoicesRepo';
+import { openInvoice } from '../../lib/openInvoice';
 import { deriveJobStage, getPolicyMessage, validateJobDraft, buildFinancialPatch, isHoursLocked, resolveBillableHours } from '../../lib/jobDraftPolicy';
 import { useAuth } from '../../context/AuthContext';
 import { notifyDataChanged, useBusiness, useServices, useWorkers } from '../../data/useData';
@@ -649,7 +650,7 @@ function ReadMode({
 
         {invoiceId && (
           <button
-            onClick={() => window.open(`/i/${invoiceId}`, '_blank')}
+            onClick={() => openInvoice({ invoiceId, navigate, onClose })}
             style={{
               width: '100%', marginTop: 10, position: 'relative',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,

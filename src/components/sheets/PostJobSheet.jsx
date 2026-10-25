@@ -20,11 +20,14 @@ import { splitSurplusToJobs } from '../../lib/paymentPreview';
 import { setPendingNote, fetchClientById } from '../../data/clientsRepo';
 import { setJobNoteResolved } from '../../data/jobsRepo';
 import { isNoteOpen } from '../../lib/noteState';
+import { openInvoice } from '../../lib/openInvoice';
+import { useNavigate } from 'react-router-dom';
 
 export default function PostJobSheet({ jobId, onClose }) {
   const { T, mode } = useAppTheme();
   const { business } = useBusiness();
   const toast = useToast();
+  const navigate = useNavigate();
   const sheetRef = useRef(null);
   useFocusTrap(sheetRef, true, onClose);
   useBackClose(true, onClose);
@@ -845,7 +848,7 @@ export default function PostJobSheet({ jobId, onClose }) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
                 <button
                   type="button"
-                  onClick={() => { window.open(`/i/${invoiceId}`, '_blank'); onClose(); }}
+                  onClick={() => openInvoice({ invoiceId, navigate, onClose, closeAfterOpen: true })}
                   style={{ width: '100%', padding: '14px', borderRadius: 12, background: T.pink, color: 'white', border: 'none', fontFamily: T.font, fontSize: 14, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 12px rgba(233,30,106,0.3)' }}
                 >
                   {savedPs === 'Paid' ? 'Review & Send Receipt' : 'Review & Send Invoice'}

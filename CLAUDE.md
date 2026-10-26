@@ -146,7 +146,7 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin); icons have `#FC4693` pi
 
 ## Current version: 0.13.120 - Oct 25, 2026 (iOS PWA View Invoice stays in-app)
 
-**v0.13.120** (branch `fix/ios-view-invoice-inapp-nav`, **NOT pushed, UNVERIFIED on iPhone**): "View Invoice" (`JobDetailSheet`) and "Review & Send Invoice/Receipt" (`PostJobSheet`) did `window.open('/i/<id>', '_blank')`, which may open a separate webview in an installed iOS PWA. Now `src/lib/openInvoice.js`: when `isStandalonePwa()`, `onClose()` then in-app `navigate('/i/<id>', { replace: true })`; every other platform keeps the old `window.open`. Full: `docs/changelog/v0.13.120.md`.
+**v0.13.120** (**LIVE on origin/main `8699536` since 2026-10-25, UNVERIFIED on iPhone**): "View Invoice" (`JobDetailSheet`) and "Review & Send Invoice/Receipt" (`PostJobSheet`) did `window.open('/i/<id>', '_blank')`, which may open a separate webview in an installed iOS PWA. Now `src/lib/openInvoice.js`: when `isStandalonePwa()`, `onClose()` then in-app `navigate('/i/<id>', { replace: true })`; every other platform keeps the old `window.open`. Full: `docs/changelog/v0.13.120.md`.
 
 ### Previous: 0.13.119 - Oct 24, 2026 (iOS PWA invoice PDF share)
 

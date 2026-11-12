@@ -1,3 +1,4 @@
+import { scrollMainToTop } from '../../lib/scrollTop';
 import { useState, useRef, useEffect } from 'react';
 import GrabBar from '../ui/GrabBar';
 import { useAppTheme } from '../../context/AppThemeContext';
@@ -51,6 +52,7 @@ export default function RequestSheet({ isOpen, isClosing, onClose }) {
     try {
       await submitRequest({ kind, body });
       setSent(true);
+      scrollMainToTop();
     } catch (e) {
       logClientError(e, { type: 'client_request_insert' });
       setSaveErr("That didn't send. Try again in a moment — or text Joel like usual.");

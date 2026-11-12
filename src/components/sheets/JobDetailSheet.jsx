@@ -1,3 +1,4 @@
+import { scrollMainToTop } from '../../lib/scrollTop';
 import { useEffect, useState, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
@@ -221,6 +222,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
     if (ok) toast.success(msg);
     else toast.error(msg);
     notifyDataChanged();
+    scrollMainToTop();
     onClose();
   }
 
@@ -297,6 +299,7 @@ export default function JobDetailSheet({ jobId, onClose }) {
       await markJobWorkerPaid(job.id, true);
       notifyDataChanged();
       toast.success('Team member marked as paid');
+      scrollMainToTop();
       onClose();
     } catch (e) { setMutErr(e.message || String(e)); setBusy(false); }
   }

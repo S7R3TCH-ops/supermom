@@ -1,3 +1,4 @@
+import { scrollMainToTop } from '../../lib/scrollTop';
 import { useState, useRef } from 'react';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { createClient } from '../../data/clientsRepo';
@@ -97,6 +98,7 @@ export default function NewClientSheet({ onClose, onCreated }) {
       });
       notifyDataChanged();
       toast.success(`${first.trim()} added!`);
+      scrollMainToTop();
       if (onCreated) onCreated(created);
       onClose();
     } catch (err) {

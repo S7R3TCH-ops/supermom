@@ -1,3 +1,4 @@
+import { scrollMainToTop } from '../../lib/scrollTop';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppTheme } from '../../context/AppThemeContext';
@@ -119,6 +120,7 @@ export default function EditClientSheet({ clientId, onClose }) {
       });
       notifyDataChanged();
       toast.success('Client updated!');
+      scrollMainToTop();
       onClose();
     } catch (e) {
       const msg = e.message || String(e);
@@ -135,6 +137,7 @@ export default function EditClientSheet({ clientId, onClose }) {
       await softDeleteClient(clientId);
       notifyDataChanged();
       toast.success('Client deleted');
+      scrollMainToTop();
       onClose();
       navigate('/clients');
     } catch (e) {

@@ -1,3 +1,4 @@
+import { scrollMainToTop } from '../../lib/scrollTop';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppTheme } from '../../context/AppThemeContext';
@@ -323,6 +324,7 @@ export default function NewJobSheet({ prefillClientId, prefillData, onClose }) {
       }
       notifyDataChanged();
       toast.success('Mission Booked! 🚀');
+      scrollMainToTop();
       onClose();
       navigate('/');
     } catch (e) {

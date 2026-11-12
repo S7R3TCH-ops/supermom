@@ -198,6 +198,7 @@ Model tiering and Opus use: see the global ~/.claude/CLAUDE.md 'Model usage' sec
 ### ✅ Recent Changes
 
 Dated log: `docs/changelog/open-items-done-2026-10.md`.
+- **2026-11-12, branch `claude/scroll-top-on-complete` (NOT pushed, not phone-checked):** completing something in a sheet (book/save/pay/add/delete, Tell Joel send) scrolls the page underneath to the top via `scrollMainToTop()` in `src/lib/scrollTop.js`; plain sheet dismiss keeps list position. Route changes already did this via `ScrollToTop.jsx`. Not covered: service/worker catalog and referral partner sheets. No version bump.
 - **2026-10-19, live:** daily briefing email paused (see Daily briefing email). Unverified: no email 10-20 11:00 UTC; `OnboardingWalkthrough.jsx` step 3 still promises it. Full: `docs/changelog/open-items-done-2026-10.md`.
 - **Open QA, Statler voice (from the 2026-10-05 entry):** no result yet for `supermom_get_job` read-aloud, `supermom_text_me_contact` (bridge `.env` needs `TWILIO_FROM_NUMBER`), delete refusal. Leftover test data to delete by hand: Oscar Grouch 10-07 12:00 Assist job in the Clocked.IN AI business. v0.13.115 voice booking and v0.13.108 voice edit passed in prod.
 

@@ -1,3 +1,4 @@
+import { scrollMainToTop } from '../../lib/scrollTop';
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { SectionLabel } from '../ui/typography';
@@ -56,6 +57,8 @@ export default function PostJobSheet({ jobId, onClose }) {
   // phase: 'form' | 'checking' | 'bundle' | 'nudge'
   const [phase, setPhase] = useState('form');
   const [savedPs, setSavedPs] = useState(null);
+  // Job is saved once the success/nudge screen shows: put the screen underneath at the top.
+  useEffect(() => { if (phase === 'nudge') scrollMainToTop(); }, [phase]);
   const [invoiceId, setInvoiceId] = useState(null);
   const [clientOutstanding, setClientOutstanding] = useState([]);
   const [bundleSelected, setBundleSelected] = useState(new Set());

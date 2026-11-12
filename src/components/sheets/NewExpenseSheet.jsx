@@ -1,3 +1,4 @@
+import { scrollMainToTop } from '../../lib/scrollTop';
 import { useState, useRef } from 'react';
 import { useAppTheme } from '../../context/AppThemeContext';
 import { createExpense } from '../../data/expensesRepo';
@@ -54,6 +55,7 @@ export default function NewExpenseSheet({ isOpen, onClose }) {
       await createExpense({ category, amount: amt, expense_date: date, notes: notes || null });
       notifyDataChanged();
       toast.success('Expense logged.');
+      scrollMainToTop();
       reset();
       onClose();
     } catch (e) {

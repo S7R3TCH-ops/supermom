@@ -170,6 +170,31 @@ describe('buildInvoicePdfBuffer', () => {
     expect(buf.length).toBeGreaterThan(1000);
     expect(buf.subarray(0, 5).toString('latin1')).toBe('%PDF-');
   }, 30000);
+
+  // Sandra request 2c7285a6: business street + postal code in the "From" block.
+  // Fake address only (public repo). Guards the one-page layout (request 91ddf6f5).
+  it('renders the business street + postal code and stays on one page with a few other unpaid jobs', async () => {
+    const invoice = makeInvoice();
+    invoice.businesses.address = '123 Example Lane';
+    invoice.businesses.postal_code = 'A1A 1A1';
+    invoice.otherOutstanding = [1, 2, 3].map(n => ({
+      job: {
+        id: `job-out-${n}`,
+        scheduled_date: `2026-06-0${n}`,
+        scheduled_time: '09:00:00',
+        actual_duration: 2,
+        pricing_type: 'Hourly',
+        flat_rate: 50,
+        service_name: 'Organizing',
+      },
+      total: 113, paid: 0, owing: 113, taxAmount: 13,
+    }));
+    invoice.runningTotalOwing = 169.5 + 339;
+    const buf = await buildInvoicePdfBuffer(invoice);
+    expect(buf.subarray(0, 5).toString('latin1')).toBe('%PDF-');
+    const pageCounts = [...buf.toString('latin1').matchAll(/\/Type\s*\/Pages[\s\S]*?\/Count\s+(\d+)/g)].map(m => Number(m[1]));
+    expect(pageCounts).toEqual([1]);
+  }, 30000);
 });
 
 

@@ -155,7 +155,7 @@ function InvoiceDocument({ invoice }) {
       )
     : null;
 
-  const bizCity    = [biz.city, biz.province].filter(Boolean).join(', ');
+  const bizCity    = [[biz.city, biz.province].filter(Boolean).join(', '), biz.postal_code].filter(Boolean).join(' ');
   const clientCity = [[client.city, client.province].filter(Boolean).join(', '), client.postal_code].filter(Boolean).join(' ');
   const appBase    = process.env.APP_BASE_URL || 'https://app.supermomforhire.com';
   const logoUrl    = biz.logo_url?.startsWith('http') ? biz.logo_url : `${appBase}/branding/logo-final-white-bg.png`;
@@ -188,6 +188,7 @@ function InvoiceDocument({ invoice }) {
           T({ style: s.infoLabel }, 'From'),
           T({ style: s.infoBlock },
             T({ style: s.infoBold }, biz.name || 'Supermom for Hire'),
+            biz.address ? '\n' : null, biz.address ? T({ style: s.infoMuted }, biz.address) : null,
             bizCity   ? '\n' : null, bizCity   ? T({ style: s.infoMuted }, bizCity)   : null,
             biz.phone ? '\n' : null, biz.phone ? T({ style: s.infoLight }, formatPhone(biz.phone)) : null,
             biz.email ? '\n' : null, biz.email ? T({ style: s.infoLight }, biz.email) : null,

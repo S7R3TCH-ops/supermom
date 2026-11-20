@@ -154,7 +154,7 @@ export default function InvoiceView() {
   const aggTotal       = allFinancials.reduce((s, f) => s + f.total, 0);
   const aggTaxRate     = allFinancials[0]?.taxRate || 0;
   const logoSrc    = biz.logo_url || '/branding/logo-final-white-bg.png';
-  const bizCity    = [biz.city, biz.province].filter(Boolean).join(', ');
+  const bizCity    = [[biz.city, biz.province].filter(Boolean).join(', '), biz.postal_code].filter(Boolean).join(' ');
   const clientCity = [[client.city, client.province].filter(Boolean).join(', '), client.postal_code].filter(Boolean).join(' ');
 
   // Jobs the owner can mark paid: only jobs on THIS invoice with remaining balance
@@ -762,6 +762,7 @@ export default function InvoiceView() {
           <div>
             <div style={LABEL}>From</div>
             <div style={{ fontWeight: 600 }}>{biz.name || 'Supermom for Hire'}</div>
+            {biz.address && <div style={{ color: '#555' }}>{biz.address}</div>}
             {bizCity && <div style={{ color: '#555' }}>{bizCity}</div>}
             {biz.phone && <div style={{ color: '#888' }}>{formatPhone(biz.phone)}</div>}
             {biz.email && <div style={{ color: '#888' }}>{biz.email}</div>}

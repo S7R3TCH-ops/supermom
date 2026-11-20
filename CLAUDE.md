@@ -123,7 +123,7 @@ React (Vite), Supabase (Auth + Postgres), Vercel, React Context state, inline st
 ## Sandra's business reference
 - **Email**: `sandra@supermomforhire.com` is an alias on the real account `admin@supermomforhire.com` — app-facing/invoice-facing identity is `sandra@`, but GCal OAuth and anything requiring a real (non-alias) Google account is backed by `admin@`. Business calendar lives on `admin@`'s Google Calendar, shared out to Sandra's personal Gmail for toggle-on/off visibility.
 - **Phone**: `(416) 738-0309`
-- **Location**: Georgetown, ON (home-based — no street address on invoices)
+- **Location**: Georgetown, ON (home-based). Street address IS on invoices since v0.13.121 (Sandra asked, 2026-11-16); it comes from Settings, never hardcode it (public repo).
 - **HST #**: `777616178 RT0001`
 
 ### Invoice architecture
@@ -144,7 +144,11 @@ PWA manifest lives in `vite.config.js` (VitePWA plugin); icons have `#FC4693` pi
 ---
 
 
-## Current version: 0.13.120 - Oct 25, 2026 (iOS PWA View Invoice stays in-app)
+## Current version: 0.13.121 - Nov 20, 2026 (business street address on invoices)
+
+**v0.13.121** (branch `fix/invoice-business-address`, NOT pushed yet): Sandra request `2c7285a6`. Invoice "From" block (PDF + web, mirrored) now shows `businesses.address` and `City, Province Postal`; all three `api/invoice.ts` selects read `address, postal_code`. No schema change; values come from Settings. Full: `docs/changelog/v0.13.121.md`.
+
+### Previous: 0.13.120 - Oct 25, 2026 (iOS PWA View Invoice stays in-app)
 
 **v0.13.120** (**LIVE on origin/main `8699536` since 2026-10-25, UNVERIFIED on iPhone**): "View Invoice" (`JobDetailSheet`) and "Review & Send Invoice/Receipt" (`PostJobSheet`) did `window.open('/i/<id>', '_blank')`, which may open a separate webview in an installed iOS PWA. Now `src/lib/openInvoice.js`: when `isStandalonePwa()`, `onClose()` then in-app `navigate('/i/<id>', { replace: true })`; every other platform keeps the old `window.open`. Full: `docs/changelog/v0.13.120.md`.
 
